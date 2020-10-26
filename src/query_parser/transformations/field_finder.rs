@@ -4,8 +4,8 @@ pub fn find_fields(expr: &mut Expr, root_index: &IndexLink, indexes: &Vec<IndexL
     match expr {
         Expr::Null => unreachable!(),
 
-        Expr::Subselect(_, e) => find_fields(e, root_index, indexes),
-        Expr::Expand(i, e, f) => {
+        Expr::Subselect(i, e) => find_fields(e, i, indexes),
+        Expr::Expand(_i, e, f) => {
             if let Some(filter) = f {
                 find_fields(filter, root_index, indexes);
             }

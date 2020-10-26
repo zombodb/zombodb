@@ -1,14 +1,15 @@
+use std::collections::HashSet;
+
+use pgx::*;
+use serde_json::json;
+
 use crate::access_method::options::ZDBIndexOptions;
 use crate::gucs::ZDB_IGNORE_VISIBILITY;
 use crate::query_parser::ast::{
     ComparisonOpcode, Expr, IndexLink, ProximityPart, ProximityTerm, QualifiedField, Term,
 };
-use crate::query_parser::transformations::path_finder::PathFinder;
 use crate::zdbquery::mvcc::build_visibility_clause;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
-use serde_json::json;
-use std::collections::HashSet;
 
 #[pg_extern(immutable, parallel_safe)]
 fn dump_query(index: PgRelation, query: ZDBQuery) -> String {
@@ -124,7 +125,6 @@ pub fn expr_to_dsl(
         }
 
         Expr::Linked(link, e) => {
-            pgx::info!("link={}", link);
             let mut query = expr_to_dsl(root, index_links, e.as_ref());
             let target_relation = link.open_index().unwrap_or_else(|e| {
                 panic!("failed to open index '{}': {}", link.qualified_index, e)

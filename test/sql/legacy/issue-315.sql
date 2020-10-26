@@ -35,7 +35,7 @@ insert into a (pk_a, fk_a_to_map) values(30, 3);
 select * from a where a ==> '#expand<b_group_id=<this.index>b_group_id>(pk_b_id = 100)' order by pk_a;
 
 set zdb.ignore_visibility to on; /* to avoid transient xact data in query output */
-select json_array_element((zdb.dump_query('idxa', '#expand<b_group_id=<this.index>b_group_id>(pk_b_id = 100)')::json)->'subselect'->'query'->'subselect'->'query'->'bool'->'should', 0);
+select (zdb.dump_query('idxa', '#expand<b_group_id=<this.index>b_group_id>(pk_b_id = 100)')::json)->'subselect'->'query'->'subselect'->'query'->'subselect'->'query';
 
 drop table a cascade;
 drop table b cascade;

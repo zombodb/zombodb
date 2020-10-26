@@ -1,23 +1,26 @@
+use std::collections::{BTreeMap, HashMap, HashSet};
+use std::fmt::{Debug, Display, Error, Formatter};
+use std::str::FromStr;
+
+use lalrpop_util::ParseError;
+use pgx::PgRelation;
+use serde::{Deserialize, Serialize};
+
+pub use pg_catalog::ProximityPart;
+pub use pg_catalog::ProximityTerm;
+
 use crate::access_method::options::ZDBIndexOptions;
 use crate::elasticsearch::Elasticsearch;
 use crate::query_parser::parser::Token;
-use crate::query_parser::transformations::expand_index_links::{
-    expand_index_links, merge_adjacent_links,
-};
-use crate::query_parser::transformations::field_finder::find_fields;
+use crate::query_parser::transformations::dijkstra::RelationshipManager;
+use crate::query_parser::transformations::expand_index_links::expand_index_links;
+use crate::query_parser::transformations::field_finder::{find_fields, find_link_for_field};
 use crate::query_parser::transformations::field_lists::expand_field_lists;
 use crate::query_parser::transformations::index_links::assign_links;
 use crate::query_parser::transformations::nested_groups::group_nested;
 use crate::query_parser::transformations::prox_rewriter::rewrite_proximity_chains;
 use crate::query_parser::{INDEX_LINK_PARSER, ZDB_QUERY_PARSER};
 use crate::utils::{get_null_copy_to_fields, get_search_analyzer};
-use lalrpop_util::ParseError;
-pub use pg_catalog::ProximityPart;
-pub use pg_catalog::ProximityTerm;
-use pgx::PgRelation;
-use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap, HashSet};
-use std::fmt::{Debug, Display, Error, Formatter};
 
 #[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ProximityDistance {
@@ -35,9 +38,10 @@ impl Default for ProximityDistance {
 }
 
 pub mod pg_catalog {
-    use crate::query_parser::ast::ProximityDistance;
     use pgx::*;
     use serde::{Deserialize, Serialize};
+
+    use crate::query_parser::ast::ProximityDistance;
 
     #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
     pub enum ProximityTerm {
@@ -70,7 +74,7 @@ pub struct QualifiedField {
     pub field: String,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct IndexLink {
     pub name: Option<String>,
     pub left_field: Option<String>,
@@ -449,12 +453,27 @@ impl<'input> Expr<'input> {
             expand_field_lists(&mut expr, &field_lists);
         }
 
-        find_fields(&mut expr, &root_index, &index_links);
+        find_fields(&mut expr, &root_index, index_links);
         group_nested(&index, &mut expr);
 
-        assign_links(&root_index, &mut expr, &index_links);
-        // expand_index_links(&mut expr, &root_index, &index_links);
-        merge_adjacent_links(&mut expr);
+        let mut relationship_manager = RelationshipManager::new();
+        for link in index_links {
+            let mut left_field = link.left_field.as_ref().unwrap().as_str();
+            if left_field.contains('.') {
+                left_field = left_field.split('.').next().unwrap();
+            }
+            relationship_manager.add_relationship(
+                &find_link_for_field(&link.qualify_left_field(), &root_index, &index_links)
+                    .expect("unable to find link for field"),
+                left_field,
+                link,
+                link.right_field.as_ref().unwrap(),
+            )
+        }
+
+        assign_links(&root_index, &mut expr, index_links);
+        expand_index_links(&mut expr, &root_index, &mut relationship_manager);
+        // merge_adjacent_links(&mut expr);
 
         rewrite_proximity_chains(&mut expr);
         Ok(expr)
@@ -582,6 +601,27 @@ impl Display for ProximityDistance {
     }
 }
 
+impl FromStr for QualifiedIndex {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut parts = s.split('.').map(|p| p.to_string());
+        let schema = parts.next();
+        let table = parts.next();
+        let index = parts.next();
+
+        if table.is_none() || index.is_none() {
+            Err("QualifiedIndex string not in proper format")
+        } else {
+            Ok(QualifiedIndex {
+                schema,
+                table: table.unwrap(),
+                index: index.unwrap(),
+            })
+        }
+    }
+}
+
 impl QualifiedIndex {
     pub fn from_relation(index: &PgRelation) -> Self {
         QualifiedIndex {
@@ -688,6 +728,13 @@ impl IndexLink {
     pub fn open_index(&self) -> std::result::Result<PgRelation, &str> {
         PgRelation::open_with_name_and_share_lock(&self.qualified_index.index_name())
     }
+
+    pub fn qualify_left_field(&self) -> QualifiedField {
+        QualifiedField {
+            index: None,
+            field: self.left_field.as_ref().unwrap().clone(),
+        }
+    }
 }
 
 impl QualifiedField {
@@ -733,6 +780,12 @@ impl Display for QualifiedIndex {
 impl Display for QualifiedField {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         write!(fmt, "{}", self.field)
+    }
+}
+
+impl Debug for IndexLink {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        write!(f, "IndexLink({})", self)
     }
 }
 

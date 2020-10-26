@@ -1,7 +1,8 @@
 #![allow(unused_macros)]
 
-use crate::query_parser::ast::QualifiedField;
 use std::collections::{HashMap, HashSet};
+
+use crate::query_parser::ast::QualifiedField;
 
 pub mod ast;
 pub mod dsl;
@@ -390,9 +391,11 @@ mod macros {
 
 #[cfg(any(test, feature = "pg_test"))]
 mod tests {
-    use crate::query_parser::ast::{Expr, IndexLink, ParserError, QualifiedIndex};
-    use pgx::*;
     use std::collections::{HashMap, HashSet};
+
+    use pgx::*;
+
+    use crate::query_parser::ast::{Expr, IndexLink, ParserError, QualifiedIndex};
 
     pub(super) fn parse(input: &str) -> Result<Expr, ParserError> {
         let mut used_fields = HashSet::new();
@@ -411,7 +414,7 @@ mod tests {
                 },
                 right_field: None,
             },
-            Vec::new(),
+            &Vec::new(),
             HashMap::new(),
         )
     }

@@ -37,7 +37,7 @@ url = "2.1.1"
 lalrpop = { version = "0.19.0", features = [ "lexer" ] }
 
 [dev-dependencies]
-pgx-tests = { git = "https://github.com/zombodb/pgx" }
+pgx-tests = { git = "https://github.com/zombodb/pgx", branch = "develop" }
 libc = "0.2.74"
 
 [profile.dev]

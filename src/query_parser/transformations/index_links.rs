@@ -1,6 +1,7 @@
+use std::collections::HashMap;
+
 use crate::query_parser::ast::{Expr, IndexLink, QualifiedField};
 use crate::query_parser::transformations::field_finder::find_link_for_field;
-use std::collections::{BTreeMap, HashMap, HashSet};
 
 pub fn assign_links<'a>(root_index: &IndexLink, expr: &mut Expr<'a>, indexes: &Vec<IndexLink>) {
     match determine_link(root_index, expr, indexes) {
@@ -44,7 +45,7 @@ fn determine_link(
             }
             assign_links(i, e, indexes);
 
-            pgx::info!("i={}", i);
+            // pgx::info!("i={}", i);
 
             Some(i.clone())
         }
