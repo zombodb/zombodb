@@ -290,6 +290,9 @@ impl RelationshipManager {
     }
 
     pub fn calc_path(&mut self, source: &IndexLink, dest: &IndexLink) -> Vec<IndexLink> {
+        if self.d.verticies.is_empty() {
+            return vec![];
+        }
         let path: Vec<NamedIndexParts> = self
             .calc_path0(
                 &source.name.clone().unwrap_or("null".into()),

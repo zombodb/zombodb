@@ -126,42 +126,46 @@ pub fn expr_to_dsl(
 
         Expr::Linked(link, e) => {
             let mut query = expr_to_dsl(root, index_links, e.as_ref());
-            let target_relation = link.open_index().unwrap_or_else(|e| {
-                panic!("failed to open index '{}': {}", link.qualified_index, e)
-            });
-            let index_options = ZDBIndexOptions::from(&target_relation);
-            let es_index_name = index_options.index_name();
-
-            query = if ZDB_IGNORE_VISIBILITY.get() {
+            if link.left_field.is_none() {
                 query
             } else {
-                let visibility_clause = build_visibility_clause(es_index_name);
-                json! {
-                    {
-                        "bool": {
-                            "must": [query],
-                            "filter": [visibility_clause]
+                let target_relation = link.open_index().unwrap_or_else(|e| {
+                    panic!("failed to open index '{}': {}", link.qualified_index, e)
+                });
+                let index_options = ZDBIndexOptions::from(&target_relation);
+                let es_index_name = index_options.index_name();
+
+                query = if ZDB_IGNORE_VISIBILITY.get() {
+                    query
+                } else {
+                    let visibility_clause = build_visibility_clause(es_index_name);
+                    json! {
+                        {
+                            "bool": {
+                                "must": [query],
+                                "filter": [visibility_clause]
+                            }
                         }
                     }
+                };
+
+                let mut left_field = link.left_field.clone().expect("no left field");
+                if left_field.contains('.') {
+                    let mut parts = left_field.splitn(2, '.');
+                    parts.next();
+                    left_field = parts.next().unwrap().to_string();
                 }
-            };
 
-            let mut left_field = link.left_field.clone().expect("no left field");
-            if left_field.contains('.') {
-                let mut parts = left_field.splitn(2, '.');
-                parts.next();
-                left_field = parts.next().unwrap().to_string();
-            }
-
-            json! {
-                {
-                    "subselect": {
-                        "index": es_index_name,
-                        "alias": index_options.alias(),
-                        "type": "_doc",
-                        "left_fieldname": left_field,
-                        "right_fieldname": link.right_field,
-                        "query": query
+                json! {
+                    {
+                        "subselect": {
+                            "index": es_index_name,
+                            "alias": index_options.alias(),
+                            "type": "_doc",
+                            "left_fieldname": left_field,
+                            "right_fieldname": link.right_field,
+                            "query": query
+                        }
                     }
                 }
             }

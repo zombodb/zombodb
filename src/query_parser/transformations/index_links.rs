@@ -28,16 +28,16 @@ fn determine_link(
         Expr::Subselect(_, _) => unimplemented!("determine_link: subselect"),
         Expr::Expand(i, e, f) => {
             if i.is_this_index() {
-                let rhs_link = find_link_for_field(
+                let lhs_link = find_link_for_field(
                     &QualifiedField {
                         index: None,
-                        field: i.right_field.clone().unwrap(),
+                        field: i.left_field.clone().unwrap(),
                     },
                     root_index,
                     indexes,
                 )
-                .unwrap_or_else(|| panic!("could not find rhs field for #expand link: {}", i));
-                i.qualified_index = rhs_link.qualified_index;
+                .unwrap_or_else(|| panic!("could not find lhs field for #expand link: {}", i));
+                i.qualified_index = lhs_link.qualified_index;
             }
 
             if let Some(f) = f {
@@ -45,9 +45,9 @@ fn determine_link(
             }
             assign_links(i, e, indexes);
 
-            // pgx::info!("i={}", i);
-
-            Some(i.clone())
+            let i = i.clone();
+            *expr = Expr::Linked(i.clone(), Box::new(expr.clone()));
+            Some(i)
         }
 
         Expr::Not(e) => determine_link(root_index, e, indexes),
