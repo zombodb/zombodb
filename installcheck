@@ -22,7 +22,7 @@ elif [ "$TEST" = "all-legacy-tests" ]; then
   TESTS=$(ls ${TESTDIR}/sql/legacy/*.sql | \
     cut -f3- -d/ | \
     cut -f1 -d . | \
-    sort)
+    sort -n -k2 -t -)
 else
   TESTS=${TEST}
 fi
