@@ -126,7 +126,9 @@ pub fn expr_to_dsl(
 
         Expr::Linked(link, e) => {
             let mut query = expr_to_dsl(root, index_links, e.as_ref());
-            if link.left_field.is_none() {
+            if (&root.qualified_index == &link.qualified_index && root.left_field.is_some())
+                || link.left_field.is_none()
+            {
                 query
             } else {
                 let target_relation = link.open_index().unwrap_or_else(|e| {
