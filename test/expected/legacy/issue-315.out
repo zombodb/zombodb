@@ -32,17 +32,17 @@ select * from a where a ==> '#expand<b_group_id=<this.index>b_group_id>(pk_b_id 
 (2 rows)
 
 set zdb.ignore_visibility to on; /* to avoid transient xact data in query output */
-select (zdb.dump_query('idxa', '#expand<b_group_id=<this.index>b_group_id>(pk_b_id = 100)')::json)->'subselect'->'query'->'subselect'->'query'->'subselect'->'query';
-             ?column?             
-----------------------------------
- {                               +
-               "match": {        +
-                 "pk_b_id": {    +
-                   "boost": 1.0, +
-                   "query": "100"+
-                 }               +
-               }                 +
-             }
+select json_array_element((zdb.dump_query('idxa', '#expand<b_group_id=<this.index>b_group_id>(pk_b_id = 100)')::json)->'subselect'->'query'->'subselect'->'query'->'subselect'->'query'->'bool'->'should', 0);
+           json_array_element           
+----------------------------------------
+ {                                     +
+                     "match": {        +
+                       "pk_b_id": {    +
+                         "boost": 1.0, +
+                         "query": "100"+
+                       }               +
+                     }                 +
+                   }
 (1 row)
 
 drop table a cascade;

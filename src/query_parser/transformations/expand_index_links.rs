@@ -41,7 +41,6 @@ fn expand_index_links0<'a>(
 
         Expr::Linked(i, e) => {
             let path = relationship_manager.calc_path(current_index, i);
-            // pgx::info!("\nfrom: {}\n  to: {}\npath:{:#?}", current_index, i, path);
 
             if let Some(current_index) = path.last() {
                 expand_index_links0(e, root_index, relationship_manager, current_index);
@@ -61,8 +60,6 @@ fn expand_index_links0<'a>(
                         *expr = Expr::Linked(link, Box::new(swapped));
                     }
                 }
-            } else {
-                *expr = *e.clone();
             }
         }
         _ => {}

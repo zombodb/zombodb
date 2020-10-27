@@ -60,17 +60,6 @@ pub fn expr_to_dsl(
 
         Expr::Subselect(_, _) => unimplemented!("#subselect is not implemented yet"),
         Expr::Expand(link, e, f) => {
-            // pgx::info!("{:?}", index_links);
-            // let mut pf = PathFinder::new();
-            // for link in index_links {
-            //     pf.push(index_links, root.clone(), link.clone());
-            // }
-            //
-            // pgx::info!("{:#?}", pf);
-            //
-            // let expand_dsl = expr_to_dsl(link, index_links, &Expr::Linked(link.clone(), e.clone()));
-            // pgx::info!("link={}", link);
-            // pgx::info!("root={}", root);
             let expand_dsl = expr_to_dsl(link, index_links, e);
 
             if let Some(filter) = f {
@@ -126,9 +115,7 @@ pub fn expr_to_dsl(
 
         Expr::Linked(link, e) => {
             let mut query = expr_to_dsl(root, index_links, e.as_ref());
-            if (&root.qualified_index == &link.qualified_index && root.left_field.is_some())
-                || link.left_field.is_none()
-            {
+            if link.left_field.is_none() {
                 query
             } else {
                 let target_relation = link.open_index().unwrap_or_else(|e| {

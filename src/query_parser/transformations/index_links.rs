@@ -6,7 +6,7 @@ use crate::query_parser::transformations::field_finder::find_link_for_field;
 pub fn assign_links<'a>(root_index: &IndexLink, expr: &mut Expr<'a>, indexes: &Vec<IndexLink>) {
     match determine_link(root_index, expr, indexes) {
         // everything belongs to the same link (that isn't the root_index), and whatever that is we wrapped it in an Expr::Linked
-        Some(target_link) if &target_link != root_index => {
+        Some(target_link) if &target_link.qualified_index != &root_index.qualified_index => {
             let dummy = Expr::Null;
             let swapped = std::mem::replace(expr, dummy);
             *expr = Expr::Linked(target_link.clone(), Box::new(swapped));
@@ -28,16 +28,16 @@ fn determine_link(
         Expr::Subselect(_, _) => unimplemented!("determine_link: subselect"),
         Expr::Expand(i, e, f) => {
             if i.is_this_index() {
-                let lhs_link = find_link_for_field(
+                let rhs_link = find_link_for_field(
                     &QualifiedField {
                         index: None,
-                        field: i.left_field.clone().unwrap(),
+                        field: i.right_field.clone().unwrap(),
                     },
                     root_index,
                     indexes,
                 )
-                .unwrap_or_else(|| panic!("could not find lhs field for #expand link: {}", i));
-                i.qualified_index = lhs_link.qualified_index;
+                .unwrap_or_else(|| panic!("could not find rhs field for #expand link: {}", i));
+                i.qualified_index = rhs_link.qualified_index;
             }
 
             if let Some(f) = f {
@@ -46,7 +46,11 @@ fn determine_link(
             assign_links(i, e, indexes);
 
             let i = i.clone();
-            *expr = Expr::Linked(i.clone(), Box::new(expr.clone()));
+            let e = e.clone();
+            let f = f.clone();
+            let expanded = Expr::Expand(i.clone(), Box::new(Expr::Linked(i.clone(), e.clone())), f);
+
+            *expr = Expr::OrList(vec![expanded, *e]);
             Some(i)
         }
 

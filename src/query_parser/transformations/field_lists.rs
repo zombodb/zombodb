@@ -94,7 +94,12 @@ fn make_or_list<'a, F: Fn(QualifiedField, Term) -> Expr>(
         for field in fields {
             or_list.push(make_expr(field.clone(), term, &f))
         }
-        Some(Expr::OrList(or_list))
+
+        if or_list.len() == 1 {
+            or_list.pop()
+        } else {
+            Some(Expr::OrList(or_list))
+        }
     } else {
         None
     }
