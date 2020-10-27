@@ -311,13 +311,15 @@ impl RelationshipManager {
                 let right_field = next.field_name;
                 let name = next.name;
                 let index = next.index;
-                reduced_path.push(IndexLink {
+
+                let link = IndexLink {
                     name,
                     left_field,
                     qualified_index: QualifiedIndex::from_str(&index)
                         .unwrap_or_else(|_| panic!("invalid index: {}", index)),
                     right_field,
-                })
+                };
+                reduced_path.push(link);
             } else {
                 panic!("incomplete path from {} to {}", source, dest);
             }

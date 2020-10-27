@@ -13,7 +13,9 @@ use crate::access_method::options::ZDBIndexOptions;
 use crate::elasticsearch::Elasticsearch;
 use crate::query_parser::parser::Token;
 use crate::query_parser::transformations::dijkstra::RelationshipManager;
-use crate::query_parser::transformations::expand_index_links::expand_index_links;
+use crate::query_parser::transformations::expand_index_links::{
+    expand_index_links, merge_adjacent_links,
+};
 use crate::query_parser::transformations::field_finder::{find_fields, find_link_for_field};
 use crate::query_parser::transformations::field_lists::expand_field_lists;
 use crate::query_parser::transformations::index_links::assign_links;
@@ -460,11 +462,15 @@ impl<'input> Expr<'input> {
         for link in index_links {
             let mut left_field = link.left_field.as_ref().unwrap().as_str();
             if left_field.contains('.') {
-                left_field = left_field.split('.').next().unwrap();
+                let mut parts = left_field.split('.');
+                parts.next();
+                left_field = parts.next().unwrap();
             }
+            let left_link =
+                find_link_for_field(&link.qualify_left_field(), &root_index, &index_links)
+                    .expect("unable to find link for field");
             relationship_manager.add_relationship(
-                &find_link_for_field(&link.qualify_left_field(), &root_index, &index_links)
-                    .expect("unable to find link for field"),
+                &left_link,
                 left_field,
                 link,
                 link.right_field.as_ref().unwrap(),
@@ -473,7 +479,7 @@ impl<'input> Expr<'input> {
 
         assign_links(&root_index, &mut expr, index_links);
         expand_index_links(&mut expr, &root_index, &mut relationship_manager);
-        // merge_adjacent_links(&mut expr);
+        merge_adjacent_links(&mut expr);
 
         rewrite_proximity_chains(&mut expr);
         Ok(expr)

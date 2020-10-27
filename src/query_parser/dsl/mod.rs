@@ -146,13 +146,20 @@ pub fn expr_to_dsl(
                 }
             };
 
+            let mut left_field = link.left_field.clone().expect("no left field");
+            if left_field.contains('.') {
+                let mut parts = left_field.splitn(2, '.');
+                parts.next();
+                left_field = parts.next().unwrap().to_string();
+            }
+
             json! {
                 {
                     "subselect": {
                         "index": es_index_name,
                         "alias": index_options.alias(),
                         "type": "_doc",
-                        "left_fieldname": link.left_field,
+                        "left_fieldname": left_field,
                         "right_fieldname": link.right_field,
                         "query": query
                     }
