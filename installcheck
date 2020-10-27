@@ -20,7 +20,7 @@ elif [ "$TEST" = "all-syntax-tests" ]; then
     sort)
 elif [ "$TEST" = "all-legacy-tests" ]; then
   TESTS=$(ls ${TESTDIR}/sql/legacy/*.sql | \
-    cut -f3 -d/ | \
+    cut -f3- -d/ | \
     cut -f1 -d . | \
     sort)
 else
