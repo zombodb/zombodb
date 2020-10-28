@@ -59,16 +59,7 @@ pub fn expr_to_dsl(
         Expr::Null => unreachable!(),
 
         Expr::Subselect(_, _) => unimplemented!("#subselect is not implemented yet"),
-        Expr::Expand(link, e, f) => {
-            let expand_dsl = expr_to_dsl(link, index_links, e);
-
-            if let Some(filter) = f {
-                let filter_dsl = expr_to_dsl(link, index_links, filter);
-                json! { { "bool": { "must": [ expand_dsl, filter_dsl ] } } }
-            } else {
-                expand_dsl
-            }
-        }
+        Expr::Expand(link, e, _) => expr_to_dsl(link, index_links, e),
 
         Expr::WithList(_) => unreachable!("dsl conversion of Expr::WithList shouldn't happen"),
         Expr::AndList(v) => {

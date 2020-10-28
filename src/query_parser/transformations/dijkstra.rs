@@ -308,24 +308,29 @@ impl RelationshipManager {
 
         let mut reduced_path = Vec::new();
         let mut iter = path.into_iter();
-        while let Some(current) = iter.next() {
-            if let Some(next) = iter.next() {
-                let left_field = current.field_name;
-                let right_field = next.field_name;
-                let name = next.name;
-                let index = next.index;
-
-                let link = IndexLink {
-                    name,
-                    left_field,
-                    qualified_index: QualifiedIndex::from_str(&index)
-                        .unwrap_or_else(|_| panic!("invalid index: {}", index)),
-                    right_field,
-                };
-                reduced_path.push(link);
+        let mut prev = None;
+        while let Some(mut current) = iter.next() {
+            let next = if let Some(next) = iter.next() {
+                next
             } else {
-                panic!("incomplete path from {} to {}", source, dest);
-            }
+                std::mem::replace(&mut current, prev.expect("no previous NamedIndexPart"))
+            };
+
+            let left_field = current.field_name;
+            let right_field = next.field_name.clone();
+            let name = next.name.clone();
+            let index = next.index.clone();
+
+            let link = IndexLink {
+                name,
+                left_field,
+                qualified_index: QualifiedIndex::from_str(&index)
+                    .unwrap_or_else(|_| panic!("invalid index: {}", index)),
+                right_field,
+            };
+            reduced_path.push(link);
+
+            prev = Some(next);
         }
 
         reduced_path

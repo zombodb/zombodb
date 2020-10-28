@@ -1,7 +1,5 @@
-use std::collections::HashMap;
-
-use crate::query_parser::ast::{Expr, IndexLink, QualifiedField};
-use crate::query_parser::transformations::field_finder::find_link_for_field;
+use crate::query_parser::ast::{Expr, IndexLink};
+use indexmap::IndexMap;
 
 pub fn assign_links<'a>(root_index: &IndexLink, expr: &mut Expr<'a>, indexes: &Vec<IndexLink>) {
     match determine_link(root_index, expr, indexes) {
@@ -27,31 +25,11 @@ fn determine_link(
 
         Expr::Subselect(_, _) => unimplemented!("determine_link: subselect"),
         Expr::Expand(i, e, f) => {
-            if i.is_this_index() {
-                let rhs_link = find_link_for_field(
-                    &QualifiedField {
-                        index: None,
-                        field: i.right_field.clone().unwrap(),
-                    },
-                    root_index,
-                    indexes,
-                )
-                .unwrap_or_else(|| panic!("could not find rhs field for #expand link: {}", i));
-                i.qualified_index = rhs_link.qualified_index;
-            }
-
             if let Some(f) = f {
                 assign_links(i, f, indexes);
             }
             assign_links(i, e, indexes);
-
-            let i = i.clone();
-            let e = e.clone();
-            let f = f.clone();
-            let expanded = Expr::Expand(i.clone(), Box::new(Expr::Linked(i.clone(), e.clone())), f);
-
-            *expr = Expr::OrList(vec![expanded, *e]);
-            Some(i)
+            Some(i.clone())
         }
 
         Expr::Not(e) => determine_link(root_index, e, indexes),
@@ -87,7 +65,7 @@ fn group_links<F: Fn(Vec<Expr>) -> Expr>(
     f: F,
 ) -> Option<IndexLink> {
     // group the elements of 'v' together by whatever link we determine each to belong
-    let mut link_groups = HashMap::<Option<IndexLink>, Vec<Expr>>::new();
+    let mut link_groups = IndexMap::<Option<IndexLink>, Vec<Expr>>::new();
     while !v.is_empty() {
         let mut e = v.pop().unwrap();
         link_groups
@@ -119,8 +97,8 @@ fn group_links<F: Fn(Vec<Expr>) -> Expr>(
                 // it is the root_index, so we don't need to wrap it
                 Some(_) => v.push(expr_list),
 
-                // we should never get here
-                None => unreachable!("None target_link"),
+                // we might get here if there's an #expand<> in our query tree
+                None => v.push(expr_list),
             }
         }
         None

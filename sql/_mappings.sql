@@ -274,9 +274,23 @@ VALUES ('phrase', '{
 
 
 CREATE DOMAIN zdb.phrase AS text;
+CREATE DOMAIN zdb.phrase_array AS text[];
 CREATE DOMAIN zdb.fulltext AS text;
 CREATE DOMAIN zdb.fulltext_with_shingles AS text;
 CREATE DOMAIN zdb.zdb_standard AS text;
+
+INSERT INTO zdb.type_mappings(type_name, definition, is_default)
+VALUES ('"char"', '{
+  "type": "keyword"
+}', true);
+
+INSERT INTO zdb.type_mappings(type_name, definition, is_default)
+VALUES ('char', '{
+  "type": "keyword",
+  "copy_to": "zdb_all",
+  "ignore_above": 10922,
+  "normalizer": "lowercase"
+}', true);
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('bytea', '{
@@ -392,13 +406,20 @@ INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('zdb.phrase', '{
   "type": "text",
   "copy_to": "zdb_all",
-  "analyzer": "zdb_standard"
+  "analyzer": "phrase"
+}', true);
+
+INSERT INTO zdb.type_mappings(type_name, definition, is_default)
+VALUES ('zdb.phrase_array', '{
+  "type": "text",
+  "copy_to": "zdb_all",
+  "analyzer": "phrase"
 }', true);
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('zdb.fulltext', '{
   "type": "text",
-  "analyzer": "zdb_standard"
+  "analyzer": "fulltext"
 }', true);
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)

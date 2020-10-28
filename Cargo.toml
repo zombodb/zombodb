@@ -17,6 +17,7 @@ pg_test = [ ]
 [dependencies]
 chrono = "0.4.19"
 crossbeam-channel = "0.4.2"
+indexmap = "1.6.0"
 lalrpop-util = "0.19.0"
 lazy_static = "1.4.0"
 levenshtein = "1.0.4"

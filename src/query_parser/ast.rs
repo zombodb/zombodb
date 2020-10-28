@@ -13,6 +13,7 @@ use crate::access_method::options::ZDBIndexOptions;
 use crate::elasticsearch::Elasticsearch;
 use crate::query_parser::parser::Token;
 use crate::query_parser::transformations::dijkstra::RelationshipManager;
+use crate::query_parser::transformations::expand::expand;
 use crate::query_parser::transformations::expand_index_links::{
     expand_index_links, merge_adjacent_links,
 };
@@ -455,6 +456,7 @@ impl<'input> Expr<'input> {
             expand_field_lists(&mut expr, &field_lists);
         }
 
+        expand(&mut expr, &root_index, index_links);
         find_fields(&mut expr, &root_index, index_links);
         group_nested(&index, &mut expr);
 

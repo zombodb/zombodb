@@ -1,6 +1,6 @@
 use crate::query_parser::ast::{Expr, IndexLink};
 use crate::query_parser::transformations::dijkstra::RelationshipManager;
-use std::collections::HashMap;
+use indexmap::IndexMap;
 
 pub fn expand_index_links(
     expr: &mut Expr,
@@ -40,18 +40,19 @@ fn expand_index_links0<'a>(
         }
 
         Expr::Linked(i, e) => {
-            let path = relationship_manager.calc_path(current_index, i);
-
-            if let Some(current_index) = path.last() {
+            if current_index == i {
+                expand_index_links0(e, root_index, relationship_manager, current_index)
+            } else {
+                let path = relationship_manager.calc_path(current_index, i);
                 expand_index_links0(e, root_index, relationship_manager, current_index);
                 let mut target = i.clone();
-                let mut left_field = target.left_field.clone().expect("no left field");
-                if left_field.contains('.') {
-                    let mut parts = left_field.splitn(2, '.');
+                let mut left_field = target.left_field.clone();
+                if left_field.is_some() && left_field.as_ref().unwrap().contains('.') {
+                    let mut parts = left_field.as_ref().unwrap().splitn(2, '.');
                     parts.next();
-                    left_field = parts.next().unwrap().to_string();
+                    left_field = Some(parts.next().unwrap().to_string());
                 }
-                target.left_field = Some(left_field);
+                target.left_field = left_field;
 
                 for link in path.into_iter().rev() {
                     if target != link {
@@ -98,7 +99,7 @@ pub fn merge_adjacent_links(expr: &mut Expr) {
 fn relink<'a, F: Fn(Vec<Expr<'a>>) -> Expr<'a>>(
     f: F,
     v: &mut Vec<Expr<'a>>,
-    groups: HashMap<Option<IndexLink>, Vec<Expr<'a>>>,
+    groups: IndexMap<Option<IndexLink>, Vec<Expr<'a>>>,
 ) {
     for (link, mut exprs) in groups {
         if let Some(link) = link {
@@ -118,9 +119,9 @@ fn relink<'a, F: Fn(Vec<Expr<'a>>) -> Expr<'a>>(
 
 fn group_expressions_by_link<'a>(
     v: &mut Vec<Expr<'a>>,
-) -> HashMap<Option<IndexLink>, Vec<Expr<'a>>> {
+) -> IndexMap<Option<IndexLink>, Vec<Expr<'a>>> {
     // next, lets group expressions by if they're Expr::Linked
-    let mut groups = HashMap::<Option<IndexLink>, Vec<Expr>>::new();
+    let mut groups = IndexMap::<Option<IndexLink>, Vec<Expr>>::new();
     while !v.is_empty() {
         let e = v.pop().unwrap();
         match e {
