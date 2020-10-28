@@ -1,123 +1,106 @@
-use crate::query_parser::ast::{Expr, IndexLink, QualifiedField};
-use crate::query_parser::transformations::field_finder::find_link_for_field;
-use std::collections::BTreeMap;
+use crate::query_parser::ast::{Expr, IndexLink};
+use indexmap::IndexMap;
 
-pub fn assign_links(
-    root_index: &IndexLink,
-    expr: &mut Expr,
-    links: &Vec<IndexLink>,
-) -> Option<IndexLink> {
-    match expr {
-        Expr::Subselect(i, e) => assign_links(&i, e, links),
-        Expr::Expand(i, e, f) => {
-            let mut other = e.clone();
-            if let Some(filter) = f {
-                assign_links(root_index, filter, links);
-            }
-
-            assign_links(root_index, e, links);
-
-            let link = find_link_for_field(
-                &QualifiedField {
-                    index: None,
-                    field: i.left_field.clone().unwrap(),
-                },
-                root_index,
-                links,
-            )
-            .unwrap_or_else(|| panic!("failed to find linked field '{:?}'", i.left_field));
-
-            let new_link = IndexLink {
-                name: None,
-                left_field: i.left_field.clone(),
-                qualified_index: link.qualified_index.clone(),
-                right_field: i.right_field.clone(),
-            };
-
-            assign_links(&new_link, other.as_mut(), links);
-
-            *expr = Expr::OrList(vec![
-                Expr::Expand(
-                    i.clone(),
-                    Box::new(Expr::Linked(new_link, e.clone())),
-                    f.clone(),
-                ),
-                *other,
-            ]);
-
-            Some(link)
+pub fn assign_links<'a>(root_index: &IndexLink, expr: &mut Expr<'a>, indexes: &Vec<IndexLink>) {
+    match determine_link(root_index, expr, indexes) {
+        // everything belongs to the same link (that isn't the root_index), and whatever that is we wrapped it in an Expr::Linked
+        Some(target_link) if &target_link.qualified_index != &root_index.qualified_index => {
+            let dummy = Expr::Null;
+            let swapped = std::mem::replace(expr, dummy);
+            *expr = Expr::Linked(target_link.clone(), Box::new(swapped));
         }
 
-        Expr::Not(e) => assign_links(root_index, e, links),
-
-        Expr::WithList(v) => link_by_group(root_index, links, v, |exprs| Expr::WithList(exprs)),
-        Expr::AndList(v) => link_by_group(root_index, links, v, |exprs| Expr::AndList(exprs)),
-        Expr::OrList(v) => link_by_group(root_index, links, v, |exprs| Expr::OrList(exprs)),
-
-        Expr::Linked(_, _) => unreachable!(),
-        Expr::Nested(_, e) => assign_links(root_index, e, links),
-
-        Expr::Json(_) => None,
-        Expr::Contains(f, _) => f.index.clone(),
-        Expr::Eq(f, _) => f.index.clone(),
-        Expr::Gt(f, _) => f.index.clone(),
-        Expr::Lt(f, _) => f.index.clone(),
-        Expr::Gte(f, _) => f.index.clone(),
-        Expr::Lte(f, _) => f.index.clone(),
-        Expr::Ne(f, _) => f.index.clone(),
-        Expr::DoesNotContain(f, _) => f.index.clone(),
-        Expr::Regex(f, _) => f.index.clone(),
-        Expr::MoreLikeThis(f, _) => f.index.clone(),
-        Expr::FuzzyLikeThis(f, _) => f.index.clone(),
+        // there's more than one link or it's the root_index and they've already been linked
+        _ => {}
     }
 }
 
-fn link_by_group<F: Fn(Vec<Expr>) -> Expr>(
+fn determine_link(
     root_index: &IndexLink,
-    links: &Vec<IndexLink>,
+    expr: &mut Expr,
+    indexes: &Vec<IndexLink>,
+) -> Option<IndexLink> {
+    match expr {
+        Expr::Null => unreachable!(),
+
+        Expr::Subselect(_, _) => unimplemented!("determine_link: subselect"),
+        Expr::Expand(i, e, f) => {
+            if let Some(f) = f {
+                assign_links(i, f, indexes);
+            }
+            assign_links(i, e, indexes);
+            Some(i.clone())
+        }
+
+        Expr::Not(e) => determine_link(root_index, e, indexes),
+
+        Expr::WithList(v) => group_links(root_index, v, indexes, |v| Expr::WithList(v)),
+        Expr::AndList(v) => group_links(root_index, v, indexes, |v| Expr::AndList(v)),
+        Expr::OrList(v) => group_links(root_index, v, indexes, |v| Expr::OrList(v)),
+
+        Expr::Linked(_, _) => unreachable!("determine_link: linked"),
+
+        Expr::Nested(_, e) => determine_link(root_index, e, indexes),
+
+        Expr::Json(_) => Some(root_index.clone()),
+
+        Expr::Contains(f, _)
+        | Expr::Eq(f, _)
+        | Expr::Gt(f, _)
+        | Expr::Lt(f, _)
+        | Expr::Gte(f, _)
+        | Expr::Lte(f, _)
+        | Expr::Ne(f, _)
+        | Expr::DoesNotContain(f, _)
+        | Expr::Regex(f, _)
+        | Expr::MoreLikeThis(f, _)
+        | Expr::FuzzyLikeThis(f, _) => f.index.clone(),
+    }
+}
+
+fn group_links<F: Fn(Vec<Expr>) -> Expr>(
+    root_index: &IndexLink,
     v: &mut Vec<Expr>,
+    indexes: &Vec<IndexLink>,
     f: F,
 ) -> Option<IndexLink> {
-    let mut groups = BTreeMap::<Option<IndexLink>, Vec<Expr>>::new();
-
-    // group each Expr in 'v' together by its IndexLink
-    // this happens by moving each Expr out of 'v' and into 'groups'
-    //
-    // we also want to ensure that 'v' itself stays live as we intend
-    // to re-fill it at the end of this process
+    // group the elements of 'v' together by whatever link we determine each to belong
+    let mut link_groups = IndexMap::<Option<IndexLink>, Vec<Expr>>::new();
     while !v.is_empty() {
         let mut e = v.pop().unwrap();
-        let link = assign_links(root_index, &mut e, links);
-
-        // we .insert(0) instead of .push() to preserve the original order of the expressions
-        groups.entry(link).or_default().insert(0, e);
+        link_groups
+            .entry(determine_link(root_index, &mut e, indexes))
+            .or_default()
+            .push(e);
     }
 
-    if groups.len() == 1 {
-        // they all belong to the same IndexLink, and we don't care which one that is
-        let (k, mut exprs) = groups.into_iter().next().unwrap();
-
-        // we need to add them back to this group's vec
+    if link_groups.len() == 1 {
+        // there is only one link, so we just return that after adding everything back into 'v'
+        let (target_link, mut exprs) = link_groups.into_iter().next().unwrap();
         v.append(&mut exprs);
-        return k;
+        target_link
     } else {
-        // there's more than 1 IndexLink in use.
-        //
-        // each one that isn't the 'root_index'needs to be wrapped in an
-        // Expr::Linked(_, Expr::XXXList(...)), using the provided function
-        for (link, mut exprs) in groups.into_iter() {
-            let link = link.unwrap();
-            if root_index != &link {
-                // this group's link isn't the root_link, so we need to wrap it
-                let expr = f(exprs);
-                let linked = Expr::Linked(link, Box::new(expr));
-                v.push(linked);
+        // there's multiple links, so go ahead and group those together
+        for (target_link, mut exprs) in link_groups {
+            let expr_list = if exprs.len() == 1 {
+                exprs.pop().unwrap()
             } else {
-                // otherwise we can just append all the expressions in this group back to 'v'
-                v.append(&mut exprs);
+                f(exprs)
+            };
+
+            match target_link {
+                // the link is not the root_index, so we must wrap it in an Expr::Linked
+                Some(target_link) if &target_link != root_index => {
+                    v.push(Expr::Linked(target_link, Box::new(expr_list)))
+                }
+
+                // it is the root_index, so we don't need to wrap it
+                Some(_) => v.push(expr_list),
+
+                // we might get here if there's an #expand<> in our query tree
+                None => v.push(expr_list),
             }
         }
+        None
     }
-
-    Some(root_index.clone())
 }

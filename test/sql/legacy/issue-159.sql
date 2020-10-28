@@ -1,24 +1,24 @@
 set datestyle to 'iso, mdy';
-CREATE TABLE issue159 (pk_id bigint not null primary key, groupid text, has_att char);
-CREATE INDEX idxissue159 ON issue159 USING zombodb (zdb('issue159', ctid), zdb(issue159)) WITH (url='http://localhost:9200/');
+CREATE TABLE issue159 (pk_id bigint not null primary key, groupid varchar, has_att char);
+CREATE INDEX idxissue159 ON issue159 USING zombodb ((issue159.*));
 
 INSERT INTO issue159 VALUES (239558, '0000003158/3492', 'A');
 INSERT INTO issue159 VALUES (239557, '0000003158/3492', 'Y');
 SELECT pk_id, groupid, has_att
 FROM issue159
-WHERE zdb('issue159', ctid) ==> '( (#expand<groupid=<this.index>groupid>( ( pk_id = 239558) )) )'
+WHERE issue159 ==> '( (#expand<groupid=<this.index>groupid>( ( pk_id = 239558) )) )'
 ORDER BY pk_id;
 
 
 SELECT pk_id, groupid, has_att
 FROM issue159
-WHERE zdb('issue159', ctid) ==> '( (#expand<groupid=<this.index>groupid>( ( pk_id = 239558) #filter(has_att = A) )) )'
+WHERE issue159 ==> '( (#expand<groupid=<this.index>groupid>( ( pk_id = 239558) #filter(has_att = A) )) )'
 ORDER BY pk_id;
 
 
 SELECT pk_id, groupid, has_att
 FROM issue159
-WHERE zdb('issue159', ctid) ==> '( (#expand<groupid=<this.index>groupid>( ( pk_id = 239558) #filter(has_att = Y) )) )'
+WHERE issue159 ==> '( (#expand<groupid=<this.index>groupid>( ( pk_id = 239558) #filter(has_att = Y) )) )'
 ORDER BY pk_id;
 
 DROP TABLE issue159;
@@ -41,21 +41,21 @@ CREATE TABLE issue_159.data (
   data_date_2 date,
   data_date_array_1 date[],
   data_date_array_2 date[],
-  data_full_text public.fulltext,
-  data_full_text_shingles public.fulltext_with_shingles,
+  data_full_text zdb.fulltext,
+  data_full_text_shingles zdb.fulltext_with_shingles,
   data_int_1 integer,
   data_int_2 integer,
   data_int_array_1 integer[],
   data_int_array_2 integer[],
   data_json json,
-  data_phrase_1 public.phrase,
-  data_phrase_2 public.phrase,
-  data_phrase_array_1 public.phrase_array,
-  data_phrase_array_2 public.phrase_array,
-  data_text_1 text,
-  data_text_filter text,
-  data_text_array_1 text[],
-  data_text_array_2 text[],
+  data_phrase_1 zdb.phrase,
+  data_phrase_2 zdb.phrase,
+  data_phrase_array_1 zdb.phrase_array,
+  data_phrase_array_2 zdb.phrase_array,
+  data_text_1 varchar,
+  data_text_filter varchar,
+  data_text_array_1 varchar[],
+  data_text_array_2 varchar[],
   data_timestamp timestamp without time zone,
   data_varchar_1 character varying(25),
   data_varchar_2 character varying(25),
@@ -84,14 +84,14 @@ CREATE TABLE issue_159.var (
   var_int_array_1 integer[],
   var_int_array_2 integer[],
   var_json json,
-  var_phrase_1 public.phrase,
-  var_phrase_2 public.phrase,
-  var_phrase_array_1 public.phrase_array,
-  var_phrase_array_2 public.phrase_array,
-  var_text_1 text,
-  var_text_filter text,
-  var_text_array_1 text[],
-  var_text_array_2 text[],
+  var_phrase_1 zdb.phrase,
+  var_phrase_2 zdb.phrase,
+  var_phrase_array_1 zdb.phrase_array,
+  var_phrase_array_2 zdb.phrase_array,
+  var_text_1 varchar,
+  var_text_filter varchar,
+  var_text_array_1 varchar[],
+  var_text_array_2 varchar[],
   var_timestamp timestamp without time zone,
   var_varchar_1 character varying(25),
   var_varchar_2 character varying(25),
@@ -120,14 +120,14 @@ CREATE TABLE issue_159.vol (
   vol_int_array_1 integer[],
   vol_int_array_2 integer[],
   vol_json json,
-  vol_phrase_1 public.phrase,
-  vol_phrase_2 public.phrase,
-  vol_phrase_array_1 public.phrase_array,
-  vol_phrase_array_2 public.phrase_array,
-  vol_text_1 text,
-  vol_text_filter text,
-  vol_text_array_1 text[],
-  vol_text_array_2 text[],
+  vol_phrase_1 zdb.phrase,
+  vol_phrase_2 zdb.phrase,
+  vol_phrase_array_1 zdb.phrase_array,
+  vol_phrase_array_2 zdb.phrase_array,
+  vol_text_1 varchar,
+  vol_text_filter varchar,
+  vol_text_array_1 varchar[],
+  vol_text_array_2 varchar[],
   vol_timestamp timestamp without time zone,
   vol_varchar_1 character varying(25),
   vol_varchar_2 character varying(25),
@@ -233,7 +233,7 @@ CREATE VIEW issue_159.consolidated_record_view AS
     vol.vol_varchar_2,
     vol.vol_varchar_array_1,
     vol.vol_varchar_array_2,
-    public.zdb('issue_159.data'::regclass, data.ctid) AS zdb
+    data.ctid AS zdb
   FROM ((issue_159.data
     LEFT JOIN issue_159.var ON ((data.pk_data = var.pk_var)))
     LEFT JOIN issue_159.vol ON ((data.pk_data = vol.pk_vol)));
@@ -285,30 +285,30 @@ ALTER TABLE ONLY issue_159.var
 ALTER TABLE ONLY issue_159.vol
   ADD CONSTRAINT idx_issue_159_vol_pkey PRIMARY KEY (pk_vol);
 
-CREATE INDEX es_issue_159_data ON issue_159.data USING zombodb (public.zdb('issue_159.data'::regclass, ctid), public.zdb(data.*)) WITH (url='http://127.0.0.1:9200/', options='pk_data = <var.es_issue_159_var>pk_var,pk_data = <vol.es_issue_159_vol>pk_vol', shards='3', replicas='1');
-CREATE INDEX es_issue_159_var ON issue_159.var USING zombodb (public.zdb('issue_159.var'::regclass, ctid), public.zdb(var.*)) WITH (url='http://127.0.0.1:9200/', shards='3', replicas='1');
-CREATE INDEX es_issue_159_vol ON issue_159.vol USING zombodb (public.zdb('issue_159.vol'::regclass, ctid), public.zdb(vol.*)) WITH (url='http://127.0.0.1:9200/', shards='3', replicas='1');
+CREATE INDEX es_issue_159_data ON issue_159.data USING zombodb ((data.*)) WITH (options='pk_data = <issue_159.var.es_issue_159_var>pk_var,pk_data = <issue_159.vol.es_issue_159_vol>pk_vol', shards='3', replicas='1');
+CREATE INDEX es_issue_159_var ON issue_159.var USING zombodb ((var.*)) WITH (shards='3', replicas='1');
+CREATE INDEX es_issue_159_vol ON issue_159.vol USING zombodb ((vol.*)) WITH (shards='3', replicas='1');
 
 
 --correctly returns 1, 2, 3, 5, 9, 10
-SELECT pk_data FROM issue_159.consolidated_record_view where zdb==>'( (#expand<data_bigint_expand_group=<this.index>data_bigint_expand_group>( ( var_text_1 = "yellow") #filter(data_boolean:TRUE)) ) )' ORDER BY pk_data;
+SELECT pk_data FROM issue_159.consolidated_record_view where zdb==>'( (#expand<data_bigint_expand_group=<this.index>data_bigint_expand_group>( ( var_text_1 = "yellow") #filter(data_boolean:true)) ) )' ORDER BY pk_data;
 
 --correctly return 2, 4, 5, 9
-SELECT pk_data FROM issue_159.consolidated_record_view where zdb==>'( (#expand<data_bigint_expand_group=<this.index>data_bigint_expand_group>( ( var_text_1 = "yellow") #filter(data_boolean:FALSE)) ) )' ORDER BY pk_data;
+SELECT pk_data FROM issue_159.consolidated_record_view where zdb==>'( (#expand<data_bigint_expand_group=<this.index>data_bigint_expand_group>( ( var_text_1 = "yellow") #filter(data_boolean:false)) ) )' ORDER BY pk_data;
 
 --this is where the #expand field and #filter field are from different tables
 --correctly returns 2, 5, 9 (but I think it got lucky)
-SELECT pk_data FROM issue_159.consolidated_record_view where zdb==>'( (#expand<var_bigint_expand_group=<this.index>var_bigint_expand_group>( ( var_text_1 = "yellow") #filter(data_boolean:TRUE)) ) )' ORDER BY pk_data;
+SELECT pk_data FROM issue_159.consolidated_record_view where zdb==>'( (#expand<var_bigint_expand_group=<this.index>var_bigint_expand_group>( ( var_text_1 = "yellow") #filter(data_boolean:true)) ) )' ORDER BY pk_data;
 
 --should return 2, 4, 5, 8, 9 but returns 2, 5, 9
-SELECT pk_data FROM issue_159.consolidated_record_view where zdb==>'( (#expand<var_bigint_expand_group=<this.index>var_bigint_expand_group>( ( var_text_1 = "yellow") #filter(data_boolean:FALSE)) ) )' ORDER BY pk_data;
+SELECT pk_data FROM issue_159.consolidated_record_view where zdb==>'( (#expand<var_bigint_expand_group=<this.index>var_bigint_expand_group>( ( var_text_1 = "yellow") #filter(data_boolean:false)) ) )' ORDER BY pk_data;
 
 --should return 1, 2, 3, 5, 6, 9, 10 but returns 2, 5, 9
-SELECT pk_data FROM issue_159.consolidated_record_view where zdb==>'( (#expand<vol_bigint_expand_group=<this.index>vol_bigint_expand_group>( ( var_text_1 = "yellow") #filter(data_boolean:TRUE)) ) )' ORDER BY pk_data;
+SELECT pk_data FROM issue_159.consolidated_record_view where zdb==>'( (#expand<vol_bigint_expand_group=<this.index>vol_bigint_expand_group>( ( var_text_1 = "yellow") #filter(data_boolean:true)) ) )' ORDER BY pk_data;
 
 --#expand and #filter fields from same table
 --correctly returns 2, 4, 5, 8, 9
-SELECT pk_data FROM issue_159.consolidated_record_view where zdb==>'( (#expand<var_bigint_expand_group=<this.index>var_bigint_expand_group>( ( var_text_1 = "yellow") #filter(var_boolean:FALSE)) ) )' ORDER BY pk_data;
+SELECT pk_data FROM issue_159.consolidated_record_view where zdb==>'( (#expand<var_bigint_expand_group=<this.index>var_bigint_expand_group>( ( var_text_1 = "yellow") #filter(var_boolean:false)) ) )' ORDER BY pk_data;
 
 -- a test against issue #272, make sure highlighting works
 select * from zdb_highlight('issue_159.consolidated_record_view', 'vol_json.animal:snakes with vol_json.food:beer', 'pk_data IN (1,4,5,9)', '{}'::text[]) order by "primaryKey", "fieldName", "arrayIndex", term, position, "startOffset", "endOffset";

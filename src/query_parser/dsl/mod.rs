@@ -1,3 +1,8 @@
+use std::collections::HashSet;
+
+use pgx::*;
+use serde_json::json;
+
 use crate::access_method::options::ZDBIndexOptions;
 use crate::gucs::ZDB_IGNORE_VISIBILITY;
 use crate::query_parser::ast::{
@@ -5,9 +10,6 @@ use crate::query_parser::ast::{
 };
 use crate::zdbquery::mvcc::build_visibility_clause;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
-use serde_json::json;
-use std::collections::HashSet;
 
 #[pg_extern(immutable, parallel_safe)]
 fn dump_query(index: PgRelation, query: ZDBQuery) -> String {
@@ -25,8 +27,14 @@ fn debug_query(
     name!(ast, String),
 ) {
     let mut used_fields = HashSet::new();
-    let query = Expr::from_str(&index, "zdb_all", query, &None, &mut used_fields)
-        .expect("failed to parse query");
+    let query = Expr::from_str(
+        &index,
+        "zdb_all",
+        query,
+        &IndexLink::from_zdb(&index),
+        &mut used_fields,
+    )
+    .expect("failed to parse query");
 
     let tree = format!("{:#?}", query);
 
@@ -44,21 +52,14 @@ fn debug_query(
 
 pub fn expr_to_dsl(
     root: &IndexLink,
-    index_links: &Option<Vec<IndexLink>>,
+    index_links: &Vec<IndexLink>,
     expr: &Expr,
 ) -> serde_json::Value {
     match expr {
-        Expr::Subselect(_, _) => unimplemented!("#subselect is not implemented yet"),
-        Expr::Expand(link, e, f) => {
-            let expand_dsl = expr_to_dsl(link, index_links, e);
+        Expr::Null => unreachable!(),
 
-            if let Some(filter) = f {
-                let filter_dsl = expr_to_dsl(link, index_links, filter);
-                json! { { "bool": { "must": [ expand_dsl, filter_dsl ] } } }
-            } else {
-                expand_dsl
-            }
-        }
+        Expr::Subselect(_, _) => unimplemented!("#subselect is not implemented yet"),
+        Expr::Expand(link, e, _) => expr_to_dsl(link, index_links, e),
 
         Expr::WithList(_) => unreachable!("dsl conversion of Expr::WithList shouldn't happen"),
         Expr::AndList(v) => {
@@ -103,42 +104,48 @@ pub fn expr_to_dsl(
             json! { { "nested": { "path": p, "query": dsl, "score_mode": "avg", "ignore_unmapped": false } } }
         }
 
-        Expr::Linked(i, e) => {
-            let target_relation = i.open_index().expect("failed to open index");
-            let index_options = ZDBIndexOptions::from(&target_relation);
-            let es_index_name = index_options.index_name();
-
-            let left_field = i.left_field.as_ref().unwrap();
-            let left_field = if left_field.contains('.') {
-                left_field.splitn(2, '.').nth(1).unwrap()
-            } else {
-                &left_field
-            };
-
-            let query = expr_to_dsl(root, index_links, e.as_ref());
-            let query = if ZDB_IGNORE_VISIBILITY.get() {
+        Expr::Linked(link, e) => {
+            let mut query = expr_to_dsl(root, index_links, e.as_ref());
+            if link.left_field.is_none() {
                 query
             } else {
-                let visibility_clause = build_visibility_clause(es_index_name);
-                json! {
-                    {
-                        "bool": {
-                            "must": [query],
-                            "filter": [visibility_clause]
+                let target_relation = link.open_index().unwrap_or_else(|e| {
+                    panic!("failed to open index '{}': {}", link.qualified_index, e)
+                });
+                let index_options = ZDBIndexOptions::from(&target_relation);
+                let es_index_name = index_options.index_name();
+
+                query = if ZDB_IGNORE_VISIBILITY.get() {
+                    query
+                } else {
+                    let visibility_clause = build_visibility_clause(es_index_name);
+                    json! {
+                        {
+                            "bool": {
+                                "must": [query],
+                                "filter": [visibility_clause]
+                            }
                         }
                     }
-                }
-            };
+                };
 
-            json! {
-                {
-                    "subselect": {
-                        "index": es_index_name,
-                        "alias": index_options.alias(),
-                        "type": "_doc",
-                        "left_fieldname": left_field,
-                        "right_fieldname": i.right_field,
-                        "query": query
+                let mut left_field = link.left_field.clone().expect("no left field");
+                if left_field.contains('.') {
+                    let mut parts = left_field.splitn(2, '.');
+                    parts.next();
+                    left_field = parts.next().unwrap().to_string();
+                }
+
+                json! {
+                    {
+                        "subselect": {
+                            "index": es_index_name,
+                            "alias": index_options.alias(),
+                            "type": "_doc",
+                            "left_fieldname": left_field,
+                            "right_fieldname": link.right_field,
+                            "query": query
+                        }
                     }
                 }
             }

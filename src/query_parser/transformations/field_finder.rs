@@ -2,30 +2,18 @@ use crate::query_parser::ast::{Expr, IndexLink, QualifiedField};
 
 pub fn find_fields(expr: &mut Expr, root_index: &IndexLink, indexes: &Vec<IndexLink>) {
     match expr {
-        Expr::Subselect(i, e) => {
-            if i.is_this_index() {
-                let (left, right) = (i.left_field.clone(), i.right_field.clone());
-                *i = root_index.clone();
-                i.left_field = left;
-                i.right_field = right;
-            }
-            find_fields(e.as_mut(), i, indexes)
-        }
-        Expr::Expand(i, e, f) => {
-            if i.is_this_index() {
-                let (left, right) = (i.left_field.clone(), i.right_field.clone());
-                *i = root_index.clone();
-                i.left_field = left;
-                i.right_field = right;
-            }
-            if let Some(filter) = f {
-                find_fields(filter.as_mut(), i, indexes);
-            }
-            find_fields(e.as_mut(), i, indexes)
-        }
-        Expr::Nested(_, e) => find_fields(e.as_mut(), root_index, indexes),
+        Expr::Null => unreachable!(),
 
-        Expr::Not(r) => find_fields(r.as_mut(), root_index, indexes),
+        Expr::Subselect(i, e) => find_fields(e, i, indexes),
+        Expr::Expand(_i, e, f) => {
+            if let Some(filter) = f {
+                find_fields(filter, root_index, indexes);
+            }
+            find_fields(e, root_index, indexes)
+        }
+        Expr::Nested(_, e) => find_fields(e, root_index, indexes),
+
+        Expr::Not(r) => find_fields(r, root_index, indexes),
         Expr::WithList(v) | Expr::AndList(v) | Expr::OrList(v) => v
             .iter_mut()
             .for_each(|e| find_fields(e, root_index, indexes)),
@@ -75,11 +63,13 @@ pub fn find_link_for_field(
             }
         } else {
             // but we definitely want to ensure we can open a linked index, and we'll panic!() if we can't
-            Some(
-                index
-                    .open_table()
-                    .expect("failed to open linked index's table table"),
-            )
+            Some(index.open_table().unwrap_or_else(|e| {
+                panic!(
+                    "failed to open linked index's table '{}': {}",
+                    index.qualified_index.table_name(),
+                    e
+                )
+            }))
         };
 
         if let Some(relation) = relation {

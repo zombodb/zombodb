@@ -1,55 +1,64 @@
-use crate::query_parser::ast::{Expr, IndexLink, QualifiedField};
-use crate::query_parser::transformations::field_finder::find_link_for_field;
-use std::collections::HashMap;
+use crate::query_parser::ast::{Expr, IndexLink};
+use crate::query_parser::transformations::dijkstra::RelationshipManager;
+use indexmap::IndexMap;
 
-pub fn expand_index_links(expr: &mut Expr, root_index: &IndexLink, index_links: &Vec<IndexLink>) {
+pub fn expand_index_links(
+    expr: &mut Expr,
+    root_index: &IndexLink,
+    relationship_manager: &mut RelationshipManager,
+) {
+    expand_index_links0(expr, root_index, relationship_manager, root_index);
+}
+
+fn expand_index_links0<'a>(
+    expr: &'a mut Expr,
+    root_index: &IndexLink,
+    relationship_manager: &mut RelationshipManager,
+    current_index: &IndexLink,
+) {
     match expr {
-        Expr::Subselect(i, e) => {
-            // #subselect always wants to go to its link as the root
-            expand_index_links(e, i, index_links)
-        }
-        Expr::Expand(_, e, f) => {
-            // #expand always goes to the root index
-            expand_index_links(e, root_index, index_links);
+        Expr::Subselect(_i, _e) => unimplemented!("expand_index_links: #subselect"),
+        Expr::Expand(i, e, f) => {
             if let Some(f) = f {
-                expand_index_links(f, root_index, index_links);
+                expand_index_links0(f, root_index, relationship_manager, i);
             }
+
+            expand_index_links0(e, root_index, relationship_manager, i);
         }
-        Expr::Not(e) => expand_index_links(e, root_index, index_links),
+        Expr::Not(e) => expand_index_links0(e, root_index, relationship_manager, current_index),
         Expr::WithList(v) => v
             .iter_mut()
-            .for_each(|e| expand_index_links(e, root_index, index_links)),
+            .for_each(|e| expand_index_links0(e, root_index, relationship_manager, current_index)),
         Expr::AndList(v) => v
             .iter_mut()
-            .for_each(|e| expand_index_links(e, root_index, index_links)),
+            .for_each(|e| expand_index_links0(e, root_index, relationship_manager, current_index)),
         Expr::OrList(v) => v
             .iter_mut()
-            .for_each(|e| expand_index_links(e, root_index, index_links)),
-        Expr::Nested(_, e) => expand_index_links(e, root_index, index_links),
+            .for_each(|e| expand_index_links0(e, root_index, relationship_manager, current_index)),
+        Expr::Nested(_, e) => {
+            expand_index_links0(e, root_index, relationship_manager, current_index)
+        }
 
-        Expr::Linked(i, _) => {
-            let root_index = Some(root_index.clone());
-            let mut this_link = Some(i.clone());
+        Expr::Linked(i, e) => {
+            if current_index == i {
+                expand_index_links0(e, root_index, relationship_manager, current_index)
+            } else {
+                let path = relationship_manager.calc_path(current_index, i);
+                expand_index_links0(e, root_index, relationship_manager, current_index);
+                let mut target = i.clone();
+                let mut left_field = target.left_field.clone();
+                if left_field.is_some() && left_field.as_ref().unwrap().contains('.') {
+                    let mut parts = left_field.as_ref().unwrap().splitn(2, '.');
+                    parts.next();
+                    left_field = Some(parts.next().unwrap().to_string());
+                }
+                target.left_field = left_field;
 
-            // if this Linked node isn't our root index we need to
-            // find where its "left_field" actually lives
-            while this_link.is_some() && this_link != root_index {
-                let left_field = QualifiedField {
-                    index: None,
-                    field: this_link.unwrap().left_field.clone().unwrap(),
-                };
-
-                this_link =
-                    find_link_for_field(&left_field, root_index.as_ref().unwrap(), index_links);
-
-                if this_link.is_some() {
-                    if root_index != this_link {
-                        // and if its location also isn't our root index, we need to add another
-                        // level of Linked indirection
-                        *expr = Expr::Linked(
-                            this_link.as_ref().unwrap().clone(),
-                            Box::new(expr.clone()),
-                        );
+                for link in path.into_iter().rev() {
+                    if target != link {
+                        let dummy = Expr::Null;
+                        let swapped = std::mem::replace(expr, dummy);
+                        *expr = Expr::Linked(link, Box::new(swapped));
                     }
                 }
             }
@@ -90,7 +99,7 @@ pub fn merge_adjacent_links(expr: &mut Expr) {
 fn relink<'a, F: Fn(Vec<Expr<'a>>) -> Expr<'a>>(
     f: F,
     v: &mut Vec<Expr<'a>>,
-    groups: HashMap<Option<IndexLink>, Vec<Expr<'a>>>,
+    groups: IndexMap<Option<IndexLink>, Vec<Expr<'a>>>,
 ) {
     for (link, mut exprs) in groups {
         if let Some(link) = link {
@@ -110,9 +119,9 @@ fn relink<'a, F: Fn(Vec<Expr<'a>>) -> Expr<'a>>(
 
 fn group_expressions_by_link<'a>(
     v: &mut Vec<Expr<'a>>,
-) -> HashMap<Option<IndexLink>, Vec<Expr<'a>>> {
+) -> IndexMap<Option<IndexLink>, Vec<Expr<'a>>> {
     // next, lets group expressions by if they're Expr::Linked
-    let mut groups = HashMap::<Option<IndexLink>, Vec<Expr>>::new();
+    let mut groups = IndexMap::<Option<IndexLink>, Vec<Expr>>::new();
     while !v.is_empty() {
         let e = v.pop().unwrap();
         match e {

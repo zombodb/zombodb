@@ -1,23 +1,29 @@
+use std::collections::{BTreeMap, HashMap, HashSet};
+use std::fmt::{Debug, Display, Error, Formatter};
+use std::str::FromStr;
+
+use lalrpop_util::ParseError;
+use pgx::PgRelation;
+use serde::{Deserialize, Serialize};
+
+pub use pg_catalog::ProximityPart;
+pub use pg_catalog::ProximityTerm;
+
 use crate::access_method::options::ZDBIndexOptions;
 use crate::elasticsearch::Elasticsearch;
 use crate::query_parser::parser::Token;
+use crate::query_parser::transformations::dijkstra::RelationshipManager;
+use crate::query_parser::transformations::expand::expand;
 use crate::query_parser::transformations::expand_index_links::{
     expand_index_links, merge_adjacent_links,
 };
-use crate::query_parser::transformations::field_finder::find_fields;
+use crate::query_parser::transformations::field_finder::{find_fields, find_link_for_field};
 use crate::query_parser::transformations::field_lists::expand_field_lists;
 use crate::query_parser::transformations::index_links::assign_links;
 use crate::query_parser::transformations::nested_groups::group_nested;
 use crate::query_parser::transformations::prox_rewriter::rewrite_proximity_chains;
 use crate::query_parser::{INDEX_LINK_PARSER, ZDB_QUERY_PARSER};
 use crate::utils::{get_null_copy_to_fields, get_search_analyzer};
-use lalrpop_util::ParseError;
-pub use pg_catalog::ProximityPart;
-pub use pg_catalog::ProximityTerm;
-use pgx::PgRelation;
-use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap, HashSet};
-use std::fmt::{Debug, Display, Error, Formatter};
 
 #[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ProximityDistance {
@@ -35,9 +41,10 @@ impl Default for ProximityDistance {
 }
 
 pub mod pg_catalog {
-    use crate::query_parser::ast::ProximityDistance;
     use pgx::*;
     use serde::{Deserialize, Serialize};
+
+    use crate::query_parser::ast::ProximityDistance;
 
     #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
     pub enum ProximityTerm {
@@ -70,7 +77,7 @@ pub struct QualifiedField {
     pub field: String,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
 pub struct IndexLink {
     pub name: Option<String>,
     pub left_field: Option<String>,
@@ -138,6 +145,8 @@ pub enum Term<'input> {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr<'input> {
+    Null,
+
     Subselect(IndexLink, Box<Expr<'input>>),
     Expand(IndexLink, Box<Expr<'input>>, Option<Box<Expr<'input>>>),
 
@@ -373,7 +382,7 @@ impl<'input> Expr<'input> {
         index: &PgRelation,
         default_fieldname: &'input str,
         input: &'input str,
-        index_links: &Option<Vec<IndexLink>>,
+        index_links: &Vec<IndexLink>,
         used_fields: &mut HashSet<&'input str>,
     ) -> Result<Expr<'input>, ParserError<'input>> {
         if input.trim().is_empty() {
@@ -390,9 +399,7 @@ impl<'input> Expr<'input> {
             input,
             used_fields,
             root_index,
-            index_links
-                .clone()
-                .unwrap_or_else(|| IndexLink::from_zdb(index)),
+            index_links,
             zdboptions.field_lists(),
         )
     }
@@ -403,14 +410,14 @@ impl<'input> Expr<'input> {
         input: &'input str,
         used_fields: &mut HashSet<&'input str>,
         root_index: IndexLink,
-        linked_indexes: Vec<IndexLink>,
+        index_links: &Vec<IndexLink>,
         mut field_lists: HashMap<String, Vec<QualifiedField>>,
     ) -> Result<Expr<'input>, ParserError<'input>> {
         let input = input.clone();
         let mut operator_stack = vec![ComparisonOpcode::Contains];
         let mut fieldname_stack = vec![default_fieldname];
 
-        let mut expr = ZDB_QUERY_PARSER.with(|parser| {
+        let mut expr = *ZDB_QUERY_PARSER.with(|parser| {
             parser.parse(
                 index,
                 used_fields,
@@ -428,7 +435,7 @@ impl<'input> Expr<'input> {
                     .into_iter()
                     .map(|index| (&root_index, index.clone()))
                     .chain(
-                        linked_indexes
+                        index_links
                             .iter()
                             .map(|link| (link, link.open_index().expect("failed to open index"))),
                     )
@@ -446,25 +453,34 @@ impl<'input> Expr<'input> {
                 }
             }
 
-            expand_field_lists(expr.as_mut(), &field_lists);
+            expand_field_lists(&mut expr, &field_lists);
         }
 
-        find_fields(expr.as_mut(), &root_index, &linked_indexes);
-        group_nested(&index, expr.as_mut());
+        expand(&mut expr, &root_index, index_links);
+        find_fields(&mut expr, &root_index, index_links);
+        group_nested(&index, &mut expr);
 
-        let mut expr =
-            if let Some(final_link) = assign_links(&root_index, expr.as_mut(), &linked_indexes) {
-                if final_link != root_index {
-                    // the final link isn't the same as the root_index, so it needs to be wrapped
-                    // in an Expr::Linked
-                    Expr::Linked(final_link, expr)
-                } else {
-                    *expr
-                }
-            } else {
-                *expr
-            };
-        expand_index_links(&mut expr, &root_index, &linked_indexes);
+        let mut relationship_manager = RelationshipManager::new();
+        for link in index_links {
+            let mut left_field = link.left_field.as_ref().unwrap().as_str();
+            if left_field.contains('.') {
+                let mut parts = left_field.split('.');
+                parts.next();
+                left_field = parts.next().unwrap();
+            }
+            let left_link =
+                find_link_for_field(&link.qualify_left_field(), &root_index, &index_links)
+                    .expect("unable to find link for field");
+            relationship_manager.add_relationship(
+                &left_link,
+                left_field,
+                link,
+                link.right_field.as_ref().unwrap(),
+            )
+        }
+
+        assign_links(&root_index, &mut expr, index_links);
+        expand_index_links(&mut expr, &root_index, &mut relationship_manager);
         merge_adjacent_links(&mut expr);
 
         rewrite_proximity_chains(&mut expr);
@@ -557,6 +573,7 @@ impl<'input> Expr<'input> {
 
     pub fn get_nested_path(&self) -> Option<String> {
         match self {
+            Expr::Null => unreachable!(),
             Expr::Subselect(_, _) => panic!("#subselect not supported in WITH clauses"),
             Expr::Expand(_, _, _) => panic!("#expand not supported in WITH clauses"),
             Expr::Not(e) => e.get_nested_path(),
@@ -589,6 +606,27 @@ impl Display for ProximityDistance {
             if self.in_order { "WO" } else { "W" },
             self.distance
         )
+    }
+}
+
+impl FromStr for QualifiedIndex {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut parts = s.split('.').map(|p| p.to_string());
+        let schema = parts.next();
+        let table = parts.next();
+        let index = parts.next();
+
+        if table.is_none() || index.is_none() {
+            Err("QualifiedIndex string not in proper format")
+        } else {
+            Ok(QualifiedIndex {
+                schema,
+                table: table.unwrap(),
+                index: index.unwrap(),
+            })
+        }
     }
 }
 
@@ -698,6 +736,13 @@ impl IndexLink {
     pub fn open_index(&self) -> std::result::Result<PgRelation, &str> {
         PgRelation::open_with_name_and_share_lock(&self.qualified_index.index_name())
     }
+
+    pub fn qualify_left_field(&self) -> QualifiedField {
+        QualifiedField {
+            index: None,
+            field: self.left_field.as_ref().unwrap().clone(),
+        }
+    }
 }
 
 impl QualifiedField {
@@ -743,6 +788,12 @@ impl Display for QualifiedIndex {
 impl Display for QualifiedField {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         write!(fmt, "{}", self.field)
+    }
+}
+
+impl Debug for IndexLink {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        write!(f, "IndexLink({})", self)
     }
 }
 
@@ -887,6 +938,8 @@ impl<'input> Display for Term<'input> {
 impl<'input> Display for Expr<'input> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match self {
+            Expr::Null => unreachable!(),
+
             Expr::Subselect(link, q) => write!(fmt, "#subselect<{}>({})", link, q),
             Expr::Expand(link, q, f) => {
                 write!(fmt, "#expand<{}>({}", link, q)?;

@@ -390,8 +390,8 @@ impl ZDBQuery {
         self
     }
 
-    pub fn link_options(&self) -> &Option<Vec<IndexLink>> {
-        &self.link_options
+    pub fn link_options(&self) -> Option<Vec<IndexLink>> {
+        self.link_options.clone()
     }
 
     pub fn set_link_options(mut self, links: Vec<IndexLink>) -> Self {
@@ -428,12 +428,14 @@ impl ZDBQuery {
     }
 
     fn rewrite(&mut self, index: &PgRelation) {
-        let link_options = self.link_options().clone();
+        let index_links = self
+            .link_options()
+            .unwrap_or_else(|| IndexLink::from_zdb(index));
         ZDBQuery::rewrite_zdb_query_clause(
             self.query_dsl
                 .as_mut()
                 .expect("ZDBQuery does not contain query dsl"),
-            &link_options,
+            &index_links,
             index,
             &IndexLink::from_relation(&index),
         )
@@ -441,7 +443,7 @@ impl ZDBQuery {
 
     fn rewrite_zdb_query_clause(
         clause: &mut ZDBQueryClause,
-        index_links: &Option<Vec<IndexLink>>,
+        index_links: &Vec<IndexLink>,
         index: &PgRelation,
         root_link: &IndexLink,
     ) {
@@ -453,9 +455,14 @@ impl ZDBQuery {
                     return;
                 }
                 let mut used_fields = HashSet::new();
-                let expr =
-                    Expr::from_str(&index, "zdb_all", &zdb.query, index_links, &mut used_fields)
-                        .expect("failed to parse query");
+                let expr = Expr::from_str(
+                    &index,
+                    "zdb_all",
+                    &zdb.query,
+                    &index_links,
+                    &mut used_fields,
+                )
+                .expect("failed to parse query");
                 let parsed = expr_to_dsl(root_link, index_links, &expr);
 
                 clause.zdb = None;

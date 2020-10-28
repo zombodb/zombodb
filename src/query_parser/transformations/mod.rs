@@ -1,3 +1,5 @@
+pub(crate) mod dijkstra;
+pub(crate) mod expand;
 pub(crate) mod expand_index_links;
 pub(crate) mod field_finder;
 pub(crate) mod field_lists;

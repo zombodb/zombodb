@@ -1,8 +1,11 @@
-use crate::query_parser::ast::{Expr, QualifiedField, Term};
 use std::collections::HashMap;
+
+use crate::query_parser::ast::{Expr, QualifiedField, Term};
 
 pub fn expand_field_lists(e: &mut Expr, lists: &HashMap<String, Vec<QualifiedField>>) {
     match e {
+        Expr::Null => unreachable!(),
+
         Expr::Subselect(_, e) => expand_field_lists(e.as_mut(), lists),
         Expr::Expand(_, e, f) => {
             if let Some(filter) = f {
@@ -91,7 +94,12 @@ fn make_or_list<'a, F: Fn(QualifiedField, Term) -> Expr>(
         for field in fields {
             or_list.push(make_expr(field.clone(), term, &f))
         }
-        Some(Expr::OrList(or_list))
+
+        if or_list.len() == 1 {
+            or_list.pop()
+        } else {
+            Some(Expr::OrList(or_list))
+        }
     } else {
         None
     }

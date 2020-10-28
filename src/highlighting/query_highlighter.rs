@@ -73,6 +73,8 @@ impl<'a> QueryHighligther<'a> {
         highlights: &mut HashMap<(QualifiedField, String), Vec<(String, &'a TokenEntry)>>,
     ) -> bool {
         match expr {
+            Expr::Null => unreachable!(),
+
             Expr::Not(e) => !self.walk_expression(e.as_ref(), highlights),
 
             Expr::WithList(v) | Expr::AndList(v) => {
@@ -333,7 +335,7 @@ fn highlight_document(
 > {
     // select * from zdb.highlight_document('idxbeer', '{"subject":"free beer", "authoremail":"Christi l nicolay"}', '!!subject:beer or subject:fr?? and authoremail:(christi, nicolay)') order by field_name, position;
     let mut used_fields = HashSet::new();
-    let query = Expr::from_str(&index, "zdb_all", query_string, &None, &mut used_fields)
+    let query = Expr::from_str(&index, "zdb_all", query_string, &vec![], &mut used_fields)
         .expect("failed to parse query");
 
     let qh = QueryHighligther::new(&index, document.0, &used_fields, query);
@@ -672,7 +674,7 @@ mod tests {
 
     fn make_query<'a>(relation: &PgRelation, input: &'a str) -> (Expr<'a>, HashSet<&'a str>) {
         let mut used_fields = HashSet::new();
-        let query = Expr::from_str(relation, "zdb_all", input, &mut used_fields)
+        let query = Expr::from_str(relation, "zdb_all", input, &vec![], &mut used_fields)
             .expect("failed to parse ZDB Query");
 
         (query, used_fields)
