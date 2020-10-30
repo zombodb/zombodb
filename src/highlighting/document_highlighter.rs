@@ -733,14 +733,14 @@ mod tests {
         let dh = DocumentHighlighter::new(&index, "test_field", "this is a test");
 
         let matches = dh
-            .look_for_match(&vec![Term::String("is".into(), None)], 0, true, vec![0])
+            .look_for_match(&vec![Term::String("is".into(), None)], 0, true, vec![1])
             .expect("no matches found");
         let mut expected = HashSet::new();
         let value = (
             "is".to_string(),
             &TokenEntry {
                 type_: "<ALPHANUM>".to_string(),
-                position: 1,
+                position: 2,
                 start_offset: 5,
                 end_offset: 7,
             },
@@ -760,14 +760,14 @@ mod tests {
         let dh = DocumentHighlighter::new(&index, "test_field", "this is a test");
 
         let matches = dh
-            .look_for_match(&vec![Term::String("this".into(), None)], 0, false, vec![1])
+            .look_for_match(&vec![Term::String("this".into(), None)], 0, false, vec![2])
             .expect("no matches found");
         let mut expected = HashSet::new();
         let value_one = (
             "this".to_string(),
             &TokenEntry {
                 type_: "<ALPHANUM>".to_string(),
-                position: 0,
+                position: 1,
                 start_offset: 0,
                 end_offset: 4,
             },
@@ -792,14 +792,14 @@ mod tests {
         );
 
         let matches = dh
-            .look_for_match(&vec![Term::String("is".into(), None)], 0, false, vec![0, 5])
+            .look_for_match(&vec![Term::String("is".into(), None)], 0, false, vec![1, 6])
             .expect("no matches found");
         let mut expect = HashSet::new();
         let value_one = (
             "is".to_string(),
             &TokenEntry {
                 type_: "<ALPHANUM>".to_string(),
-                position: 1,
+                position: 2,
                 start_offset: 5,
                 end_offset: 7,
             },
@@ -808,7 +808,7 @@ mod tests {
             "is".to_string(),
             &TokenEntry {
                 type_: "<ALPHANUM>".to_string(),
-                position: 6,
+                position: 7,
                 start_offset: 24,
                 end_offset: 26,
             },
@@ -838,7 +838,7 @@ mod tests {
                 &vec![Term::String("this".into(), None)],
                 0,
                 false,
-                vec![1, 6],
+                vec![2, 7],
             )
             .expect("no matches found");
         let mut expect = HashSet::new();
@@ -846,7 +846,7 @@ mod tests {
             "this".to_string(),
             &TokenEntry {
                 type_: "<ALPHANUM>".to_string(),
-                position: 0,
+                position: 1,
                 start_offset: 0,
                 end_offset: 4,
             },
@@ -855,7 +855,7 @@ mod tests {
             "this".to_string(),
             &TokenEntry {
                 type_: "<ALPHANUM>".to_string(),
-                position: 5,
+                position: 6,
                 start_offset: 19,
                 end_offset: 23,
             },
@@ -885,7 +885,7 @@ mod tests {
                 &vec![Term::String("test".into(), None)],
                 3,
                 true,
-                vec![0, 5],
+                vec![1, 6],
             )
             .expect("no matches found");
         let mut expect = HashSet::new();
@@ -893,7 +893,7 @@ mod tests {
             "test".to_string(),
             &TokenEntry {
                 type_: "<ALPHANUM>".to_string(),
-                position: 3,
+                position: 4,
                 start_offset: 10,
                 end_offset: 14,
             },
@@ -902,7 +902,7 @@ mod tests {
             "test".to_string(),
             &TokenEntry {
                 type_: "<ALPHANUM>".to_string(),
-                position: 9,
+                position: 10,
                 start_offset: 34,
                 end_offset: 38,
             },
@@ -942,7 +942,7 @@ mod tests {
             "this".to_string(),
             &TokenEntry {
                 type_: "<ALPHANUM>".to_string(),
-                position: 0,
+                position: 1,
                 start_offset: 0,
                 end_offset: 4,
             },
@@ -951,7 +951,7 @@ mod tests {
             "this".to_string(),
             &TokenEntry {
                 type_: "<ALPHANUM>".to_string(),
-                position: 5,
+                position: 6,
                 start_offset: 19,
                 end_offset: 23,
             },
@@ -974,11 +974,11 @@ mod tests {
 
             // field_name | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
-            // name       | it   | <ALPHANUM> |        0 |            0 |          2
-            // name       | it   | <ALPHANUM> |        5 |           17 |         19
+            // name       | it   | <ALPHANUM> |        1 |            0 |          2
+            // name       | it   | <ALPHANUM> |        6 |           17 |         19
             let expect = vec![
-                ("<ALPHANUM>", "it", 0, 0, 2),
-                ("<ALPHANUM>", "it", 5, 17, 19),
+                ("<ALPHANUM>", "it", 1, 0, 2),
+                ("<ALPHANUM>", "it", 6, 17, 19),
             ];
 
             test_table(table, expect);
@@ -998,19 +998,19 @@ mod tests {
 
             // field_name | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
-            // test_field | it   | <ALPHANUM> |        0 |            0 |          2
-            // test_field | is   | <ALPHANUM> |        1 |            3 |          5
-            // test_field | a    | <ALPHANUM> |        2 |            6 |          7
-            // test_field | it   | <ALPHANUM> |        5 |           17 |         19
-            // test_field | is   | <ALPHANUM> |        6 |           20 |         22
-            // test_field | a    | <ALPHANUM> |        7 |           23 |         24
+            // test_field | it   | <ALPHANUM> |        1 |            0 |          2
+            // test_field | is   | <ALPHANUM> |        2 |            3 |          5
+            // test_field | a    | <ALPHANUM> |        3 |            6 |          7
+            // test_field | it   | <ALPHANUM> |        6 |           17 |         19
+            // test_field | is   | <ALPHANUM> |        7 |           20 |         22
+            // test_field | a    | <ALPHANUM> |        8 |           23 |         24
             let expect = vec![
-                ("<ALPHANUM>", "it", 0, 0, 2),
-                ("<ALPHANUM>", "is", 1, 3, 5),
-                ("<ALPHANUM>", "a", 2, 6, 7),
-                ("<ALPHANUM>", "it", 5, 17, 19),
-                ("<ALPHANUM>", "is", 6, 20, 22),
-                ("<ALPHANUM>", "a", 7, 23, 24),
+                ("<ALPHANUM>", "it", 1, 0, 2),
+                ("<ALPHANUM>", "is", 2, 3, 5),
+                ("<ALPHANUM>", "a", 3, 6, 7),
+                ("<ALPHANUM>", "it", 6, 17, 19),
+                ("<ALPHANUM>", "is", 7, 20, 22),
+                ("<ALPHANUM>", "a", 8, 23, 24),
             ];
 
             test_table(table, expect);
@@ -1030,11 +1030,11 @@ mod tests {
 
             // field_name | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
-            // test_field | it   | <ALPHANUM> |        0 |            0 |          2
-            // test_field | it   | <ALPHANUM> |        5 |           17 |         19
+            // test_field | it   | <ALPHANUM> |        1 |            0 |          2
+            // test_field | it   | <ALPHANUM> |        6 |           17 |         19
             let expect = vec![
-                ("<ALPHANUM>", "it", 0, 0, 2),
-                ("<ALPHANUM>", "it", 5, 17, 19),
+                ("<ALPHANUM>", "it", 1, 0, 2),
+                ("<ALPHANUM>", "it", 6, 17, 19),
             ];
 
             test_table(table, expect);
@@ -1073,11 +1073,11 @@ mod tests {
 
             // field_name  | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
-            //  test_field | man  | <ALPHANUM> |        3 |           13 |         16
-            //  test_field | moon | <ALPHANUM> |        6 |           24 |         28
+            //  test_field | man  | <ALPHANUM> |        4 |           13 |         16
+            //  test_field | moon | <ALPHANUM> |        7 |           24 |         28
             let expect = vec![
-                ("<ALPHANUM>", "man", 3, 13, 16),
-                ("<ALPHANUM>", "moon", 6, 24, 28),
+                ("<ALPHANUM>", "man", 4, 13, 16),
+                ("<ALPHANUM>", "moon", 7, 24, 28),
             ];
 
             test_table(table, expect);
@@ -1097,8 +1097,8 @@ mod tests {
 
             // field_name  | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
-            //  test_field | man  | <ALPHANUM> |        3 |           13 |         16
-            let expect = vec![("<ALPHANUM>", "man", 3, 13, 16)];
+            //  test_field | man  | <ALPHANUM> |        4 |           13 |         16
+            let expect = vec![("<ALPHANUM>", "man", 4, 13, 16)];
 
             test_table(table, expect);
 
@@ -1136,13 +1136,13 @@ mod tests {
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
-            // test_field | mom  | <ALPHANUM> |        0 |            0 |          3
-            // test_field | man  | <ALPHANUM> |        3 |           13 |         16
-            // test_field | moon | <ALPHANUM> |        6 |           24 |         28
+            // test_field | mom  | <ALPHANUM> |        1 |            0 |          3
+            // test_field | man  | <ALPHANUM> |        4 |           13 |         16
+            // test_field | moon | <ALPHANUM> |        7 |           24 |         28
             let expect = vec![
-                ("<ALPHANUM>", "mom", 0, 0, 3),
-                ("<ALPHANUM>", "man", 3, 13, 16),
-                ("<ALPHANUM>", "moon", 6, 24, 28),
+                ("<ALPHANUM>", "mom", 1, 0, 3),
+                ("<ALPHANUM>", "man", 4, 13, 16),
+                ("<ALPHANUM>", "moon", 7, 24, 28),
             ];
 
             test_table(table, expect);
@@ -1182,15 +1182,15 @@ mod tests {
 
             // field_name  | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
-            // test_field | coal | <ALPHANUM> |        0 |            0 |          4
-            // test_field | colt | <ALPHANUM> |        1 |            5 |          9
-            // test_field | cot  | <ALPHANUM> |        2 |           10 |         13
-            // test_field | co   | <ALPHANUM> |        5 |           26 |         28
+            // test_field  | colt | <ALPHANUM> |        2 |            0 |          4
+            // test_field  | cot  | <ALPHANUM> |        3 |            5 |          9
+            // test_field  | co   | <ALPHANUM> |        6 |           10 |         13
+            // test_field  | cat  | <ALPHANUM> |        9 |           26 |         28
             let expect = vec![
-                ("<ALPHANUM>", "colt", 1, 5, 9),
-                ("<ALPHANUM>", "cot", 2, 10, 13),
-                ("<ALPHANUM>", "co", 5, 26, 28),
-                ("<ALPHANUM>", "cat", 8, 41, 44),
+                ("<ALPHANUM>", "colt", 2, 5, 9),
+                ("<ALPHANUM>", "cot", 3, 10, 13),
+                ("<ALPHANUM>", "co", 6, 26, 28),
+                ("<ALPHANUM>", "cat", 9, 41, 44),
             ];
 
             test_table(table, expect);
@@ -1210,8 +1210,8 @@ mod tests {
 
             // field_name  | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
-            // test_field | co   | <ALPHANUM> |        5 |           26 |         28
-            let expect = vec![("<ALPHANUM>", "co", 5, 26, 28)];
+            // test_field | co   | <ALPHANUM> |        6 |           26 |         28
+            let expect = vec![("<ALPHANUM>", "co", 6, 26, 28)];
 
             test_table(table, expect);
 
@@ -1230,14 +1230,14 @@ mod tests {
 
             // field_name | term   |    type    | position | start_offset | end_offset
             // -----------+--------+------------+----------+--------------+------------
-            // test_field | colt   | <ALPHANUM> |        1 |            5 |          9
-            // test_field | colter | <ALPHANUM> |        7 |           34 |         40
-            // test_field | cooler | <ALPHANUM> |       12 |           57 |         63
+            // test_field | colt   | <ALPHANUM> |        2 |            5 |          9
+            // test_field | colter | <ALPHANUM> |        8 |           34 |         40
+            // test_field | cooler | <ALPHANUM> |       13 |           57 |         63
 
             let expect = vec![
-                ("<ALPHANUM>", "colt", 1, 5, 9),
-                ("<ALPHANUM>", "colter", 7, 34, 40),
-                ("<ALPHANUM>", "cooler", 12, 57, 63),
+                ("<ALPHANUM>", "colt", 2, 5, 9),
+                ("<ALPHANUM>", "colter", 8, 34, 40),
+                ("<ALPHANUM>", "cooler", 13, 57, 63),
             ];
 
             test_table(table, expect);
@@ -1257,9 +1257,9 @@ mod tests {
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
-            // test_field | cot  | <ALPHANUM> |        2 |           10 |         13
+            // test_field | cot  | <ALPHANUM> |        3 |           10 |         13
 
-            let expect = vec![("<ALPHANUM>", "cot", 2, 10, 13)];
+            let expect = vec![("<ALPHANUM>", "cot", 3, 10, 13)];
 
             test_table(table, expect);
 
@@ -1332,15 +1332,15 @@ mod tests {
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
-            // test_field | this | <ALPHANUM> |        0 |            0 |          4
-            // test_field | test | <ALPHANUM> |        3 |           10 |         14
-            // test_field | this | <ALPHANUM> |       11 |           47 |         51
-            // test_field | test | <ALPHANUM> |       13 |           57 |         61
+            // test_field | this | <ALPHANUM> |        1 |            0 |          4
+            // test_field | test | <ALPHANUM> |        4 |           10 |         14
+            // test_field | this | <ALPHANUM> |       12 |           47 |         51
+            // test_field | test | <ALPHANUM> |       14 |           57 |         61
             let expect = vec![
-                ("<ALPHANUM>", "this", 0, 0, 4),
-                ("<ALPHANUM>", "test", 3, 10, 14),
-                ("<ALPHANUM>", "this", 11, 47, 51),
-                ("<ALPHANUM>", "test", 13, 57, 61),
+                ("<ALPHANUM>", "this", 1, 0, 4),
+                ("<ALPHANUM>", "test", 4, 10, 14),
+                ("<ALPHANUM>", "this", 12, 47, 51),
+                ("<ALPHANUM>", "test", 14, 57, 61),
             ];
 
             test_table(table, expect);
@@ -1382,14 +1382,14 @@ mod tests {
 
             // field_name | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
-            // test_field | this | <ALPHANUM> |        0 |            0 |          4
-            // test_field | test | <ALPHANUM> |        3 |           10 |         14
-            // test_field | that | <ALPHANUM> |        4 |           15 |         19
+            // test_field | this | <ALPHANUM> |        1 |            0 |          4
+            // test_field | test | <ALPHANUM> |        4 |           10 |         14
+            // test_field | that | <ALPHANUM> |        5 |           15 |         19
 
             let expect = vec![
-                ("<ALPHANUM>", "this", 0, 0, 4),
-                ("<ALPHANUM>", "test", 3, 10, 14),
-                ("<ALPHANUM>", "that", 4, 15, 19),
+                ("<ALPHANUM>", "this", 1, 0, 4),
+                ("<ALPHANUM>", "test", 4, 10, 14),
+                ("<ALPHANUM>", "that", 5, 15, 19),
             ];
 
             test_table(table, expect);
@@ -1417,14 +1417,14 @@ mod tests {
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
-            // test_field | this | <ALPHANUM> |        0 |            0 |          4
-            // test_field | this | <ALPHANUM> |       11 |           47 |         51
+            // test_field | this | <ALPHANUM> |        1 |            0 |          4
+            // test_field | this | <ALPHANUM> |       12 |           47 |         51
             // test_field | this | <ALPHANUM> |       21 |           88 |         92
 
             let expect = vec![
-                ("<ALPHANUM>", "this", 0, 0, 4),
-                ("<ALPHANUM>", "this", 11, 47, 51),
-                ("<ALPHANUM>", "this", 20, 88, 92),
+                ("<ALPHANUM>", "this", 1, 0, 4),
+                ("<ALPHANUM>", "this", 12, 47, 51),
+                ("<ALPHANUM>", "this", 21, 88, 92),
             ];
 
             test_table(table, expect);
@@ -1466,20 +1466,20 @@ mod tests {
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
-            // test_field | this | <ALPHANUM> |        0 |            0 |          4
-            // test_field | test | <ALPHANUM> |        3 |           10 |         14
-            // test_field | that | <ALPHANUM> |        4 |           15 |         19
-            // test_field | this | <ALPHANUM> |       23 |          100 |        104
-            // test_field | test | <ALPHANUM> |       24 |          105 |        109
-            // test_field | that | <ALPHANUM> |       25 |          110 |        114
+            // test_field | this | <ALPHANUM> |        1 |            0 |          4
+            // test_field | test | <ALPHANUM> |        4 |           10 |         14
+            // test_field | that | <ALPHANUM> |        5 |           15 |         19
+            // test_field | this | <ALPHANUM> |       24 |          100 |        104
+            // test_field | test | <ALPHANUM> |       25 |          105 |        109
+            // test_field | that | <ALPHANUM> |       26 |          110 |        114
 
             let expect = vec![
-                ("<ALPHANUM>", "this", 0, 0, 4),
-                ("<ALPHANUM>", "test", 3, 10, 14),
-                ("<ALPHANUM>", "that", 4, 15, 19),
-                ("<ALPHANUM>", "this", 23, 100, 104),
-                ("<ALPHANUM>", "test", 24, 105, 109),
-                ("<ALPHANUM>", "that", 25, 110, 114),
+                ("<ALPHANUM>", "this", 1, 0, 4),
+                ("<ALPHANUM>", "test", 4, 10, 14),
+                ("<ALPHANUM>", "that", 5, 15, 19),
+                ("<ALPHANUM>", "this", 24, 100, 104),
+                ("<ALPHANUM>", "test", 25, 105, 109),
+                ("<ALPHANUM>", "that", 26, 110, 114),
             ];
 
             test_table(table, expect);
@@ -1514,12 +1514,12 @@ mod tests {
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
-            // test_field | this | <ALPHANUM> |        0 |            0 |          4
-            // test_field | is   | <ALPHANUM> |        1 |            5 |          7
+            // test_field | this | <ALPHANUM> |        1 |            0 |          4
+            // test_field | is   | <ALPHANUM> |        2 |            5 |          7
 
             let expect = vec![
-                ("<ALPHANUM>", "this", 0, 0, 4),
-                ("<ALPHANUM>", "is", 1, 5, 7),
+                ("<ALPHANUM>", "this", 1, 0, 4),
+                ("<ALPHANUM>", "is", 2, 5, 7),
             ];
 
             test_table(table, expect);
@@ -1554,14 +1554,14 @@ mod tests {
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
-            // test_field | this | <ALPHANUM> |        0 |            0 |          4
-            // test_field | is   | <ALPHANUM> |        1 |            5 |          7
-            // test_field | this | <ALPHANUM> |        2 |            8 |         12
+            // test_field | this | <ALPHANUM> |        1 |            0 |          4
+            // test_field | is   | <ALPHANUM> |        2 |            5 |          7
+            // test_field | this | <ALPHANUM> |        3 |            8 |         12
 
             let expect = vec![
-                ("<ALPHANUM>", "this", 0, 0, 4),
-                ("<ALPHANUM>", "is", 1, 5, 7),
-                ("<ALPHANUM>", "this", 2, 8, 12),
+                ("<ALPHANUM>", "this", 1, 0, 4),
+                ("<ALPHANUM>", "is", 2, 5, 7),
+                ("<ALPHANUM>", "this", 3, 8, 12),
             ];
 
             test_table(table, expect);
@@ -1610,17 +1610,17 @@ mod tests {
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
-            // test_field | now  | <ALPHANUM> |        0 |            0 |          3
-            // test_field | for  | <ALPHANUM> |        4 |           16 |         19
-            // test_field | men  | <ALPHANUM> |        7 |           29 |         32
-            // test_field | to   | <ALPHANUM> |        8 |           33 |         35
-            // test_field | to   | <ALPHANUM> |       10 |           41 |         43
+            // test_field | now  | <ALPHANUM> |        1 |            0 |          3
+            // test_field | for  | <ALPHANUM> |        5 |           16 |         19
+            // test_field | men  | <ALPHANUM> |        8 |           29 |         32
+            // test_field | to   | <ALPHANUM> |        9 |           33 |         35
+            // test_field | to   | <ALPHANUM> |       11 |           41 |         43
             let expect = vec![
-                ("<ALPHANUM>", "now", 0, 0, 3),
-                ("<ALPHANUM>", "for", 4, 16, 19),
-                ("<ALPHANUM>", "men", 7, 29, 32),
-                ("<ALPHANUM>", "to", 8, 33, 35),
-                ("<ALPHANUM>", "to", 10, 41, 43),
+                ("<ALPHANUM>", "now", 1, 0, 3),
+                ("<ALPHANUM>", "for", 5, 16, 19),
+                ("<ALPHANUM>", "men", 8, 29, 32),
+                ("<ALPHANUM>", "to", 9, 33, 35),
+                ("<ALPHANUM>", "to", 11, 41, 43),
             ];
 
             test_table(table, expect);
@@ -1669,17 +1669,17 @@ mod tests {
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
-            // test_field | now  | <ALPHANUM> |        0 |            0 |          3
-            // test_field | for  | <ALPHANUM> |        7 |           28 |         31
-            // test_field | men  | <ALPHANUM> |       10 |           41 |         44
-            // test_field | to   | <ALPHANUM> |       11 |           45 |         47
-            // test_field | to   | <ALPHANUM> |       16 |           65 |         67
+            // test_field | now  | <ALPHANUM> |        1 |            0 |          3
+            // test_field | for  | <ALPHANUM> |        8 |           28 |         31
+            // test_field | men  | <ALPHANUM> |       11 |           41 |         44
+            // test_field | to   | <ALPHANUM> |       12 |           45 |         47
+            // test_field | to   | <ALPHANUM> |       17 |           65 |         67
             let expect = vec![
-                ("<ALPHANUM>", "now", 0, 0, 3),
-                ("<ALPHANUM>", "for", 7, 28, 31),
-                ("<ALPHANUM>", "men", 10, 41, 44),
-                ("<ALPHANUM>", "to", 11, 45, 47),
-                ("<ALPHANUM>", "to", 16, 65, 67),
+                ("<ALPHANUM>", "now", 1, 0, 3),
+                ("<ALPHANUM>", "for", 8, 28, 31),
+                ("<ALPHANUM>", "men", 11, 41, 44),
+                ("<ALPHANUM>", "to", 12, 45, 47),
+                ("<ALPHANUM>", "to", 17, 65, 67),
             ];
 
             test_table(table, expect);
@@ -1723,9 +1723,9 @@ mod tests {
             // -----------+------+------------+----------+--------------+-----------
 
             let expect = vec![
-                ("<ALPHANUM>", "energy", 223, 1597, 1603),
-                ("<ALPHANUM>", "lay", 226, 1631, 1634),
-                ("<ALPHANUM>", "enron", 227, 1648, 1653),
+                ("<ALPHANUM>", "energy", 224, 1597, 1603),
+                ("<ALPHANUM>", "lay", 227, 1631, 1634),
+                ("<ALPHANUM>", "enron", 228, 1648, 1653),
             ];
 
             test_table(table, expect);
@@ -1760,13 +1760,13 @@ mod tests {
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
-            // test_field | this | <ALPHANUM> |        0 |            0 |          4
-            // test_field | is   | <ALPHANUM> |        1 |            5 |          7
-            // test_field | test | <ALPHANUM> |        3 |           10 |         14
+            // test_field | this | <ALPHANUM> |        1 |            0 |          4
+            // test_field | is   | <ALPHANUM> |        2 |            5 |          7
+            // test_field | test | <ALPHANUM> |        4 |           10 |         14
             let expect = vec![
-                ("<ALPHANUM>", "this", 0, 0, 4),
-                ("<ALPHANUM>", "is", 1, 5, 7),
-                ("<ALPHANUM>", "test", 3, 10, 14),
+                ("<ALPHANUM>", "this", 1, 0, 4),
+                ("<ALPHANUM>", "is", 2, 5, 7),
+                ("<ALPHANUM>", "test", 4, 10, 14),
             ];
 
             test_table(table, expect);
@@ -1801,13 +1801,13 @@ mod tests {
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
-            // test_field | this | <ALPHANUM> |        0 |            0 |          4
-            // test_field | is   | <ALPHANUM> |        1 |            5 |          7
-            // test_field | test | <ALPHANUM> |        3 |           10 |         14
+            // test_field | this | <ALPHANUM> |        1 |            0 |          4
+            // test_field | is   | <ALPHANUM> |        2 |            5 |          7
+            // test_field | test | <ALPHANUM> |        4 |           10 |         14
             let expect = vec![
-                ("<ALPHANUM>", "this", 0, 0, 4),
-                ("<ALPHANUM>", "is", 1, 5, 7),
-                ("<ALPHANUM>", "test", 3, 10, 14),
+                ("<ALPHANUM>", "this", 1, 0, 4),
+                ("<ALPHANUM>", "is", 2, 5, 7),
+                ("<ALPHANUM>", "test", 4, 10, 14),
             ];
 
             test_table(table, expect);
@@ -1842,13 +1842,13 @@ mod tests {
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
-            // test_field | this | <ALPHANUM> |        0 |            0 |          4
-            // test_field | is   | <ALPHANUM> |        1 |            5 |          7
-            // test_field | test | <ALPHANUM> |        3 |           10 |         14
+            // test_field | this | <ALPHANUM> |        1 |            0 |          4
+            // test_field | is   | <ALPHANUM> |        2 |            5 |          7
+            // test_field | test | <ALPHANUM> |        4 |           10 |         14
             let expect = vec![
-                ("<ALPHANUM>", "this", 0, 0, 4),
-                ("<ALPHANUM>", "is", 1, 5, 7),
-                ("<ALPHANUM>", "test", 3, 10, 14),
+                ("<ALPHANUM>", "this", 1, 0, 4),
+                ("<ALPHANUM>", "is", 2, 5, 7),
+                ("<ALPHANUM>", "test", 4, 10, 14),
             ];
 
             test_table(table, expect);
@@ -1883,13 +1883,13 @@ mod tests {
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
-            // test_field | this | <ALPHANUM> |        0 |            0 |          4
-            // test_field | is   | <ALPHANUM> |        1 |            5 |          7
-            // test_field | test | <ALPHANUM> |        3 |           10 |         14
+            // test_field | this | <ALPHANUM> |        1 |            0 |          4
+            // test_field | is   | <ALPHANUM> |        2 |            5 |          7
+            // test_field | test | <ALPHANUM> |        4 |           10 |         14
             let expect = vec![
-                ("<ALPHANUM>", "this", 0, 0, 4),
-                ("<ALPHANUM>", "is", 1, 5, 7),
-                ("<ALPHANUM>", "test", 3, 10, 14),
+                ("<ALPHANUM>", "this", 1, 0, 4),
+                ("<ALPHANUM>", "is", 2, 5, 7),
+                ("<ALPHANUM>", "test", 4, 10, 14),
             ];
 
             test_table(table, expect);
@@ -1924,17 +1924,17 @@ mod tests {
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
-            // test_field | this   | <ALPHANUM> |        0 |            0 |          4
-            // test_field | is     | <ALPHANUM> |        1 |            5 |          7
-            // test_field | test   | <ALPHANUM> |        3 |           10 |         14
-            // test_field | is     | <ALPHANUM> |        5 |           20 |         22
-            // test_field | longer | <ALPHANUM> |        8 |           29 |         35
+            // test_field | this   | <ALPHANUM> |        1 |            0 |          4
+            // test_field | is     | <ALPHANUM> |        2 |            5 |          7
+            // test_field | test   | <ALPHANUM> |        4 |           10 |         14
+            // test_field | is     | <ALPHANUM> |        6 |           20 |         22
+            // test_field | longer | <ALPHANUM> |        9 |           29 |         35
             let expect = vec![
-                ("<ALPHANUM>", "this", 0, 0, 4),
-                ("<ALPHANUM>", "is", 1, 5, 7),
-                ("<ALPHANUM>", "test", 3, 10, 14),
-                ("<ALPHANUM>", "is", 5, 20, 22),
-                ("<ALPHANUM>", "longer", 8, 29, 35),
+                ("<ALPHANUM>", "this", 1, 0, 4),
+                ("<ALPHANUM>", "is", 2, 5, 7),
+                ("<ALPHANUM>", "test", 4, 10, 14),
+                ("<ALPHANUM>", "is", 6, 20, 22),
+                ("<ALPHANUM>", "longer", 9, 29, 35),
             ];
 
             test_table(table, expect);
@@ -1969,17 +1969,17 @@ mod tests {
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
-            //  test_field | is     | <ALPHANUM> |        1 |            5 |          7
-            //  test_field | test   | <ALPHANUM> |        3 |           10 |         14
-            //  test_field | that   | <ALPHANUM> |        4 |           15 |         19
-            //  test_field | is     | <ALPHANUM> |        5 |           20 |         22
-            //  test_field | longer | <ALPHANUM> |        8 |           29 |         35
+            //  test_field | is     | <ALPHANUM> |        2 |            5 |          7
+            //  test_field | test   | <ALPHANUM> |        4 |           10 |         14
+            //  test_field | that   | <ALPHANUM> |        5 |           15 |         19
+            //  test_field | is     | <ALPHANUM> |        6 |           20 |         22
+            //  test_field | longer | <ALPHANUM> |        9 |           29 |         35
             let expect = vec![
-                ("<ALPHANUM>", "is", 1, 5, 7),
-                ("<ALPHANUM>", "test", 3, 10, 14),
-                ("<ALPHANUM>", "that", 4, 15, 19),
-                ("<ALPHANUM>", "is", 5, 20, 22),
-                ("<ALPHANUM>", "longer", 8, 29, 35),
+                ("<ALPHANUM>", "is", 2, 5, 7),
+                ("<ALPHANUM>", "test", 4, 10, 14),
+                ("<ALPHANUM>", "that", 5, 15, 19),
+                ("<ALPHANUM>", "is", 6, 20, 22),
+                ("<ALPHANUM>", "longer", 9, 29, 35),
             ];
 
             test_table(table, expect);
@@ -2015,19 +2015,19 @@ mod tests {
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
-            // test_field | this     | <ALPHANUM> |        0 |            0 |          4
-            // test_field | is       | <ALPHANUM> |        1 |            5 |          7
-            // test_field | test     | <ALPHANUM> |        3 |           10 |         14
-            // test_field | sentence | <ALPHANUM> |       13 |           58 |         66
-            // test_field | to       | <ALPHANUM> |       14 |           67 |         69
-            // test_field | test     | <ALPHANUM> |       15 |           70 |         74
+            // test_field | this     | <ALPHANUM> |        1 |            0 |          4
+            // test_field | is       | <ALPHANUM> |        2 |            5 |          7
+            // test_field | test     | <ALPHANUM> |        4 |           10 |         14
+            // test_field | sentence | <ALPHANUM> |       15 |           58 |         66
+            // test_field | to       | <ALPHANUM> |       16 |           67 |         69
+            // test_field | test     | <ALPHANUM> |       17 |           70 |         74
             let expect = vec![
-                ("<ALPHANUM>", "this", 0, 0, 4),
-                ("<ALPHANUM>", "is", 1, 5, 7),
-                ("<ALPHANUM>", "test", 3, 10, 14),
-                ("<ALPHANUM>", "sentence", 14, 63, 71),
-                ("<ALPHANUM>", "to", 15, 72, 74),
-                ("<ALPHANUM>", "test", 16, 75, 79),
+                ("<ALPHANUM>", "this", 1, 0, 4),
+                ("<ALPHANUM>", "is", 2, 5, 7),
+                ("<ALPHANUM>", "test", 4, 10, 14),
+                ("<ALPHANUM>", "sentence", 15, 63, 71),
+                ("<ALPHANUM>", "to", 16, 72, 74),
+                ("<ALPHANUM>", "test", 17, 75, 79),
             ];
 
             test_table(table, expect);
@@ -2063,23 +2063,23 @@ mod tests {
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
-            // test_field | this     | <ALPHANUM> |        0 |            0 |          4
-            // test_field | is       | <ALPHANUM> |        1 |            5 |          7
-            // test_field | test     | <ALPHANUM> |        3 |           10 |         14
-            // test_field | is       | <ALPHANUM> |        5 |           20 |         22
-            // test_field | longer   | <ALPHANUM> |        8 |           29 |         35
-            // test_field | sentence | <ALPHANUM> |       14 |           63 |         71
-            // test_field | to       | <ALPHANUM> |       15 |           72 |         74
-            // test_field | test     | <ALPHANUM> |       16 |           75 |         79
+            // test_field | this     | <ALPHANUM> |        1 |            0 |          4
+            // test_field | is       | <ALPHANUM> |        2 |            5 |          7
+            // test_field | test     | <ALPHANUM> |        4 |           10 |         14
+            // test_field | is       | <ALPHANUM> |        6 |           20 |         22
+            // test_field | longer   | <ALPHANUM> |        9 |           29 |         35
+            // test_field | sentence | <ALPHANUM> |       15 |           63 |         71
+            // test_field | to       | <ALPHANUM> |       16 |           72 |         74
+            // test_field | test     | <ALPHANUM> |       17 |           75 |         79
             let expect = vec![
-                ("<ALPHANUM>", "this", 0, 0, 4),
-                ("<ALPHANUM>", "is", 1, 5, 7),
-                ("<ALPHANUM>", "test", 3, 10, 14),
-                ("<ALPHANUM>", "is", 5, 20, 22),
-                ("<ALPHANUM>", "longer", 8, 29, 35),
-                ("<ALPHANUM>", "sentence", 14, 63, 71),
-                ("<ALPHANUM>", "to", 15, 72, 74),
-                ("<ALPHANUM>", "test", 16, 75, 79),
+                ("<ALPHANUM>", "this", 1, 0, 4),
+                ("<ALPHANUM>", "is", 2, 5, 7),
+                ("<ALPHANUM>", "test", 4, 10, 14),
+                ("<ALPHANUM>", "is", 6, 20, 22),
+                ("<ALPHANUM>", "longer", 9, 29, 35),
+                ("<ALPHANUM>", "sentence", 15, 63, 71),
+                ("<ALPHANUM>", "to", 16, 72, 74),
+                ("<ALPHANUM>", "test", 17, 75, 79),
             ];
 
             test_table(table, expect);
@@ -2122,25 +2122,25 @@ mod tests {
 
             //  field_name | term |    type    | position | start_offset | end_offset
             //  -----------+------+------------+----------+--------------+------------
-            //  test_field | this     | <ALPHANUM> |        0 |            0 |          4
-            //  test_field | is       | <ALPHANUM> |        1 |            5 |          7
-            //  test_field | a        | <ALPHANUM> |        2 |            8 |          9
-            //  test_field | longer   | <ALPHANUM> |        8 |           29 |         35
-            //  test_field | have     | <ALPHANUM> |       10 |           39 |         43
-            //  test_field | also     | <ALPHANUM> |       11 |           44 |         48
-            //  test_field | sentence | <ALPHANUM> |       14 |           63 |         71
-            //  test_field | to       | <ALPHANUM> |       15 |           72 |         74
-            //  test_field | test     | <ALPHANUM> |       16 |           75 |         79
+            //  test_field | this     | <ALPHANUM> |        1 |            0 |          4
+            //  test_field | is       | <ALPHANUM> |        2 |            5 |          7
+            //  test_field | a        | <ALPHANUM> |        3 |            8 |          9
+            //  test_field | longer   | <ALPHANUM> |        9 |           29 |         35
+            //  test_field | have     | <ALPHANUM> |       11 |           39 |         43
+            //  test_field | also     | <ALPHANUM> |       12 |           44 |         48
+            //  test_field | sentence | <ALPHANUM> |       15 |           63 |         71
+            //  test_field | to       | <ALPHANUM> |       16 |           72 |         74
+            //  test_field | test     | <ALPHANUM> |       17 |           75 |         79
             let expect = vec![
-                ("<ALPHANUM>", "this", 0, 0, 4),
-                ("<ALPHANUM>", "is", 1, 5, 7),
-                ("<ALPHANUM>", "a", 2, 8, 9),
-                ("<ALPHANUM>", "longer", 8, 29, 35),
-                ("<ALPHANUM>", "have", 10, 39, 43),
-                ("<ALPHANUM>", "also", 11, 44, 48),
-                ("<ALPHANUM>", "sentence", 14, 63, 71),
-                ("<ALPHANUM>", "to", 15, 72, 74),
-                ("<ALPHANUM>", "test", 16, 75, 79),
+                ("<ALPHANUM>", "this", 1, 0, 4),
+                ("<ALPHANUM>", "is", 2, 5, 7),
+                ("<ALPHANUM>", "a", 3, 8, 9),
+                ("<ALPHANUM>", "longer", 9, 29, 35),
+                ("<ALPHANUM>", "have", 11, 39, 43),
+                ("<ALPHANUM>", "also", 12, 44, 48),
+                ("<ALPHANUM>", "sentence", 15, 63, 71),
+                ("<ALPHANUM>", "to", 16, 72, 74),
+                ("<ALPHANUM>", "test", 17, 75, 79),
             ];
 
             test_table(table, expect);
@@ -2183,19 +2183,19 @@ mod tests {
 
             //  field_name | term |    type    | position | start_offset | end_offset
             //  -----------+------+------------+----------+--------------+------------
-            //  test_field | this     | <ALPHANUM> |        0 |            0 |          4
-            //  test_field | is       | <ALPHANUM> |        1 |            5 |          7
-            //  test_field | a        | <ALPHANUM> |        2 |            8 |          9
-            //  test_field | added    | <ALPHANUM> |       12 |           49 |         54
-            //  test_field | another  | <ALPHANUM> |       13 |           55 |         62
-            //  test_field | sentence | <ALPHANUM> |       14 |           63 |         71
+            //  test_field | this     | <ALPHANUM> |        1 |            0 |          4
+            //  test_field | is       | <ALPHANUM> |        2 |            5 |          7
+            //  test_field | a        | <ALPHANUM> |        3 |            8 |          9
+            //  test_field | added    | <ALPHANUM> |       13 |           49 |         54
+            //  test_field | another  | <ALPHANUM> |       14 |           55 |         62
+            //  test_field | sentence | <ALPHANUM> |       15 |           63 |         71
             let expect = vec![
-                ("<ALPHANUM>", "this", 0, 0, 4),
-                ("<ALPHANUM>", "is", 1, 5, 7),
-                ("<ALPHANUM>", "a", 2, 8, 9),
-                ("<ALPHANUM>", "added", 12, 49, 54),
-                ("<ALPHANUM>", "another", 13, 55, 62),
-                ("<ALPHANUM>", "sentence", 14, 63, 71),
+                ("<ALPHANUM>", "this", 1, 0, 4),
+                ("<ALPHANUM>", "is", 2, 5, 7),
+                ("<ALPHANUM>", "a", 3, 8, 9),
+                ("<ALPHANUM>", "added", 13, 49, 54),
+                ("<ALPHANUM>", "another", 14, 55, 62),
+                ("<ALPHANUM>", "sentence", 15, 63, 71),
             ];
 
             test_table(table, expect);
@@ -2238,19 +2238,19 @@ mod tests {
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
-            // test_field | okay    | <ALPHANUM> |        0 |            0 |          4
-            // test_field | sure    | <ALPHANUM> |        1 |            5 |          9
-            // test_field | is      | <ALPHANUM> |        6 |           33 |         35
-            // test_field | fifteen | <ALPHANUM> |        8 |           42 |         49
-            // test_field | words   | <ALPHANUM> |        9 |           50 |         55
-            // test_field | dunno   | <ALPHANUM> |       14 |           74 |         79
+            // test_field | okay    | <ALPHANUM> |        1 |            0 |          4
+            // test_field | sure    | <ALPHANUM> |        2 |            5 |          9
+            // test_field | is      | <ALPHANUM> |        7 |           33 |         35
+            // test_field | fifteen | <ALPHANUM> |        9 |           42 |         49
+            // test_field | words   | <ALPHANUM> |       10 |           50 |         55
+            // test_field | dunno   | <ALPHANUM> |       15 |           74 |         79
             let expect = vec![
-                ("<ALPHANUM>", "okay", 0, 0, 4),
-                ("<ALPHANUM>", "sure", 1, 5, 9),
-                ("<ALPHANUM>", "is", 6, 33, 35),
-                ("<ALPHANUM>", "fifteen", 8, 42, 49),
-                ("<ALPHANUM>", "words", 9, 50, 55),
-                ("<ALPHANUM>", "dunno", 14, 74, 79),
+                ("<ALPHANUM>", "okay", 1, 0, 4),
+                ("<ALPHANUM>", "sure", 2, 5, 9),
+                ("<ALPHANUM>", "is", 7, 33, 35),
+                ("<ALPHANUM>", "fifteen", 9, 42, 49),
+                ("<ALPHANUM>", "words", 10, 50, 55),
+                ("<ALPHANUM>", "dunno", 15, 74, 79),
             ];
 
             test_table(table, expect);
