@@ -484,7 +484,12 @@ impl<'input> Expr<'input> {
         }
 
         assign_links(&root_index, &mut expr, index_links);
-        expand_index_links(&mut expr, &root_index, &mut relationship_manager);
+        expand_index_links(
+            &mut expr,
+            &root_index,
+            &mut relationship_manager,
+            &index_links,
+        );
         merge_adjacent_links(&mut expr);
         rewrite_proximity_chains(&mut expr);
         expr = retarget_expr(expr, &root_index, target_link, &mut relationship_manager);
