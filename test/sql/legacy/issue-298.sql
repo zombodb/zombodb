@@ -1,6 +1,6 @@
 SELECT id
 FROM so_posts
-WHERE zdb('so_posts', ctid) ==>
-      '#subselect<id=<so_comments.idxso_comments>post_id>(id:4694)
+WHERE so_posts ==>
+      '#subselect<id=<public.so_comments.idxso_comments>post_id>(id:4694)
             AND
-       #subselect<id=<so_comments.idxso_comments>post_id>(id:9422)';
+       #subselect<id=<public.so_comments.idxso_comments>post_id>(id:9422)';

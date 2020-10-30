@@ -23,7 +23,10 @@ fn determine_link(
     match expr {
         Expr::Null => unreachable!(),
 
-        Expr::Subselect(_, _) => unimplemented!("determine_link: subselect"),
+        Expr::Subselect(i, e) => {
+            determine_link(i, e, indexes);
+            None
+        }
         Expr::Expand(i, e, f) => {
             if let Some(f) = f {
                 assign_links(i, f, indexes);

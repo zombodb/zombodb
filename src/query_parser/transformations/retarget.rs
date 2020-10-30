@@ -10,7 +10,12 @@ pub(crate) fn retarget_expr<'a>(
     if let Some(target_link) = target_link {
         let mut path = relationship_manager.calc_path(target_link, source_link);
         if path.is_empty() {
-            panic!("no path fro {} to {}", target_link, source_link);
+            if source_link != target_link {
+                panic!("no path from {} to {}", target_link, source_link);
+            } else {
+                // same link, so that's okay
+                return expr;
+            }
         }
 
         while let Some(link) = path.pop() {

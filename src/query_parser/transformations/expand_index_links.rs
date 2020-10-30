@@ -1,7 +1,7 @@
 use crate::query_parser::ast::{Expr, IndexLink};
 use crate::query_parser::relationship_manager::RelationshipManager;
-use indexmap::IndexMap;
-
+// use indexmap::IndexMap;
+use std::collections::HashMap as IndexMap;
 pub fn expand_index_links(
     expr: &mut Expr,
     root_index: &IndexLink,
@@ -19,7 +19,7 @@ fn expand_index_links0<'a>(
     indexes: &Vec<IndexLink>,
 ) {
     match expr {
-        Expr::Subselect(_i, _e) => unimplemented!("expand_index_links: #subselect"),
+        Expr::Subselect(i, e) => expand_index_links0(e, i, relationship_manager, i, indexes),
         Expr::Expand(i, e, f) => {
             if let Some(f) = f {
                 expand_index_links0(f, root_index, relationship_manager, i, indexes);
@@ -120,7 +120,14 @@ fn relink<'a, F: Fn(Vec<Expr<'a>>) -> Expr<'a>>(
             }
         } else {
             // it a list of unlinked expressions, so just push them all back
-            v.append(&mut exprs);
+            for expr in exprs {
+                match expr {
+                    Expr::Subselect(i, e) => {
+                        v.push(Expr::Linked(i.clone(), Box::new(Expr::Subselect(i, e))));
+                    }
+                    _ => v.push(expr),
+                }
+            }
         }
     }
 }
@@ -131,10 +138,12 @@ fn group_expressions_by_link<'a>(
     // next, lets group expressions by if they're Expr::Linked
     let mut groups = IndexMap::<Option<IndexLink>, Vec<Expr>>::new();
     while !v.is_empty() {
-        let e = v.pop().unwrap();
-        match e {
+        let mut expr = v.pop().unwrap();
+        merge_adjacent_links(&mut expr);
+        match expr {
+            Expr::Subselect(..) => groups.entry(None).or_default().push(expr),
             Expr::Linked(i, e) => groups.entry(Some(i)).or_default().push(*e),
-            _ => groups.entry(None).or_default().push(e),
+            _ => groups.entry(None).or_default().push(expr),
         }
     }
     groups
