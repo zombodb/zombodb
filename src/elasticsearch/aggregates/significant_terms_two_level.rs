@@ -44,12 +44,12 @@ fn significant_terms_two_level(
         buckets: Vec<BucketEntry>,
     }
 
+    let (prepared_query, index) = query.prepare(&index, Some(field_first.into()));
     let elasticsearch = Elasticsearch::new(&index);
-
     let request = elasticsearch.aggregate::<SignificantTermsTwoLevel>(
         Some(field_first.into()),
         true,
-        query.prepare(&index),
+        prepared_query,
         json! {
             {
                 "terms": {

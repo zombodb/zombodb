@@ -6,7 +6,7 @@ use pgx::*;
 fn query_tids(index: PgRelation, query: ZDBQuery) -> Vec<pg_sys::ItemPointerData> {
     let es = Elasticsearch::new(&index);
     let scroll = es
-        .open_search(query.prepare(&index))
+        .open_search(query.prepare(&index, None).0)
         .execute()
         .expect("failed to execute search");
     let mut tids = Vec::new();

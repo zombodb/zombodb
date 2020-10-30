@@ -8,6 +8,7 @@ pub mod ast;
 pub mod dsl;
 pub mod parser;
 
+pub(crate) mod relationship_manager;
 pub(crate) mod transformations;
 
 // global parsers to avoid recurring regex compilation

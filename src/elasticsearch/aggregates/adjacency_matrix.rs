@@ -33,7 +33,7 @@ fn adjacency_matrix(
 
         filters_map.insert(
             label,
-            apply_visibility_clause(&elasticsearch, filter.prepare(&index), false),
+            apply_visibility_clause(&elasticsearch, filter.prepare(&index, None).0, false),
         );
     }
 

@@ -8,7 +8,7 @@ use serde_json::*;
 #[pg_extern(immutable, parallel_safe)]
 fn range(
     index: PgRelation,
-    field_name: &str,
+    field: &str,
     query: ZDBQuery,
     range_array: Json,
 ) -> impl std::iter::Iterator<
@@ -32,16 +32,16 @@ fn range(
         doc_count: i64,
     }
 
+    let (prepared_query, index) = query.prepare(&index, Some(field.into()));
     let elasticsearch = Elasticsearch::new(&index);
-
     let request = elasticsearch.aggregate::<RangesAggData>(
-        Some(field_name.into()),
+        Some(field.into()),
         true,
-        query.prepare(&index),
+        prepared_query,
         json! {
             {
                 "range": {
-                    "field": field_name,
+                    "field": field,
                     "ranges": range_array
                 }
             }

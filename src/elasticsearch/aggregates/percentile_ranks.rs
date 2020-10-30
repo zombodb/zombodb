@@ -29,18 +29,18 @@ fn percentile_ranks(
         keyed: bool,
     }
 
-    let elasticsearch = Elasticsearch::new(&index);
-
     let percentile_ranks = PercentileRanks {
         field,
         values,
         keyed: false,
     };
 
+    let (prepared_query, index) = query.prepare(&index, Some(field.into()));
+    let elasticsearch = Elasticsearch::new(&index);
     let request = elasticsearch.aggregate::<PercentileRankAggData>(
         Some(field.into()),
         true,
-        query.prepare(&index),
+        prepared_query,
         json! {
             {
                 "percentile_ranks": percentile_ranks,

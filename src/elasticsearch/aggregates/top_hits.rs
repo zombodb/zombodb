@@ -39,7 +39,7 @@ fn top_hits(
     let request = elasticsearch.aggregate::<TopHitsAggData>(
         None,
         false,
-        query.prepare(&index),
+        query.prepare(&index, None).0,
         json! {
             {
                 "top_hits": {

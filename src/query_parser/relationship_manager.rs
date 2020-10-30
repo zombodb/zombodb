@@ -11,13 +11,13 @@ use serde::export::Formatter;
 use crate::query_parser::ast::{IndexLink, QualifiedIndex};
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Clone)]
-pub struct NamedIndex {
+struct NamedIndex {
     name: String,
     index: String,
 }
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Clone)]
-pub struct NamedIndexParts {
+struct NamedIndexParts {
     name: Option<String>,
     index: String,
     field_name: Option<String>,
@@ -81,7 +81,7 @@ impl Edge {
 }
 
 #[derive(Eq, Ord)]
-pub struct Vertex {
+struct Vertex {
     name: NamedIndex,
     adjacencies: Vec<Edge>,
     min_distance: usize,
@@ -110,7 +110,7 @@ impl Vertex {
         }
     }
 
-    pub fn add_vertex(&mut self, v: Rc<RefCell<Vertex>>, weight: usize) -> Rc<RefCell<Vertex>> {
+    fn add_vertex(&mut self, v: Rc<RefCell<Vertex>>, weight: usize) -> Rc<RefCell<Vertex>> {
         self.add_edge(Edge::from_cell(v, weight))
     }
 
@@ -139,12 +139,12 @@ impl Vertex {
     }
 }
 
-pub struct Dijkstra {
+struct Dijkstra {
     verticies: HashMap<NamedIndex, Rc<RefCell<Vertex>>>,
 }
 
 impl Dijkstra {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Dijkstra {
             verticies: HashMap::new(),
         }
@@ -195,7 +195,7 @@ impl Dijkstra {
         }
     }
 
-    pub fn get_shortest_path(
+    fn get_shortest_path(
         &mut self,
         source_name: &str,
         source_index: &str,
@@ -357,7 +357,7 @@ impl RelationshipManager {
 #[cfg(test)]
 mod tests {
     use crate::query_parser::ast::{IndexLink, QualifiedIndex};
-    use crate::query_parser::transformations::dijkstra::RelationshipManager;
+    use crate::query_parser::transformations::relationship_manager::RelationshipManager;
 
     fn case_profile() -> IndexLink {
         let case_profile = IndexLink {

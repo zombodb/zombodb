@@ -7,7 +7,7 @@ use std::convert::TryInto;
 fn count(index: PgRelation, query: ZDBQuery) -> i64 {
     let es = Elasticsearch::new(&index);
 
-    es.count(query.prepare(&index))
+    es.count(query.prepare(&index, None).0)
         .execute()
         .expect("failed to execute count query")
         .try_into()
@@ -18,7 +18,7 @@ fn count(index: PgRelation, query: ZDBQuery) -> i64 {
 fn raw_count(index: PgRelation, query: ZDBQuery) -> i64 {
     let es = Elasticsearch::new(&index);
 
-    es.raw_count(query.prepare(&index))
+    es.raw_count(query.prepare(&index, None).0)
         .execute()
         .expect("failed to execute raw count query")
         .try_into()

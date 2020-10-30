@@ -43,12 +43,12 @@ fn extended_stats(
         lower: Numeric,
     }
 
+    let (prepared_query, index) = query.prepare(&index, Some(field.into()));
     let elasticsearch = Elasticsearch::new(&index);
-
     let request = elasticsearch.aggregate::<ExtendedStatsAggData>(
         Some(field.into()),
         true,
-        query.prepare(&index),
+        prepared_query,
         json! {
             {
                 "extended_stats": {

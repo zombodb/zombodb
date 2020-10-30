@@ -13,8 +13,8 @@ use crate::zdbquery::ZDBQuery;
 
 #[pg_extern(immutable, parallel_safe)]
 fn dump_query(index: PgRelation, query: ZDBQuery) -> String {
-    let query = query.prepare(&index);
-    serde_json::to_string_pretty(query.query_dsl()).expect("failed to convert DSL to text")
+    serde_json::to_string_pretty(query.prepare(&index, None).0.query_dsl())
+        .expect("failed to convert DSL to text")
 }
 
 #[pg_extern(immutable, parallel_safe)]
@@ -32,6 +32,7 @@ fn debug_query(
         "zdb_all",
         query,
         &IndexLink::from_zdb(&index),
+        &None,
         &mut used_fields,
     )
     .expect("failed to parse query");

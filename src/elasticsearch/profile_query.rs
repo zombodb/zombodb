@@ -46,7 +46,7 @@ impl ElasticsearchProfileQueryRequest {
 fn profile_query(index: PgRelation, query: ZDBQuery) -> JsonB {
     JsonB(
         Elasticsearch::new(&index)
-            .profile_query(query.prepare(&index))
+            .profile_query(query.prepare(&index, None).0)
             .execute()
             .expect("failed to execute profile query request"),
     )

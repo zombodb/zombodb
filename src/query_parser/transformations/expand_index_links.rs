@@ -1,5 +1,5 @@
 use crate::query_parser::ast::{Expr, IndexLink};
-use crate::query_parser::transformations::dijkstra::RelationshipManager;
+use crate::query_parser::relationship_manager::RelationshipManager;
 use indexmap::IndexMap;
 
 pub fn expand_index_links(

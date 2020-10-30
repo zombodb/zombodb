@@ -11,12 +11,12 @@ fn sum(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
         value: Numeric,
     }
 
+    let (prepared_query, index) = query.prepare(&index, Some(field.into()));
     let elasticsearch = Elasticsearch::new(&index);
-
     let request = elasticsearch.aggregate::<SumAggData>(
         Some(field.into()),
         true,
-        query.prepare(&index),
+        prepared_query,
         json! {
             {
                 "sum": {
@@ -40,12 +40,12 @@ fn avg(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
         value: Numeric,
     }
 
+    let (prepared_query, index) = query.prepare(&index, Some(field.into()));
     let elasticsearch = Elasticsearch::new(&index);
-
     let request = elasticsearch.aggregate::<AvgAggData>(
         Some(field.into()),
         true,
-        query.prepare(&index),
+        prepared_query,
         json! {
             {
                 "avg": {
@@ -69,12 +69,12 @@ fn cardinality(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
         value: Numeric,
     }
 
+    let (prepared_query, index) = query.prepare(&index, Some(field.into()));
     let elasticsearch = Elasticsearch::new(&index);
-
     let request = elasticsearch.aggregate::<CardinalityAggData>(
         Some(field.into()),
         true,
-        query.prepare(&index),
+        prepared_query,
         json! {
             {
                 "cardinality": {
@@ -98,12 +98,12 @@ fn max(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
         value: Numeric,
     }
 
+    let (prepared_query, index) = query.prepare(&index, Some(field.into()));
     let elasticsearch = Elasticsearch::new(&index);
-
     let request = elasticsearch.aggregate::<MaxAggData>(
         Some(field.into()),
         true,
-        query.prepare(&index),
+        prepared_query,
         json! {
             {
                 "max": {
@@ -127,12 +127,12 @@ fn min(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
         value: Numeric,
     }
 
+    let (prepared_query, index) = query.prepare(&index, Some(field.into()));
     let elasticsearch = Elasticsearch::new(&index);
-
     let request = elasticsearch.aggregate::<MinAggData>(
         Some(field.into()),
         true,
-        query.prepare(&index),
+        prepared_query,
         json! {
             {
                 "min": {
@@ -156,12 +156,12 @@ fn missing(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
         doc_count: Numeric,
     }
 
+    let (prepared_query, index) = query.prepare(&index, Some(field.into()));
     let elasticsearch = Elasticsearch::new(&index);
-
     let request = elasticsearch.aggregate::<MissingAggData>(
         Some(field.into()),
         true,
-        query.prepare(&index),
+        prepared_query,
         json! {
             {
                 "missing": {
@@ -185,12 +185,12 @@ fn value_count(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
         value: Numeric,
     }
 
+    let (prepared_query, index) = query.prepare(&index, Some(field.into()));
     let elasticsearch = Elasticsearch::new(&index);
-
     let request = elasticsearch.aggregate::<ValueCountAggData>(
         Some(field.into()),
         true,
-        query.prepare(&index),
+        prepared_query,
         json! {
             {
                 "value_count": {

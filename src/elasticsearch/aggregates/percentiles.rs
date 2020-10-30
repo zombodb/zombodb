@@ -30,18 +30,18 @@ fn percentiles(
         keyed: bool,
     }
 
-    let elasticsearch = Elasticsearch::new(&index);
-
     let percentiles = Percentiles {
         field,
         percents,
         keyed: false,
     };
 
+    let (prepared_query, index) = query.prepare(&index, Some(field.into()));
+    let elasticsearch = Elasticsearch::new(&index);
     let request = elasticsearch.aggregate::<PercentilesAggData>(
         Some(field.into()),
         true,
-        query.prepare(&index),
+        prepared_query,
         json! {
             {
                 "percentiles": percentiles,
