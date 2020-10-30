@@ -61,8 +61,6 @@ fn date_histogram(
         buckets: Vec<BucketEntry>,
     }
 
-    let elasticsearch = Elasticsearch::new(&index);
-
     let date_histogram = DateHistogram {
         field,
         calendar_interval,
@@ -75,10 +73,13 @@ fn date_histogram(
         error!("Both calendar interval and fixed interval have something. Should be mutually exclusive")
     };
 
+    let (prepared_query, index) = query.prepare(&index, Some(field.into()));
+    let elasticsearch = Elasticsearch::new(&index);
+
     let request = elasticsearch.aggregate::<DateHistogramAggData>(
         Some(field.into()),
         true,
-        query.prepare(&index),
+        prepared_query,
         json! {
             {
                 "date_histogram":

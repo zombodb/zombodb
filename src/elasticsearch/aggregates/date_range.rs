@@ -8,7 +8,7 @@ use serde_json::*;
 #[pg_extern(immutable, parallel_safe)]
 fn date_range(
     index: PgRelation,
-    field_name: &str,
+    field: &str,
     query: ZDBQuery,
     date_range_array: Json,
 ) -> impl std::iter::Iterator<
@@ -36,16 +36,16 @@ fn date_range(
         doc_count: i64,
     }
 
+    let (prepared_query, index) = query.prepare(&index, Some(field.into()));
     let elasticsearch = Elasticsearch::new(&index);
-
     let request = elasticsearch.aggregate::<DateRangesAggData>(
-        Some(field_name.into()),
+        Some(field.into()),
         true,
-        query.prepare(&index),
+        prepared_query,
         json! {
             {
                 "date_range": {
-                    "field": field_name,
+                    "field": field,
                     "ranges": date_range_array
                 }
             }

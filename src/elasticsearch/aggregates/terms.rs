@@ -132,7 +132,6 @@ fn tally(
         || stem == Some("second"))
         && is_raw_date_field;
     let count_nulls = count_nulls.unwrap_or_default();
-    let elasticsearch = Elasticsearch::new(&index);
     let order = match order_by {
         Some(order_by) => match order_by {
             TermsOrderBy::count => json! {{ "_count": "asc" }},
@@ -214,10 +213,12 @@ fn tally(
         );
     }
 
+    let (prepared_query, index) = query.prepare(&index, Some(field_name.into()));
+    let elasticsearch = Elasticsearch::new(&index);
     let request = elasticsearch.aggregate_set::<TermsAggData>(
         Some(field_name.into()),
         is_nested,
-        query.prepare(&index),
+        prepared_query,
         aggregates,
     );
 

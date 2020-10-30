@@ -12,7 +12,7 @@ pub use pg_catalog::ProximityTerm;
 use crate::access_method::options::ZDBIndexOptions;
 use crate::elasticsearch::Elasticsearch;
 use crate::query_parser::parser::Token;
-use crate::query_parser::transformations::dijkstra::RelationshipManager;
+use crate::query_parser::relationship_manager::RelationshipManager;
 use crate::query_parser::transformations::expand::expand;
 use crate::query_parser::transformations::expand_index_links::{
     expand_index_links, merge_adjacent_links,
@@ -22,6 +22,7 @@ use crate::query_parser::transformations::field_lists::expand_field_lists;
 use crate::query_parser::transformations::index_links::assign_links;
 use crate::query_parser::transformations::nested_groups::group_nested;
 use crate::query_parser::transformations::prox_rewriter::rewrite_proximity_chains;
+use crate::query_parser::transformations::retarget::retarget_expr;
 use crate::query_parser::{INDEX_LINK_PARSER, ZDB_QUERY_PARSER};
 use crate::utils::{get_null_copy_to_fields, get_search_analyzer};
 
@@ -383,6 +384,7 @@ impl<'input> Expr<'input> {
         default_fieldname: &'input str,
         input: &'input str,
         index_links: &Vec<IndexLink>,
+        target_link: &Option<IndexLink>,
         used_fields: &mut HashSet<&'input str>,
     ) -> Result<Expr<'input>, ParserError<'input>> {
         if input.trim().is_empty() {
@@ -400,6 +402,7 @@ impl<'input> Expr<'input> {
             used_fields,
             root_index,
             index_links,
+            target_link,
             zdboptions.field_lists(),
         )
     }
@@ -411,6 +414,7 @@ impl<'input> Expr<'input> {
         used_fields: &mut HashSet<&'input str>,
         root_index: IndexLink,
         index_links: &Vec<IndexLink>,
+        target_link: &Option<IndexLink>,
         mut field_lists: HashMap<String, Vec<QualifiedField>>,
     ) -> Result<Expr<'input>, ParserError<'input>> {
         let input = input.clone();
@@ -480,10 +484,15 @@ impl<'input> Expr<'input> {
         }
 
         assign_links(&root_index, &mut expr, index_links);
-        expand_index_links(&mut expr, &root_index, &mut relationship_manager);
+        expand_index_links(
+            &mut expr,
+            &root_index,
+            &mut relationship_manager,
+            &index_links,
+        );
         merge_adjacent_links(&mut expr);
-
         rewrite_proximity_chains(&mut expr);
+        expr = retarget_expr(expr, &root_index, target_link, &mut relationship_manager);
         Ok(expr)
     }
 

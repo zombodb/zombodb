@@ -15,6 +15,7 @@ mod dsl {
             "zdb_all",
             input,
             &index_links,
+            &None,
             &mut used_fields,
         )
         .expect("failed to parse query");

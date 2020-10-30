@@ -8,7 +8,7 @@ use serde_json::*;
 #[pg_extern(immutable, parallel_safe)]
 fn significant_text(
     index: PgRelation,
-    field_name: &str,
+    field: &str,
     query: ZDBQuery,
     size: default!(i32, 10),
     filter_duplicate_text: Option<default!(bool, true)>,
@@ -38,12 +38,12 @@ fn significant_text(
         significant_keywords: SignificantTextAggData,
     }
 
+    let (prepared_query, index) = query.prepare(&index, Some(field.into()));
     let elasticsearch = Elasticsearch::new(&index);
-
     let request = elasticsearch.aggregate::<SignificantKeywords>(
-        Some(field_name.into()),
+        Some(field.into()),
         true,
-        query.prepare(&index),
+        prepared_query,
         json! {
             {
                 "sampler" : {
@@ -52,7 +52,7 @@ fn significant_text(
                 "aggregations": {
                     "significant_keywords" : {
                         "significant_text" : {
-                            "field": field_name,
+                            "field": field,
                             "size": size,
                             "filter_duplicate_text": filter_duplicate_text
                         }

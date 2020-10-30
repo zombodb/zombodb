@@ -148,7 +148,8 @@ fn remove_aborted_xids(
                                 }
                             }
                         })
-                        .prepare(index),
+                        .prepare(index, None)
+                        .0,
                     )
                     .execute()
                     .expect("failed to count xmin values");
@@ -161,7 +162,8 @@ fn remove_aborted_xids(
                                 }
                             }
                         })
-                        .prepare(index),
+                        .prepare(index, None)
+                        .0,
                     )
                     .execute()
                     .expect("failed to count xmax values");
@@ -191,7 +193,9 @@ fn vacuum_xmax(
     let mut cnt = 0;
     let vacuum_xmax_docs = elasticsearch
         .open_search(
-            vac_by_aborted_xmax(&es_index_name, xid_to_64bit(oldest_xmin) as i64).prepare(index),
+            vac_by_aborted_xmax(&es_index_name, xid_to_64bit(oldest_xmin) as i64)
+                .prepare(index, None)
+                .0,
         )
         .execute_with_fields(vec!["zdb_xmax"])
         .expect("failed to search by xmax");
@@ -226,7 +230,11 @@ fn delete_by_xmax(
 ) -> usize {
     let mut cnt = 0;
     let delete_by_xmax_docs = elasticsearch
-        .open_search(vac_by_xmax(&es_index_name, xid_to_64bit(oldest_xmin) as i64).prepare(index))
+        .open_search(
+            vac_by_xmax(&es_index_name, xid_to_64bit(oldest_xmin) as i64)
+                .prepare(index, None)
+                .0,
+        )
         .execute_with_fields(vec!["zdb_xmax"])
         .expect("failed to search by xmax");
     for (_, ctid, fields, _) in delete_by_xmax_docs.into_iter() {
@@ -260,7 +268,11 @@ fn delete_by_xmin(
 ) -> usize {
     let mut cnt = 0;
     let delete_by_xmin_docs = elasticsearch
-        .open_search(vac_by_xmin(&es_index_name, xid_to_64bit(oldest_xmin) as i64).prepare(index))
+        .open_search(
+            vac_by_xmin(&es_index_name, xid_to_64bit(oldest_xmin) as i64)
+                .prepare(index, None)
+                .0,
+        )
         .execute_with_fields(vec!["zdb_xmin"])
         .expect("failed to search by xmin");
     for (_, ctid, fields, _) in delete_by_xmin_docs.into_iter() {

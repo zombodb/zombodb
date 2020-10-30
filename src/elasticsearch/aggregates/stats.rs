@@ -27,12 +27,12 @@ fn stats(
         sum: Numeric,
     }
 
+    let (prepared_query, index) = query.prepare(&index, Some(field.into()));
     let elasticsearch = Elasticsearch::new(&index);
-
     let request = elasticsearch.aggregate::<StatsAggData>(
         Some(field.into()),
         true,
-        query.prepare(&index),
+        prepared_query,
         json! {
             {
                 "stats": {

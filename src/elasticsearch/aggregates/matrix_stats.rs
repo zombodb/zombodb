@@ -44,7 +44,7 @@ fn matrix_stats(
     let request = elasticsearch.aggregate::<MatrixStatsAggData>(
         None,
         false,
-        query.prepare(&index),
+        query.prepare(&index, None).0,
         json! {
             {
                 "matrix_stats": {

@@ -54,7 +54,6 @@ fn terms_two_level(
         buckets: Vec<BucketEntry>,
     }
 
-    let elasticsearch = Elasticsearch::new(&index);
     let order = match order_by {
         Some(order_by) => match order_by {
             TwoLevelTermsOrderBy::count => json! {{ "_count": "asc" }},
@@ -69,10 +68,12 @@ fn terms_two_level(
         }
     };
 
+    let (prepared_query, index) = query.prepare(&index, Some(field_first.into()));
+    let elasticsearch = Elasticsearch::new(&index);
     let request = elasticsearch.aggregate::<TermsTwoLevel>(
-        None,
+        Some(field_first.into()),
         false,
-        query.prepare(&index),
+        prepared_query,
         json! {
             {
                 "terms": {

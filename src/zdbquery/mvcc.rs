@@ -9,14 +9,14 @@ use serde_json::json;
 fn internal_visibility_clause(index_relation: PgRelation) -> Json {
     Json(apply_visibility_clause(
         &Elasticsearch::new(&index_relation),
-        ZDBQuery::default().prepare(&index_relation),
+        ZDBQuery::default().prepare(&index_relation, None).0,
         true,
     ))
 }
 
 #[pg_extern]
 fn wrap_with_visibility_clause(index_relation: PgRelation, query: ZDBQuery) -> ZDBQuery {
-    let prepared = query.clone().prepare(&index_relation);
+    let prepared = query.clone().prepare(&index_relation, None).0;
     let clause = apply_visibility_clause(&Elasticsearch::new(&index_relation), prepared, true);
     query.set_query_dsl(Some(ZDBQueryClause::opaque(clause)))
 }

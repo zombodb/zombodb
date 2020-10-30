@@ -8,7 +8,7 @@ use serde_json::*;
 #[pg_extern(immutable, parallel_safe)]
 fn significant_terms(
     index: PgRelation,
-    field_name: &str,
+    field: &str,
     query: ZDBQuery,
     include: Option<default!(&str, ".*")>,
     size_limit: Option<default!(i32, 2147483647)>,
@@ -34,16 +34,16 @@ fn significant_terms(
         buckets: Vec<BucketEntry>,
     }
 
+    let (prepared_query, index) = query.prepare(&index, Some(field.into()));
     let elasticsearch = Elasticsearch::new(&index);
-
     let request = elasticsearch.aggregate::<SignificantTermsAggData>(
-        Some(field_name.into()),
+        Some(field.into()),
         true,
-        query.prepare(&index),
+        prepared_query,
         json! {
             {
                 "significant_terms": {
-                    "field": field_name,
+                    "field": field,
                     "include": include,
                     "shard_size": std::i32::MAX,
                     "size": size_limit,

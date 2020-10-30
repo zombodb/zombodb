@@ -335,8 +335,15 @@ fn highlight_document(
 > {
     // select * from zdb.highlight_document('idxbeer', '{"subject":"free beer", "authoremail":"Christi l nicolay"}', '!!subject:beer or subject:fr?? and authoremail:(christi, nicolay)') order by field_name, position;
     let mut used_fields = HashSet::new();
-    let query = Expr::from_str(&index, "zdb_all", query_string, &vec![], &mut used_fields)
-        .expect("failed to parse query");
+    let query = Expr::from_str(
+        &index,
+        "zdb_all",
+        query_string,
+        &vec![],
+        &None,
+        &mut used_fields,
+    )
+    .expect("failed to parse query");
 
     let qh = QueryHighligther::new(&index, document.0, &used_fields, query);
     qh.highlight().into_iter()

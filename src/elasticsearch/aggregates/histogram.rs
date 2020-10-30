@@ -23,12 +23,12 @@ fn histogram(
         buckets: Vec<BucketEntry>,
     }
 
+    let (prepared_query, index) = query.prepare(&index, Some(field.into()));
     let elasticsearch = Elasticsearch::new(&index);
-
     let request = elasticsearch.aggregate::<HistogramAggData>(
         Some(field.into()),
         true,
-        query.prepare(&index),
+        prepared_query,
         json! {
             {
                 "histogram": {
