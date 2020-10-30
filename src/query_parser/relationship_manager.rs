@@ -357,14 +357,14 @@ impl RelationshipManager {
 #[cfg(test)]
 mod tests {
     use crate::query_parser::ast::{IndexLink, QualifiedIndex};
-    use crate::query_parser::transformations::relationship_manager::RelationshipManager;
+    use crate::query_parser::relationship_manager::RelationshipManager;
 
     fn case_profile() -> IndexLink {
         let case_profile = IndexLink {
             name: None,
             left_field: Some("cp_id".into()),
             qualified_index: QualifiedIndex {
-                schema: None,
+                schema: Some("public".into()),
                 table: "case_profile".into(),
                 index: "idxcase_profile".into(),
             },
@@ -378,7 +378,7 @@ mod tests {
             name: None,
             left_field: Some("docs_id".into()),
             qualified_index: QualifiedIndex {
-                schema: None,
+                schema: Some("public".into()),
                 table: "docs".into(),
                 index: "idxdocs".into(),
             },
@@ -392,7 +392,7 @@ mod tests {
             name: None,
             left_field: Some("vol_id".into()),
             qualified_index: QualifiedIndex {
-                schema: None,
+                schema: Some("public".into()),
                 table: "main_vol".into(),
                 index: "idxmain_vol".into(),
             },
@@ -406,7 +406,7 @@ mod tests {
             name: None,
             left_field: Some("other_id".into()),
             qualified_index: QualifiedIndex {
-                schema: None,
+                schema: Some("public".into()),
                 table: "main_other".into(),
                 index: "idxmain_other".into(),
             },
@@ -420,7 +420,7 @@ mod tests {
             name: None,
             left_field: Some("ft_id".into()),
             qualified_index: QualifiedIndex {
-                schema: None,
+                schema: Some("public".into()),
                 table: "main_ft".into(),
                 index: "idxmain_ft".into(),
             },
@@ -434,7 +434,7 @@ mod tests {
             name: None,
             left_field: Some("id".into()),
             qualified_index: QualifiedIndex {
-                schema: None,
+                schema: Some("public".into()),
                 table: "main".into(),
                 index: "idxmain".into(),
             },

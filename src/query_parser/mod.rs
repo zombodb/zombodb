@@ -416,6 +416,7 @@ mod tests {
                 right_field: None,
             },
             &Vec::new(),
+            &None,
             HashMap::new(),
         )
     }
@@ -608,16 +609,22 @@ mod tests {
     #[pg_test]
     fn test_expr_with() {
         assert_expr(
-            "foo with bar",
-            With!(String!(Contains, "_", "foo"), String!(Contains, "_", "bar")),
+            "a.foo:foo with a.bar:bar",
+            And!(
+                String!(Contains, "a.bar", "bar"),
+                String!(Contains, "a.foo", "foo")
+            ),
         )
     }
 
     #[pg_test]
     fn test_expr_percent() {
         assert_expr(
-            "foo%bar",
-            With!(String!(Contains, "_", "foo"), String!(Contains, "_", "bar")),
+            "a.foo:foo%a.bar:bar",
+            And!(
+                String!(Contains, "a.bar", "bar"),
+                String!(Contains, "a.foo", "foo")
+            ),
         )
     }
 
@@ -686,11 +693,11 @@ mod tests {
     #[pg_test]
     fn test_expr_precedence() {
         assert_expr(
-            "a or b with c and d and not not (e or f)",
+            "a or a.b:b with a.c:c and d and not not (e or f)",
             Or!(
                 String!(Contains, "_", "a"),
                 And!(
-                    With!(String!(Contains, "_", "b"), String!(Contains, "_", "c")),
+                    And!(String!(Contains, "a.c", "c"), String!(Contains, "a.b", "b")),
                     String!(Contains, "_", "d"),
                     Not!(Not!(Or!(
                         String!(Contains, "_", "e"),
