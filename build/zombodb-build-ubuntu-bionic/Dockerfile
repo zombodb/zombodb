@@ -17,6 +17,12 @@ FROM ubuntu:bionic
 
 LABEL maintainer="ZomboDB, LLC (zombodb@gmail.com)"
 
+ARG USER=docker
+ARG UID=1000
+ARG GID=1000
+RUN useradd -m ${USER} --uid=${UID}
+
+
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -y -qq --fix-missing
 RUN apt-get install -y wget gnupg
@@ -28,8 +34,12 @@ RUN apt-get install -y clang-9 llvm-9 gcc make build-essential libz-dev zlib1g-d
 RUN apt-get install -y postgresql-12 postgresql-server-dev-12
 RUN apt-get install -y postgresql-11 postgresql-server-dev-11
 RUN apt-get install -y postgresql-10 postgresql-server-dev-10
+
+USER ${UID}:${GID}
+WORKDIR /home/${USER}
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
-ENV PATH="/root/.cargo/bin:${PATH}"
+ENV PATH="/home/${USER}/.cargo/bin:${PATH}"
+
 RUN cargo install cargo-pgx
 RUN cargo pgx init \
 	--pg10=/usr/lib/postgresql/10/bin/pg_config \

@@ -1,4 +1,19 @@
 #! /bin/bash
+#
+# Copyright 2018-2020 ZomboDB, LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 
 # set -x
 
@@ -23,6 +38,11 @@ if [ "x${PGVERS}" == "x" ] ; then
 	PGVERS="pg10 pg11 pg12"
 fi
 
+function exit_with_error {
+	echo ERROR:  $1
+	exit 1
+} 
+
 function build_zdb {
 	image=$1
 	BUILDDIR=$2
@@ -31,7 +51,12 @@ function build_zdb {
 	PGVER=$5
 
 	echo "${image}-${PGVER}:  Building docker image..."
-        docker build -t $1 $1 > ${LOGDIR}/${image}-${PGVER}-build.log 2>&1 || exit $?
+        docker build \
+		--build-arg USER=$USER \
+		--build-arg UID=$(id -u) \
+		--build-arg GID=$(id -g) \
+		-t ${image} \
+		${image} > ${LOGDIR}/${image}-${PGVER}-build.log 2>&1 || exit_with_error "${image}-${PGVER}:  image build failed" 
 
 	echo "${image}-${PGVER}:  Copying ZomboDB code"
 	rm -rf ${BUILDDIR} > /dev/null
@@ -46,25 +71,30 @@ function build_zdb {
 		-e pgver=${PGVER} \
 		-w /build/zombodb \
 		-v ${BUILDDIR}:/build \
+		--rm \
+		--user $(id -u):$(id -g) \
 		-t ${image} \
 		bash -c \
 			'PATH=$(dirname $(cat ~/.pgx/config.toml | grep $pgver | cut -f2 -d= | cut -f2 -d\")):$PATH; \
 			PGX_BUILD_VERBOSE=true;\
-			cargo pgx package' > ${LOGDIR}/${image}-${PGVER}-cargo-pgx-package.log 2>&1 || exit $?
+			cargo pgx package' > ${LOGDIR}/${image}-${PGVER}-cargo-pgx-package.log 2>&1 || exit_with_error "${image}-${PGVER}:  build failed" 
 
 	echo "${image}-${PGVER}:  finished"
 }
 
 export -f build_zdb
+export -f exit_with_error
 
-echo "Cloning ZomboDB's ${BRANCH} branch"
-rm -rf ${REPODIR} > /dev/null
-git clone \
-	--depth 1 \
-	--single-branch \
-	--branch ${BRANCH} \
-	https://github.com/zombodb/zombodb.git \
-	${REPODIR} > ${LOGDIR}/git-clone.log 2>&1 || exit $? 
+if [ ! -d "${REPODIR}" ]; then
+	echo "Cloning ZomboDB's ${BRANCH} branch"
+	rm -rf ${REPODIR} > /dev/null
+	git clone \
+		--depth 1 \
+		--single-branch \
+		--branch ${BRANCH} \
+		https://github.com/zombodb/zombodb.git \
+		${REPODIR} > ${LOGDIR}/git-clone.log 2>&1 || exit $? 
+fi
 
 for image in ${IMAGES}; do
 	for pgver in ${PGVERS}; do

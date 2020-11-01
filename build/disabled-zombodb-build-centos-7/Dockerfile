@@ -17,6 +17,12 @@ FROM centos:7
 
 LABEL maintainer="ZomboDB, LLC (zombodb@gmail.com)"
 
+ARG USER=docker
+ARG UID=1000
+ARG GID=1000
+RUN useradd -m ${USER} --uid=${UID}
+
+
 RUN yum install -y epel-release
 RUN yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
 RUN yum install -y centos-release-scl
@@ -28,8 +34,11 @@ RUN yum install -y postgresql10-server postgresql10-devel
 RUN yum groupinstall -y "Development Tools"
 RUN yum install -y openssl-devel
 
-RUN curl https://sh.rustup.rs | bash -s -- -y
-ENV PATH="/root/.cargo/bin:${PATH}"
+USER ${UID}:${GID}
+WORKDIR /home/${USER}
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
+ENV PATH="/home/${USER}/.cargo/bin:${PATH}"
+
 RUN cargo install cargo-pgx
 RUN cargo pgx init \
 	--pg10=/usr/pgsql-10/bin/pg_config \

@@ -17,6 +17,12 @@ FROM fedora:32
 
 LABEL maintainer="ZomboDB, LLC (zombodb@gmail.com)"
 
+ARG USER=docker
+ARG UID=1000
+ARG GID=1000
+RUN useradd -m ${USER} --uid=${UID}
+
+
 RUN dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/F-32-x86_64/pgdg-fedora-repo-latest.noarch.rpm
 RUN dnf install -y postgresql12-server postgresql12-devel
 RUN dnf install -y postgresql11-server postgresql11-devel
@@ -25,9 +31,11 @@ RUN dnf group install -y "Development Tools"
 RUN dnf install -y openssl-devel
 RUN dnf install -y redhat-rpm-config
 
+USER ${UID}:${GID}
+WORKDIR /home/${USER}
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
+ENV PATH="/home/${USER}/.cargo/bin:${PATH}"
 
-RUN curl https://sh.rustup.rs | bash -s -- -y
-ENV PATH="/root/.cargo/bin:${PATH}"
 RUN cargo install cargo-pgx
 RUN cargo pgx init \
 	--pg10=/usr/pgsql-10/bin/pg_config \
