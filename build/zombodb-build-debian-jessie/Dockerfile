@@ -34,7 +34,17 @@ RUN apt-get install -y clang-6.0 llvm-6.0 gcc make build-essential libz-dev zlib
 RUN apt-get install -y postgresql-12 postgresql-server-dev-12
 RUN apt-get install -y postgresql-11 postgresql-server-dev-11
 RUN apt-get install -y postgresql-10 postgresql-server-dev-10
-RUN apt-get install -y ruby ruby-dev rubygems build-essential
+
+## b/c why not! http://www.inanzzz.com/index.php/post/3zs5/installing-ruby-on-debian-8
+RUN apt-get install -y libreadline-dev libgdbm-dev openssl
+RUN mkdir ruby && \
+	cd ruby && \
+	wget https://cache.ruby-lang.org/pub/ruby/2.3/ruby-2.3.0.tar.gz && \
+	tar xvfz ruby-2.3.0.tar.gz && \
+	cd ruby-2.3.0 && \
+	./configure && \
+	make -j64 && \
+	make install
 RUN gem install --no-document fpm
 
 
