@@ -26,7 +26,7 @@ PGVERS=$3
 mkdir -p $LOGDIR > /dev/null
 
 if [ "x${BRANCH}" == "x" ] ; then
-	echo "usage:  ./build.sh <branch_name>"
+	echo "usage:  ./build.sh <branch_name> [image name] [pgver]"
 	exit 1
 fi
 
@@ -64,15 +64,17 @@ function build_zdb {
 	mkdir ${BUILDDIR}
 	cp -Rp ${REPODIR} ${BUILDDIR}
 
+	set -x
 	echo "${image}-${PGVER}:  Building ZomboDB"
 	docker run \
 		-e pgver=${PGVER} \
+		-e image=${image} \
 		-w /build/zombodb \
 		-v ${BUILDDIR}:/build \
 		--rm \
 		--user $(id -u):$(id -g) \
 		-t ${image} \
-		bash -c ./package.sh $pgver deb \
+		bash -c './package.sh $pgver ${image}' \
 			> ${LOGDIR}/${image}-${PGVER}-package.sh.log 2>&1 || exit_with_error "${image}-${PGVER}:  build failed" 
 
 	echo "${image}-${PGVER}:  finished"

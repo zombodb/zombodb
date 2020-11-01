@@ -34,6 +34,9 @@ RUN apt-get install -y gcc make build-essential libz-dev zlib1g-dev strace libss
 RUN apt-get install -y postgresql-12 postgresql-server-dev-12
 RUN apt-get install -y postgresql-11 postgresql-server-dev-11
 RUN apt-get install -y postgresql-10 postgresql-server-dev-10
+RUN apt-get install -y ruby ruby-dev rubygems build-essential
+RUN gem install --no-document fpm
+
 
 USER ${UID}:${GID}
 WORKDIR /home/${USER}

@@ -30,6 +30,9 @@ RUN dnf install -y postgresql10-server postgresql10-devel
 RUN dnf group install -y "Development Tools"
 RUN dnf install -y openssl-devel
 RUN dnf install -y redhat-rpm-config
+RUN dnf install -y ruby-devel gcc make rpm-build libffi-devel
+RUN gem install --no-document fpm
+
 
 USER ${UID}:${GID}
 WORKDIR /home/${USER}

@@ -28,6 +28,9 @@ RUN dnf -qy module disable postgresql
 RUN dnf install -y postgresql12-server postgresql12-devel
 RUN dnf install -y postgresql11-server postgresql11-devel
 RUN dnf install -y postgresql10-server postgresql10-devel
+RUN dnf install -y ruby-devel gcc make rpm-build libffi-devel
+RUN gem install --no-document fpm
+
 
 RUN dnf group install -y "Development Tools"
 RUN dnf install -y openssl-devel

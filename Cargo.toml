@@ -55,38 +55,3 @@ opt-level = 3
 lto = "fat"
 codegen-units = 1
 
-[package.metadata.deb.variants.pg10]
-maintainer = "ZomboDB, LLC <zombodb@gmail.com>"
-copyright = "2020, ZomboDB, LLC <zombodb@gmail.com>"
-extended-description = """\
-Making Postgres and Elasticsearch work together like it's 2020"""
-depends = ""
-section = "utility"
-priority = "optional"
-assets = [
-    ["target/release/zombodb-pg10/**/*", "/", "700"],
-]
-
-[package.metadata.deb.variants.pg11]
-maintainer = "ZomboDB, LLC <zombodb@gmail.com>"
-copyright = "2020, ZomboDB, LLC <zombodb@gmail.com>"
-extended-description = """\
-Making Postgres and Elasticsearch work together like it's 2020"""
-depends = ""
-section = "utility"
-priority = "optional"
-assets = [
-    ["target/release/zombodb-pg11/**/*", "/", "700"],
-]
-
-[package.metadata.deb.variants.pg12]
-maintainer = "ZomboDB, LLC <zombodb@gmail.com>"
-copyright = "2020, ZomboDB, LLC <zombodb@gmail.com>"
-extended-description = """\
-Making Postgres and Elasticsearch work together like it's 2020"""
-depends = ""
-section = "utility"
-priority = "optional"
-assets = [
-    ["target/release/zombodb-pg12/**/*", "/", "700"],
-]
