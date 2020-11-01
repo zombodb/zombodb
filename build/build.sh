@@ -56,15 +56,13 @@ function build_zdb {
 		--build-arg UID=$(id -u) \
 		--build-arg GID=$(id -g) \
 		-t ${image} \
-		${image} > ${LOGDIR}/${image}-${PGVER}-build.log 2>&1 || exit_with_error "${image}-${PGVER}:  image build failed" 
+		${image} \
+			> ${LOGDIR}/${image}-${PGVER}-build.log 2>&1 || exit_with_error "${image}-${PGVER}:  image build failed" 
 
 	echo "${image}-${PGVER}:  Copying ZomboDB code"
 	rm -rf ${BUILDDIR} > /dev/null
 	mkdir ${BUILDDIR}
 	cp -Rp ${REPODIR} ${BUILDDIR}
-
-	echo "${image}-${PGVER}:  Updating cargo-pgx"
-	docker run -t ${image} cargo install cargo-pgx > ${LOGDIR}/${image}-${PGVER}-cargo-install-cargo-pgx.log 2>&1 || exit $? 
 
 	echo "${image}-${PGVER}:  Building ZomboDB"
 	docker run \
@@ -74,10 +72,8 @@ function build_zdb {
 		--rm \
 		--user $(id -u):$(id -g) \
 		-t ${image} \
-		bash -c \
-			'PATH=$(dirname $(cat ~/.pgx/config.toml | grep $pgver | cut -f2 -d= | cut -f2 -d\")):$PATH; \
-			PGX_BUILD_VERBOSE=true;\
-			cargo pgx package' > ${LOGDIR}/${image}-${PGVER}-cargo-pgx-package.log 2>&1 || exit_with_error "${image}-${PGVER}:  build failed" 
+		bash -c ./package.sh $pgver deb \
+			> ${LOGDIR}/${image}-${PGVER}-package.sh.log 2>&1 || exit_with_error "${image}-${PGVER}:  build failed" 
 
 	echo "${image}-${PGVER}:  finished"
 }
