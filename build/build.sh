@@ -64,7 +64,6 @@ function build_zdb {
 	mkdir ${BUILDDIR}
 	cp -Rp ${REPODIR} ${BUILDDIR}
 
-	set -x
 	echo "${image}-${PGVER}:  Building ZomboDB"
 	docker run \
 		-e pgver=${PGVER} \
