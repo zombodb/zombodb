@@ -17,11 +17,10 @@ FROM centos:7
 
 LABEL maintainer="ZomboDB, LLC (zombodb@gmail.com)"
 
+RUN yum install -y epel-release
 RUN yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
 RUN yum install -y centos-release-scl
-RUN yum install -y devtoolset-7 llvm-toolset-7 
-RUN yum install -y llvm-toolset-7-clang-analyzer llvm-toolset-7-clang-tools-extra
-RUN yum install -y epel-release
+RUN yum install -y devtoolset-7 llvm-toolset-7 llvm-toolset-7-clang-*
 RUN yum install -y llvm5.0-devel
 RUN yum install -y postgresql12-server postgresql12-devel
 RUN yum install -y postgresql11-server postgresql11-devel
@@ -36,3 +35,10 @@ RUN cargo pgx init \
 	--pg10=/usr/pgsql-10/bin/pg_config \
 	--pg11=/usr/pgsql-11/bin/pg_config \
 	--pg12=/usr/pgsql-12/bin/pg_config
+ENV LIBCLANG_PATH=/opt/rh/llvm-toolset-7/root/usr/lib64/
+RUN ln -s /opt/rh/llvm-toolset-7/root/usr/lib64/clang/5.0.1/include/stdbool.h /usr/include/stdbool.h
+RUN ln -s /opt/rh/llvm-toolset-7/root/usr/lib64/clang/5.0.1/include/stddef.h /usr/include/stddef.h
+RUN ln -s /opt/rh/llvm-toolset-7/root/usr/lib64/clang/5.0.1/include/stdarg.h /usr/include/stdarg.h
+
+
+

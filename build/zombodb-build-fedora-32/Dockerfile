@@ -21,9 +21,10 @@ RUN dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/F-32-x
 RUN dnf install -y postgresql12-server postgresql12-devel
 RUN dnf install -y postgresql11-server postgresql11-devel
 RUN dnf install -y postgresql10-server postgresql10-devel
-
 RUN dnf group install -y "Development Tools"
 RUN dnf install -y openssl-devel
+RUN dnf install -y redhat-rpm-config
+
 
 RUN curl https://sh.rustup.rs | bash -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
