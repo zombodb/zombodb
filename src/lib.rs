@@ -41,17 +41,8 @@ pub extern "C" fn _PG_fini() {
 
 #[pg_extern]
 fn version() -> &'static str {
-    "5.0"
-}
-
-#[cfg(any(test, feature = "pg_test"))]
-mod tests {
-    use pgx::*;
-
-    #[pg_test]
-    fn test_version() {
-        assert_eq!("5.0", crate::version());
-    }
+    let version = "5.0";
+    version
 }
 
 #[cfg(test)]
