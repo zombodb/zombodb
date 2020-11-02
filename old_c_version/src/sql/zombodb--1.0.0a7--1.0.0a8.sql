@@ -1,1 +1,0 @@
-ALTER FUNCTION define_mapping RENAME TO define_type_mapping;
