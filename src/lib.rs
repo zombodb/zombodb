@@ -41,7 +41,7 @@ pub extern "C" fn _PG_fini() {
 
 #[pg_extern]
 fn version() -> &'static str {
-    let version = "5.0";
+    let version = "3000.0.0-alpha1";
     version
 }
 

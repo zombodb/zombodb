@@ -7,8 +7,6 @@ if [ "x$1" == "x" ]; then
 	exit 1
 fi
 
-set -x
-
 HEAD=$(git rev-parse HEAD)
 VERSION=$1
 
