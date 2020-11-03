@@ -101,3 +101,5 @@ for image in ${IMAGES}; do
 		printf "%s\0%s\0%s\0%s\0%s\0" "${image}" "${BUILDDIR}" "${LOGDIR}" "${REPODIR}" "${pgver}"
 	done
 done | xargs -0 -n 5 -P 64 bash -c 'build_zdb "$@"' --
+
+./collect-artifacts.sh
