@@ -1,7 +1,18 @@
 [![logo](logo.png)](https://www.zombodb.com/) 
 ###### Making Postgres and Elasticsearch work together like it's 2020
 [![Build Status](https://travis-ci.org/zombodb/zombodb.svg?branch=master)](https://travis-ci.com/zombodb/zombodb)
+[![Twitter Follow](https://img.shields.io/twitter/follow/zombodb.svg?style=flat)](https://twitter.com/zombodb)
 
+
+# 🚨 Note 🚨
+
+This is ZomboDB 3000.0.0-**alpha1**.  This represents a year-long rewrite of ZomboDB to Rust.
+
+It is expected that the alpha/beta phase will continue through January 2021.  That said, please
+get started with it today.  Report Issues, provide feedback, and also [sponsors our work](https://github.com/sponsors/eeeebbbbrrrr)!
+
+
+## Readme
 ZomboDB brings powerful text-search and analytics features to Postgres by using Elasticsearch as an index type.  Its comprehensive query language and SQL functions enable new and creative ways to query your relational data.
 
 From a technical perspective, ZomboDB is a 100% native Postgres extension that implements Postgres' Index Access Method API.  As a native Postgres index type, ZomboDB allows you to `CREATE INDEX ... USING zombodb` on your existing Postgres tables.  At that point, ZomboDB takes over and fully manages the remote Elasticsearch index and guarantees transactionally-correct text-search query results.
@@ -21,7 +32,7 @@ ZomboDB allows you to use the power and scalability of Elasticsearch directly fr
  - [Important Things to Know](THINGS-TO-KNOW.md)
  - [Creating Indexes](CREATE-INDEX.md)
  - [Query DSL](QUERY-DSL.md)
- - [Aggregations](AGGREGATIONS.md), [Table Samplers](TABLE-SAMPLERS.md), [Scoring and Highlighting](SCORING-HIGHLIGHTING.md)
+ - [Aggregations](AGGREGATIONS.md), [Scoring and Highlighting](SCORING-HIGHLIGHTING.md)
  - [SQL Functions](SQL-FUNCTIONS.md)
  - [Configuration Settings](CONFIGURATION-SETTINGS.md), [Index Managment](INDEX-MANAGEMENT.md)
  - [Type Mapping](TYPE-MAPPING.md)
@@ -36,6 +47,7 @@ ZomboDB allows you to use the power and scalability of Elasticsearch directly fr
  - Works with current Elasticsearch releases (no plugins required)
  - Query using
     - Elasticsearch's [Query String Syntax](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-syntax)
+    - ZomboDB's [custom query language](QUERY-SYNTAX.md)
     - Raw Elasticsearch QueryDSL JSON
     - ZomboDB's type-safe [query builder SQL syntax](QUERY-DSL.md)
     - Any combination of the above, even in combination with standard SQL
