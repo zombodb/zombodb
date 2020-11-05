@@ -1,0 +1,16 @@
+SELECT * FROM zdb.tally('idxso_posts', 'owner_display_name', '^.*', '', 10, 'reverse_count');
+   term    | count  
+-----------+--------
+           | 154132
+ user1249  |    598
+ user2567  |    513
+ user8685  |    254
+ user4051  |    153
+ user8     |     84
+ user29981 |     79
+ user39685 |     68
+ user23157 |     50
+ sergio    |     48
+ user29079 |     47
+(11 rows)
+

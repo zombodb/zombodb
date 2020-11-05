@@ -1,0 +1,43 @@
+-- SQL
+SELECT id FROM products WHERE (id=1 OR id=2 OR id=3) ORDER BY id;		-- 1, 2, 3 (correct)
+ id 
+----
+  1
+  2
+  3
+(3 rows)
+
+-- zdb
+SELECT id FROM products WHERE products ==> '(id=1 OR id=2 OR id=3)' ORDER BY id;	-- 1, 2, 3 (correct)
+ id 
+----
+  1
+  2
+  3
+(3 rows)
+
+SELECT id FROM products WHERE products ==> '(id=1,id=2,id=3)' ORDER BY id;		-- 1, 2, 3 (correct)
+ id 
+----
+  1
+  2
+  3
+(3 rows)
+
+-- SQL
+SELECT id FROM products WHERE (id=1 AND id=2 AND id=3) ORDER BY id;		        -- empty result set (correct)
+ id 
+----
+(0 rows)
+
+-- zdb
+SELECT id FROM products WHERE products ==> '(id=1 AND id=2 AND id=3)' ORDER BY id;  	-- 1, 2, 3 (wrong)
+ id 
+----
+(0 rows)
+
+SELECT id FROM products WHERE products ==> '(id=1 & id=2 & id=3)' ORDER BY id;		-- 1, 2, 3 (wrong)
+ id 
+----
+(0 rows)
+

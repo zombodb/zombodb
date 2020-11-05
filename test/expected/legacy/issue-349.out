@@ -1,0 +1,69 @@
+create table issue349 (
+  id serial8 not null primary key,
+  data text
+);
+SELECT zdb.define_filter('issue349_ngram_filter', '{
+  "type": "edgeNGram",
+  "min_gram": 3,
+  "max_gram": 8
+}');
+ define_filter 
+---------------
+ 
+(1 row)
+
+SELECT zdb.define_analyzer('issue349_analyzer', '{
+  "type": "custom",
+  "tokenizer": "standard",
+  "filter": ["lowercase", "asciifolding","issue349_ngram_filter"]
+}');
+ define_analyzer 
+-----------------
+ 
+(1 row)
+
+SELECT zdb.define_field_mapping('issue349', 'data', '{
+  "store": false,
+  "type": "text",
+  "fielddata": true,
+  "index_options": "positions",
+  "copy_to": [ "zdb_all" ],
+  "analyzer": "issue349_analyzer",
+  "fields": {
+    "exact": {
+      "type": "keyword"
+    }
+  }
+}');
+ define_field_mapping 
+----------------------
+ 
+(1 row)
+
+create index idxissue349 on issue349 using zombodb ( (issue349.*) );
+insert into issue349 (data) values ('jeffrey bob david eric sam california');
+select * from issue349 where issue349 ==> 'data:jeff';
+ id |                 data                  
+----+---------------------------------------
+  1 | jeffrey bob david eric sam california
+(1 row)
+
+select * from issue349 where issue349 ==> 'data:j*';
+ id |                 data                  
+----+---------------------------------------
+  1 | jeffrey bob david eric sam california
+(1 row)
+
+select * from issue349 where issue349 ==> 'data:jeffrey';
+ id |                 data                  
+----+---------------------------------------
+  1 | jeffrey bob david eric sam california
+(1 row)
+
+select * from issue349 where issue349 ==> 'data:"bob david"';
+ id |                 data                  
+----+---------------------------------------
+  1 | jeffrey bob david eric sam california
+(1 row)
+
+drop table issue349;

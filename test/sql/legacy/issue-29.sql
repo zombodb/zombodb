@@ -1,0 +1,1 @@
+SELECT * FROM zdb.tally('idxso_posts', 'owner_display_name', '^.*', '', 10, 'reverse_count');

@@ -1,0 +1,1 @@
+SELECT * FROM zdb_highlight('so_posts', 'title_and_tags:"with t*"', 'zdb(''so_posts'', ctid)==>''title_and_tags:"with"'' ORDER BY id LIMIT 10');

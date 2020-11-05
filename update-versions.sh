@@ -1,17 +1,20 @@
-#! /bin/bash
+#! /bin/sh
 
-OLD=$1
-NEW=$2
+# requires: https://github.com/sunng87/cargo-release
 
-if [ "${OLD}" == "" ] || [ "${NEW}" == "" ] ; then
-	echo Usage: ./update-versions.sh OLDVER NEWVER
+if [ "x$1" == "x" ]; then
+	echo "usage:  ./update-verions.sh <VERSION>"
 	exit 1
 fi
-for f in .gitignore src/c/zombodb.h zombodb.control ; do
-	echo Processing: $f
-	sed -i.bak s/${OLD}/${NEW}/g $f
-done
 
-SQL=src/sql/zombodb--${OLD}--${NEW}.sql
-echo "-- no sql changes" > ${SQL}
-git add ${SQL}
+HEAD=$(git rev-parse HEAD)
+VERSION=$1
+
+cargo release --workspace --skip-publish --skip-push --skip-tag --no-dev-version ${VERSION} || exit 1
+git reset --soft ${HEAD} || exit 1 
+git reset HEAD || exit 1
+sed -i '' -e "s/^version = .*$/version = \"${VERSION}\"/" ./Cargo.toml || exit 1
+sed -i '' -e "s/^default_version = .*$/default_version = '${VERSION}'/" ./zombodb.control || exit 1
+sed -i '' -e "s/    let version = .*$/    let version = \"${VERSION}\";/" ./src/lib.rs || exit 1
+
+

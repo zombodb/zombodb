@@ -8,8 +8,7 @@ If you instead prefer to install ZomboDB from source, please read the [SOURCE-IN
 
 ## Prerequisites
 
-- Postgres 10.x or 11.x installed
-- libcurl >= 7.28.0 installed
+- Postgres 10.x, 11.x, 12.x installed
 - A 64bit Intel Architecture
 
 ### Installation on CentOS/RHEL
@@ -17,7 +16,7 @@ If you instead prefer to install ZomboDB from source, please read the [SOURCE-IN
 Download the proper `.rpm` package for your CentOS/RHEL distro from https://www.zombodb.com/${your_download_key}/, and simply run:
 
 ```shell
-$ rpm -Uvh zombodb_centos_7_pg10-1.0.0_x86_64.rpm
+$ rpm -Uvh zombodb_centos-8_pg10-3000.0.0-alpha1_1.x86_64.rpm
 ```
 
 ### Installation on Ubuntu/Debian
@@ -25,7 +24,7 @@ $ rpm -Uvh zombodb_centos_7_pg10-1.0.0_x86_64.rpm
 Download the proper `.deb` package for your Ubuntu/Debian distro from https://www.zombodb.com/${your_download_key}/, and simply run:
 
 ```shel
-$ dpkg -i zombodb_ubuntu_xenial_pg10-1.0.0_amd64.deb
+$ dpkg -i zombodb_ubuntu-focal_pg10-3000.0.0-alpha1_amd64.deb
 ```
 
 ### Installation on MacOS
