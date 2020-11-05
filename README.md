@@ -61,11 +61,10 @@ These limitations may be addressed in future versions of ZomboDB.
 
 ## System Requirements
  
- Product       | Version 
+ Product      | Version 
 ---           | ---      
-Postgres      | 10.x, 11.x
-Elasticsearch | 5.6.x, 6.x
-libcurl       | >=7.28.0
+Postgres      | 10.x, 11.x, 12.x
+Elasticsearch | 7.x
 
 
 ## Sponsorship and Downloads

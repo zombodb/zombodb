@@ -23,6 +23,11 @@ BRANCH=$1
 IMAGES=$2
 PGVERS=$3
 
+if [ "x${CPUS}" == "x" ] ; then
+  CPUS=64
+  echo "Defauling number of CPUs to 64"
+fi
+
 mkdir -p $LOGDIR > /dev/null
 
 if [ "x${BRANCH}" == "x" ] ; then
@@ -100,6 +105,6 @@ for image in ${IMAGES}; do
         	mkdir -p ${BUILDDIR} > /dev/null || exit 1
 		printf "%s\0%s\0%s\0%s\0%s\0" "${image}" "${BUILDDIR}" "${LOGDIR}" "${REPODIR}" "${pgver}"
 	done
-done | xargs -0 -n 5 -P 64 bash -c 'build_zdb "$@"' --
+done | xargs -0 -n 5 -P ${CPUS} bash -c 'build_zdb "$@"' --
 
 ./collect-artifacts.sh
