@@ -1,0 +1,15 @@
+select zdb.score(ctid) <> 1 from so_posts where so_posts ==> dsl.limit(10, 'beer');
+ ?column? 
+----------
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+(10 rows)
+

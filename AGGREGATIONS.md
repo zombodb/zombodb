@@ -618,5 +618,3 @@ RETURNS TABLE (
 ```
 
 Similar to `zdb.top_hits()` above, but returns the Elasticsearch document `_id` value for each hit rather than the corresponding Postgres `ctid` value.
-
-This function is designed to be used with ZomboDB's [low-level-api](LLAPI.md) to aid in searching low-level indices, as normal SELECT statements don't return results from such indices.

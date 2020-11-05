@@ -1,0 +1,57 @@
+[package]
+name = "zombodb"
+description = "Making Postgres and Elasticsearch work together like it's 2020"
+version = "3000.0.0-alpha1"
+edition = "2018"
+build = "build.rs"
+readme = "README.md"
+license = "LICENSE.md"
+
+[lib]
+crate-type = [ "cdylib" ]
+
+[features]
+default = [ "pg12" ]
+pg10 = [ "pgx/pg10" ]
+pg11 = [ "pgx/pg11" ]
+pg12 = [ "pgx/pg12" ]
+pg_test = [ ]
+
+[dependencies]
+chrono = "0.4.19"
+crossbeam-channel = "0.4.2"
+indexmap = "1.6.0"
+lalrpop-util = "0.19.0"
+lazy_static = "1.4.0"
+levenshtein = "1.0.4"
+memoffset = "0.5.3"
+num_cpus = "1.12.0"
+pathfinding = "2.0.4"
+pgx = { git = "https://github.com/zombodb/pgx", branch = "develop" }
+pgx-macros = { git = "https://github.com/zombodb/pgx", branch = "develop" }
+regex = "1.3.9"
+reqwest = "0.9.24"
+serde = { version = "1.0.104", features = [ "derive" ] }
+serde_json = "1.0.46"
+sqlformat = "0.1.1"
+unescape = "0.1.0"
+url = "2.1.1"
+
+[build-dependencies]
+lalrpop = { version = "0.19.0", features = [ "lexer" ] }
+
+[dev-dependencies]
+pgx-tests = { git = "https://github.com/zombodb/pgx", branch = "develop" }
+libc = "0.2.74"
+
+[profile.dev]
+panic = "unwind"
+debug = true
+opt-level = 0
+
+[profile.release]
+panic = "unwind"
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+

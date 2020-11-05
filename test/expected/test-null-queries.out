@@ -1,0 +1,14 @@
+select dsl.geo_shape('field', null, 'INTERSECTS');
+ geo_shape 
+-----------
+ 
+(1 row)
+
+select dsl.geo_polygon('field', null);
+ERROR:  null points are not allowed
+select dsl.geo_bounding_box('field', null);
+ geo_bounding_box 
+------------------
+ 
+(1 row)
+

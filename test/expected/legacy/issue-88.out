@@ -1,0 +1,8 @@
+SELECT * FROM zdb.range('idxso_posts',  'favorite_count', '', '[{"from":10},{"key":"bob","from":100,"to":200},{"to":1000}]') ORDER BY doc_count DESC;
+   key    | from |  to  | doc_count 
+----------+------+------+-----------
+ *-1000.0 |      | 1000 |     20845
+ 10.0-*   |   10 |      |      1540
+ bob      |  100 |  200 |        29
+(3 rows)
+

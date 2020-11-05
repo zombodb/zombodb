@@ -1,0 +1,1 @@
+SELECT * FROM zdb.tally('idxso_posts', 'tags', '^.*', '', 12, 'reverse_count');

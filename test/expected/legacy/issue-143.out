@@ -1,0 +1,6 @@
+SELECT zdb. count('idxso_posts', '({"term": {"body": "java"}})');
+ count 
+-------
+ 13310
+(1 row)
+
