@@ -57,7 +57,7 @@ pub fn find_link_for_field(
         let relation = if index == root_index {
             // if we can't open the root_index, that's okay, we'll just not do anything about that
             // this should only happen during our unit tests where we don't specify a valid table/index
-            match index.open_index() {
+            match index.open_table() {
                 Ok(relation) => Some(relation),
                 Err(_) => None,
             }

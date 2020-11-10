@@ -14,7 +14,8 @@ mod dsl {
             {
                 "prefix": {
                     field: {
-                        "value": value
+                        "value": value,
+                        "rewrite": "constant_score"
                     }
                 }
             }
@@ -37,7 +38,7 @@ mod tests {
             dsl,
             json! {
                 {
-                    "prefix": {"fieldname": {"value": "te"}}
+                    "prefix": {"fieldname": {"value": "te", "rewrite": "constant_score"}}
                 }
             }
         );

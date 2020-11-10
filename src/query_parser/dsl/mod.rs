@@ -234,7 +234,7 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
             }
         }
         Term::Prefix(s, b) => {
-            json! { { "prefix": { field.field_name(): { "value": s[..s.len()-1], "boost": b.unwrap_or(1.0) } } } }
+            json! { { "prefix": { field.field_name(): { "value": s[..s.len()-1], "rewrite": "constant_score", "boost": b.unwrap_or(1.0) } } } }
         }
         Term::PhrasePrefix(s, b) => {
             json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0) } } } }
