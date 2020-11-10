@@ -209,7 +209,7 @@ impl<'input> Term<'input> {
                 if Term::is_prefix_wildcard(s) {
                     Term::PhrasePrefix(s, b)
                 } else {
-                    Term::Phrase(s, b)
+                    Term::PhraseWithWildcard(s, b)
                 }
             } else if is_wildcard {
                 if Term::is_prefix_wildcard(s) {

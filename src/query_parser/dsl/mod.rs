@@ -204,7 +204,7 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
         }
         Term::String(s, b) => {
             if s.contains('\\') {
-                let s = unescape::unescape(s);
+                let s = unescape(s);
                 if is_span {
                     return json! { { "span_term": { field.field_name(): { "value": s, "boost": b.unwrap_or(1.0) } } } };
                 } else {
@@ -218,7 +218,12 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
                 }
             }
         }
-        Term::Phrase(s, b) | Term::PhraseWithWildcard(s, b) => {
+        Term::PhraseWithWildcard(s, b) => match ProximityTerm::make_proximity_chain(field, s, *b) {
+            ProximityTerm::ProximityChain(v) => proximity_chain(field, &v),
+            other => eq(field, &other.to_term(), true),
+        },
+
+        Term::Phrase(s, b) => {
             if is_span {
                 match ProximityTerm::make_proximity_chain(field, s, *b) {
                     ProximityTerm::ProximityChain(v) => proximity_chain(field, &v),
@@ -226,7 +231,7 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
                 }
             } else {
                 if s.contains('\\') {
-                    let s = unescape::unescape(s);
+                    let s = unescape(s);
                     json! { { "match_phrase": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
                 } else {
                     json! { { "match_phrase": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
@@ -234,10 +239,21 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
             }
         }
         Term::Prefix(s, b) => {
-            json! { { "prefix": { field.field_name(): { "value": s[..s.len()-1], "rewrite": "constant_score", "boost": b.unwrap_or(1.0) } } } }
+            if s.contains('\\') {
+                let s = unescape(s);
+
+                json! { { "prefix": { field.field_name(): { "value": s[..s.len()-1], "rewrite": "constant_score", "boost": b.unwrap_or(1.0) } } } }
+            } else {
+                json! { { "prefix": { field.field_name(): { "value": s[..s.len()-1], "rewrite": "constant_score", "boost": b.unwrap_or(1.0) } } } }
+            }
         }
         Term::PhrasePrefix(s, b) => {
-            json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0) } } } }
+            if s.contains('\\') {
+                let s = unescape(s);
+                json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0) } } } }
+            } else {
+                json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0) } } } }
+            }
         }
         Term::Wildcard(w, b) => {
             json! { { "wildcard": { field.field_name(): { "value": w, "boost": b.unwrap_or(1.0) } } } }
@@ -354,4 +370,17 @@ fn regex(field: &QualifiedField, term: &Term) -> serde_json::Value {
         }
         _ => panic!("unsupported term for a regex query: {}", term),
     }
+}
+
+fn unescape(input: &str) -> String {
+    let mut s = String::with_capacity(input.len());
+    let mut prev_c = '\0';
+    for c in input.chars() {
+        if (c == '\\' && prev_c == '\\') || c != '\\' {
+            s.push(c);
+        }
+
+        prev_c = c;
+    }
+    s
 }
