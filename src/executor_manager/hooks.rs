@@ -37,7 +37,7 @@ impl PgHooks for ZDBHooks {
         params: PgBox<pg_sys::ParamListInfoData>,
         query_env: PgBox<pg_sys::QueryEnvironment>,
         dest: PgBox<pg_sys::DestReceiver>,
-        completion_tag: *mut i8,
+        completion_tag: *mut pg_sys::QueryCompletion,
         prev_hook: fn(
             PgBox<pg_sys::PlannedStmt>,
             &std::ffi::CStr,
@@ -45,7 +45,7 @@ impl PgHooks for ZDBHooks {
             PgBox<pg_sys::ParamListInfoData>,
             PgBox<pg_sys::QueryEnvironment>,
             PgBox<pg_sys::DestReceiver>,
-            *mut i8,
+            *mut pg_sys::QueryCompletion,
         ) -> HookResult<()>,
     ) -> HookResult<()> {
         let utility_statement = PgBox::from_pg(pstmt.utilityStmt);
@@ -102,7 +102,7 @@ impl PgHooks for ZDBHooks {
                         std::ptr::null_mut(),
                     );
 
-                    #[cfg(any(feature = "pg11", feature = "pg12"))]
+                    #[cfg(any(feature = "pg11", feature = "pg12", feature = "pg13"))]
                     let relid = pg_sys::RangeVarGetRelidExtended(
                         rename.relation,
                         pg_sys::AccessShareLock as pg_sys::LOCKMODE,
@@ -195,16 +195,18 @@ impl PgHooks for ZDBHooks {
     fn planner(
         &mut self,
         parse: PgBox<pg_sys::Query>,
+        query_string: *const std::os::raw::c_char,
         cursor_options: i32,
         bound_params: PgBox<pg_sys::ParamListInfoData>,
         prev_hook: fn(
             PgBox<pg_sys::Query>,
+            query_string: *const std::os::raw::c_char,
             i32,
             PgBox<pg_sys::ParamListInfoData>,
         ) -> HookResult<*mut pg_sys::PlannedStmt>,
     ) -> HookResult<*mut pg_sys::PlannedStmt> {
         PlanWalker::new().perform(&parse);
-        let result = prev_hook(parse, cursor_options, bound_params);
+        let result = prev_hook(parse, query_string, cursor_options, bound_params);
 
         unsafe {
             rewrite_opexrs(result.inner.as_mut().unwrap());

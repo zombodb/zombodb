@@ -1,3 +1,4 @@
+use pgx::pg_sys::AsPgCStr;
 use pgx::*;
 use serde_json::Value;
 
@@ -24,7 +25,7 @@ pub fn find_zdb_index(heap_relation: &PgRelation) -> PgRelation {
 pub fn is_zdb_index(index: &PgRelation) -> bool {
     #[cfg(any(feature = "pg10", feature = "pg11"))]
     let routine = index.rd_amroutine;
-    #[cfg(feature = "pg12")]
+    #[cfg(any(feature = "pg12", feature = "pg13"))]
     let routine = index.rd_indam;
 
     if routine.is_null() {
@@ -68,9 +69,9 @@ pub fn lookup_function(
 ) -> Option<pg_sys::Oid> {
     let mut list = PgList::new();
     for part in name_parts {
-        list.push(
-            PgNodeFactory::makeString(PgMemoryContexts::CurrentMemoryContext, part).into_pg(),
-        );
+        unsafe {
+            list.push(pg_sys::makeString(part.as_pg_cstr()));
+        }
     }
 
     let (num_args, args_ptr) = match arg_oids {
