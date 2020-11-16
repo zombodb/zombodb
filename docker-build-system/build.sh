@@ -40,7 +40,7 @@ if [ "x${IMAGES}" == "x" ] ; then
 fi
 
 if [ "x${PGVERS}" == "x" ] ; then
-	PGVERS="pg10 pg11 pg12"
+	PGVERS="pg10 pg11 pg12 pg13"
 fi
 
 function exit_with_error {

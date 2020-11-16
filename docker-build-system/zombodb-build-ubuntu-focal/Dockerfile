@@ -31,9 +31,10 @@ RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-k
 RUN apt-get update -y --fix-missing
 RUN apt-get install -y curl
 RUN apt-get install -y clang-10 llvm-10 clang gcc make build-essential libz-dev zlib1g-dev strace libssl-dev pkg-config
-RUN apt-get install -y postgresql-12 postgresql-server-dev-12
-RUN apt-get install -y postgresql-11 postgresql-server-dev-11
 RUN apt-get install -y postgresql-10 postgresql-server-dev-10
+RUN apt-get install -y postgresql-11 postgresql-server-dev-11
+RUN apt-get install -y postgresql-12 postgresql-server-dev-12
+RUN apt-get install -y postgresql-13 postgresql-server-dev-13
 RUN apt-get install -y ruby ruby-dev rubygems build-essential
 RUN gem install --no-document fpm
 
@@ -47,4 +48,5 @@ RUN cargo install cargo-pgx
 RUN cargo pgx init \
 	--pg10=/usr/lib/postgresql/10/bin/pg_config \
 	--pg11=/usr/lib/postgresql/11/bin/pg_config \
-	--pg12=/usr/lib/postgresql/12/bin/pg_config
+	--pg12=/usr/lib/postgresql/12/bin/pg_config \
+	--pg13=/usr/lib/postgresql/13/bin/pg_config

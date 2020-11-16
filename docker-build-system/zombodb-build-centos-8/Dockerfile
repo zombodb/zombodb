@@ -25,9 +25,10 @@ RUN useradd -m ${USER} --uid=${UID}
 
 RUN dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm
 RUN dnf -qy module disable postgresql
-RUN dnf install -y postgresql12-server postgresql12-devel
-RUN dnf install -y postgresql11-server postgresql11-devel
 RUN dnf install -y postgresql10-server postgresql10-devel
+RUN dnf install -y postgresql11-server postgresql11-devel
+RUN dnf install -y postgresql12-server postgresql12-devel
+RUN dnf install -y postgresql13-server postgresql13-devel
 RUN dnf install -y ruby-devel gcc make rpm-build libffi-devel
 RUN gem install --no-document fpm
 
@@ -44,4 +45,5 @@ RUN cargo install cargo-pgx
 RUN cargo pgx init \
 	--pg10=/usr/pgsql-10/bin/pg_config \
 	--pg11=/usr/pgsql-11/bin/pg_config \
-	--pg12=/usr/pgsql-12/bin/pg_config
+	--pg12=/usr/pgsql-12/bin/pg_config \
+	--pg13=/usr/pgsql-13/bin/pg_config
