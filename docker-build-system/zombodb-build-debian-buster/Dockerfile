@@ -28,6 +28,7 @@ RUN apt-get update -y -qq --fix-missing
 RUN apt-get install -y wget gnupg
 RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ buster-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
 RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
+RUN apt update
 RUN apt-get update -y --fix-missing
 RUN apt-get install -y curl
 RUN apt-get install -y gcc make build-essential libz-dev zlib1g-dev strace libssl-dev pkg-config
