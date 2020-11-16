@@ -53,7 +53,10 @@ cargo pgx package || exit $?
 # cd into the package directory
 #
 BUILDDIR=`pwd`
-cd target/release/zombodb-${PGVER}
+cd target/release/zombodb-${PGVER} || exit $?
+
+# strip the binaries to make them smaller
+find ./ -name "*.so" -exec strip {} \;
 
 #
 # then use 'fpm' to build either a .deb or .rpm
