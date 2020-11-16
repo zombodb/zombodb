@@ -65,7 +65,7 @@ if [ "${DEBRPM}" == "deb" ]; then
 	fpm \
 		-s dir \
 		-t deb \
-		-n zombodb \
+		-n zombodb-${PGVER} \
 		-v ${VERSION} \
 		--deb-no-default-config-files \
 		-p ${BUILDDIR}/target/release/zombodb_${OSNAME}_${PGVER}-${VERSION}_amd64.deb \
@@ -76,7 +76,7 @@ elif [ "${DEBRPM}" == "rpm" ]; then
 	fpm \
 		-s dir \
 		-t rpm \
-		-n zombodb \
+		-n zombodb-${PGVER} \
 		-v ${VERSION} \
 		--rpm-os linux \
 		-p ${BUILDDIR}/target/release/zombodb_${OSNAME}_${PGVER}-${VERSION}_1.x86_64.rpm \
