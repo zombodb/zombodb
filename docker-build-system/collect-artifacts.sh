@@ -1,7 +1,7 @@
 #! /bin/bash
 
 mkdir -p target/artifacts
-for f in $(find target -name "*.deb") $(find target -name "*.rpm"); do
+for f in $(find target -name "*.deb") $(find target -name "*.rpm") $(find target -name "*.apk"); do
 	cp $f target/artifacts
 done
 
