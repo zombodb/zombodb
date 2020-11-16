@@ -78,7 +78,7 @@ function build_zdb {
 		--rm \
 		--user $(id -u):$(id -g) \
 		-t ${image} \
-		bash -c './package.sh $pgver ${image}' \
+		bash -c './docker-build-system/package.sh $pgver ${image}' \
 			> ${LOGDIR}/${image}-${PGVER}-package.sh.log 2>&1 || exit_with_error "${image}-${PGVER}:  build failed" 
 
 	echo "${image}-${PGVER}:  finished"
