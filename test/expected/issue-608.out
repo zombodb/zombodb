@@ -1,0 +1,29 @@
+CREATE TABLE issue606 (id serial8, b boolean, t text);
+CREATE INDEX idxissue606 ON issue606 USING zombodb ((issue606.*));
+INSERT INTO issue606 (b, t) VALUES (true, 'TRUE');
+INSERT INTO issue606 (b, t) VALUES (false, 'FALSE');
+SELECT * FROM issue606 WHERE issue606 ==> 'b: TRUE';
+ id | b |  t   
+----+---+------
+  1 | t | TRUE
+(1 row)
+
+SELECT * FROM issue606 WHERE issue606 ==> 'b: FALSE';
+ id | b |   t   
+----+---+-------
+  2 | f | FALSE
+(1 row)
+
+SELECT * FROM issue606 WHERE issue606 ==> 't: "TRUE"';
+ id | b |  t   
+----+---+------
+  1 | t | TRUE
+(1 row)
+
+SELECT * FROM issue606 WHERE issue606 ==> 't: "FALSE"';
+ id | b |   t   
+----+---+-------
+  2 | f | FALSE
+(1 row)
+
+DROP TABLE issue606;
