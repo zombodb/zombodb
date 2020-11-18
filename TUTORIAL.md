@@ -7,7 +7,7 @@ Since ZomboDB is an actual Postgres index type, creating and querying its indice
 This guide intends to demonstrate the basics using `psql`.  A few assumptions I'm making about you are:
 
  - You have a functional Postgres 10 Server
- - You have a functional Elasticsearch 5.6+ cluster (even if just one node)
+ - You have a functional Elasticsearch 7.x cluster (even if just one node)
  - You're familiar with Postgres and `psql`
  - You're familiar with Elasticsearch on at least a high-level
 
@@ -134,10 +134,6 @@ We've also specified the URL to our Elasticsearch cluster (`WITH (url='...')`).
 
 When we ran `CREATE INDEX` not only did we create an index within Postgres, we also created one within Elasticsearch.  
 
-The naming convention for Elasticsearch indices is `<db>.<schema>.<table>.<index>`, so in our case, the resulting Elasticsearch index is named `tutorial.public.products.idxproducts`.
-
-Within the Elasticsearch index there is one type named `doc`.  It represents the actual data for the index.  
-
 An Elasticsearch type mapping was automatically generated based on the structure of the `products` table as well.
 
 Lets move on to querying...
@@ -158,7 +154,7 @@ A typical query might be:
 
 ```sql
 tutorial=# 
-SELECT * FROM products WHERE products ==> 'sports box';
+SELECT * FROM products WHERE products ==> 'sports, box';
  id |   name   |           keywords            |         short_summary          |                                  long_description                                   | price | inventory_count | discontinued 
 ----+----------+-------------------------------+--------------------------------+-------------------------------------------------------------------------------------+-------+-----------------+--------------
   4 | Box      | {wooden,box,"negative space"} | Just an empty box made of wood | A wooden container that will eventually rot away.  Put stuff it in (but not a cat). | 17000 |               0 | t
@@ -172,7 +168,7 @@ And its query plan is:
 
 ```sql
 tutorial=# 
- EXPLAIN SELECT * FROM products WHERE products ==> 'sports or box';
+ EXPLAIN SELECT * FROM products WHERE products ==> 'sports, box';
                                   QUERY PLAN                                  
 ------------------------------------------------------------------------------
  Index Scan using idxproducts on products  (cost=0.00..4.06 rows=4 width=153)
@@ -182,7 +178,7 @@ tutorial=#
 tutorial=# 
 ```
 
-From here, it's just a matter of coming up with a full-text query to answer your question.  See the [Query Syntax documentation](QUERY-DSL.md) for details on what the full-text query syntax can do.
+From here, it's just a matter of coming up with a full-text query to answer your question.  See the [Query Syntax documentation](QUERY-SYNTAX.md) or the [DSL Query Builder documenation](QUERY-DSL.md) for details on what the full-text query syntax can do.
 
 
 ## Summary

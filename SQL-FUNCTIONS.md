@@ -45,21 +45,26 @@ For example, this returns the Elasticsearch cluster information:
 
 ```sql
 SELECT zdb.request('idxproducts', '/');
-                      request                      
----------------------------------------------------
- {                                                +
-     "name": "kS80VFC",                           +
-     "tagline": "You Know, for Search",           +
-     "version": {                                 +
-         "number": "5.6.4",                       +
-         "build_date": "2017-10-31T18:55:38.105Z",+
-         "build_hash": "8bbedf5",                 +
-         "build_snapshot": false,                 +
-         "lucene_version": "6.6.1"                +
-     },                                           +
-     "cluster_name": "test",                      +
-     "cluster_uuid": "xzl4DIe0TEushekzhQxVYg"     +
- }
+                            request                             
+----------------------------------------------------------------
+ {                                                             +
+   "name" : "emac16.lan",                                      +
+   "cluster_name" : "elasticsearch",                           +
+   "cluster_uuid" : "HPxSF2doQy-KHFfFKFPEZQ",                  +
+   "version" : {                                               +
+     "number" : "7.9.0",                                       +
+     "build_flavor" : "default",                               +
+     "build_type" : "tar",                                     +
+     "build_hash" : "a479a2a7fce0389512d6a9361301708b92dff667",+
+     "build_date" : "2020-08-11T21:36:48.204330Z",             +
+     "build_snapshot" : false,                                 +
+     "lucene_version" : "8.6.0",                               +
+     "minimum_wire_compatibility_version" : "6.8.0",           +
+     "minimum_index_compatibility_version" : "6.0.0-beta1"     +
+   },                                                          +
+   "tagline" : "You Know, for Search"                          +
+ }                                                             +
+ 
 (1 row)
 ```
 
