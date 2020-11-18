@@ -75,7 +75,7 @@ These limitations may be addressed in future versions of ZomboDB.
  
  Product      | Version 
 ---           | ---      
-Postgres      | 10.x, 11.x, 12.x
+Postgres      | 10.x, 11.x, 12.x, 13.x
 Elasticsearch | 7.x
 
 
@@ -146,15 +146,16 @@ SELECT *
 
 ## Older Versions
 
-This version of ZomboDB supports Postgres 10 and 11 and doesn't require an Elasticsearch plugin.  
+ZomboDB 3000 supports Postgres 10, 11, 12, 13 and doesn't require an Elasticsearch plugin.  
 
-Previous versions that support Postgres <=9.5, and require an Elasticsearch plugin, are still available, from these branches:
+Previous versions that support Postgres various versions of Postgres are are still available in source form, from these branches:
 
-- [Support for Elasticsearch 5.6](https://github.com/zombodb/zombodb/tree/master-es5.6) (active)
+- [Support for Elasticsearch 6.x](https://github.com/zombodb/zombodb/tree/v10-1.0.3) (unsupported)
+- [Support for Elasticsearch 5.6](https://github.com/zombodb/zombodb/tree/master-es5.6) (unsupported)
 - [Support for Elasticsearch 2.4](https://github.com/zombodb/zombodb/tree/master-es2.4) (unsupported)
 - [Support for Elasticsearch 1.7](https://github.com/zombodb/zombodb/tree/master-es1.7) (unsupported)
 
-Commerical support for all versions of ZomboDB is available by [contacting ZomboDB, LLC](https://www.zombodb.com/services/).
+Commercial support for all versions of ZomboDB is available by [contacting ZomboDB, LLC](https://www.zombodb.com/services/).
 
 
  
