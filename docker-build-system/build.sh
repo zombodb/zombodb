@@ -114,7 +114,7 @@ for image in ${IMAGES}; do
 
     mkdir -p ${BUILDDIR} > /dev/null || exit 1
 		printf "%s\0%s\0%s\0%s\0" "${image}" "${BUILDDIR}" "${LOGDIR}" "${REPODIR}"
-done | xargs -0 -n 4 -P ${CPUS} bash -c 'build_zdb "$@"' --
+done | xargs -0 -n 4 -P ${CPUS} bash -c 'build_docker_image "$@"' --
 
 for image in ${IMAGES}; do
 	for pgver in ${PGVERS}; do
