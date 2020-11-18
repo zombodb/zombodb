@@ -46,7 +46,7 @@ ZomboDB allows you to use the power and scalability of Elasticsearch directly fr
  - Managed and queried via standard SQL
  - Works with current Elasticsearch releases (no plugins required)
  - Query using
-    - Elasticsearch's [Query String Syntax](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-syntax)
+    - Elasticsearch's [Query String Syntax](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-syntax) via `dsl.query_string()`
     - ZomboDB's [custom query language](QUERY-SYNTAX.md)
     - Raw Elasticsearch QueryDSL JSON
     - ZomboDB's type-safe [query builder SQL syntax](QUERY-DSL.md)
