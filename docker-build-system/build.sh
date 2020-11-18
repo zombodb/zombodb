@@ -62,7 +62,7 @@ function build_docker_image {
 		--build-arg GID=$(id -g) \
 		-t ${image} \
 		${image} \
-			> ${LOGDIR}/${image}-${PGVER}-build.log 2>&1 || exit_with_error "${image}-${PGVER}:  image build failed"
+			> ${LOGDIR}/${image}-build.log 2>&1 || exit_with_error "${image}-${PGVER}:  image build failed"
 }
 
 function build_zdb {
