@@ -360,6 +360,19 @@ fn index_options(index_relation: PgRelation) -> Option<Vec<String>> {
     ZDBIndexOptions::from(&index_relation).links().clone()
 }
 
+#[pg_extern(immutable, parallel_safe)]
+fn index_field_lists(
+    index_relation: PgRelation,
+) -> impl std::iter::Iterator<Item = (name!(fieldname, String), name!(fields, Vec<String>))> {
+    let field_lists = ZDBIndexOptionsInternal::from(&index_relation)
+        .field_lists()
+        .unwrap_or_default();
+
+    field_lists
+        .into_iter()
+        .map(|(k, v)| (k, v.into_iter().map(|f| f.field_name()).collect()))
+}
+
 static mut RELOPT_KIND_ZDB: pg_sys::relopt_kind = 0;
 
 #[pg_guard]

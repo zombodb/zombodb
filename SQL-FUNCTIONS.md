@@ -148,6 +148,24 @@ SELECT zdb.index_type_name('idxproducts');
 
 ---
 
+FUNCTION zdb.index_field_lists(index_relation regclass) RETURNS TABLE ("fieldname" text, "fields" text[])
+
+Returns a resultset describing all the field lists that are defined for the specified index.
+
+Example:
+
+```sql
+SELECT * FROM zdb_get_index_field_lists('idxsome_index');
+    fieldname     |           fields
+------------------+----------------------------
+ title_and_author | {title,author}
+ hashes           | {sha1,md5}
+(2 rows)
+```
+
+---
+
+
 ```sql
 FUNCTION zdb.index_mapping(index regclass) RETURNS json
 ```
