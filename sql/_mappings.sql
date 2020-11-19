@@ -406,6 +406,7 @@ INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('zdb.phrase', '{
   "type": "text",
   "copy_to": "zdb_all",
+  "fielddata": true,
   "analyzer": "phrase"
 }', true);
 
@@ -413,6 +414,7 @@ INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('zdb.phrase_array', '{
   "type": "text",
   "copy_to": "zdb_all",
+  "fielddata": true,
   "analyzer": "phrase"
 }', true);
 
