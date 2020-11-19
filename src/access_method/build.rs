@@ -11,6 +11,7 @@ struct BuildState<'a> {
     bulk: &'a mut ElasticsearchBulkRequest,
     tupdesc: &'a PgTupleDesc<'a>,
     attributes: Vec<CategorizedAttribute<'a>>,
+    memcxt: PgMemoryContexts,
 }
 
 impl<'a> BuildState<'a> {
@@ -23,6 +24,7 @@ impl<'a> BuildState<'a> {
             bulk,
             tupdesc,
             attributes,
+            memcxt: PgMemoryContexts::new("zombodb build context"),
         }
     }
 }
@@ -219,6 +221,8 @@ unsafe extern "C" fn build_callback_internal(
 
     let state = (state as *mut BuildState).as_mut().unwrap();
 
+    let old_context = state.memcxt.set_as_current();
+
     let values = std::slice::from_raw_parts(values, 1);
     let builder = row_to_json(values[0], &state.tupdesc, &state.attributes);
 
@@ -232,6 +236,9 @@ unsafe extern "C" fn build_callback_internal(
         .bulk
         .insert(ctid, cmin, cmax, xmin, xmax, builder)
         .expect("Unable to send tuple for insert");
+
+    old_context.set_as_current();
+    state.memcxt.reset();
 }
 
 unsafe fn row_to_json<'a>(
