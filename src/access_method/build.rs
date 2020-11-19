@@ -191,8 +191,6 @@ unsafe extern "C" fn build_callback(
     _tuple_is_alive: bool,
     state: *mut std::os::raw::c_void,
 ) {
-    check_for_interrupts!();
-
     let htup = htup.as_ref().unwrap();
 
     build_callback_internal(htup.t_self, values, state);
@@ -208,8 +206,6 @@ unsafe extern "C" fn build_callback(
     _tuple_is_alive: bool,
     state: *mut std::os::raw::c_void,
 ) {
-    check_for_interrupts!();
-
     build_callback_internal(*ctid, values, state);
 }
 
@@ -219,6 +215,8 @@ unsafe extern "C" fn build_callback_internal(
     values: *mut pg_sys::Datum,
     state: *mut std::os::raw::c_void,
 ) {
+    check_for_interrupts!();
+
     let state = (state as *mut BuildState).as_mut().unwrap();
 
     let values = std::slice::from_raw_parts(values, 1);
