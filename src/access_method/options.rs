@@ -1,6 +1,7 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::gucs::{ZDB_DEFAULT_ELASTICSEARCH_URL, ZDB_DEFAULT_REPLICAS};
-use crate::query_parser::ast::QualifiedField;
+use crate::query_parser::ast::{IndexLink, QualifiedField};
+use crate::query_parser::transformations::field_finder::find_link_for_field;
 use crate::query_parser::{parse_field_lists, INDEX_LINK_PARSER};
 use lazy_static::*;
 use memoffset::*;
@@ -371,6 +372,52 @@ fn index_field_lists(
     field_lists
         .into_iter()
         .map(|(k, v)| (k, v.into_iter().map(|f| f.field_name()).collect()))
+}
+
+#[pg_extern(immutable, parallel_safe)]
+fn field_mapping(index_relation: PgRelation, field: &str) -> Option<JsonB> {
+    let root_index = IndexLink::from_relation(&index_relation);
+    let index_links = IndexLink::from_zdb(&index_relation);
+    let link = find_link_for_field(
+        &QualifiedField {
+            index: None,
+            field: field.into(),
+        },
+        &root_index,
+        &index_links,
+    );
+
+    link.map_or(None, |link| {
+        let index = link.open_index().expect("failed to open index");
+        let options = ZDBIndexOptions::from(&index);
+        let mapping = index_mapping(index);
+
+        let mut as_map: HashMap<String, serde_json::Value> =
+            serde_json::from_value(mapping.0).unwrap();
+
+        as_map = serde_json::from_value(
+            as_map
+                .remove(options.index_name())
+                .expect("no index object in mapping"),
+        )
+        .unwrap();
+        as_map = serde_json::from_value(
+            as_map
+                .remove("mappings")
+                .expect("no mappings object in mapping"),
+        )
+        .unwrap();
+        as_map = serde_json::from_value(
+            as_map
+                .remove("properties")
+                .expect("no properties object in mapping"),
+        )
+        .unwrap();
+
+        as_map = serde_json::from_value(as_map.remove(field).unwrap_or_default()).unwrap();
+
+        Some(JsonB(serde_json::to_value(as_map).unwrap()))
+    })
 }
 
 static mut RELOPT_KIND_ZDB: pg_sys::relopt_kind = 0;

@@ -167,7 +167,7 @@ SELECT * FROM zdb_get_index_field_lists('idxsome_index');
 
 
 ```sql
-FUNCTION zdb.index_mapping(index regclass) RETURNS json
+FUNCTION zdb.index_mapping(index regclass) RETURNS jsonb
 ```
 
 Returns the full Elasticsearch mapping that ZomboDB generated for the specified Postgres index.  This can be useful for ensuring your custom analyzers and field mappings are properly defined.
@@ -284,4 +284,25 @@ SELECT * FROM zdb.index_mapping('idxproducts');
          }                                                                                                               +
      }
 (1 row)
+```
+
+---
+
+
+```sql
+FUNCTION zdb.field_mapping(index_relation regclass, field_name text) RETURNS json
+```
+
+Returns the Elasticsearch field mapping definition for the specified field.  In the event the specified index has
+index links defined this will traverse those links to find the specified field.
+
+Example:
+
+```sql
+select zdb.field_mapping('idxevents', 'event_type');
+                                         field_mapping                                         
+-----------------------------------------------------------------------------------------------
+ {"type": "keyword", "copy_to": ["zdb_all"], "normalizer": "lowercase", "ignore_above": 10922}
+(1 row)
+
 ```
