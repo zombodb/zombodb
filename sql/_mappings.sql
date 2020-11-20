@@ -242,7 +242,8 @@ VALUES ('fulltext_with_shingles', '{
   "tokenizer": "standard",
   "filter": [
     "lowercase",
-    "shingle_filter"
+    "shingle_filter",
+    "zdb_truncate_to_fit"
   ]
 }', true);
 INSERT INTO zdb.analyzers(name, definition, is_default)
