@@ -414,9 +414,10 @@ fn field_mapping(index_relation: PgRelation, field: &str) -> Option<JsonB> {
         )
         .unwrap();
 
-        as_map = serde_json::from_value(as_map.remove(field).unwrap_or_default()).unwrap();
-
-        Some(JsonB(serde_json::to_value(as_map).unwrap()))
+        match as_map.remove(field) {
+            Some(field_mapping) => Some(JsonB(field_mapping)),
+            None => None,
+        }
     })
 }
 
