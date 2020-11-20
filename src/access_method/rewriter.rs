@@ -49,7 +49,11 @@ pub fn rewrite_opexrs(plan: *mut pg_sys::PlannedStmt) {
                                 var.varattno = -1;
                             }
                             var.vartype = pg_sys::TIDOID;
-                            var.varoattno = -1;
+
+                            #[cfg(any(feature = "pg10", feature = "pg11", feature = "pg12"))]
+                            {
+                                var.varoattno = -1;
+                            }
                         }
                     }
                 }
@@ -266,7 +270,7 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
         let mut join = PgBox::from_pg(node as *mut pg_sys::HashJoin);
         walk_node(join.hashclauses as NodePtr, context);
 
-        #[cfg(feature = "pg12")]
+        #[cfg(any(feature = "pg12", feature = "pg13"))]
         {
             walk_node(join.hashcollations as NodePtr, context);
             walk_node(join.hashkeys as NodePtr, context);
@@ -279,7 +283,7 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
     } else if is_a(node, pg_sys::NodeTag_T_Hash) {
         let mut hash = PgBox::from_pg(node as *mut pg_sys::Hash);
         walk_plan(&mut hash.plan, context);
-        #[cfg(feature = "pg12")]
+        #[cfg(any(feature = "pg12", feature = "pg13"))]
         walk_node(hash.hashkeys as NodePtr, context);
     } else if is_a(node, pg_sys::NodeTag_T_WindowFunc) {
         let windowfunc = PgBox::from_pg(node as *mut pg_sys::WindowFunc);
@@ -310,19 +314,25 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
                     if first_arg.vartype != pg_sys::TIDOID {
                         context.replacements.insert(first_arg.vartype);
                         first_arg.vartype = pg_sys::TIDOID;
-                        first_arg.varoattno = -1;
+                        #[cfg(any(feature = "pg10", feature = "pg11", feature = "pg12"))]
+                        {
+                            first_arg.varoattno = -1;
+                        }
                         if first_arg.varattno == 0 {
                             first_arg.varattno = -1;
                         }
                     }
                 } else if is_a(first_arg, pg_sys::NodeTag_T_FuncExpr) {
                     let first_arg = PgBox::from_pg(first_arg as *mut pg_sys::FuncExpr);
-                    let mut var = PgNodeFactory::makeVar();
+                    let mut var = PgBox::<pg_sys::Var>::alloc_node(pg_sys::NodeTag_T_Var);
                     context.replacements.insert(first_arg.funcresulttype);
                     var.vartype = pg_sys::TIDOID;
                     var.varno = 1;
                     var.varattno = -1;
-                    var.varoattno = -1;
+                    #[cfg(any(feature = "pg10", feature = "pg11", feature = "pg12"))]
+                    {
+                        var.varoattno = -1;
+                    }
                     var.location = first_arg.location;
 
                     args.replace_ptr(0, var.into_pg() as NodePtr);
@@ -367,7 +377,7 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
     } else if is_a(node, pg_sys::NodeTag_T_CaseTestExpr) {
     } else {
         let mut did_it = false;
-        #[cfg(feature = "pg12")]
+        #[cfg(any(feature = "pg12", feature = "pg13"))]
         if is_a(node, pg_sys::NodeTag_T_SubscriptingRef) {
             let subscript = PgBox::from_pg(node as *mut pg_sys::SubscriptingRef);
             walk_node(subscript.refupperindexpr as NodePtr, context);

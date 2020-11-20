@@ -17,8 +17,9 @@
 
 # set -x
 
-LOGDIR=`pwd`/target/logs
-REPODIR=`pwd`/target/zombodb
+TARGET_DIR=$(pwd)/target
+LOGDIR=${TARGET_DIR}/logs
+REPODIR=${TARGET_DIR}/zombodb
 BRANCH=$1
 IMAGES=$2
 PGVERS=$3
@@ -40,7 +41,7 @@ if [ "x${IMAGES}" == "x" ] ; then
 fi
 
 if [ "x${PGVERS}" == "x" ] ; then
-	PGVERS="pg10 pg11 pg12"
+	PGVERS="pg10 pg11 pg12 pg13"
 fi
 
 function exit_with_error {
@@ -48,21 +49,28 @@ function exit_with_error {
 	exit 1
 } 
 
+function build_docker_image {
+	image=$1
+	BUILDDIR=$2
+	LOGDIR=$3
+	REPODIR=$4
+
+	echo "${image}-${PGVER}:  Building docker image..."
+  docker build \
+		--build-arg USER=$USER \
+		--build-arg UID=$(id -u) \
+		--build-arg GID=$(id -g) \
+		-t ${image} \
+		${image} \
+			> ${LOGDIR}/${image}-build.log 2>&1 || exit_with_error "${image}-${PGVER}:  image build failed"
+}
+
 function build_zdb {
 	image=$1
 	BUILDDIR=$2
 	LOGDIR=$3
 	REPODIR=$4
 	PGVER=$5
-
-	echo "${image}-${PGVER}:  Building docker image..."
-        docker build \
-		--build-arg USER=$USER \
-		--build-arg UID=$(id -u) \
-		--build-arg GID=$(id -g) \
-		-t ${image} \
-		${image} \
-			> ${LOGDIR}/${image}-${PGVER}-build.log 2>&1 || exit_with_error "${image}-${PGVER}:  image build failed" 
 
 	echo "${image}-${PGVER}:  Copying ZomboDB code"
 	rm -rf ${BUILDDIR} > /dev/null
@@ -78,18 +86,21 @@ function build_zdb {
 		--rm \
 		--user $(id -u):$(id -g) \
 		-t ${image} \
-		bash -c './package.sh $pgver ${image}' \
+		bash -c './docker-build-system/package.sh $pgver ${image}' \
 			> ${LOGDIR}/${image}-${PGVER}-package.sh.log 2>&1 || exit_with_error "${image}-${PGVER}:  build failed" 
 
 	echo "${image}-${PGVER}:  finished"
 }
 
+export -f build_docker_image
 export -f build_zdb
 export -f exit_with_error
 
 if [ ! -d "${REPODIR}" ]; then
 	echo "Cloning ZomboDB's ${BRANCH} branch"
 	rm -rf ${REPODIR} > /dev/null
+	mkdir -p $(pwd)/target || exit $?
+
 	git clone \
 		--depth 1 \
 		--single-branch \
@@ -99,10 +110,16 @@ if [ ! -d "${REPODIR}" ]; then
 fi
 
 for image in ${IMAGES}; do
-	for pgver in ${PGVERS}; do
-		BUILDDIR=`pwd`/target/build/${image}-${pgver}
+		BUILDDIR=${TARGET_DIR}/build/${image}-${pgver}
 
-        	mkdir -p ${BUILDDIR} > /dev/null || exit 1
+    mkdir -p ${BUILDDIR} > /dev/null || exit 1
+		printf "%s\0%s\0%s\0%s\0" "${image}" "${BUILDDIR}" "${LOGDIR}" "${REPODIR}"
+done | xargs -0 -n 4 -P ${CPUS} bash -c 'build_docker_image "$@"' --
+
+for image in ${IMAGES}; do
+	for pgver in ${PGVERS}; do
+		BUILDDIR=${TARGET_DIR}/build/${image}-${pgver}
+
 		printf "%s\0%s\0%s\0%s\0%s\0" "${image}" "${BUILDDIR}" "${LOGDIR}" "${REPODIR}" "${pgver}"
 	done
 done | xargs -0 -n 5 -P ${CPUS} bash -c 'build_zdb "$@"' --

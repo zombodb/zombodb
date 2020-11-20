@@ -8,24 +8,23 @@ use crate::utils::{has_zdb_index, lookup_zdb_index_tupdesc};
 use pgx::*;
 
 struct BuildState<'a> {
-    table_name: &'a str,
     bulk: &'a mut ElasticsearchBulkRequest,
     tupdesc: &'a PgTupleDesc<'a>,
     attributes: Vec<CategorizedAttribute<'a>>,
+    memcxt: PgMemoryContexts,
 }
 
 impl<'a> BuildState<'a> {
     fn new(
-        table_name: &'a str,
         bulk: &'a mut ElasticsearchBulkRequest,
         tupdesc: &'a PgTupleDesc,
         attributes: Vec<CategorizedAttribute<'a>>,
     ) -> Self {
         BuildState {
-            table_name,
             bulk,
             tupdesc,
             attributes,
+            memcxt: PgMemoryContexts::new("zombodb build context"),
         }
     }
 }
@@ -126,7 +125,6 @@ fn do_heap_scan<'a>(
     elasticsearch: &Elasticsearch,
 ) -> usize {
     let mut state = BuildState::new(
-        heap_relation.name(),
         &mut get_executor_manager()
             .checkout_bulk_context(index_relation.oid())
             .bulk,
@@ -185,6 +183,7 @@ pub unsafe extern "C" fn aminsert(
     true
 }
 
+#[cfg(not(feature = "pg13"))]
 #[pg_guard]
 unsafe extern "C" fn build_callback(
     _index: pg_sys::Relation,
@@ -194,32 +193,52 @@ unsafe extern "C" fn build_callback(
     _tuple_is_alive: bool,
     state: *mut std::os::raw::c_void,
 ) {
+    let htup = htup.as_ref().unwrap();
+
+    build_callback_internal(htup.t_self, values, state);
+}
+
+#[cfg(feature = "pg13")]
+#[pg_guard]
+unsafe extern "C" fn build_callback(
+    _index: pg_sys::Relation,
+    ctid: pg_sys::ItemPointer,
+    values: *mut pg_sys::Datum,
+    _isnull: *mut bool,
+    _tuple_is_alive: bool,
+    state: *mut std::os::raw::c_void,
+) {
+    build_callback_internal(*ctid, values, state);
+}
+
+#[inline(always)]
+unsafe extern "C" fn build_callback_internal(
+    ctid: pg_sys::ItemPointerData,
+    values: *mut pg_sys::Datum,
+    state: *mut std::os::raw::c_void,
+) {
     check_for_interrupts!();
 
-    let htup = htup.as_ref().unwrap();
     let state = (state as *mut BuildState).as_mut().unwrap();
 
-    if pg_sys::HeapTupleHeaderIsHeapOnly(htup.t_data) {
-        ereport(PgLogLevel::ERROR,
-                PgSqlErrorCode::ERRCODE_DATA_EXCEPTION,
-                &format!("Heap Only Tuple (HOT) found at ({}, {}).  Run VACUUM FULL {}; and then create the index", item_pointer_get_block_number(&htup.t_self), item_pointer_get_offset_number(&htup.t_self), state.table_name),
-            file!(), line!(), column!()
-        )
-    }
+    let old_context = state.memcxt.set_as_current();
 
     let values = std::slice::from_raw_parts(values, 1);
     let builder = row_to_json(values[0], &state.tupdesc, &state.attributes);
 
-    let cmin = pg_sys::HeapTupleHeaderGetRawCommandId(htup.t_data).unwrap();
+    let cmin = pg_sys::FirstCommandId;
     let cmax = cmin;
 
-    let xmin = xid_to_64bit(pg_sys::HeapTupleHeaderGetXmin(htup.t_data).unwrap());
-    let xmax = pg_sys::InvalidTransactionId;
+    let xmin = pg_sys::FirstNormalTransactionId as u64;
+    let xmax = pg_sys::InvalidTransactionId as u64;
 
     state
         .bulk
-        .insert(htup.t_self, cmin, cmax, xmin, xmax as u64, builder)
+        .insert(ctid, cmin, cmax, xmin, xmax, builder)
         .expect("Unable to send tuple for insert");
+
+    old_context.set_as_current();
+    state.memcxt.reset();
 }
 
 unsafe fn row_to_json<'a>(
@@ -241,22 +260,4 @@ unsafe fn row_to_json<'a>(
     }
 
     builder
-}
-
-#[cfg(any(test, feature = "pg_test"))]
-mod tests {
-    use pgx::*;
-
-    #[pg_test(
-        error = "Heap Only Tuple (HOT) found at (0, 1).  Run VACUUM FULL check_for_hot; and then create the index"
-    )]
-    #[initialize(es = true)]
-    fn check_for_hot_tuple() {
-        Spi::run("CREATE TABLE check_for_hot(id bigint);");
-        Spi::run("INSERT INTO check_for_hot VALUES (1);");
-        Spi::run("UPDATE check_for_hot SET id = id;");
-        Spi::run(
-            "CREATE INDEX idxcheck_for_hot ON check_for_hot USING zombodb ((check_for_hot.*));",
-        );
-    }
 }

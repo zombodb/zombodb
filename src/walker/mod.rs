@@ -166,7 +166,8 @@ unsafe extern "C" fn rewrite_walker(node: *mut pg_sys::Node, context_ptr: void_m
                     if context.want_scores {
                         // wrap the right-hand-side of the ==> operator in zdb.want_score(...)
                         let second_arg = args_list.get_ptr(1).expect("no RHS to ==>");
-                        let mut want_score_func = PgNodeFactory::makeFuncExpr();
+                        let mut want_score_func =
+                            PgBox::<pg_sys::FuncExpr>::alloc_node(pg_sys::NodeTag_T_FuncExpr);
                         let mut func_args = PgList::<pg_sys::Node>::new();
                         func_args.push(second_arg);
 
@@ -183,7 +184,8 @@ unsafe extern "C" fn rewrite_walker(node: *mut pg_sys::Node, context_ptr: void_m
                         for definition in context.highlight_definitions.iter() {
                             // wrap the right-hand-side of the ==> operator in zdb.want_highlight
                             let second_arg = args_list.get_ptr(1).expect("no RHS to ==>");
-                            let mut want_highlight_func = PgNodeFactory::makeFuncExpr();
+                            let mut want_highlight_func =
+                                PgBox::<pg_sys::FuncExpr>::alloc_node(pg_sys::NodeTag_T_FuncExpr);
                             let mut func_args = PgList::<pg_sys::Node>::new();
                             func_args.push(second_arg);
 

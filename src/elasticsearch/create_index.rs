@@ -16,9 +16,13 @@ impl ElasticsearchCreateIndexRequest {
     }
 
     pub fn execute(self) -> std::result::Result<(), ElasticsearchError> {
+        let url = format!(
+            "{}?wait_for_active_shards=all",
+            self.elasticsearch.base_url()
+        );
         Elasticsearch::execute_request(
             Elasticsearch::client()
-                .put(&self.elasticsearch.base_url())
+                .put(&url)
                 .header("content-type", "application/json")
                 .body(serde_json::to_string(&self.create_request_body()).unwrap()),
             |_, _| Ok(()),

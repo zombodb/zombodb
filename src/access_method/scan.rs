@@ -90,7 +90,7 @@ pub extern "C" fn amgettuple(
         Some((score, ctid, _, highlights)) => {
             #[cfg(any(feature = "pg10", feature = "pg11"))]
             let tid = &mut scan.xs_ctup.t_self;
-            #[cfg(feature = "pg12")]
+            #[cfg(any(feature = "pg12", feature = "pg13"))]
             let tid = &mut scan.xs_heaptid;
 
             u64_to_item_pointer(ctid, tid);

@@ -1,28 +1,28 @@
 use crate::zdbquery::ZDBQuery;
 use pgx::*;
 
-#[pg_extern(immutable)]
+#[pg_extern(immutable, parallel_safe)]
 fn zdbquery_from_text(input: &str) -> ZDBQuery {
     let cstr = std::ffi::CString::new(input).expect("CString::new() failed");
     ZDBQuery::input(&cstr)
 }
 
-#[pg_extern(immutable)]
+#[pg_extern(immutable, parallel_safe)]
 fn zdbquery_from_json(input: Json) -> ZDBQuery {
     serde_json::from_value(input.0).expect("failed to deserialize json into a zdbquery")
 }
 
-#[pg_extern(immutable)]
+#[pg_extern(immutable, parallel_safe)]
 fn zdbquery_from_jsonb(input: JsonB) -> ZDBQuery {
     serde_json::from_value(input.0).expect("failed to deserialize jsonb into a zdbquery")
 }
 
-#[pg_extern(immutable)]
+#[pg_extern(immutable, parallel_safe)]
 fn zdbquery_to_json(input: ZDBQuery) -> Json {
     Json(input.into_value())
 }
 
-#[pg_extern(immutable)]
+#[pg_extern(immutable, parallel_safe)]
 fn zdbquery_to_jsonb(input: ZDBQuery) -> JsonB {
     JsonB(input.into_value())
 }
