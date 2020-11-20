@@ -92,8 +92,6 @@ impl ElasticsearchSuggestTermRequest {
     }
 }
 
-//todo pgxtern function called (whatever it is called in old zdb)
-//look at terms under aggregate to example
 #[pg_extern(immutable, parallel_safe)]
 fn suggest_terms(
     index: PgRelation,
