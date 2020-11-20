@@ -28,8 +28,8 @@ levenshtein = "1.0.4"
 memoffset = "0.6.1"
 num_cpus = "1.13.0"
 pathfinding = "2.0.4"
-pgx = { git = "https://github.com/zombodb/pgx", branch = "develop" }
-pgx-macros = { git = "https://github.com/zombodb/pgx", branch = "develop" }
+pgx = "0.1.5" # { git = "https://github.com/zombodb/pgx", branch = "develop" }
+pgx-macros = "0.1.5" # { git = "https://github.com/zombodb/pgx", branch = "develop" }
 regex = "1.4.2"
 reqwest = "=0.9.24"
 serde = { version = "1.0.117", features = [ "derive" ] }
@@ -41,7 +41,7 @@ url = "2.2.0"
 lalrpop = { version = "0.19.1", features = [ "lexer" ] }
 
 [dev-dependencies]
-pgx-tests = { git = "https://github.com/zombodb/pgx", branch = "develop" }
+pgx-tests = "0.1.5" # { git = "https://github.com/zombodb/pgx", branch = "develop" }
 
 [profile.dev]
 panic = "unwind"
