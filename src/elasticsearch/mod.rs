@@ -15,6 +15,7 @@ mod get_settings;
 mod profile_query;
 mod put_mapping;
 mod refresh_index;
+mod suggest_term;
 mod update_settings;
 
 pub mod aggregate_search;
@@ -36,6 +37,7 @@ use crate::elasticsearch::profile_query::ElasticsearchProfileQueryRequest;
 use crate::elasticsearch::put_mapping::ElasticsearchPutMappingRequest;
 use crate::elasticsearch::refresh_index::ElasticsearchRefreshIndexRequest;
 use crate::elasticsearch::search::ElasticsearchSearchRequest;
+use crate::elasticsearch::suggest_term::ElasticsearchSuggestTermRequest;
 use crate::elasticsearch::update_settings::ElasticsearchUpdateSettingsRequest;
 use crate::executor_manager::get_executor_manager;
 use crate::utils::is_nested_field;
@@ -310,6 +312,16 @@ impl Elasticsearch {
     pub fn raw_count<'a>(&self, query: ZDBPreparedQuery) -> ElasticsearchCountRequest {
         get_executor_manager().wait_for_completion();
         ElasticsearchCountRequest::new(self, query, true)
+    }
+
+    pub fn suggest_terms(
+        &self,
+        query: ZDBPreparedQuery,
+        fieldname: String,
+        suggest: String,
+    ) -> ElasticsearchSuggestTermRequest {
+        get_executor_manager().wait_for_completion();
+        ElasticsearchSuggestTermRequest::new(self, query, fieldname, suggest)
     }
 
     pub fn get_document<'a, T: DeserializeOwned>(
