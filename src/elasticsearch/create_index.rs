@@ -16,17 +16,31 @@ impl ElasticsearchCreateIndexRequest {
     }
 
     pub fn execute(self) -> std::result::Result<(), ElasticsearchError> {
-        let url = format!(
-            "{}?wait_for_active_shards=all",
-            self.elasticsearch.base_url()
-        );
-        Elasticsearch::execute_request(
+        let url = format!("{}", self.elasticsearch.base_url());
+        let create_index_result = Elasticsearch::execute_request(
             Elasticsearch::client()
                 .put(&url)
                 .header("content-type", "application/json")
                 .body(serde_json::to_string(&self.create_request_body()).unwrap()),
             |_, _| Ok(()),
-        )
+        );
+
+        let url = format!(
+            "{}_cluster/health/{}?wait_for_status=yellow&timeout=10m",
+            self.elasticsearch.url(),
+            self.elasticsearch.index_name()
+        );
+
+        Elasticsearch::execute_request(Elasticsearch::client().get(&url), |status, body| {
+            if status.is_success() {
+                Ok(())
+            } else {
+                Err(ElasticsearchError(Some(status), body))
+            }
+        })
+        .expect("failed to wait for yellow status");
+
+        create_index_result
     }
 
     fn create_request_body(&self) -> Value {
