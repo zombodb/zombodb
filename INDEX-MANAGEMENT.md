@@ -43,9 +43,8 @@ All of the below options can be set during `CREATE INDEX` and most of them can b
 
 ### Required Options
 
+#### `url`
 ```
-url
-
 Type: string
 Default: zdb.default_elasticsearch_url
 ```
@@ -57,9 +56,8 @@ The value must end with a forward slash (`/`).
 
 ### Elasticsearch Options
 
+#### `shards`
 ```
-shards
-
 Type: integer
 Default: 5
 Range: [1, 32768]
@@ -67,53 +65,63 @@ Range: [1, 32768]
 
 The number of shards Elasticsearch should create for the index.  This option can be changed with `ALTER INDEX` but you must issue a `REINDEX INDEX` before the change will take effect.
 
-```
-replicas
+#### `replicas`
 
+```
 Type: integer
 Default: zdb.default_replicas
 ```
 
 This controls the number of Elasticsearch index replicas.  The default is the value of the `zdb.default_replicas` GUC, which itself defaults to zero.  Changes to this value via `ALTER INDEX` take effect immediately.
 
+#### `alias`
 ```
-alias
-
 Type: string
 Default: "database.schema.table.index-index_oid"
 ```
 
-You can set an alias to use to identify an index from external tools.  This is for user convienece only.  Changes via `ALTER INDEX` take effect immediately.
+You can set an alias to use to identify an index from external tools.  This is for user convenience only.  Changes via `ALTER INDEX` take effect immediately.
 
 Normal SELECT statements are executed in Elasticsearch directly against the named index.  Aggregate functions such as `zdb.count()` and `zdb.terms()` use the alias, however.  
 
 In cases where you're using ZomboDB indices on inherited tables or on partition tables, it is suggested you assigned the **same** alias name to all tables in the hierarchy so that aggregate functions will run across all the tables involved.
 
 
+#### `refresh_interval`
 ```
-refresh_interval
-
 Type: string
 Default: "-1"
 ```
 
 This option specifies how frequently Elasticsearch should refresh the index to make changes visible to searches.  By default, this is set to `-1` because ZomboDB wants to control refreshes itself so that it can maintain proper MVCC visibility results.  It is not recommented that you change this setting unless you're okay with search results being inconsistent with what Postgres expects.  Changes via `ALTER INDEX` take effect immediately.
 
+#### `type_name`
 ```
-type_name
-
 Type: string
-Default: "doc"
+Default: "_doc"
 ```
 
-This is the Elasticsearch index type into which documents are mapped.  The default, "doc" is compatible with Elasticsearch v5 and v6.  There should be no need to set.  Note that it can only be set during `CREATE INDEX`.
+This is the Elasticsearch index type into which documents are mapped.  The default, "_doc" is compatible with Elasticsearch v5 and v6.  There should be no need to change this setting.  Note that it can only be set during `CREATE INDEX`.
 
+#### `translog_durability`
+```
+Type: string
+Default: "request"
+Valid values: "request", "async"
+```
+
+Whether or not to fsync and commit the translog after every index, delete, update, or bulk request. This setting accepts 
+the following parameters:
+
+ - request:  (default) fsync and commit after every request. In the event of hardware failure, all acknowledged writes will already have been committed to disk.
+ - async:  fsync and commit in the background every sync_interval. In the event of a failure, all acknowledged writes since the last automatic commit will be discarded.
+
+See: https://www.elastic.co/guide/en/elasticsearch/reference/7.x/index-modules-translog.html#_translog_settings
 
 ### Network Options
 
+#### `bulk_concurrency`
 ```
-bulk_concurrency
-
 Type: integer
 Default: 12
 Range: [1, 1024]
@@ -121,19 +129,17 @@ Range: [1, 1024]
 
 When synchronizing changes to Elasticsearch, ZomboDB does this by multiplexing HTTP(S) requests using libcurl.  This setting controls the number of concurrent requests.  ZomboDB also logs how many active concurrent requests it's managing during writes to Elasticsearch.  You can use that value to ensure you're not overloading your Elasticsearch cluster.  Changes via `ALTER INDEX` take effect immediately.
 
+#### `batch_size`
 ```
-batch_size
-
 Type: integer (in bytes)
 Default: 8388608
 Range: [1024, (INT_MAX/2)-1]
 ```
 
-When synchronizing changes to Elasticsearch, ZomboDB does htis by batching them together into chunks of `batch_size`.  The default of 8mb is a sensible default, but can be changed in conjunction with `bulk_concurrency` to improve overall write performance.  Changes via `ALTER INDEX` take effect immediately.
+When synchronizing changes to Elasticsearch, ZomboDB does this by batching them together into chunks of `batch_size`.  The default of 8mb is a sensible default, but can be changed in conjunction with `bulk_concurrency` to improve overall write performance.  Changes via `ALTER INDEX` take effect immediately.
 
+#### `compression_level`
 ```
-compression_level
-
 Type: integer
 Default: 1
 Range: [0, 9]
@@ -144,11 +150,29 @@ Sets the HTTP(s) transport (and request body) deflate compression level.  Over s
 
 ### Advanced Options
 
+#### `options`
 ```
-llapi
-
-Type: boolean
-Default: false
+Type: comma-separated String of index link definitions
 ```
 
-Indicates that this index will be used directly by ZomboDB's [low-level API](LLAPI.md).  Indices with this set to `true` will not have their corresponding Elasticsearch index deleted by `DROP INDEX/TABLE/SCHEMA`.
+`options` is a ZomboDB-specific string that allows you to define how this index relates to other indexes. 
+This is an advanced-use feature and is documented [here](CROSS-INDEX-JOINS.md).
+
+Changes via `ALTER INDEX` take effect immediately.
+
+#### `field_lists`
+```
+Type: comma-separated String
+```
+
+Allows to define lists fields that, when queried, are dynamically expanded to search their defined list of other fields. 
+The syntax for this setting is: 
+
+```
+field_lists='fake_field1=[a, b, c], fake_field2=[d,e,f], ...'
+``` 
+    
+This can be useful, for example, for searching all "date" fields at once, or defining a set of fields that represent 
+"names" or "locations". Note that each field in a list must be of the same underlying Postgres data type.
+
+Changes via `ALTER INDEX` take effect immediately.
