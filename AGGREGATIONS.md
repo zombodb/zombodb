@@ -532,6 +532,100 @@ A multi-value metrics aggregation that computes stats over numeric values extrac
 
 ---
 
+```FUNCTION zdb_tally(
+    index_name regclass, 
+    fieldname text 
+    [, is_nested boolean], 
+    stem text, 
+    query zdbquery, 
+    max_terms bigint, 
+    sort_order zdb_tally_order 
+    [, shard_size int DEFAULT 0]) 
+RETURNS SET OF zdb_tally_response
+```
+
+`index_name`:  The name of the a ZomboDB index to query  
+`fieldname`: The name of a field from which to derive terms  
+`is_nested`: Optional argument to indicate that the terms should only come from matching nested object sub-elements.  Default is `false`    
+`stem`:  a Regular expression by which to filter returned terms, or a date interval if the specified `fieldname` is a date or timestamp    
+`query`: a ZomboDB query  
+`max_terms`: maximum number of terms to return.  A value of zero means "all terms".
+`sort_order`: how to sort the terms.  one of `'count'`, `'term'`, `'reverse_count'`, `'reverse_term'`  
+`shard_size`: optional parameter that tells Elasticsearch how many terms to return from each shard.  Default is zero, which means all terms  
+
+This function provides direct access to Elasticsearch's [terms aggregate](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-terms-aggregation.html) and cannot
+be used with fields of type `fulltext`.  The results are MVCC-safe.  Returned terms are forced to upper-case.
+
+If a stem is not specified, no results will be returned.  
+
+To match all terms: `^.*`
+
+If the specifield `fieldname` is a date/timestamp, then one of the following values are allowed for aggregating values 
+into histogram buckets of the specified interval: `year, quarter, month, week, day, hour, minute, second`.  In all cases, 
+an optional offset value can be specified.  For example:  `week:-1d` will offset the dates by one day so that the first 
+day of the week will be considered to be Sunday (instead of the default of Monday).
+
+Example:
+
+```sql
+SELECT * FROM zdb_tally('products', 'keywords', '^.*', 'base* or distance', 5000, 'term');
+
+    term      | count 
+>---------------+-------
+BASEBALL      |     1
+COMMUNICATION |     1
+PRIMITIVE     |     1
+SPORTS        |     1
+THOMAS EDISON |     1
+```
+
+Regarding the `is_nested` argument, consider data like this:
+
+```
+row #1: contributor_data=[ 
+  { "name": "John Doe", "age": 42, "location": "TX", "tags": ["active"] },
+  { "name": "Jane Doe", "age": 36, "location": "TX", "tags": ["nice"] }
+>]
+>
+>row #2: contributor_data=[ 
+  { "name": "Bob Dole", "age": 92, "location": "KS", "tags": ["nice", "politician"] },
+  { "name": "Elizabth Dole", "age": 79, "location": "KS", "tags": ["nice"] }
+>]
+```
+
+And a query where `is_nested` is false:
+
+```sql
+SELECT * FROM zdb.tally('idxproducts', 'contributor_data.name', false, '^.*', 'contributor_data.location:TX AND contributor_data.tags:nice', 5000, 'term');
+```
+
+returns:
+
+```
+    term   | count 
+----------+-------
+  JANE DOE |     1
+  JOHN DOE |     1
+(2 rows)
+```
+>
+>Whereas, if `is_nested` is true, only "JANE DOE" is returned because it's the only subelement of `contributor_data` that matched the query:
+
+```sql
+SELECT * FROM zdb.tally('idxproducts', 'contributor_data.name', true, '^.*', 'contributor_data.location:TX WITH contributor_data.tags:nice', 5000, 'term');
+```
+
+returns:
+
+```
+    term   | count 
+----------+-------
+  JANE DOE |     1
+(1 row)
+```
+
+
+
 ```sql
 CREATE TYPE terms_order AS ENUM (
 	'count',
