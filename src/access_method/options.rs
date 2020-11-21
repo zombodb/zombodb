@@ -3,6 +3,7 @@ use crate::gucs::{ZDB_DEFAULT_ELASTICSEARCH_URL, ZDB_DEFAULT_REPLICAS};
 use crate::query_parser::ast::{IndexLink, QualifiedField};
 use crate::query_parser::transformations::field_finder::find_link_for_field;
 use crate::query_parser::{parse_field_lists, INDEX_LINK_PARSER};
+use crate::utils::find_zdb_index;
 use lazy_static::*;
 use memoffset::*;
 use pgx::pg_sys::AsPgCStr;
@@ -67,7 +68,7 @@ struct ZDBIndexOptionsInternal {
 
 #[allow(dead_code)]
 impl ZDBIndexOptionsInternal {
-    fn from(relation: &PgRelation) -> PgBox<ZDBIndexOptionsInternal> {
+    fn from_relation(relation: &PgRelation) -> PgBox<ZDBIndexOptionsInternal> {
         if relation.rd_index.is_null() {
             panic!("'{}' is not a ZomboDB index", relation.name())
         } else if relation.rd_options.is_null() {
@@ -217,16 +218,17 @@ pub struct ZDBIndexOptions {
 
 #[allow(dead_code)]
 impl ZDBIndexOptions {
-    pub fn from(relation: &PgRelation) -> ZDBIndexOptions {
-        let internal = ZDBIndexOptionsInternal::from(relation);
+    pub fn from_relation(relation: &PgRelation) -> ZDBIndexOptions {
+        let relation = find_zdb_index(relation);
+        let internal = ZDBIndexOptionsInternal::from_relation(&relation);
         let heap_relation = relation.heap_relation().expect("not an index");
         ZDBIndexOptions {
             oid: relation.oid(),
             url: internal.url(),
             type_name: internal.type_name(),
             refresh_interval: internal.refresh_interval(),
-            alias: internal.alias(&heap_relation, relation),
-            uuid: internal.uuid(&heap_relation, relation),
+            alias: internal.alias(&heap_relation, &relation),
+            uuid: internal.uuid(&heap_relation, &relation),
             links: internal.links(),
             field_lists: internal.field_lists(),
             compression_level: internal.compression_level,
@@ -312,31 +314,35 @@ impl ZDBIndexOptions {
     }
 }
 
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(volatile, parallel_safe)]
 fn index_name(index_relation: PgRelation) -> String {
-    ZDBIndexOptions::from(&index_relation)
+    ZDBIndexOptions::from_relation(&index_relation)
         .index_name()
         .to_owned()
 }
 
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(volatile, parallel_safe)]
 fn index_alias(index_relation: PgRelation) -> String {
-    ZDBIndexOptions::from(&index_relation).alias().to_owned()
+    ZDBIndexOptions::from_relation(&index_relation)
+        .alias()
+        .to_owned()
 }
 
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(volatile, parallel_safe)]
 fn index_url(index_relation: PgRelation) -> String {
-    ZDBIndexOptions::from(&index_relation).url().to_owned()
+    ZDBIndexOptions::from_relation(&index_relation)
+        .url()
+        .to_owned()
 }
 
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(volatile, parallel_safe)]
 fn index_type_name(index_relation: PgRelation) -> String {
-    ZDBIndexOptions::from(&index_relation)
+    ZDBIndexOptions::from_relation(&index_relation)
         .type_name()
         .to_owned()
 }
 
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(volatile, parallel_safe)]
 fn index_mapping(index_relation: PgRelation) -> JsonB {
     JsonB(
         Elasticsearch::new(&index_relation)
@@ -346,7 +352,7 @@ fn index_mapping(index_relation: PgRelation) -> JsonB {
     )
 }
 
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(volatile, parallel_safe)]
 fn index_settings(index_relation: PgRelation) -> JsonB {
     JsonB(
         Elasticsearch::new(&index_relation)
@@ -356,25 +362,24 @@ fn index_settings(index_relation: PgRelation) -> JsonB {
     )
 }
 
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(volatile, parallel_safe)]
 fn index_options(index_relation: PgRelation) -> Option<Vec<String>> {
-    ZDBIndexOptions::from(&index_relation).links().clone()
+    ZDBIndexOptions::from_relation(&index_relation)
+        .links()
+        .clone()
 }
 
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(volatile, parallel_safe)]
 fn index_field_lists(
     index_relation: PgRelation,
 ) -> impl std::iter::Iterator<Item = (name!(fieldname, String), name!(fields, Vec<String>))> {
-    let field_lists = ZDBIndexOptionsInternal::from(&index_relation)
+    ZDBIndexOptions::from_relation(&index_relation)
         .field_lists()
-        .unwrap_or_default();
-
-    field_lists
         .into_iter()
         .map(|(k, v)| (k, v.into_iter().map(|f| f.field_name()).collect()))
 }
 
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(volatile, parallel_safe)]
 fn field_mapping(index_relation: PgRelation, field: &str) -> Option<JsonB> {
     let root_index = IndexLink::from_relation(&index_relation);
     let index_links = IndexLink::from_zdb(&index_relation);
@@ -389,7 +394,7 @@ fn field_mapping(index_relation: PgRelation, field: &str) -> Option<JsonB> {
 
     link.map_or(None, |link| {
         let index = link.open_index().expect("failed to open index");
-        let options = ZDBIndexOptions::from(&index);
+        let options = ZDBIndexOptions::from_relation(&index);
         let mapping = index_mapping(index);
 
         let mut as_map: HashMap<String, serde_json::Value> =
@@ -885,7 +890,7 @@ mod tests {
         let index_oid = Spi::get_one::<pg_sys::Oid>("SELECT 'idxtest'::regclass::oid")
             .expect("failed to get SPI result");
         let indexrel = PgRelation::from_pg(pg_sys::RelationIdGetRelation(index_oid));
-        let options = ZDBIndexOptions::from(&indexrel);
+        let options = ZDBIndexOptions::from_relation(&indexrel);
         assert_eq!(options.url(), "http://localhost:19200/");
         assert_eq!(options.type_name(), "test_type_name");
         assert_eq!(options.alias(), "test_alias");
@@ -921,11 +926,11 @@ mod tests {
             .expect("failed to get SPI result");
         let heaprel = PgRelation::from_pg(pg_sys::RelationIdGetRelation(heap_oid));
         let indexrel = PgRelation::from_pg(pg_sys::RelationIdGetRelation(index_oid));
-        let options = ZDBIndexOptions::from(&indexrel);
+        let options = ZDBIndexOptions::from_relation(&indexrel);
         assert_eq!(options.type_name(), DEFAULT_TYPE_NAME);
         assert_eq!(
             &options.alias(),
-            &format!("pgx_tests.tests.test.idxtest-{}", indexrel.oid())
+            &format!("pgx_tests.public.test.idxtest-{}", indexrel.oid())
         );
         assert_eq!(
             &options.uuid(),
@@ -959,7 +964,7 @@ mod tests {
         );
 
         let index_relation = PgRelation::open_with_name("idxtest").expect("no such relation");
-        let options = ZDBIndexOptions::from(&index_relation);
+        let options = ZDBIndexOptions::from_relation(&index_relation);
 
         assert_eq!(options.index_name(), options.uuid());
     }
@@ -975,7 +980,7 @@ mod tests {
         );
 
         let index_relation = PgRelation::open_with_name("idxtest").expect("no such relation");
-        let options = ZDBIndexOptions::from(&index_relation);
+        let options = ZDBIndexOptions::from_relation(&index_relation);
 
         assert_eq!(options.url(), "http://localhost:19200/");
     }
@@ -991,7 +996,7 @@ mod tests {
         );
 
         let index_relation = PgRelation::open_with_name("idxtest").expect("no such relation");
-        let options = ZDBIndexOptions::from(&index_relation);
+        let options = ZDBIndexOptions::from_relation(&index_relation);
 
         assert_eq!(options.type_name(), "doc");
     }
@@ -1008,7 +1013,7 @@ mod tests {
 
         let index_relation =
             PgRelation::open_with_name("idxtest_link_options").expect("no such relation");
-        let options = ZDBIndexOptions::from(&index_relation);
+        let options = ZDBIndexOptions::from_relation(&index_relation);
 
         assert_eq!(
             options.links(),

@@ -12,16 +12,23 @@ pub fn has_zdb_index(heap_relation: &PgRelation, current_index: &PgRelation) -> 
     false
 }
 
-pub fn find_zdb_index(heap_relation: &PgRelation) -> PgRelation {
-    for index in heap_relation.indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
-        if is_zdb_index(&index) {
-            return index.to_owned();
+pub fn find_zdb_index(any_relation: &PgRelation) -> PgRelation {
+    if is_zdb_index(any_relation) {
+        return any_relation.clone();
+    } else if is_view(any_relation) {
+        unimplemented!("don't yet know how to find the ZDB index to use for a view");
+    } else {
+        for index in any_relation.indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
+            if is_zdb_index(&index) {
+                return index.to_owned();
+            }
         }
     }
 
-    panic!("no zombodb index on {}", heap_relation.name())
+    panic!("Could not find ZomboDB index for {}", any_relation.name())
 }
 
+#[inline]
 pub fn is_zdb_index(index: &PgRelation) -> bool {
     #[cfg(any(feature = "pg10", feature = "pg11"))]
     let routine = index.rd_amroutine;
@@ -34,6 +41,12 @@ pub fn is_zdb_index(index: &PgRelation) -> bool {
         let indam = PgBox::from_pg(routine);
         indam.amvalidate == Some(crate::access_method::amvalidate)
     }
+}
+
+#[inline]
+pub fn is_view(relation: &PgRelation) -> bool {
+    let rel = PgBox::from_pg(relation.rd_rel);
+    rel.relkind == pg_sys::RELKIND_VIEW as i8
 }
 
 pub fn lookup_zdb_extension_oid() -> pg_sys::Oid {

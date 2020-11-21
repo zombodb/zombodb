@@ -1,2 +1,2 @@
--- this should raise an error
+-- this should work
 SELECT zdb.count('events', 'beer');

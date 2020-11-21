@@ -40,7 +40,7 @@ use crate::elasticsearch::search::ElasticsearchSearchRequest;
 use crate::elasticsearch::suggest_term::ElasticsearchSuggestTermRequest;
 use crate::elasticsearch::update_settings::ElasticsearchUpdateSettingsRequest;
 use crate::executor_manager::get_executor_manager;
-use crate::utils::is_nested_field;
+use crate::utils::{find_zdb_index, is_nested_field};
 use crate::zdbquery::ZDBPreparedQuery;
 pub use bulk::*;
 pub use create_index::*;
@@ -90,9 +90,9 @@ impl ElasticsearchError {
 }
 
 impl Elasticsearch {
-    pub fn new(indexrel: &PgRelation) -> Self {
+    pub fn new(relation: &PgRelation) -> Self {
         Elasticsearch {
-            options: ZDBIndexOptions::from(indexrel),
+            options: ZDBIndexOptions::from_relation(&find_zdb_index(relation)),
         }
     }
 
@@ -431,7 +431,7 @@ impl Elasticsearch {
     }
 }
 
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(volatile, parallel_safe)]
 fn request(
     index: PgRelation,
     endpoint: &str,

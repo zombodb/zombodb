@@ -113,7 +113,7 @@ pub fn expr_to_dsl(
                 let target_relation = link.open_index().unwrap_or_else(|e| {
                     panic!("failed to open index '{}': {}", link.qualified_index, e)
                 });
-                let index_options = ZDBIndexOptions::from(&target_relation);
+                let index_options = ZDBIndexOptions::from_relation(&target_relation);
                 let es_index_name = index_options.index_name();
 
                 query = if ZDB_IGNORE_VISIBILITY.get() {

@@ -42,6 +42,7 @@ lalrpop = { version = "0.19.1", features = [ "lexer" ] }
 
 [dev-dependencies]
 pgx-tests = "0.1.5" # { git = "https://github.com/zombodb/pgx", branch = "develop" }
+libc = "0.2.80"
 
 [profile.dev]
 panic = "unwind"
