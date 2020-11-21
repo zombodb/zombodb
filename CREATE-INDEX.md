@@ -36,7 +36,7 @@ CREATE INDEX idxproducts
 
 If you only wish to index, and as such only be able to query/aggregate, specific columns, you can use the Postgres `ROW()` constructor in the index definition.
 
-First however, you must define a cusotm Postgres composite data type in which to cast the columns you wish to index.  This is necessary to a) define the field names you'll use for searching and also change data types if you wish.
+First however, you must define a custom Postgres composite data type in which to cast the columns you wish to index.  This is necessary to a) define the field names you'll use for searching and also change data types if you wish.
 
 ```sql
 CREATE TYPE products_idx_type AS (
