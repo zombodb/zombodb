@@ -47,22 +47,26 @@ fi
 function exit_with_error {
 	echo ERROR:  $1
 	exit 1
-} 
+}
 
 function build_docker_image {
 	image=$1
 	BUILDDIR=$2
 	LOGDIR=$3
 	REPODIR=$4
+	PGVERS=$5
 
-	echo "${image}-${PGVER}:  Building docker image..."
-  docker build \
-		--build-arg USER=$USER \
-		--build-arg UID=$(id -u) \
-		--build-arg GID=$(id -g) \
-		-t ${image} \
-		${image} \
-			> ${LOGDIR}/${image}-build.log 2>&1 || exit_with_error "${image}-${PGVER}:  image build failed"
+	for PGVER in ${PGVERS}; do
+		echo "${image}-${PGVER}:  Building docker image..."
+		docker build \
+			--build-arg USER=$USER \
+			--build-arg UID=$(id -u) \
+			--build-arg GID=$(id -g) \
+			--build-arg PGVER="${PGVER#pg}" \
+			-t ${image}-${PGVER} \
+			${image} \
+				> ${LOGDIR}/${image}-${PGVER}-build.log 2>&1 || exit_with_error "${image}-${PGVER}:  image build failed"
+	done
 }
 
 function build_zdb {
@@ -85,9 +89,9 @@ function build_zdb {
 		-v ${BUILDDIR}:/build \
 		--rm \
 		--user $(id -u):$(id -g) \
-		-t ${image} \
+		-t ${image}-${PGVER} \
 		bash -c './docker-build-system/package.sh $pgver ${image}' \
-			> ${LOGDIR}/${image}-${PGVER}-package.sh.log 2>&1 || exit_with_error "${image}-${PGVER}:  build failed" 
+			> ${LOGDIR}/${image}-${PGVER}-package.sh.log 2>&1 || exit_with_error "${image}-${PGVER}:  build failed"
 
 	echo "${image}-${PGVER}:  finished"
 }
@@ -106,15 +110,12 @@ if [ ! -d "${REPODIR}" ]; then
 		--single-branch \
 		--branch ${BRANCH} \
 		https://github.com/zombodb/zombodb.git \
-		${REPODIR} > ${LOGDIR}/git-clone.log 2>&1 || exit $? 
+		${REPODIR} > ${LOGDIR}/git-clone.log 2>&1 || exit $?
 fi
 
 for image in ${IMAGES}; do
-		BUILDDIR=${TARGET_DIR}/build/${image}-${pgver}
-
-    mkdir -p ${BUILDDIR} > /dev/null || exit 1
-		printf "%s\0%s\0%s\0%s\0" "${image}" "${BUILDDIR}" "${LOGDIR}" "${REPODIR}"
-done | xargs -0 -n 4 -P ${CPUS} bash -c 'build_docker_image "$@"' --
+	printf "%s\0%s\0%s\0%s\0%s\0" "${image}" "${BUILDDIR}" "${LOGDIR}" "${REPODIR}" "${PGVERS}"
+done | xargs -0 -n 5 -P ${CPUS} bash -c 'build_docker_image "$@"' --
 
 for image in ${IMAGES}; do
 	for pgver in ${PGVERS}; do
