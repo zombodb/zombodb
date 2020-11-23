@@ -12,23 +12,6 @@ Returns the currently-installed version of ZomboDB.
 ---
 
 ```sql
-FUNCTION zdb.ctid(ctid_as_64bits bigint) RETURNS tid
-```
-
-Converts a ZomboDB 64bit-encoded `ctid` column value back to a regular `tid`.  This typically won't be necessary, but can be useful for troubleshooting problems.
-
-Example:
-
-```sql
-SELECT zdb.ctid(21474836497);
-  ctid  
---------
- (5,17)
-```
-
----
-
-```sql
 FUNCTION zdb.request(
 	index regclass, 
 	endpoint text, 
@@ -97,6 +80,17 @@ FUNCTION profile_query(index regclass, query zdbquery) RETURNS json
 ```
 
 Uses Elasticsearch's [Profile API](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-profile.html) to provide detailed timing and execution information about a query.
+
+---
+
+```sql
+FUNCTION zdb.determine_index(relation regclass) RETURNS regclass
+```
+
+Given a relation oid (either an actual index, a table, or a view) return the `USING zombodb` index that will be used when
+querying that relation.
+
+If no index can be determined, `NULL` is returned.
 
 ---
 
