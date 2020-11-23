@@ -219,7 +219,7 @@ pub struct ZDBIndexOptions {
 #[allow(dead_code)]
 impl ZDBIndexOptions {
     pub fn from_relation(relation: &PgRelation) -> ZDBIndexOptions {
-        let relation = find_zdb_index(relation);
+        let relation = find_zdb_index(relation, true).unwrap();
         let internal = ZDBIndexOptionsInternal::from_relation(&relation);
         let heap_relation = relation.heap_relation().expect("not an index");
         ZDBIndexOptions {
@@ -312,6 +312,11 @@ impl ZDBIndexOptions {
             None => HashMap::new(),
         }
     }
+}
+
+#[pg_extern(volatile, parallel_safe)]
+fn determine_index(relation: PgRelation) -> Option<PgRelation> {
+    find_zdb_index(&relation, false)
 }
 
 #[pg_extern(volatile, parallel_safe)]

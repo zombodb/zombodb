@@ -92,7 +92,7 @@ impl ElasticsearchError {
 impl Elasticsearch {
     pub fn new(relation: &PgRelation) -> Self {
         Elasticsearch {
-            options: ZDBIndexOptions::from_relation(&find_zdb_index(relation)),
+            options: ZDBIndexOptions::from_relation(&find_zdb_index(relation, true).unwrap()),
         }
     }
 

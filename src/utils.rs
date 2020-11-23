@@ -12,20 +12,24 @@ pub fn has_zdb_index(heap_relation: &PgRelation, current_index: &PgRelation) -> 
     false
 }
 
-pub fn find_zdb_index(any_relation: &PgRelation) -> PgRelation {
+pub fn find_zdb_index(any_relation: &PgRelation, missing_ok: bool) -> Option<PgRelation> {
     if is_zdb_index(any_relation) {
-        return any_relation.clone();
+        return Some(any_relation.clone());
     } else if is_view(any_relation) {
         unimplemented!("don't yet know how to find the ZDB index to use for a view");
     } else {
         for index in any_relation.indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
             if is_zdb_index(&index) {
-                return index.to_owned();
+                return Some(index.to_owned());
             }
         }
     }
 
-    panic!("Could not find ZomboDB index for {}", any_relation.name())
+    if missing_ok {
+        None
+    } else {
+        panic!("Could not find ZomboDB index for {}", any_relation.name())
+    }
 }
 
 #[inline]
