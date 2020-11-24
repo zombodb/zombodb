@@ -54,11 +54,7 @@ During the Postgres query planning phase, ZomboDB rewrites this so that the left
 
 For example, the query `SELECT * FROM table WHERE table ==> 'foo'` is rewritten as if you had actually specified `SELECT * FROM table WHERE table.ctid ==> 'foo'`.
 
-Addiitonally, when you create a ZomboDB index, you do so with a `CREATE INDEX` statement that is a single-column index (typically just a row reference to the table).  ZomboDB rewrites this such that the index transparently becomes a multi-column index where the first column is the table's `ctid` system column.
-
-For example, `CREATE INDEX idxfoo ON foo USING zombodb ((foo.*))` is rewritten as `CREATE INDEX idxfoo ON foo USING zombodb (ctid, (foo.*))`.
-
-These things are transparent to you, but are necessary in order for ZomboDB to support all of Postgres' various query plan types, including plans that include sequential scans and hash joins.
+This is transparent to you, but is necessary in order for ZomboDB to support all of Postgres' various query plan types, including plans that include sequential scans and hash joins.
 
 ### ZomboDB Attaches "hidden" Triggers to Tables
 
@@ -69,12 +65,6 @@ They're uniquely named and shouldn't cause conflicts with triggers you might nee
 Additionally, the triggers have a catalog dependency on the ZomboDB index, so when you drop the index, the triggers are automatically dropped.
 
 This should be a worry-free thing, but it's something to know.
-
-### Heap Only Tuples (HOT) are not Supported
-
-Postgres [Heap Only Tuples](https://github.com/postgres/postgres/blob/master/src/backend/access/heap/README.HOT) are not (currently) supported by ZomboDB.  If a `CREATE INDEX` statement finds a HOT-updated row, the statement will ERROR and instruct you to `VACUUM FULL` your table before you can successfully run the `CREATE INDEX` statement.
-
-Once a `USING zombodb` index is created, rows won't be HOT-updated, so this only applies to creating new ZomboDB indices on tables that had been previously updated.
 
 ### External Tools Like Kibana are Supported
 
