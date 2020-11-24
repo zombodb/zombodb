@@ -30,6 +30,7 @@ if [ "x${CPUS}" == "x" ] ; then
 fi
 
 mkdir -p $LOGDIR > /dev/null
+mkdir -p ${TARGET_DIR}/build > /dev/null
 
 if [ "x${BRANCH}" == "x" ] ; then
 	echo "usage:  ./build.sh <branch_name> [image name] [pgver]"
