@@ -1,7 +1,7 @@
 [package]
 name = "zombodb"
 description = "Making Postgres and Elasticsearch work together like it's 2020"
-version = "3000.0.0-alpha1"
+version = "3000.0.0-alpha2"
 edition = "2018"
 build = "build.rs"
 readme = "README.md"

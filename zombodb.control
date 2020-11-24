@@ -1,5 +1,5 @@
 comment = 'ZomboDB:  Making Postgres and Elasticsearch work together like it''s 2020'
-default_version = '3000.0.0-alpha1'
+default_version = '3000.0.0-alpha2'
 module_pathname = '$libdir/zombodb'
 relocatable = false
 schema = zdb
