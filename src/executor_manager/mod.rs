@@ -131,6 +131,9 @@ impl QueryState {
                     .rtable
             };
             let var = PgBox::from_pg(first_arg as *mut pg_sys::Var);
+            #[cfg(feature = "pg13")]
+            let rentry = unsafe { pg_sys::rt_fetch(var.varnosyn, rtable) };
+            #[cfg(not(feature = "pg13"))]
             let rentry = unsafe { pg_sys::rt_fetch(var.varnoold, rtable) };
             let heap_oid = unsafe { rentry.as_ref().unwrap().relid };
 

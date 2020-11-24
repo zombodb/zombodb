@@ -24,7 +24,7 @@ use crate::query_parser::transformations::nested_groups::group_nested;
 use crate::query_parser::transformations::prox_rewriter::rewrite_proximity_chains;
 use crate::query_parser::transformations::retarget::retarget_expr;
 use crate::query_parser::{INDEX_LINK_PARSER, ZDB_QUERY_PARSER};
-use crate::utils::{get_null_copy_to_fields, get_search_analyzer};
+use crate::utils::{find_zdb_index, get_null_copy_to_fields, get_search_analyzer};
 
 #[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ProximityDistance {
@@ -209,7 +209,7 @@ impl<'input> Term<'input> {
                 if Term::is_prefix_wildcard(s) {
                     Term::PhrasePrefix(s, b)
                 } else {
-                    Term::Phrase(s, b)
+                    Term::PhraseWithWildcard(s, b)
                 }
             } else if is_wildcard {
                 if Term::is_prefix_wildcard(s) {
@@ -393,7 +393,7 @@ impl<'input> Expr<'input> {
         }
 
         let root_index = IndexLink::from_relation(index);
-        let zdboptions = ZDBIndexOptions::from(index);
+        let zdboptions = ZDBIndexOptions::from_relation(index);
 
         Expr::from_str_disconnected(
             Some(index),
@@ -641,6 +641,7 @@ impl FromStr for QualifiedIndex {
 
 impl QualifiedIndex {
     pub fn from_relation(index: &PgRelation) -> Self {
+        let index = find_zdb_index(index, true).unwrap();
         QualifiedIndex {
             schema: Some(index.namespace().to_string()),
             table: index
@@ -706,9 +707,10 @@ impl IndexLink {
     }
 
     pub fn from_zdb(index: &PgRelation) -> Vec<Self> {
+        let index = find_zdb_index(index, true).unwrap();
         let mut index_links = Vec::new();
 
-        if let Some(links) = ZDBIndexOptions::from(index).links() {
+        if let Some(links) = ZDBIndexOptions::from_relation(&index).links() {
             for link in links {
                 let mut used_fields = HashSet::new();
                 let mut fieldname_stack = Vec::new();
@@ -716,7 +718,7 @@ impl IndexLink {
                 let link = INDEX_LINK_PARSER.with(|parser| {
                     parser
                         .parse(
-                            Some(index),
+                            Some(&index),
                             &mut used_fields,
                             &mut fieldname_stack,
                             &mut operator_stack,

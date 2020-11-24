@@ -72,3 +72,4 @@ highlighting_query_highlighter.generated.sql
 query_parser_dsl_mod.generated.sql
 _finalize.sql
 query_dsl_zdb.generated.sql
+elasticsearch_suggest_term.generated.sql

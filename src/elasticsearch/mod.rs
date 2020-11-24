@@ -15,6 +15,7 @@ mod get_settings;
 mod profile_query;
 mod put_mapping;
 mod refresh_index;
+mod suggest_term;
 mod update_settings;
 
 pub mod aggregate_search;
@@ -36,9 +37,10 @@ use crate::elasticsearch::profile_query::ElasticsearchProfileQueryRequest;
 use crate::elasticsearch::put_mapping::ElasticsearchPutMappingRequest;
 use crate::elasticsearch::refresh_index::ElasticsearchRefreshIndexRequest;
 use crate::elasticsearch::search::ElasticsearchSearchRequest;
+use crate::elasticsearch::suggest_term::ElasticsearchSuggestTermRequest;
 use crate::elasticsearch::update_settings::ElasticsearchUpdateSettingsRequest;
 use crate::executor_manager::get_executor_manager;
-use crate::utils::is_nested_field;
+use crate::utils::{find_zdb_index, is_nested_field};
 use crate::zdbquery::ZDBPreparedQuery;
 pub use bulk::*;
 pub use create_index::*;
@@ -88,9 +90,9 @@ impl ElasticsearchError {
 }
 
 impl Elasticsearch {
-    pub fn new(indexrel: &PgRelation) -> Self {
+    pub fn new(relation: &PgRelation) -> Self {
         Elasticsearch {
-            options: ZDBIndexOptions::from(indexrel),
+            options: ZDBIndexOptions::from_relation(&find_zdb_index(relation, true).unwrap()),
         }
     }
 
@@ -312,6 +314,16 @@ impl Elasticsearch {
         ElasticsearchCountRequest::new(self, query, true)
     }
 
+    pub fn suggest_terms(
+        &self,
+        query: ZDBPreparedQuery,
+        fieldname: String,
+        suggest: String,
+    ) -> ElasticsearchSuggestTermRequest {
+        get_executor_manager().wait_for_completion();
+        ElasticsearchSuggestTermRequest::new(self, query, fieldname, suggest)
+    }
+
     pub fn get_document<'a, T: DeserializeOwned>(
         &self,
         id: &'a str,
@@ -419,7 +431,7 @@ impl Elasticsearch {
     }
 }
 
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(volatile, parallel_safe)]
 fn request(
     index: PgRelation,
     endpoint: &str,

@@ -1,6 +1,6 @@
 # Index Options
 
-As the [Index Management](INDEX-MANAGEMENT.md) documetation indicated, ZomboDB supports a set of custom advanced-use options for defining how an index relates to other indexes.
+As the [Index Management](INDEX-MANAGEMENT.md) documentation indicated, ZomboDB supports a set of custom advanced-use options for defining how an index relates to other indexes.
 
 
 ## Index Links

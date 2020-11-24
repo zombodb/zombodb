@@ -1,0 +1,12 @@
+SELECT zdb.determine_index('idxso_posts');
+ determine_index 
+-----------------
+ idxso_posts
+(1 row)
+
+SELECT zdb.determine_index('so_posts');
+ determine_index 
+-----------------
+ idxso_posts
+(1 row)
+

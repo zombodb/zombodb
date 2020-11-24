@@ -13,11 +13,11 @@ pub fn get_index_options_for_relation(relation: &PgRelation) -> Vec<ZDBIndexOpti
     if relation.is_table() || relation.is_matview() {
         for index in relation.indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
             if is_zdb_index(&index) {
-                options.push(ZDBIndexOptions::from(&index));
+                options.push(ZDBIndexOptions::from_relation(&index));
             }
         }
     } else if relation.is_index() && is_zdb_index(relation) {
-        options.push(ZDBIndexOptions::from(relation))
+        options.push(ZDBIndexOptions::from_relation(relation))
     }
 
     options
@@ -33,7 +33,7 @@ pub fn get_index_options_for_schema(name: &str) -> Vec<ZDBIndexOptions> {
         while table.next().is_some() {
             let oid = table.get_one::<pg_sys::Oid>().expect("index oid is NULL");
             let index = PgRelation::with_lock(oid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
-            options.push(ZDBIndexOptions::from(&index));
+            options.push(ZDBIndexOptions::from_relation(&index));
         }
         Ok(Some(()))
     });
@@ -46,7 +46,7 @@ pub fn alter_indices(prev_options: Option<Vec<ZDBIndexOptions>>) {
         for (old_options, new_options, index) in prev_options.into_iter().map(|option| {
             let index =
                 PgRelation::with_lock(option.oid(), pg_sys::AccessShareLock as pg_sys::LOCKMODE);
-            (option, ZDBIndexOptions::from(&index), index)
+            (option, ZDBIndexOptions::from_relation(&index), index)
         }) {
             if old_options.url() != new_options.url()
                 && !unsafe { pg_sys::session_auth_is_superuser }

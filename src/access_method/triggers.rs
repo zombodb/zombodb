@@ -1,4 +1,5 @@
 use crate::executor_manager::get_executor_manager;
+use pgx::pg_sys::AsPgCStr;
 use pgx::*;
 use std::ffi::CStr;
 
@@ -142,40 +143,52 @@ fn create_trigger(
     trigger_arg: pg_sys::Oid,
     events: u32,
 ) -> pg_sys::Oid {
-    let relrv = PgNodeFactory::makeRangeVar(
-        PgMemoryContexts::CurrentMemoryContext,
-        index_relation.namespace(),
-        index_relation.name(),
-        -1,
-    );
+    let relrv = unsafe {
+        pg_sys::makeRangeVar(
+            index_relation.namespace().as_pg_cstr(),
+            index_relation.name().as_pg_cstr(),
+            -1,
+        )
+    };
     let mut args = PgList::new();
     let mut funcname = PgList::new();
 
-    args.push(
-        PgNodeFactory::makeString(
-            PgMemoryContexts::CurrentMemoryContext,
-            &trigger_arg.to_string(),
-        )
-        .into_pg(),
-    );
+    let trigger_arg_string = unsafe { pg_sys::makeString(trigger_arg.to_string().as_pg_cstr()) };
 
-    funcname
-        .push(PgNodeFactory::makeString(PgMemoryContexts::CurrentMemoryContext, "zdb").into_pg());
-    funcname.push(
-        PgNodeFactory::makeString(PgMemoryContexts::CurrentMemoryContext, function_name).into_pg(),
-    );
+    args.push(trigger_arg_string);
 
-    let mut tgstmt = PgNodeFactory::makeCreateTrigStmt();
+    unsafe {
+        funcname.push(pg_sys::makeString("zdb".as_pg_cstr()));
+    }
+    unsafe {
+        funcname.push(pg_sys::makeString(function_name.as_pg_cstr()));
+    }
+
+    let mut tgstmt = PgBox::<pg_sys::CreateTrigStmt>::alloc_node(pg_sys::NodeTag_T_CreateTrigStmt);
     tgstmt.trigname = PgMemoryContexts::CurrentMemoryContext.pstrdup(trigger_name);
-    tgstmt.relation = relrv.into_pg();
+    tgstmt.relation = relrv;
     tgstmt.funcname = funcname.into_pg();
     tgstmt.args = args.into_pg();
     tgstmt.row = true;
     tgstmt.timing = pg_sys::TRIGGER_TYPE_BEFORE as i16;
     tgstmt.events = events as i16;
 
+    #[cfg(feature = "pg10")]
     let object_address = unsafe {
-        pg_sys::pg12_specific::CreateTrigger(
+        pg_sys::CreateTrigger(
+            tgstmt.into_pg(),
+            std::ptr::null_mut(),
+            index_relation.heap_relation().unwrap().oid(),
+            pg_sys::InvalidOid,
+            pg_sys::InvalidOid,
+            pg_sys::InvalidOid,
+            true,
+        )
+    };
+
+    #[cfg(not(feature = "pg10"))]
+    let object_address = unsafe {
+        pg_sys::CreateTrigger(
             tgstmt.into_pg(),
             std::ptr::null_mut(),
             index_relation.heap_relation().unwrap().oid(),

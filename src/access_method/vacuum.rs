@@ -19,7 +19,7 @@ pub extern "C" fn ambulkdelete(
     let info = PgBox::from_pg(info);
     let index_relation = unsafe { PgRelation::from_pg(info.index) };
     let elasticsearch = Elasticsearch::new(&index_relation);
-    let options = ZDBIndexOptions::from(&index_relation);
+    let options = ZDBIndexOptions::from_relation(&index_relation);
     let es_index_name = options.index_name();
     let oldest_xmin = unsafe {
         pg_sys::TransactionIdLimitedForOldSnapshots(

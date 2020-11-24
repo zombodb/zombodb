@@ -1,12 +1,15 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::gucs::{ZDB_DEFAULT_ELASTICSEARCH_URL, ZDB_DEFAULT_REPLICAS};
-use crate::query_parser::ast::QualifiedField;
+use crate::query_parser::ast::{IndexLink, QualifiedField};
+use crate::query_parser::transformations::field_finder::find_link_for_field;
 use crate::query_parser::{parse_field_lists, INDEX_LINK_PARSER};
+use crate::utils::find_zdb_index;
 use lazy_static::*;
 use memoffset::*;
+use pgx::pg_sys::AsPgCStr;
 use pgx::*;
 use std::collections::{HashMap, HashSet};
-use std::ffi::{CStr, CString};
+use std::ffi::CStr;
 use std::fmt::Debug;
 
 const DEFAULT_BATCH_SIZE: i32 = 8 * 1024 * 1024;
@@ -65,7 +68,7 @@ struct ZDBIndexOptionsInternal {
 
 #[allow(dead_code)]
 impl ZDBIndexOptionsInternal {
-    fn from(relation: &PgRelation) -> PgBox<ZDBIndexOptionsInternal> {
+    fn from_relation(relation: &PgRelation) -> PgBox<ZDBIndexOptionsInternal> {
         if relation.rd_index.is_null() {
             panic!("'{}' is not a ZomboDB index", relation.name())
         } else if relation.rd_options.is_null() {
@@ -215,16 +218,17 @@ pub struct ZDBIndexOptions {
 
 #[allow(dead_code)]
 impl ZDBIndexOptions {
-    pub fn from(relation: &PgRelation) -> ZDBIndexOptions {
-        let internal = ZDBIndexOptionsInternal::from(relation);
+    pub fn from_relation(relation: &PgRelation) -> ZDBIndexOptions {
+        let relation = find_zdb_index(relation, true).unwrap();
+        let internal = ZDBIndexOptionsInternal::from_relation(&relation);
         let heap_relation = relation.heap_relation().expect("not an index");
         ZDBIndexOptions {
             oid: relation.oid(),
             url: internal.url(),
             type_name: internal.type_name(),
             refresh_interval: internal.refresh_interval(),
-            alias: internal.alias(&heap_relation, relation),
-            uuid: internal.uuid(&heap_relation, relation),
+            alias: internal.alias(&heap_relation, &relation),
+            uuid: internal.uuid(&heap_relation, &relation),
             links: internal.links(),
             field_lists: internal.field_lists(),
             compression_level: internal.compression_level,
@@ -310,31 +314,40 @@ impl ZDBIndexOptions {
     }
 }
 
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(volatile, parallel_safe)]
+fn determine_index(relation: PgRelation) -> Option<PgRelation> {
+    find_zdb_index(&relation, false)
+}
+
+#[pg_extern(volatile, parallel_safe)]
 fn index_name(index_relation: PgRelation) -> String {
-    ZDBIndexOptions::from(&index_relation)
+    ZDBIndexOptions::from_relation(&index_relation)
         .index_name()
         .to_owned()
 }
 
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(volatile, parallel_safe)]
 fn index_alias(index_relation: PgRelation) -> String {
-    ZDBIndexOptions::from(&index_relation).alias().to_owned()
+    ZDBIndexOptions::from_relation(&index_relation)
+        .alias()
+        .to_owned()
 }
 
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(volatile, parallel_safe)]
 fn index_url(index_relation: PgRelation) -> String {
-    ZDBIndexOptions::from(&index_relation).url().to_owned()
+    ZDBIndexOptions::from_relation(&index_relation)
+        .url()
+        .to_owned()
 }
 
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(volatile, parallel_safe)]
 fn index_type_name(index_relation: PgRelation) -> String {
-    ZDBIndexOptions::from(&index_relation)
+    ZDBIndexOptions::from_relation(&index_relation)
         .type_name()
         .to_owned()
 }
 
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(volatile, parallel_safe)]
 fn index_mapping(index_relation: PgRelation) -> JsonB {
     JsonB(
         Elasticsearch::new(&index_relation)
@@ -344,7 +357,7 @@ fn index_mapping(index_relation: PgRelation) -> JsonB {
     )
 }
 
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(volatile, parallel_safe)]
 fn index_settings(index_relation: PgRelation) -> JsonB {
     JsonB(
         Elasticsearch::new(&index_relation)
@@ -354,9 +367,68 @@ fn index_settings(index_relation: PgRelation) -> JsonB {
     )
 }
 
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(volatile, parallel_safe)]
 fn index_options(index_relation: PgRelation) -> Option<Vec<String>> {
-    ZDBIndexOptions::from(&index_relation).links().clone()
+    ZDBIndexOptions::from_relation(&index_relation)
+        .links()
+        .clone()
+}
+
+#[pg_extern(volatile, parallel_safe)]
+fn index_field_lists(
+    index_relation: PgRelation,
+) -> impl std::iter::Iterator<Item = (name!(fieldname, String), name!(fields, Vec<String>))> {
+    ZDBIndexOptions::from_relation(&index_relation)
+        .field_lists()
+        .into_iter()
+        .map(|(k, v)| (k, v.into_iter().map(|f| f.field_name()).collect()))
+}
+
+#[pg_extern(volatile, parallel_safe)]
+fn field_mapping(index_relation: PgRelation, field: &str) -> Option<JsonB> {
+    let root_index = IndexLink::from_relation(&index_relation);
+    let index_links = IndexLink::from_zdb(&index_relation);
+    let link = find_link_for_field(
+        &QualifiedField {
+            index: None,
+            field: field.into(),
+        },
+        &root_index,
+        &index_links,
+    );
+
+    link.map_or(None, |link| {
+        let index = link.open_index().expect("failed to open index");
+        let options = ZDBIndexOptions::from_relation(&index);
+        let mapping = index_mapping(index);
+
+        let mut as_map: HashMap<String, serde_json::Value> =
+            serde_json::from_value(mapping.0).unwrap();
+
+        as_map = serde_json::from_value(
+            as_map
+                .remove(options.index_name())
+                .expect("no index object in mapping"),
+        )
+        .unwrap();
+        as_map = serde_json::from_value(
+            as_map
+                .remove("mappings")
+                .expect("no mappings object in mapping"),
+        )
+        .unwrap();
+        as_map = serde_json::from_value(
+            as_map
+                .remove("properties")
+                .expect("no properties object in mapping"),
+        )
+        .unwrap();
+
+        match as_map.remove(field) {
+            Some(field_mapping) => Some(JsonB(field_mapping)),
+            None => None,
+        }
+    })
 }
 
 static mut RELOPT_KIND_ZDB: pg_sys::relopt_kind = 0;
@@ -441,6 +513,7 @@ extern "C" fn validate_field_lists(value: *const std::os::raw::c_char) {
     parse_field_lists(input);
 }
 
+const NUM_REL_OPTS: usize = 15;
 #[allow(clippy::unneeded_field_pattern)] // b/c of offset_of!()
 #[pg_guard]
 pub unsafe extern "C" fn amoptions(
@@ -448,84 +521,114 @@ pub unsafe extern "C" fn amoptions(
     validate: bool,
 ) -> *mut pg_sys::bytea {
     // TODO:  how to make this const?  we can't use offset_of!() macro in const definitions, apparently
-    let tab: [pg_sys::relopt_parse_elt; 15] = [
+    let tab: [pg_sys::relopt_parse_elt; NUM_REL_OPTS] = [
         pg_sys::relopt_parse_elt {
-            optname: CStr::from_bytes_with_nul_unchecked(b"url\0").as_ptr(),
+            optname: "url".as_pg_cstr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, url_offset) as i32,
         },
         pg_sys::relopt_parse_elt {
-            optname: CStr::from_bytes_with_nul_unchecked(b"type_name\0").as_ptr(),
+            optname: "type_name".as_pg_cstr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, type_name_offset) as i32,
         },
         pg_sys::relopt_parse_elt {
-            optname: CStr::from_bytes_with_nul_unchecked(b"refresh_interval\0").as_ptr(),
+            optname: "refresh_interval".as_pg_cstr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, refresh_interval_offset) as i32,
         },
         pg_sys::relopt_parse_elt {
-            optname: CStr::from_bytes_with_nul_unchecked(b"shards\0").as_ptr(),
+            optname: "shards".as_pg_cstr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
             offset: offset_of!(ZDBIndexOptionsInternal, shards) as i32,
         },
         pg_sys::relopt_parse_elt {
-            optname: CStr::from_bytes_with_nul_unchecked(b"replicas\0").as_ptr(),
+            optname: "replicas".as_pg_cstr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
             offset: offset_of!(ZDBIndexOptionsInternal, replicas) as i32,
         },
         pg_sys::relopt_parse_elt {
-            optname: CStr::from_bytes_with_nul_unchecked(b"bulk_concurrency\0").as_ptr(),
+            optname: "bulk_concurrency".as_pg_cstr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
             offset: offset_of!(ZDBIndexOptionsInternal, bulk_concurrency) as i32,
         },
         pg_sys::relopt_parse_elt {
-            optname: CStr::from_bytes_with_nul_unchecked(b"batch_size\0").as_ptr(),
+            optname: "batch_size".as_pg_cstr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
             offset: offset_of!(ZDBIndexOptionsInternal, batch_size) as i32,
         },
         pg_sys::relopt_parse_elt {
-            optname: CStr::from_bytes_with_nul_unchecked(b"compression_level\0").as_ptr(),
+            optname: "compression_level".as_pg_cstr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
             offset: offset_of!(ZDBIndexOptionsInternal, compression_level) as i32,
         },
         pg_sys::relopt_parse_elt {
-            optname: CStr::from_bytes_with_nul_unchecked(b"alias\0").as_ptr(),
+            optname: "alias".as_pg_cstr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, alias_offset) as i32,
         },
         pg_sys::relopt_parse_elt {
-            optname: CStr::from_bytes_with_nul_unchecked(b"optimize_after\0").as_ptr(),
+            optname: "optimize_after".as_pg_cstr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
             offset: offset_of!(ZDBIndexOptionsInternal, optimize_after) as i32,
         },
         pg_sys::relopt_parse_elt {
-            optname: CStr::from_bytes_with_nul_unchecked(b"llapi\0").as_ptr(),
+            optname: "llapi".as_pg_cstr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_BOOL,
             offset: offset_of!(ZDBIndexOptionsInternal, llapi) as i32,
         },
         pg_sys::relopt_parse_elt {
-            optname: CStr::from_bytes_with_nul_unchecked(b"uuid\0").as_ptr(),
+            optname: "uuid".as_pg_cstr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, uuid_offset) as i32,
         },
         pg_sys::relopt_parse_elt {
-            optname: CStr::from_bytes_with_nul_unchecked(b"translog_durability\0").as_ptr(),
+            optname: "translog_durability".as_pg_cstr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, translog_durability_offset) as i32,
         },
         pg_sys::relopt_parse_elt {
-            optname: CStr::from_bytes_with_nul_unchecked(b"options\0").as_ptr(),
+            optname: "options".as_pg_cstr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, options_offset) as i32,
         },
         pg_sys::relopt_parse_elt {
-            optname: CStr::from_bytes_with_nul_unchecked(b"field_lists\0").as_ptr(),
+            optname: "field_lists".as_pg_cstr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, field_lists_offset) as i32,
         },
     ];
 
+    build_relopts(reloptions, validate, tab)
+}
+
+#[cfg(feature = "pg13")]
+unsafe fn build_relopts(
+    reloptions: pg_sys::Datum,
+    validate: bool,
+    tab: [pg_sys::relopt_parse_elt; NUM_REL_OPTS],
+) -> *mut pg_sys::bytea {
+    let rdopts;
+
+    /* Parse the user-given reloptions */
+    rdopts = pg_sys::build_reloptions(
+        reloptions,
+        validate,
+        RELOPT_KIND_ZDB,
+        std::mem::size_of::<ZDBIndexOptionsInternal>(),
+        tab.as_ptr(),
+        NUM_REL_OPTS as i32,
+    );
+
+    rdopts as *mut pg_sys::bytea
+}
+
+#[cfg(not(feature = "pg13"))]
+unsafe fn build_relopts(
+    reloptions: pg_sys::Datum,
+    validate: bool,
+    tab: [pg_sys::relopt_parse_elt; NUM_REL_OPTS],
+) -> *mut pg_sys::bytea {
     let mut noptions = 0;
     let options = pg_sys::parseRelOptions(reloptions, validate, RELOPT_KIND_ZDB, &mut noptions);
     if noptions == 0 {
@@ -533,7 +636,7 @@ pub unsafe extern "C" fn amoptions(
     }
 
     for relopt in std::slice::from_raw_parts_mut(options, noptions as usize) {
-        relopt.gen.as_mut().unwrap().lockmode = pg_sys::AccessShareLock as pg_sys::LOCKMODE;
+        relopt.gen.as_mut().unwrap().lockmode = pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE;
     }
 
     let rdopts = pg_sys::allocateReloptStruct(
@@ -557,135 +660,174 @@ pub unsafe extern "C" fn amoptions(
 
 pub unsafe fn init() {
     RELOPT_KIND_ZDB = pg_sys::add_reloption_kind();
+
     pg_sys::add_string_reloption(
         RELOPT_KIND_ZDB,
-        CStr::from_bytes_with_nul_unchecked(b"url\0").as_ptr(),
-        CStr::from_bytes_with_nul_unchecked(b"Server URL and port\0").as_ptr(),
-        CStr::from_bytes_with_nul_unchecked(b"default\0").as_ptr(),
+        "url".as_pg_cstr(),
+        "Server URL and port".as_pg_cstr(),
+        "default".as_pg_cstr(),
         Some(validate_url),
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
     );
     pg_sys::add_string_reloption(
         RELOPT_KIND_ZDB,
-        CStr::from_bytes_with_nul_unchecked(b"type_name\0").as_ptr(),
-        CStr::from_bytes_with_nul_unchecked(
-            b"What Elasticsearch index type name should ZDB use?  Default is 'doc'\0",
-        )
-        .as_ptr(),
-        CStr::from_bytes_with_nul_unchecked(b"doc\0").as_ptr(),
+        "type_name".as_pg_cstr(),
+        "What Elasticsearch index type name should ZDB use?  Default is 'doc'".as_pg_cstr(),
+        "doc".as_pg_cstr(),
         None,
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
     );
-    let default_refresh_interval = CString::new(DEFAULT_REFRESH_INTERVAL).unwrap();
-    pg_sys::add_string_reloption(RELOPT_KIND_ZDB, CStr::from_bytes_with_nul_unchecked(b"refresh_interval\0").as_ptr(),
-                                 CStr::from_bytes_with_nul_unchecked(b"Frequency in which Elasticsearch indexes are refreshed.  Related to ES' index.refresh_interval setting\0").as_ptr(),
-                                 default_refresh_interval.as_ptr(), None);
+    pg_sys::add_string_reloption(
+        RELOPT_KIND_ZDB,
+        "refresh_interval".as_pg_cstr(),
+        "Frequency in which Elasticsearch indexes are refreshed.  Related to ES' index.refresh_interval setting".as_pg_cstr(),
+        DEFAULT_REFRESH_INTERVAL.as_pg_cstr(),
+        None,
+        #[cfg(feature = "pg13")]
+            { pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE },
+    );
     pg_sys::add_int_reloption(
         RELOPT_KIND_ZDB,
-        CStr::from_bytes_with_nul_unchecked(b"shards\0").as_ptr(),
-        CStr::from_bytes_with_nul_unchecked(b"The number of shards for the index\0").as_ptr(),
+        "shards".as_pg_cstr(),
+        "The number of shards for the index".as_pg_cstr(),
         DEFAULT_SHARDS,
         1,
         32768,
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
     );
     pg_sys::add_int_reloption(
         RELOPT_KIND_ZDB,
-        CStr::from_bytes_with_nul_unchecked(b"replicas\0").as_ptr(),
-        CStr::from_bytes_with_nul_unchecked(b"The number of replicas for the index\0").as_ptr(),
+        "replicas".as_pg_cstr(),
+        "The number of replicas for the index".as_pg_cstr(),
         ZDB_DEFAULT_REPLICAS.get(),
         0,
         32768,
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
     );
     pg_sys::add_int_reloption(
         RELOPT_KIND_ZDB,
-        CStr::from_bytes_with_nul_unchecked(b"bulk_concurrency\0").as_ptr(),
-        CStr::from_bytes_with_nul_unchecked(
-            b"The maximum number of concurrent _bulk API requests\0",
-        )
-        .as_ptr(),
+        "bulk_concurrency".as_pg_cstr(),
+        "The maximum number of concurrent _bulk API requests".as_pg_cstr(),
         *DEFAULT_BULK_CONCURRENCY,
         1,
         num_cpus::get() as i32,
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
     );
     pg_sys::add_int_reloption(
         RELOPT_KIND_ZDB,
-        CStr::from_bytes_with_nul_unchecked(b"batch_size\0").as_ptr(),
-        CStr::from_bytes_with_nul_unchecked(b"The size in bytes of batch calls to the _bulk API\0")
-            .as_ptr(),
+        "batch_size".as_pg_cstr(),
+        "The size in bytes of batch calls to the _bulk API".as_pg_cstr(),
         DEFAULT_BATCH_SIZE,
         1,
         (std::i32::MAX / 2) - 1,
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
     );
     pg_sys::add_int_reloption(
         RELOPT_KIND_ZDB,
-        CStr::from_bytes_with_nul_unchecked(b"compression_level\0").as_ptr(),
-        CStr::from_bytes_with_nul_unchecked(
-            b"0-9 value to indicate the level of HTTP compression\0",
-        )
-        .as_ptr(),
+        "compression_level".as_pg_cstr(),
+        "0-9 value to indicate the level of HTTP compression".as_pg_cstr(),
         DEFAULT_COMPRESSION_LEVEL,
         0,
         9,
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
     );
     pg_sys::add_string_reloption(
         RELOPT_KIND_ZDB,
-        CStr::from_bytes_with_nul_unchecked(b"alias\0").as_ptr(),
-        CStr::from_bytes_with_nul_unchecked(
-            b"The Elasticsearch Alias to which this index should belong\0",
-        )
-        .as_ptr(),
+        "alias".as_pg_cstr(),
+        "The Elasticsearch Alias to which this index should belong".as_pg_cstr(),
         std::ptr::null(),
         None,
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
     );
     pg_sys::add_string_reloption(
         RELOPT_KIND_ZDB,
-        CStr::from_bytes_with_nul_unchecked(b"uuid\0").as_ptr(),
-        CStr::from_bytes_with_nul_unchecked(b"The Elasticsearch index name, as a UUID\0").as_ptr(),
+        "uuid".as_pg_cstr(),
+        "The Elasticsearch index name, as a UUID".as_pg_cstr(),
         std::ptr::null(),
         None,
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
     );
     pg_sys::add_string_reloption(
         RELOPT_KIND_ZDB,
-        CStr::from_bytes_with_nul_unchecked(b"translog_durability\0").as_ptr(),
-        CStr::from_bytes_with_nul_unchecked(
-            b"Elasticsearch index.translog.durability setting.  Defaults to 'request'",
-        )
-        .as_ptr(),
-        CStr::from_bytes_with_nul_unchecked(b"request\0").as_ptr(),
+        "translog_durability".as_pg_cstr(),
+        "Elasticsearch index.translog.durability setting.  Defaults to 'request'".as_pg_cstr(),
+        "request".as_pg_cstr(),
         Some(validate_translog_durability),
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
     );
     pg_sys::add_int_reloption(
         RELOPT_KIND_ZDB,
-        CStr::from_bytes_with_nul_unchecked(b"optimize_after\0").as_ptr(),
-        CStr::from_bytes_with_nul_unchecked(
-            b"After how many deleted docs should ZDB _optimize the ES index during VACUUM?\0",
-        )
-        .as_ptr(),
+        "optimize_after".as_pg_cstr(),
+        "After how many deleted docs should ZDB _optimize the ES index during VACUUM?".as_pg_cstr(),
         DEFAULT_OPTIMIZE_AFTER,
         0,
         std::i32::MAX,
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
     );
     pg_sys::add_bool_reloption(
         RELOPT_KIND_ZDB,
-        CStr::from_bytes_with_nul_unchecked(b"llapi\0").as_ptr(),
-        CStr::from_bytes_with_nul_unchecked(
-            b"Will this index be used by ZomboDB's low-level API?\0",
-        )
-        .as_ptr(),
+        "llapi".as_pg_cstr(),
+        "Will this index be used by ZomboDB's low-level API?".as_pg_cstr(),
         false,
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
     );
     pg_sys::add_string_reloption(
         RELOPT_KIND_ZDB,
-        CStr::from_bytes_with_nul_unchecked(b"options\0").as_ptr(),
-        CStr::from_bytes_with_nul_unchecked(b"ZomboDB Index Linking options").as_ptr(),
+        "options".as_pg_cstr(),
+        "ZomboDB Index Linking options".as_pg_cstr(),
         std::ptr::null(),
         Some(validate_options),
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
     );
     pg_sys::add_string_reloption(
         RELOPT_KIND_ZDB,
-        CStr::from_bytes_with_nul_unchecked(b"field_lists\0").as_ptr(),
-        CStr::from_bytes_with_nul_unchecked(b"Combine fields into named lists during search")
-            .as_ptr(),
+        "field_lists".as_pg_cstr(),
+        "Combine fields into named lists during search".as_pg_cstr(),
         std::ptr::null(),
         Some(validate_field_lists),
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
     );
 }
 
@@ -697,39 +839,39 @@ mod tests {
         DEFAULT_OPTIMIZE_AFTER, DEFAULT_SHARDS, DEFAULT_TYPE_NAME,
     };
     use crate::gucs::ZDB_DEFAULT_REPLICAS;
+    use pgx::pg_sys::AsPgCStr;
     use pgx::*;
-    use std::ffi::CString;
 
     #[pg_test]
     fn test_validate_url() {
-        validate_url(CString::new("http://localhost:9200/").unwrap().as_ptr());
+        validate_url("http://localhost:9200/".as_pg_cstr());
     }
 
     #[pg_test]
     fn test_validate_default_url() {
-        validate_url(CString::new("default").unwrap().as_ptr());
+        validate_url("default".as_pg_cstr());
     }
 
     #[pg_test(error = "url must end with a forward slash")]
     fn test_validate_invalid_url() {
-        validate_url(CString::new("http://localhost:9200").unwrap().as_ptr());
+        validate_url("http://localhost:9200".as_pg_cstr());
     }
 
     #[pg_test(
         error = "invalid translog_durability setting.  Must be one of 'request' or 'async': foo"
     )]
     fn test_validate_invalid_translog_durability() {
-        validate_translog_durability(CString::new("foo").unwrap().as_ptr());
+        validate_translog_durability("foo".as_pg_cstr());
     }
 
     #[pg_test]
     fn test_valid_translog_durability_request() {
-        validate_translog_durability(CString::new("request").unwrap().as_ptr());
+        validate_translog_durability("request".as_pg_cstr());
     }
 
     #[pg_test]
     fn test_valid_translog_durability_async() {
-        validate_translog_durability(CString::new("async").unwrap().as_ptr());
+        validate_translog_durability("async".as_pg_cstr());
     }
 
     #[pg_test]
@@ -753,7 +895,7 @@ mod tests {
         let index_oid = Spi::get_one::<pg_sys::Oid>("SELECT 'idxtest'::regclass::oid")
             .expect("failed to get SPI result");
         let indexrel = PgRelation::from_pg(pg_sys::RelationIdGetRelation(index_oid));
-        let options = ZDBIndexOptions::from(&indexrel);
+        let options = ZDBIndexOptions::from_relation(&indexrel);
         assert_eq!(options.url(), "http://localhost:19200/");
         assert_eq!(options.type_name(), "test_type_name");
         assert_eq!(options.alias(), "test_alias");
@@ -789,11 +931,11 @@ mod tests {
             .expect("failed to get SPI result");
         let heaprel = PgRelation::from_pg(pg_sys::RelationIdGetRelation(heap_oid));
         let indexrel = PgRelation::from_pg(pg_sys::RelationIdGetRelation(index_oid));
-        let options = ZDBIndexOptions::from(&indexrel);
+        let options = ZDBIndexOptions::from_relation(&indexrel);
         assert_eq!(options.type_name(), DEFAULT_TYPE_NAME);
         assert_eq!(
             &options.alias(),
-            &format!("pgx_tests.tests.test.idxtest-{}", indexrel.oid())
+            &format!("pgx_tests.public.test.idxtest-{}", indexrel.oid())
         );
         assert_eq!(
             &options.uuid(),
@@ -827,7 +969,7 @@ mod tests {
         );
 
         let index_relation = PgRelation::open_with_name("idxtest").expect("no such relation");
-        let options = ZDBIndexOptions::from(&index_relation);
+        let options = ZDBIndexOptions::from_relation(&index_relation);
 
         assert_eq!(options.index_name(), options.uuid());
     }
@@ -843,7 +985,7 @@ mod tests {
         );
 
         let index_relation = PgRelation::open_with_name("idxtest").expect("no such relation");
-        let options = ZDBIndexOptions::from(&index_relation);
+        let options = ZDBIndexOptions::from_relation(&index_relation);
 
         assert_eq!(options.url(), "http://localhost:19200/");
     }
@@ -859,7 +1001,7 @@ mod tests {
         );
 
         let index_relation = PgRelation::open_with_name("idxtest").expect("no such relation");
-        let options = ZDBIndexOptions::from(&index_relation);
+        let options = ZDBIndexOptions::from_relation(&index_relation);
 
         assert_eq!(options.type_name(), "doc");
     }
@@ -876,7 +1018,7 @@ mod tests {
 
         let index_relation =
             PgRelation::open_with_name("idxtest_link_options").expect("no such relation");
-        let options = ZDBIndexOptions::from(&index_relation);
+        let options = ZDBIndexOptions::from_relation(&index_relation);
 
         assert_eq!(
             options.links(),

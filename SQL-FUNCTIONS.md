@@ -12,23 +12,6 @@ Returns the currently-installed version of ZomboDB.
 ---
 
 ```sql
-FUNCTION zdb.ctid(ctid_as_64bits bigint) RETURNS tid
-```
-
-Converts a ZomboDB 64bit-encoded `ctid` column value back to a regular `tid`.  This typically won't be necessary, but can be useful for troubleshooting problems.
-
-Example:
-
-```sql
-SELECT zdb.ctid(21474836497);
-  ctid  
---------
- (5,17)
-```
-
----
-
-```sql
 FUNCTION zdb.request(
 	index regclass, 
 	endpoint text, 
@@ -45,21 +28,26 @@ For example, this returns the Elasticsearch cluster information:
 
 ```sql
 SELECT zdb.request('idxproducts', '/');
-                      request                      
----------------------------------------------------
- {                                                +
-     "name": "kS80VFC",                           +
-     "tagline": "You Know, for Search",           +
-     "version": {                                 +
-         "number": "5.6.4",                       +
-         "build_date": "2017-10-31T18:55:38.105Z",+
-         "build_hash": "8bbedf5",                 +
-         "build_snapshot": false,                 +
-         "lucene_version": "6.6.1"                +
-     },                                           +
-     "cluster_name": "test",                      +
-     "cluster_uuid": "xzl4DIe0TEushekzhQxVYg"     +
- }
+                            request                             
+----------------------------------------------------------------
+ {                                                             +
+   "name" : "emac16.lan",                                      +
+   "cluster_name" : "elasticsearch",                           +
+   "cluster_uuid" : "HPxSF2doQy-KHFfFKFPEZQ",                  +
+   "version" : {                                               +
+     "number" : "7.9.0",                                       +
+     "build_flavor" : "default",                               +
+     "build_type" : "tar",                                     +
+     "build_hash" : "a479a2a7fce0389512d6a9361301708b92dff667",+
+     "build_date" : "2020-08-11T21:36:48.204330Z",             +
+     "build_snapshot" : false,                                 +
+     "lucene_version" : "8.6.0",                               +
+     "minimum_wire_compatibility_version" : "6.8.0",           +
+     "minimum_index_compatibility_version" : "6.0.0-beta1"     +
+   },                                                          +
+   "tagline" : "You Know, for Search"                          +
+ }                                                             +
+ 
 (1 row)
 ```
 
@@ -92,6 +80,17 @@ FUNCTION profile_query(index regclass, query zdbquery) RETURNS json
 ```
 
 Uses Elasticsearch's [Profile API](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-profile.html) to provide detailed timing and execution information about a query.
+
+---
+
+```sql
+FUNCTION zdb.determine_index(relation regclass) RETURNS regclass
+```
+
+Given a relation oid (either an actual index, a table, or a view) return the `USING zombodb` index that will be used when
+querying that relation.
+
+If no index can be determined, `NULL` is returned.
 
 ---
 
@@ -148,8 +147,26 @@ SELECT zdb.index_type_name('idxproducts');
 
 ---
 
+FUNCTION zdb.index_field_lists(index_relation regclass) RETURNS TABLE ("fieldname" text, "fields" text[])
+
+Returns a resultset describing all the field lists that are defined for the specified index.
+
+Example:
+
 ```sql
-FUNCTION zdb.index_mapping(index regclass) RETURNS json
+SELECT * FROM zdb_get_index_field_lists('idxsome_index');
+    fieldname     |           fields
+------------------+----------------------------
+ title_and_author | {title,author}
+ hashes           | {sha1,md5}
+(2 rows)
+```
+
+---
+
+
+```sql
+FUNCTION zdb.index_mapping(index regclass) RETURNS jsonb
 ```
 
 Returns the full Elasticsearch mapping that ZomboDB generated for the specified Postgres index.  This can be useful for ensuring your custom analyzers and field mappings are properly defined.
@@ -266,4 +283,25 @@ SELECT * FROM zdb.index_mapping('idxproducts');
          }                                                                                                               +
      }
 (1 row)
+```
+
+---
+
+
+```sql
+FUNCTION zdb.field_mapping(index_relation regclass, field_name text) RETURNS json
+```
+
+Returns the Elasticsearch field mapping definition for the specified field.  In the event the specified index has
+index links defined this will traverse those links to find the specified field.
+
+Example:
+
+```sql
+select zdb.field_mapping('idxevents', 'event_type');
+                                         field_mapping                                         
+-----------------------------------------------------------------------------------------------
+ {"type": "keyword", "copy_to": ["zdb_all"], "normalizer": "lowercase", "ignore_above": 10922}
+(1 row)
+
 ```
