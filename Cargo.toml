@@ -30,6 +30,7 @@ num_cpus = "1.13.0"
 pathfinding = "2.0.4"
 pgx = "0.1.5"
 pgx-macros = "0.1.5"
+rayon = "1.5.0"
 regex = "1.4.2"
 reqwest = "0.9.24"
 serde = { version = "1.0.117", features = [ "derive" ] }

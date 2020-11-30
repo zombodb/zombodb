@@ -78,9 +78,13 @@ pub extern "C" fn ambuild(
     // register a callback to delete the newly-created ES index if our transaction aborts
     let delete_on_abort = elasticsearch.delete_index();
     register_xact_callback(PgXactCallbackEvent::Abort, move || {
-        delete_on_abort
-            .execute()
-            .expect("failed to delete Elasticsearch index on transaction abort")
+        if let Err(e) = delete_on_abort.execute() {
+            // we can't panic here b/c we're already in the ABORT stage
+            warning!(
+                "failed to delete Elasticsearch index on transaction abort: {:?}",
+                e
+            )
+        }
     });
 
     let ntuples = do_heap_scan(

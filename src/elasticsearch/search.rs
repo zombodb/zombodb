@@ -8,6 +8,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 const SEARCH_FILTER_PATH:&str = "_scroll_id,_shards.*,hits.total,hits.max_score,hits.hits._score,hits.hits.fields.*,hits.hits.highlight.*";
+const SEARCH_FILTER_PATH_NO_SCORE: &str =
+    "_scroll_id,_shards.*,hits.total,hits.hits.fields.*,hits.hits.highlight.*";
 
 pub struct ElasticsearchSearchRequest {
     elasticsearch: Elasticsearch,
@@ -83,6 +85,8 @@ pub struct ElasticsearchSearchResponse {
     limit: Option<u64>,
     #[serde(skip)]
     offset: Option<u64>,
+    #[serde(skip)]
+    should_sort_hits: bool,
 
     #[serde(rename = "_scroll_id")]
     scroll_id: Option<String>,
@@ -121,13 +125,13 @@ impl ElasticsearchSearchRequest {
         query: ZDBPreparedQuery,
         extra_fields: Option<Vec<&str>>,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
+        let mut should_sort_hits = true;
         let mut url = String::new();
         url.push_str(&elasticsearch.base_url());
         url.push_str("/_search");
         url.push_str("?search_type=query_then_fetch");
         url.push_str("&_source=false");
         url.push_str("&scroll=10m");
-        url.push_str(&format!("&filter_path={}", SEARCH_FILTER_PATH));
         url.push_str("&stored_fields=_none_");
 
         let mut docvalue_fields = extra_fields.unwrap_or_default();
@@ -139,6 +143,12 @@ impl ElasticsearchSearchRequest {
         // do we need to track scores?
         let track_scores =
             query.want_score() || query.limit().is_some() || query.min_score().is_some();
+
+        if track_scores {
+            url.push_str(&format!("&filter_path={}", SEARCH_FILTER_PATH));
+        } else {
+            url.push_str(&format!("&filter_path={}", SEARCH_FILTER_PATH_NO_SCORE));
+        }
 
         // how should we sort the results?
         let mut sort_json = query.sort_json().cloned();
@@ -153,6 +163,7 @@ impl ElasticsearchSearchRequest {
                     elasticsearch: None,
                     limit: Some(0),
                     offset: None,
+                    should_sort_hits,
                     scroll_id: None,
                     shards: None,
                     hits: None,
@@ -172,11 +183,13 @@ impl ElasticsearchSearchRequest {
         }
 
         // if we made it this far and never set a sort, we'll hard-code
-        // sorting against zdb_ctid asc so that we return rows in heap
-        // order, which is much nicer to disk I/O
+        // sorting in the index _doc order so that we return rows in heap
+        // order (assuming the index was created with index.sort.field=zdb_ctid),
+        // which is much nicer to disk I/O
         if sort_json.is_none() {
-            // TODO:  This is about 50% slower on my laptop.
-            // sort_json = Some(json!([{"zdb_ctid": "asc"}]))
+            sort_json = Some(json!([{"_doc": "asc"}]));
+        } else {
+            should_sort_hits = false;
         }
 
         #[derive(Serialize)]
@@ -224,12 +237,20 @@ impl ElasticsearchSearchRequest {
             highlight,
         };
 
-        ElasticsearchSearchRequest::get_hits(url, limit, offset, elasticsearch, json! { body })
+        ElasticsearchSearchRequest::get_hits(
+            url,
+            limit,
+            offset,
+            elasticsearch,
+            should_sort_hits,
+            json! { body },
+        )
     }
 
     fn scroll(
         elasticsearch: &Elasticsearch,
         scroll_id: &str,
+        should_sort_hits: bool,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
         let mut url = String::new();
         url.push_str(elasticsearch.options.url());
@@ -242,6 +263,7 @@ impl ElasticsearchSearchRequest {
             None,
             None,
             elasticsearch,
+            should_sort_hits,
             json! {
                 {
                     "scroll": "10m",
@@ -256,6 +278,7 @@ impl ElasticsearchSearchRequest {
         limit: Option<u64>,
         offset: Option<u64>,
         elasticsearch: &Elasticsearch,
+        should_sort_hits: bool,
         body: serde_json::Value,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
         Elasticsearch::execute_request(
@@ -272,11 +295,38 @@ impl ElasticsearchSearchRequest {
                     }
                 };
 
+                if should_sort_hits {
+                    // sort the hits in this block so we can try to do sequential reads against the
+                    // underlying heap
+                    // TODO:  would like to find a way to avoid this if we know:
+                    //      a) the index is physically sorted by zdb_ctid
+                    //      b) the sort for this query is "_doc"
+                    //      Determining (b) is easy, determining (a) likely has quite a bit of overhead
+                    //
+                    if let Some(hits) = response.hits.as_mut() {
+                        if let Some(inner_hits) = hits.hits.as_mut() {
+                            use rayon::prelude::*;
+
+                            inner_hits.par_sort_unstable_by(|a, b| {
+                                if let Some(a) = a.fields.as_ref() {
+                                    if let Some(b) = b.fields.as_ref() {
+                                        let a = a.zdb_ctid.unwrap_or_default()[0];
+                                        let b = b.zdb_ctid.unwrap_or_default()[0];
+                                        return a.cmp(&b);
+                                    }
+                                }
+                                core::cmp::Ordering::Equal
+                            })
+                        }
+                    }
+                }
+
                 // assign a clone of our ES client to the response too,
                 // for future use during iteration
                 response.elasticsearch = Some(elasticsearch.clone());
                 response.limit = limit;
                 response.offset = offset;
+                response.should_sort_hits = should_sort_hits;
 
                 Ok(response)
             },
@@ -307,6 +357,7 @@ impl Scroller {
         orig_elasticsearch: Elasticsearch,
         orig_scroll_id: Option<String>,
         iter: std::vec::IntoIter<InnerHit>,
+        should_sort_hits: bool,
     ) -> Self {
         let (sender, receiver) = crossbeam_channel::unbounded();
         let (scroll_sender, scroll_receiver) = crossbeam_channel::unbounded();
@@ -329,7 +380,8 @@ impl Scroller {
                         break;
                     }
 
-                    match ElasticsearchSearchRequest::scroll(&elasticsearch, &sid) {
+                    match ElasticsearchSearchRequest::scroll(&elasticsearch, &sid, should_sort_hits)
+                    {
                         Ok(response) => {
                             scroll_id = response.scroll_id;
 
@@ -467,6 +519,7 @@ impl IntoIterator for ElasticsearchSearchResponse {
                 self.elasticsearch.expect("no elasticsearch"),
                 self.scroll_id,
                 self.hits.unwrap().hits.unwrap_or_default().into_iter(),
+                self.should_sort_hits,
             );
 
             // fast forward to our offset -- using the ?from= ES request parameter doesn't work with scroll requests
