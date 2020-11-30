@@ -63,8 +63,8 @@ match {
 } else {
     // a field name looks a lot like a "simple value", so it needs to be defined
     // with a higher matching precedence
-    r#"[a-z0-9_]+"# => IDENTIFIER,
-    r#"([a-z0-9_]+(\.[a-z0-9_]+)+)"# => DOTTED_IDENTIFIER,
+    r#"(?i)[a-z0-9_]+"# => IDENTIFIER,
+    r#"(?i)([a-z0-9_]+(\.[a-z0-9_]+)+)"# => DOTTED_IDENTIFIER,
 } else {
     // even lower precedence values
     r#"(([a-zA-Z0-9_*?]|(\\.))+\.?)+"# => UNQUOTED_VALUE,

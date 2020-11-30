@@ -1,0 +1,33 @@
+select zdb.dump_query('idxevents', 'Field: 1');
+     dump_query      
+---------------------
+ {                  +
+   "match": {       +
+     "Field": {     +
+       "boost": 1.0,+
+       "query": "1" +
+     }              +
+   }                +
+ }
+(1 row)
+
+select zdb.dump_query('idxevents', 'payload.Author: bob');
+          dump_query           
+-------------------------------
+ {                            +
+   "nested": {                +
+     "ignore_unmapped": false,+
+     "path": "payload",       +
+     "query": {               +
+       "match": {             +
+         "payload.Author": {  +
+           "boost": 1.0,      +
+           "query": "bob"     +
+         }                    +
+       }                      +
+     },                       +
+     "score_mode": "avg"      +
+   }                          +
+ }
+(1 row)
+
