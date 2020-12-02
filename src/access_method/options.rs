@@ -16,6 +16,7 @@ const DEFAULT_BATCH_SIZE: i32 = 8 * 1024 * 1024;
 const DEFAULT_COMPRESSION_LEVEL: i32 = 1;
 const DEFAULT_SHARDS: i32 = 5;
 const DEFAULT_OPTIMIZE_AFTER: i32 = 0;
+const DEFAULT_MAX_RESULT_WINDOW: i32 = 10000;
 const DEFAULT_URL: &str = "default";
 const DEFAULT_TYPE_NAME: &str = "doc";
 const DEFAULT_REFRESH_INTERVAL: &str = "-1";
@@ -57,6 +58,7 @@ struct ZDBIndexOptionsInternal {
     options_offset: i32,
     field_lists_offset: i32,
 
+    max_result_window: i32,
     optimize_after: i32,
     compression_level: i32,
     shards: i32,
@@ -80,6 +82,7 @@ impl ZDBIndexOptionsInternal {
             ops.bulk_concurrency = *DEFAULT_BULK_CONCURRENCY;
             ops.batch_size = DEFAULT_BATCH_SIZE;
             ops.optimize_after = DEFAULT_OPTIMIZE_AFTER;
+            ops.max_result_window = DEFAULT_MAX_RESULT_WINDOW;
             ops
         } else {
             PgBox::from_pg(relation.rd_options as *mut ZDBIndexOptionsInternal)
@@ -201,6 +204,7 @@ pub struct ZDBIndexOptions {
     url: String,
     type_name: String,
     refresh_interval: RefreshInterval,
+    max_result_window: i32,
     alias: String,
     uuid: String,
     translog_durability: String,
@@ -227,6 +231,7 @@ impl ZDBIndexOptions {
             url: internal.url(),
             type_name: internal.type_name(),
             refresh_interval: internal.refresh_interval(),
+            max_result_window: internal.max_result_window,
             alias: internal.alias(&heap_relation, &relation),
             uuid: internal.uuid(&heap_relation, &relation),
             links: internal.links(),
@@ -284,6 +289,10 @@ impl ZDBIndexOptions {
 
     pub fn refresh_interval(&self) -> RefreshInterval {
         self.refresh_interval.clone()
+    }
+
+    pub fn max_result_window(&self) -> i32 {
+        self.max_result_window
     }
 
     pub fn alias(&self) -> &str {
@@ -513,7 +522,7 @@ extern "C" fn validate_field_lists(value: *const std::os::raw::c_char) {
     parse_field_lists(input);
 }
 
-const NUM_REL_OPTS: usize = 15;
+const NUM_REL_OPTS: usize = 16;
 #[allow(clippy::unneeded_field_pattern)] // b/c of offset_of!()
 #[pg_guard]
 pub unsafe extern "C" fn amoptions(
@@ -561,6 +570,11 @@ pub unsafe extern "C" fn amoptions(
             optname: "compression_level".as_pg_cstr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
             offset: offset_of!(ZDBIndexOptionsInternal, compression_level) as i32,
+        },
+        pg_sys::relopt_parse_elt {
+            optname: "max_result_window".as_pg_cstr(),
+            opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
+            offset: offset_of!(ZDBIndexOptionsInternal, max_result_window) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "alias".as_pg_cstr(),
@@ -747,6 +761,19 @@ pub unsafe fn init() {
         DEFAULT_COMPRESSION_LEVEL,
         0,
         9,
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
+    );
+    pg_sys::add_int_reloption(
+        RELOPT_KIND_ZDB,
+        "max_result_window".as_pg_cstr(),
+        "The number of docs to page in from Elasticsearch at one time.  Default is 10,000"
+            .as_pg_cstr(),
+        DEFAULT_MAX_RESULT_WINDOW,
+        10_000,
+        std::i32::MAX,
         #[cfg(feature = "pg13")]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE

@@ -118,6 +118,17 @@ the following parameters:
 
 See: https://www.elastic.co/guide/en/elasticsearch/reference/7.x/index-modules-translog.html#_translog_settings
 
+#### `max_result_window`
+```
+Tyoe: integer
+Default: 10000
+Range: [10000, INT_32_MAX]
+```
+
+The maximum number of docs ZomboDB will retrieve from Elasticsearch in a single scroll request.
+
+See: https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules.html#index-max-result-window
+
 ### Network Options
 
 #### `bulk_concurrency`

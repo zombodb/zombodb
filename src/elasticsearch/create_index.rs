@@ -67,7 +67,8 @@ impl ElasticsearchCreateIndexRequest {
               "refresh_interval": "-1",
               "query.default_field": "zdb_all",
               "translog.durability": self.elasticsearch.options.translog_durability(),
-              "mapping.nested_fields.limit": 1000
+              "mapping.nested_fields.limit": 1000,
+              "max_result_window": self.elasticsearch.options.max_result_window()
             } }
         } else {
             // we can do an index-level sort on zdb_ctid:asc
@@ -80,6 +81,7 @@ impl ElasticsearchCreateIndexRequest {
               "mapping.nested_fields.limit": 1000,
               "sort.field": "zdb_ctid",
               "sort.order": "asc",
+              "max_result_window": self.elasticsearch.options.max_result_window()
             } }
         };
 
