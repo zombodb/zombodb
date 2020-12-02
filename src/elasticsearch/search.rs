@@ -274,24 +274,26 @@ impl ElasticsearchSearchRequest {
     }
 
     fn get_hits(
-        url: String,
+        mut url: String,
         limit: Option<u64>,
         offset: Option<u64>,
         elasticsearch: &Elasticsearch,
         should_sort_hits: bool,
         body: serde_json::Value,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
-        Elasticsearch::execute_request(
+        url.push_str("&format=cbor");
+        Elasticsearch::execute_binary_request(
             Elasticsearch::client()
                 .post(&url)
                 .header("content-type", "application/json")
                 .body(serde_json::to_string(&body).unwrap()),
             |code, body| {
-                let mut response = match serde_json::from_str::<ElasticsearchSearchResponse>(&body)
-                {
+                let response: serde_cbor::error::Result<ElasticsearchSearchResponse> =
+                    serde_cbor::from_reader(body);
+                let mut response = match response {
                     Ok(json) => json,
                     Err(_) => {
-                        return Err(ElasticsearchError(Some(code), body));
+                        return Err(ElasticsearchError(Some(code), "<binary response>".into()));
                     }
                 };
 
