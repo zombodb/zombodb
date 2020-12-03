@@ -73,6 +73,6 @@ SELECT zdb.to_query_dsl('{"query_dsl":{"terms":{"subject":"beer"}}}'::zdbquery);
 select dsl.row_estimate(88, dsl.min_score(42, dsl.sort('title', 'asc', dsl.offset_limit(10, 42, 'beer'))));
                                                                    row_estimate                                                                    
 ---------------------------------------------------------------------------------------------------------------------------------------------------
- {"limit":42,"min_score":42.0,"offset":10,"query_dsl":{"query_string":{"query":"beer"}},"row_estimate":88,"sort_json":[{"title":{"order":"asc"}}]}
+ {"limit":42,"offset":10,"min_score":42.0,"sort_json":[{"title":{"order":"asc"}}],"row_estimate":88,"query_dsl":{"query_string":{"query":"beer"}}}
 (1 row)
 
