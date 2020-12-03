@@ -16,6 +16,7 @@ DO LANGUAGE plpgsql $$
     END;
 $$;
 
+-- it's imperative for `update-versions.sh` that this function be formatted exactly this way
 CREATE FUNCTION schema_version() RETURNS text LANGUAGE sql AS $$
 SELECT '3000.0.0-alpha2'
 $$;

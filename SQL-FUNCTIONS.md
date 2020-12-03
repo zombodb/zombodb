@@ -3,11 +3,22 @@
 ZomboDB provides a number of utility and helper SQL functions.
 
 ```sql
-FUNCTION zdb.version() RETURNS text
+FUNCTION zdb.internal_version() RETURNS text
 ```
 
-Returns the currently-installed version of ZomboDB.
+Returns the version of the currently-installed ZomboDB shared library.
 
+If this doesn't match `SELECT zdb.schema_version()` there will be problems.
+
+---
+
+```sql
+FUNCTION zdb.schema_version() RETURNS text
+```
+
+Returns the schema version of the ZomboDB extension installed in the current database
+
+If this doesn't match `SELECT zdb.internal_version()` there will be problems.
 
 ---
 
