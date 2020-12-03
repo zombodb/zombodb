@@ -16,6 +16,10 @@ DO LANGUAGE plpgsql $$
     END;
 $$;
 
+CREATE FUNCTION schema_version() RETURNS text LANGUAGE sql AS $$
+SELECT '3000.0.0-alpha2'
+$$;
+
 CREATE SCHEMA dsl;
 
 GRANT ALL ON SCHEMA zdb TO PUBLIC;

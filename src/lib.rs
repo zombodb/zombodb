@@ -40,7 +40,7 @@ pub extern "C" fn _PG_fini() {
 }
 
 #[pg_extern(immutable, parallel_safe)]
-fn version() -> &'static str {
+fn internal_version() -> &'static str {
     let version = "3000.0.0-alpha2";
     version
 }
