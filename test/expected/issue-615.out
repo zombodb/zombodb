@@ -1,0 +1,113 @@
+select zdb.dump_query('events', 'title:*****');
+     dump_query      
+---------------------
+ {                  +
+   "wildcard": {    +
+     "title": {     +
+       "value": "*",+
+       "boost": 1.0 +
+     }              +
+   }                +
+ }
+(1 row)
+
+select zdb.dump_query('events', 'title:"zombodb * awesome"');
+           dump_query            
+---------------------------------
+ {                              +
+   "span_near": {               +
+     "clauses": [               +
+       {                        +
+         "span_term": {         +
+           "title": {           +
+             "value": "zombodb",+
+             "boost": 1.0       +
+           }                    +
+         }                      +
+       },                       +
+       {                        +
+         "span_term": {         +
+           "title": {           +
+             "value": "awesome",+
+             "boost": 1.0       +
+           }                    +
+         }                      +
+       }                        +
+     ],                         +
+     "slop": 1,                 +
+     "in_order": true           +
+   }                            +
+ }
+(1 row)
+
+select zdb.dump_query('events', 'title:"zombodb * * * * * awesome"');
+           dump_query            
+---------------------------------
+ {                              +
+   "span_near": {               +
+     "clauses": [               +
+       {                        +
+         "span_term": {         +
+           "title": {           +
+             "value": "zombodb",+
+             "boost": 1.0       +
+           }                    +
+         }                      +
+       },                       +
+       {                        +
+         "span_term": {         +
+           "title": {           +
+             "value": "awesome",+
+             "boost": 1.0       +
+           }                    +
+         }                      +
+       }                        +
+     ],                         +
+     "slop": 5,                 +
+     "in_order": true           +
+   }                            +
+ }
+(1 row)
+
+select zdb.dump_query('events', 'title:"zombodb * * * * ****** awesome"');
+           dump_query            
+---------------------------------
+ {                              +
+   "span_near": {               +
+     "clauses": [               +
+       {                        +
+         "span_term": {         +
+           "title": {           +
+             "value": "zombodb",+
+             "boost": 1.0       +
+           }                    +
+         }                      +
+       },                       +
+       {                        +
+         "span_term": {         +
+           "title": {           +
+             "value": "awesome",+
+             "boost": 1.0       +
+           }                    +
+         }                      +
+       }                        +
+     ],                         +
+     "slop": 5,                 +
+     "in_order": true           +
+   }                            +
+ }
+(1 row)
+
+select zdb.dump_query('events', 'title:"zombodb \* awesome"');
+             dump_query              
+-------------------------------------
+ {                                  +
+   "match_phrase": {                +
+     "title": {                     +
+       "query": "zombodb * awesome",+
+       "boost": 1.0                 +
+     }                              +
+   }                                +
+ }
+(1 row)
+

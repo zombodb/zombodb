@@ -214,6 +214,8 @@ impl<'input> Term<'input> {
             } else if is_wildcard {
                 if Term::is_prefix_wildcard(s) {
                     Term::Prefix(s, b)
+                } else if Term::is_all_asterisks(s) {
+                    Term::Wildcard("*", b)
                 } else {
                     Term::Wildcard(s, b)
                 }
@@ -229,6 +231,15 @@ impl<'input> Term<'input> {
         s.chars().last() == Some('*')
             && s.chars().filter(|c| *c == '*').count() == 1
             && s.chars().filter(|c| *c == '?').count() == 0
+    }
+
+    pub fn is_all_asterisks(s: &str) -> bool {
+        for c in s.chars() {
+            if c != '*' {
+                return false;
+            }
+        }
+        true
     }
 }
 
@@ -343,7 +354,7 @@ impl ProximityTerm {
             ProximityTerm::from_term(&term)
         } else {
             // next, build ProximityParts for each group
-            let proximity_parts = groups
+            let proximity_parts: Vec<ProximityPart> = groups
                 .into_iter()
                 .map(|(_, tokens)| {
                     let mut terms = Vec::new();
@@ -363,7 +374,40 @@ impl ProximityTerm {
                     }
                 })
                 .collect();
-            ProximityTerm::ProximityChain(proximity_parts)
+
+            let mut filtered_parts = Vec::with_capacity(proximity_parts.len());
+            let mut iter = proximity_parts.into_iter().peekable();
+            while let Some(mut part) = iter.next() {
+                let mut next = iter.peek();
+
+                // look for bare '*' ProximityTerms and just skip them entirely, incrementing
+                // the current part's distance for each consecutive '*' we find
+                while next.is_some() {
+                    let current_distance = part.distance.as_mut().unwrap().distance;
+                    pgx::check_for_interrupts!();
+
+                    let unwrapped = next.unwrap();
+                    if unwrapped.words.len() == 1 {
+                        if let ProximityTerm::Wildcard(s, _) = unwrapped.words.get(0).unwrap() {
+                            if s == "*" {
+                                part.distance.as_mut().unwrap().distance += 1;
+                                // just consume the next token as we want to skip it entirely
+                                iter.next();
+                                next = iter.peek();
+                            }
+                        }
+                    }
+
+                    if part.distance.as_mut().unwrap().distance == current_distance {
+                        // we didn't make a change so we're done looking for bare '*'
+                        break;
+                    }
+                }
+
+                filtered_parts.push(part);
+            }
+
+            ProximityTerm::ProximityChain(filtered_parts)
         }
     }
 
