@@ -1,4 +1,5 @@
-use crate::utils::lookup_function;
+use crate::access_method::options::index_options;
+use crate::utils::{find_zdb_index, lookup_function};
 use pgx::*;
 
 pub struct PlanWalker {
@@ -8,10 +9,12 @@ pub struct PlanWalker {
     zdb_anyelement_cmp_func_oid: pg_sys::Oid,
     zdb_want_score_oid: pg_sys::Oid,
     zdb_want_highlight_oid: pg_sys::Oid,
+    dsl_link_options_direct: pg_sys::Oid,
     in_te: usize,
     in_sort: usize,
     want_scores: bool,
     highlight_definitions: Vec<*mut pg_sys::FuncExpr>,
+    rtable: PgList<pg_sys::RangeTblEntry>,
 }
 
 impl PlanWalker {
@@ -48,10 +51,16 @@ impl PlanWalker {
                 Some(vec![zdbquery_oid, pg_sys::TEXTOID, pg_sys::JSONOID]),
             )
             .unwrap_or(pg_sys::InvalidOid),
+            dsl_link_options_direct: lookup_function(
+                vec!["dsl", "link_options_direct"],
+                Some(vec![pg_sys::TEXTOID, zdbquery_oid]),
+            )
+            .unwrap_or(pg_sys::InvalidOid),
             in_te: 0,
             in_sort: 0,
             want_scores: false,
             highlight_definitions: Vec::new(),
+            rtable: PgList::new(),
         }
     }
 
@@ -62,6 +71,7 @@ impl PlanWalker {
             // nothing to do b/c one or both of our functions couldn't be found
             return;
         }
+        self.rtable = PgList::from_pg(query.rtable);
 
         if self.detect(query) {
             self.rewrite(query);
@@ -127,6 +137,60 @@ unsafe extern "C" fn plan_walker(node: *mut pg_sys::Node, context_ptr: void_mut_
             // } else {
             //     panic!("zdb.highlight() can only be used as a target entry");
             // }
+        }
+    } else if is_a(node, pg_sys::NodeTag_T_OpExpr) && context.rtable.len() > 0 {
+        let op_expr = PgBox::from_pg(node as *mut pg_sys::OpExpr);
+        if op_expr.opfuncid == context.zdb_anyelement_cmp_func_oid {
+            let mut op_args = PgList::from_pg(op_expr.args);
+            let first_arg = op_args.get_ptr(0);
+            if let Some(first_arg) = first_arg {
+                if is_a(first_arg, pg_sys::NodeTag_T_Var) {
+                    let var = PgBox::from_pg(first_arg as *mut pg_sys::Var);
+                    let rte = pg_sys::rt_fetch(var.varno, context.rtable.as_ptr());
+                    let rte = PgBox::from_pg(rte);
+
+                    if !rte.eref.is_null() {
+                        let eref = PgBox::from_pg(rte.eref);
+                        // TODO:  this is just the alias name and we really need a pointer to the view relation
+                        //        so that we can ensure it's on our search_path.
+                        let aliasname = std::ffi::CStr::from_ptr(eref.aliasname).to_str().unwrap();
+                        if let Ok(view_relation) =
+                            PgRelation::open_with_name_and_share_lock(aliasname)
+                        {
+                            if let Ok((_, options)) = find_zdb_index(&view_relation) {
+                                if let Some(options) = options {
+                                    if options.len() > 0 {
+                                        let options: String = options.join(",");
+                                        let mut change_options_func =
+                                            PgBox::<pg_sys::FuncExpr>::alloc_node(
+                                                pg_sys::NodeTag_T_FuncExpr,
+                                            );
+                                        let mut func_args = PgList::<pg_sys::Node>::new();
+                                        let mut options_arg = PgBox::<pg_sys::Const>::alloc_node(
+                                            pg_sys::NodeTag_T_Const,
+                                        );
+                                        options_arg.consttype = String::type_oid();
+                                        options_arg.constvalue = options.into_datum().unwrap();
+
+                                        func_args.push(options_arg.into_pg() as *mut pg_sys::Node);
+                                        func_args.push(
+                                            op_args.get_ptr(1).expect("no second argument to ==>"),
+                                        );
+
+                                        change_options_func.funcid =
+                                            context.dsl_link_options_direct;
+                                        change_options_func.args = func_args.into_pg();
+                                        change_options_func.funcresulttype = context.zdbquery_oid;
+
+                                        op_args.pop();
+                                        op_args.push(change_options_func.into_pg() as *mut pg_sys::Node)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     } else if is_a(node, pg_sys::NodeTag_T_RangeTblEntry) {
         // allow range_table_walker to continue

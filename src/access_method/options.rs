@@ -223,7 +223,7 @@ pub struct ZDBIndexOptions {
 #[allow(dead_code)]
 impl ZDBIndexOptions {
     pub fn from_relation(relation: &PgRelation) -> ZDBIndexOptions {
-        let relation = find_zdb_index(relation, true).unwrap();
+        let (relation, options) = find_zdb_index(relation).unwrap();
         let internal = ZDBIndexOptionsInternal::from_relation(&relation);
         let heap_relation = relation.heap_relation().expect("not an index");
         ZDBIndexOptions {
@@ -234,7 +234,7 @@ impl ZDBIndexOptions {
             max_result_window: internal.max_result_window,
             alias: internal.alias(&heap_relation, &relation),
             uuid: internal.uuid(&heap_relation, &relation),
-            links: internal.links(),
+            links: options.map_or_else(|| internal.links(), |v| Some(v)),
             field_lists: internal.field_lists(),
             compression_level: internal.compression_level,
             shards: internal.shards,
@@ -245,6 +245,10 @@ impl ZDBIndexOptions {
             translog_durability: internal.translog_durability(),
             llapi: internal.llapi,
         }
+    }
+
+    pub fn relation(&self) -> PgRelation {
+        PgRelation::with_lock(self.oid(), pg_sys::AccessShareLock as pg_sys::LOCKMODE)
     }
 
     pub fn oid(&self) -> pg_sys::Oid {
@@ -325,7 +329,12 @@ impl ZDBIndexOptions {
 
 #[pg_extern(volatile, parallel_safe)]
 fn determine_index(relation: PgRelation) -> Option<PgRelation> {
-    find_zdb_index(&relation, false)
+    match find_zdb_index(&relation) {
+        Ok((relation, _)) => Some(relation),
+
+        // we don't want to raise an error if we couldn't find the index for the relation
+        Err(_) => None,
+    }
 }
 
 #[pg_extern(volatile, parallel_safe)]
@@ -377,7 +386,7 @@ fn index_settings(index_relation: PgRelation) -> JsonB {
 }
 
 #[pg_extern(volatile, parallel_safe)]
-fn index_options(index_relation: PgRelation) -> Option<Vec<String>> {
+pub(crate) fn index_options(index_relation: PgRelation) -> Option<Vec<String>> {
     ZDBIndexOptions::from_relation(&index_relation)
         .links()
         .clone()

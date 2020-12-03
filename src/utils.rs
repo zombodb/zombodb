@@ -1,5 +1,6 @@
 use pgx::pg_sys::AsPgCStr;
 use pgx::*;
+use serde::*;
 use serde_json::Value;
 
 pub fn has_zdb_index(heap_relation: &PgRelation, current_index: &PgRelation) -> bool {
@@ -12,24 +13,57 @@ pub fn has_zdb_index(heap_relation: &PgRelation, current_index: &PgRelation) -> 
     false
 }
 
-pub fn find_zdb_index(any_relation: &PgRelation, missing_ok: bool) -> Option<PgRelation> {
+pub fn find_zdb_index(
+    any_relation: &PgRelation,
+) -> std::result::Result<(PgRelation, Option<Vec<String>>), String> {
     if is_zdb_index(any_relation) {
-        return Some(any_relation.clone());
+        return Ok((any_relation.clone(), None));
     } else if is_view(any_relation) {
-        unimplemented!("don't yet know how to find the ZDB index to use for a view");
+        #[derive(Deserialize)]
+        struct ZDBComment {
+            index: String,
+            options: Option<Vec<String>>,
+        }
+
+        unsafe {
+            let comment_ptr = pg_sys::GetComment(any_relation.oid(), pg_sys::RelationRelationId, 0);
+
+            return if comment_ptr.is_null() {
+                // no comment
+                Err(format!(
+                    "no ZomboDB comment on view '{}'",
+                    any_relation.name()
+                ))
+            } else {
+                match serde_json::from_str::<ZDBComment>(
+                    &std::ffi::CStr::from_ptr(comment_ptr).to_string_lossy(),
+                ) {
+                    Ok(comment) => Ok((
+                        PgRelation::open_with_name_and_share_lock(&comment.index)
+                            .expect("failed to open index specified by view index"),
+                        comment.options,
+                    )),
+
+                    Err(e) => Err(format!(
+                        "ZomboDB comment on view '{}' is not in correct format: {}",
+                        any_relation.oid(),
+                        e
+                    )),
+                }
+            };
+        }
     } else {
         for index in any_relation.indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
             if is_zdb_index(&index) {
-                return Some(index.to_owned());
+                return Ok((index.to_owned(), None));
             }
         }
     }
 
-    if missing_ok {
-        None
-    } else {
-        panic!("Could not find ZomboDB index for {}", any_relation.name())
-    }
+    Err(format!(
+        "Could not find a ZomboDB index for '{}'",
+        any_relation.name()
+    ))
 }
 
 #[inline]

@@ -685,7 +685,7 @@ impl FromStr for QualifiedIndex {
 
 impl QualifiedIndex {
     pub fn from_relation(index: &PgRelation) -> Self {
-        let index = find_zdb_index(index, true).unwrap();
+        let (index, _) = find_zdb_index(index).unwrap();
         QualifiedIndex {
             schema: Some(index.namespace().to_string()),
             table: index
@@ -751,7 +751,6 @@ impl IndexLink {
     }
 
     pub fn from_zdb(index: &PgRelation) -> Vec<Self> {
-        let index = find_zdb_index(index, true).unwrap();
         let mut index_links = Vec::new();
 
         if let Some(links) = ZDBIndexOptions::from_relation(&index).links() {

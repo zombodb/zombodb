@@ -1,7 +1,6 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::executor_manager::get_executor_manager;
 use crate::gucs::ZDB_DEFAULT_ROW_ESTIMATE;
-use crate::utils::find_zdb_index;
 use crate::zdbquery::ZDBQuery;
 use pgx::*;
 use std::collections::HashSet;
@@ -36,10 +35,9 @@ fn anyelement_cmpfunc(
             let lookup = pg_func_extra(fcinfo, || {
                 let heap_relation =
                     PgRelation::with_lock(heap_oid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
-                let index = find_zdb_index(&heap_relation, true).unwrap();
-                let es = Elasticsearch::new(&index);
+                let es = Elasticsearch::new(&heap_relation);
                 let search = es
-                    .open_search(query.prepare(&index, None).0)
+                    .open_search(query.prepare(&es.relation(), None).0)
                     .execute()
                     .expect("failed to execute search");
 
@@ -135,11 +133,9 @@ fn restrict(
                         count_estimate = estimate as u64;
                     } else {
                         // ask Elasticsearch to estimate our selectivity
-                        let index_relation = find_zdb_index(&heap_relation, true).unwrap();
-
-                        let elasticsearch = Elasticsearch::new(&index_relation);
-                        count_estimate = elasticsearch
-                            .raw_count(zdbquery.prepare(&index_relation, None).0)
+                        let es = Elasticsearch::new(&heap_relation);
+                        count_estimate = es
+                            .raw_count(zdbquery.prepare(&es.relation(), None).0)
                             .execute()
                             .expect("failed to estimate selectivity");
                     }

@@ -28,8 +28,8 @@ levenshtein = "1.0.4"
 memoffset = "0.6.1"
 num_cpus = "1.13.0"
 pathfinding = "2.0.4"
-pgx = "0.1.5"
-pgx-macros = "0.1.5"
+pgx = { path = "../pgx/pgx/", version = "0.1.5" }
+pgx-macros = { path = "../pgx/pgx-macros/", version = "0.1.5" }
 rayon = "1.5.0"
 regex = "1.4.2"
 reqwest = "0.9.24"
@@ -43,7 +43,7 @@ url = "2.2.0"
 lalrpop = { version = "0.19.1", features = [ "lexer" ] }
 
 [dev-dependencies]
-pgx-tests = "0.1.5"
+pgx-tests = { path = "../pgx/pgx-tests/", version = "0.1.5" }
 libc = "0.2.80"
 
 [profile.dev]
