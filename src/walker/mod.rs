@@ -1,4 +1,3 @@
-use crate::access_method::options::index_options;
 use crate::utils::{find_zdb_index, lookup_function};
 use pgx::*;
 
