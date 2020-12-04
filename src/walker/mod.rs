@@ -152,48 +152,51 @@ unsafe extern "C" fn plan_walker(node: *mut pg_sys::Node, context_ptr: void_mut_
                         let aliasname = std::ffi::CStr::from_ptr(eref.aliasname).to_str().unwrap();
                         let type_cache_entry =
                             PgBox::from_pg(pg_sys::lookup_type_cache(var.vartype, 0));
-                        let base_relation = PgRelation::open(type_cache_entry.typrelid);
-                        let view_relation_name =
-                            format!("{}.{}", base_relation.namespace(), aliasname);
+                        if type_cache_entry.typrelid != pg_sys::InvalidOid {
+                            let base_relation = PgRelation::open(type_cache_entry.typrelid);
+                            let view_relation_name =
+                                format!("{}.{}", base_relation.namespace(), aliasname);
 
-                        if let Ok(view_relation) =
-                            PgRelation::open_with_name_and_share_lock(&view_relation_name)
-                        {
-                            if view_relation.is_view() {
-                                if let Ok((_, options)) = find_zdb_index(&view_relation) {
-                                    if let Some(options) = options {
-                                        if options.len() > 0 {
-                                            let options: String = options.join(",");
-                                            let mut change_options_func =
-                                                PgBox::<pg_sys::FuncExpr>::alloc_node(
-                                                    pg_sys::NodeTag_T_FuncExpr,
+                            if let Ok(view_relation) =
+                                PgRelation::open_with_name_and_share_lock(&view_relation_name)
+                            {
+                                if view_relation.is_view() {
+                                    if let Ok((_, options)) = find_zdb_index(&view_relation) {
+                                        if let Some(options) = options {
+                                            if options.len() > 0 {
+                                                let options: String = options.join(",");
+                                                let mut change_options_func =
+                                                    PgBox::<pg_sys::FuncExpr>::alloc_node(
+                                                        pg_sys::NodeTag_T_FuncExpr,
+                                                    );
+                                                let mut func_args = PgList::<pg_sys::Node>::new();
+                                                let mut options_arg =
+                                                    PgBox::<pg_sys::Const>::alloc_node(
+                                                        pg_sys::NodeTag_T_Const,
+                                                    );
+                                                options_arg.consttype = String::type_oid();
+                                                options_arg.constvalue =
+                                                    options.into_datum().unwrap();
+
+                                                func_args.push(
+                                                    options_arg.into_pg() as *mut pg_sys::Node
                                                 );
-                                            let mut func_args = PgList::<pg_sys::Node>::new();
-                                            let mut options_arg =
-                                                PgBox::<pg_sys::Const>::alloc_node(
-                                                    pg_sys::NodeTag_T_Const,
+                                                func_args.push(
+                                                    op_args
+                                                        .get_ptr(1)
+                                                        .expect("no second argument to ==>"),
                                                 );
-                                            options_arg.consttype = String::type_oid();
-                                            options_arg.constvalue = options.into_datum().unwrap();
 
-                                            func_args
-                                                .push(options_arg.into_pg() as *mut pg_sys::Node);
-                                            func_args.push(
-                                                op_args
-                                                    .get_ptr(1)
-                                                    .expect("no second argument to ==>"),
-                                            );
+                                                change_options_func.funcid =
+                                                    context.dsl_link_options_direct;
+                                                change_options_func.args = func_args.into_pg();
+                                                change_options_func.funcresulttype =
+                                                    context.zdbquery_oid;
 
-                                            change_options_func.funcid =
-                                                context.dsl_link_options_direct;
-                                            change_options_func.args = func_args.into_pg();
-                                            change_options_func.funcresulttype =
-                                                context.zdbquery_oid;
-
-                                            op_args.pop();
-                                            op_args
-                                                .push(change_options_func.into_pg()
+                                                op_args.pop();
+                                                op_args.push(change_options_func.into_pg()
                                                     as *mut pg_sys::Node)
+                                            }
                                         }
                                     }
                                 }
