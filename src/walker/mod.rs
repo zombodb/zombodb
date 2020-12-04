@@ -145,44 +145,56 @@ unsafe extern "C" fn plan_walker(node: *mut pg_sys::Node, context_ptr: void_mut_
             if let Some(first_arg) = first_arg {
                 if is_a(first_arg, pg_sys::NodeTag_T_Var) {
                     let var = PgBox::from_pg(first_arg as *mut pg_sys::Var);
-                    let rte = pg_sys::rt_fetch(var.varno, context.rtable.as_ptr());
-                    let rte = PgBox::from_pg(rte);
+                    let rte = PgBox::from_pg(pg_sys::rt_fetch(var.varno, context.rtable.as_ptr()));
 
                     if !rte.eref.is_null() {
                         let eref = PgBox::from_pg(rte.eref);
-                        // TODO:  this is just the alias name and we really need a pointer to the view relation
-                        //        so that we can ensure it's on our search_path.
                         let aliasname = std::ffi::CStr::from_ptr(eref.aliasname).to_str().unwrap();
+                        let type_cache_entry =
+                            PgBox::from_pg(pg_sys::lookup_type_cache(var.vartype, 0));
+                        let base_relation = PgRelation::open(type_cache_entry.typrelid);
+                        let view_relation_name =
+                            format!("{}.{}", base_relation.namespace(), aliasname);
+
                         if let Ok(view_relation) =
-                            PgRelation::open_with_name_and_share_lock(aliasname)
+                            PgRelation::open_with_name_and_share_lock(&view_relation_name)
                         {
-                            if let Ok((_, options)) = find_zdb_index(&view_relation) {
-                                if let Some(options) = options {
-                                    if options.len() > 0 {
-                                        let options: String = options.join(",");
-                                        let mut change_options_func =
-                                            PgBox::<pg_sys::FuncExpr>::alloc_node(
-                                                pg_sys::NodeTag_T_FuncExpr,
+                            if view_relation.is_view() {
+                                if let Ok((_, options)) = find_zdb_index(&view_relation) {
+                                    if let Some(options) = options {
+                                        if options.len() > 0 {
+                                            let options: String = options.join(",");
+                                            let mut change_options_func =
+                                                PgBox::<pg_sys::FuncExpr>::alloc_node(
+                                                    pg_sys::NodeTag_T_FuncExpr,
+                                                );
+                                            let mut func_args = PgList::<pg_sys::Node>::new();
+                                            let mut options_arg =
+                                                PgBox::<pg_sys::Const>::alloc_node(
+                                                    pg_sys::NodeTag_T_Const,
+                                                );
+                                            options_arg.consttype = String::type_oid();
+                                            options_arg.constvalue = options.into_datum().unwrap();
+
+                                            func_args
+                                                .push(options_arg.into_pg() as *mut pg_sys::Node);
+                                            func_args.push(
+                                                op_args
+                                                    .get_ptr(1)
+                                                    .expect("no second argument to ==>"),
                                             );
-                                        let mut func_args = PgList::<pg_sys::Node>::new();
-                                        let mut options_arg = PgBox::<pg_sys::Const>::alloc_node(
-                                            pg_sys::NodeTag_T_Const,
-                                        );
-                                        options_arg.consttype = String::type_oid();
-                                        options_arg.constvalue = options.into_datum().unwrap();
 
-                                        func_args.push(options_arg.into_pg() as *mut pg_sys::Node);
-                                        func_args.push(
-                                            op_args.get_ptr(1).expect("no second argument to ==>"),
-                                        );
+                                            change_options_func.funcid =
+                                                context.dsl_link_options_direct;
+                                            change_options_func.args = func_args.into_pg();
+                                            change_options_func.funcresulttype =
+                                                context.zdbquery_oid;
 
-                                        change_options_func.funcid =
-                                            context.dsl_link_options_direct;
-                                        change_options_func.args = func_args.into_pg();
-                                        change_options_func.funcresulttype = context.zdbquery_oid;
-
-                                        op_args.pop();
-                                        op_args.push(change_options_func.into_pg() as *mut pg_sys::Node)
+                                            op_args.pop();
+                                            op_args
+                                                .push(change_options_func.into_pg()
+                                                    as *mut pg_sys::Node)
+                                        }
                                     }
                                 }
                             }
