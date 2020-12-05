@@ -94,14 +94,14 @@ pub extern "C" fn amgettuple(
             let tid = &mut scan.xs_heaptid;
 
             u64_to_item_pointer(ctid, tid);
-
-            let (_query, qstate) = get_executor_manager().peek_query_state().unwrap();
-            qstate.add_score(heap_relation.oid(), ctid, score);
-            qstate.add_highlight(heap_relation.oid(), ctid, highlights);
-
             if !item_pointer_is_valid(tid) {
                 panic!("invalid item pointer: {:?}", item_pointer_get_both(*tid));
             }
+
+            let (_, qstate) = get_executor_manager().peek_query_state().unwrap();
+            qstate.add_score(heap_relation.oid(), ctid, score);
+            qstate.add_highlight(heap_relation.oid(), ctid, highlights);
+
             true
         }
         None => false,

@@ -35,9 +35,6 @@ pub struct Fields {
     pub zdb_ctid: Option<[u64; 1]>,
     pub zdb_xmin: Option<[u64; 1]>,
     pub zdb_xmax: Option<[u64; 1]>,
-
-    #[serde(flatten)]
-    pub other: HashMap<String, serde_json::Value>,
 }
 
 impl Default for Fields {
@@ -46,27 +43,15 @@ impl Default for Fields {
             zdb_ctid: None,
             zdb_xmin: None,
             zdb_xmax: None,
-            other: HashMap::new(),
         }
     }
 }
 
 #[derive(Deserialize)]
 pub struct InnerHit {
-    #[serde(rename = "_index")]
-    index: Option<String>,
-
-    #[serde(rename = "_type")]
-    type_: Option<String>,
-
     #[serde(rename = "_score")]
     score: Option<f64>,
-
-    #[serde(rename = "_id")]
-    id: Option<String>,
-
     fields: Option<Fields>,
-
     highlight: Option<HashMap<String, Vec<String>>>,
 }
 
@@ -437,6 +422,7 @@ impl Scroller {
                 for itr in scroll_receiver {
                     for hit in itr {
                         let fields = hit.fields.unwrap_or_default();
+                        let score = hit.score.unwrap_or_default();
                         let highlight = hit.highlight;
                         let ctid = fields.zdb_ctid.unwrap_or([0])[0];
 
@@ -446,9 +432,7 @@ impl Scroller {
                             continue;
                         }
 
-                        if let Err(_) =
-                            sender.send((hit.score.unwrap_or_default(), ctid, fields, highlight))
-                        {
+                        if let Err(_) = sender.send((score, ctid, fields, highlight)) {
                             // couldn't send the result, and that's okay, the receiving end has probably been closed
                             // or otherwise cancelled by Postgres
                             break;
