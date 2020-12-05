@@ -29,8 +29,11 @@ if [ "x${CPUS}" == "x" ] ; then
   echo "Defauling number of CPUs to 64"
 fi
 
+# trash any old target dir we might have
+rm -rf ${TARGET_DIR} > /dev/null
+
 mkdir -p $LOGDIR > /dev/null
-mkdir -p ${TARGET_DIR}/build > /dev/null
+mkdir -p ${TARGET_DIR}/build || exit 1
 
 if [ "x${BRANCH}" == "x" ] ; then
 	echo "usage:  ./build.sh <branch_name> [image name] [pgver]"
