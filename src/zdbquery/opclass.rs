@@ -37,7 +37,7 @@ fn anyelement_cmpfunc(
                     PgRelation::with_lock(heap_oid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
                 let es = Elasticsearch::new(&heap_relation);
                 let search = es
-                    .open_search(query.prepare(&es.relation(), None).0)
+                    .open_search(query.prepare(&es.index_relation(), None).0)
                     .execute()
                     .expect("failed to execute search");
 
@@ -135,7 +135,7 @@ fn restrict(
                         // ask Elasticsearch to estimate our selectivity
                         let es = Elasticsearch::new(&heap_relation);
                         count_estimate = es
-                            .raw_count(zdbquery.prepare(&es.relation(), None).0)
+                            .raw_count(zdbquery.prepare(&es.index_relation(), None).0)
                             .execute()
                             .expect("failed to estimate selectivity");
                     }

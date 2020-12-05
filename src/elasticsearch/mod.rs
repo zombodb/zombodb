@@ -100,8 +100,12 @@ impl Elasticsearch {
         Elasticsearch { options }
     }
 
-    pub fn relation(&self) -> PgRelation {
-        self.options.relation()
+    pub fn index_relation(&self) -> PgRelation {
+        self.options.index_relation()
+    }
+
+    pub fn heap_relation(&self) -> PgRelation {
+        self.options.heap_relation()
     }
 
     pub fn client() -> reqwest::Client {

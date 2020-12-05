@@ -247,8 +247,12 @@ impl ZDBIndexOptions {
         }
     }
 
-    pub fn relation(&self) -> PgRelation {
+    pub fn index_relation(&self) -> PgRelation {
         PgRelation::with_lock(self.oid(), pg_sys::AccessShareLock as pg_sys::LOCKMODE)
+    }
+
+    pub fn heap_relation(&self) -> PgRelation {
+        self.index_relation().heap_relation().expect("not an index")
     }
 
     pub fn oid(&self) -> pg_sys::Oid {
