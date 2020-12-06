@@ -62,6 +62,8 @@ pub struct ElasticsearchSearchResponse {
     #[serde(skip)]
     offset: Option<u64>,
     #[serde(skip)]
+    track_scores: bool,
+    #[serde(skip)]
     should_sort_hits: bool,
 
     #[serde(rename = "_scroll_id")]
@@ -154,6 +156,7 @@ impl ElasticsearchSearchRequest {
                     elasticsearch: None,
                     limit: Some(0),
                     offset: None,
+                    track_scores,
                     should_sort_hits,
                     scroll_id: None,
                     hits: None,
@@ -259,13 +262,18 @@ impl ElasticsearchSearchRequest {
     fn scroll(
         elasticsearch: &Elasticsearch,
         scroll_id: &str,
+        track_scores: bool,
         should_sort_hits: bool,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
         let mut url = String::new();
         url.push_str(elasticsearch.options.url());
         url.push_str("_search/scroll");
         url.push_str("?filter_path=");
-        url.push_str(SEARCH_FILTER_PATH);
+        if track_scores {
+            url.push_str(SEARCH_FILTER_PATH);
+        } else {
+            url.push_str(SEARCH_FILTER_PATH_NO_SCORE);
+        }
 
         ElasticsearchSearchRequest::get_hits(
             url,
@@ -364,6 +372,7 @@ impl Scroller {
         orig_elasticsearch: Elasticsearch,
         orig_scroll_id: Option<String>,
         initial_hits: Vec<InnerHit>,
+        track_scores: bool,
         should_sort_hits: bool,
     ) -> Self {
         let (sender, receiver) = std::sync::mpsc::channel();
@@ -380,7 +389,12 @@ impl Scroller {
                     break;
                 }
 
-                match ElasticsearchSearchRequest::scroll(&elasticsearch, &sid, should_sort_hits) {
+                match ElasticsearchSearchRequest::scroll(
+                    &elasticsearch,
+                    &sid,
+                    track_scores,
+                    should_sort_hits,
+                ) {
                     Ok(response) => {
                         scroll_id = response.scroll_id;
 
@@ -515,6 +529,7 @@ impl IntoIterator for ElasticsearchSearchResponse {
                 self.elasticsearch.expect("no elasticsearch"),
                 self.scroll_id,
                 self.hits.unwrap().hits.unwrap_or_default(),
+                self.track_scores,
                 self.should_sort_hits,
             );
 
