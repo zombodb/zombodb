@@ -18,17 +18,8 @@ pub struct ElasticsearchSearchRequest {
 }
 
 #[derive(Deserialize)]
-pub struct Shards {
-    total: Option<u64>,
-    successful: Option<u64>,
-    skipped: Option<u64>,
-    failed: Option<u64>,
-}
-
-#[derive(Deserialize)]
 pub struct HitsTotal {
     value: u64,
-    relation: String,
 }
 
 #[derive(Deserialize, Debug)]

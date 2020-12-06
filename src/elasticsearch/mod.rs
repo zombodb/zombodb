@@ -421,11 +421,12 @@ impl Elasticsearch {
                     // it wasn't a valid response code
                     Err(ElasticsearchError(Some(code), body_string))
                 } else {
-                    let mut body_bytes = Vec::new();
+                    let mut buff =
+                        Vec::with_capacity(response.content_length().unwrap_or(0x80000) as usize);
                     response
-                        .read_to_end(&mut body_bytes)
+                        .copy_to(&mut buff)
                         .expect("unable to read HTTP response to bytes");
-                    response_parser(code, body_bytes.as_slice())
+                    response_parser(code, &buff)
                 }
             }
 
