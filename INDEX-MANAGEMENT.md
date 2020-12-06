@@ -122,7 +122,7 @@ See: https://www.elastic.co/guide/en/elasticsearch/reference/7.x/index-modules-t
 ```
 Tyoe: integer
 Default: 10000
-Range: [10000, INT_32_MAX]
+Range: [1, INT_32_MAX]
 ```
 
 The maximum number of docs ZomboDB will retrieve from Elasticsearch in a single scroll request.

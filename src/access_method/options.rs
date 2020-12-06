@@ -785,7 +785,7 @@ pub unsafe fn init() {
         "The number of docs to page in from Elasticsearch at one time.  Default is 10,000"
             .as_pg_cstr(),
         DEFAULT_MAX_RESULT_WINDOW,
-        10_000,
+        1,
         std::i32::MAX,
         #[cfg(feature = "pg13")]
         {
