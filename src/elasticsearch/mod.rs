@@ -413,19 +413,17 @@ impl Elasticsearch {
             Ok(mut response) => {
                 let code = response.status();
 
+                let mut buff =
+                    Vec::with_capacity(response.content_length().unwrap_or(0x80000) as usize);
+                response
+                    .copy_to(&mut buff)
+                    .expect("unable to read HTTP response to bytes");
+
                 if code.as_u16() != 200 {
-                    let mut body_string = String::new();
-                    response
-                        .read_to_string(&mut body_string)
-                        .expect("unable to convert HTTP response to a string");
-                    // it wasn't a valid response code
-                    Err(ElasticsearchError(Some(code), body_string))
+                    let error = serde_cbor::from_slice::<serde_cbor::Value>(&buff)
+                        .expect("unable to create error Value from binary response");
+                    Err(ElasticsearchError(Some(code), format!("{:?}", error)))
                 } else {
-                    let mut buff =
-                        Vec::with_capacity(response.content_length().unwrap_or(0x80000) as usize);
-                    response
-                        .copy_to(&mut buff)
-                        .expect("unable to read HTTP response to bytes");
                     response_parser(code, &buff)
                 }
             }
