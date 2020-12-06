@@ -91,7 +91,7 @@ During query parsing, tokens are formed whenever a character in this set is enco
    "'", "\"",  ":",  "*",  "~", "?", 
    "!",  "%",  "&",  "(",  ")", ",",
    "<",  "=",  ">",  "[",  "]", "^",
-   "{",  "}",  " ",  "\r", "\n", 
+   "{",  "}",  "`",  " ",  "\r", "\n", 
    "\t", "\f" 
 ]
 ```
@@ -121,7 +121,7 @@ A unique feature of ZomboDB is that wildcards (`?`, `*`, and `~`) are allowed in
 
 ### Fields
 
-If a term (or phrase) is prefixed with a field name and operator, searching will be limited to that field.  For convenience, entire parenthetical groups can be prefxied with a field name.
+If a term (or phrase) is prefixed with a field name and operator, searching will be limited to that field.  For convenience, entire parenthetical groups can be prefixed with a field name.
 
 For example: 
 
@@ -130,13 +130,21 @@ name:"John Doe" and location:unknown
   and crime:(shoplifting, "grand-theft auto", jaywalking)
 ```
 
-Without a field name, the ZomboDB's [zdb_all](https://www.elastic.co/guide/en/elasticsearch/reference/1.6/mapping-all-field.html) field is searched.
+Fieldnames can also be quoted using backticks (`).  For example:
 
-Most of the examples that follow elide field names for (my) convienence, but know that they can be used in almost any situation a bare term or phrase is used.
+```
+`some:weird:Fieldname$`: "the value to find"
+```
+
+Typically, this is useful for searching property names within `json`/`jsonb` fields.
+
+Without a field name, ZomboDB's [zdb_all](https://www.elastic.co/guide/en/elasticsearch/reference/1.6/mapping-all-field.html) field is searched.
+
+Most of the examples that follow elide field names for (my) convenience, but know that they can be used in almost any situation a bare term or phrase is used.
 
 ### Operators
 
-Combined with a field name, these operators allow more sophsicated searching options.
+Combined with a field name, these operators allow more sophisticated searching options.
 
 Symbol | Description 
 ---    | ---      
@@ -271,7 +279,7 @@ It's also possible to search for groups within some distance of another group.  
 ## Subselects
 
 ZomboDB supports subselects which are akin to SQL `IN()` clauses.  The query clause is named `#subselect` and is an 
-unary operator that can be used in conjuction with any of ZomboDB's other query clauses, and can also be nested indefinitely.
+unary operator that can be used in conjunction with any of ZomboDB's other query clauses, and can also be nested indefinitely.
 
 An example query:
 
@@ -364,7 +372,7 @@ While ZomboDB provides a fairly robust query language, it doesn't expose every q
 
 As such, ZomboDB allows you to query using direct Elasticsearch-compatible JSON queries as well.  In fact, this feature operates as a unary operator within ZomboDB's query language so you can mix-n-match Elasticsearch JSON queries with ZomboDB query constructs.
 
-To use a direct JSON query, simply wrap your Elasticsearch-compatiable JSON in `({` and `})`.
+To use a direct JSON query, simply wrap your Elasticsearch-compatible JSON in `({` and `})`.
 
 For example:
 

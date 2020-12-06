@@ -856,4 +856,12 @@ mod tests {
             Expr::Json(r#"{"field":"value"}"#.to_string()),
         )
     }
+
+    #[pg_test]
+    fn test_quoted_fieldname() {
+        assert_expr(
+            "`some:weird:field%`: value",
+            String!(Contains, "some:weird:field%", "value"),
+        )
+    }
 }

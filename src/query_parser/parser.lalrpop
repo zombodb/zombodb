@@ -65,6 +65,7 @@ match {
     // with a higher matching precedence
     r#"(?i)[a-z0-9_]+"# => IDENTIFIER,
     r#"(?i)([a-z0-9_]+(\.[a-z0-9_]+)+)"# => DOTTED_IDENTIFIER,
+    r#"(?i)`.+`"# => QUOTED_IDENTIFIER,
 } else {
     // even lower precedence values
     r#"(([a-zA-Z0-9_*?]|(\\.))+\.?)+"# => UNQUOTED_VALUE,
@@ -234,6 +235,12 @@ FieldName: &'input str = {
         fieldname_stack.push(<>);
         used_fields.insert(<>);
         <>
+    },
+    QUOTED_IDENTIFIER => {
+        let fieldname = &<>[1..<>.len()-1];
+        fieldname_stack.push(fieldname);
+        used_fields.insert(fieldname);
+        fieldname
     }
 };
 
