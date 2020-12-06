@@ -183,8 +183,6 @@ impl ElasticsearchSearchRequest {
         // order (assuming the index was created with index.sort.field=zdb_ctid),
         // which is much nicer to disk I/O
         if sort_json.is_none() {
-            sort_json = Some(json!([{"_doc": "asc"}]));
-
             // determine if we also need to sort the hits as they're returned from ES
             //
             // We only need to do that if the table contains a column of type json or jsonb
@@ -201,6 +199,19 @@ impl ElasticsearchSearchRequest {
                     should_sort_hits = true;
                     break;
                 }
+            }
+
+            if should_sort_hits {
+                // we need to sort the hits as they're returned from each scroll request, so
+                // lets elide any sorting within Elasticsearch and just return the docs back
+                // in index order
+                sort_json = Some(json!([{"_doc": "asc"}]));
+            } else {
+                // we do NOT need to sort the hits because we know the index is already sorted
+                // by zdb_ctid, so we apply a sort on that field to tell ES to return the docs
+                // in that order.  This is essentially "free" for ES since the index is already
+                // organized by zdb_ctid
+                sort_json = Some(json!([{"zdb_ctid": "asc"}]));
             }
         }
 
