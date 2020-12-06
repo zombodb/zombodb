@@ -66,6 +66,10 @@ struct ZDBIndexOptionsInternal {
     bulk_concurrency: i32,
     batch_size: i32,
     llapi: bool,
+
+    nested_object_date_detection: bool,
+    nested_object_numeric_detection: bool,
+    nested_object_text_mapping_offset: i32,
 }
 
 #[allow(dead_code)]
@@ -83,6 +87,8 @@ impl ZDBIndexOptionsInternal {
             ops.batch_size = DEFAULT_BATCH_SIZE;
             ops.optimize_after = DEFAULT_OPTIMIZE_AFTER;
             ops.max_result_window = DEFAULT_MAX_RESULT_WINDOW;
+            ops.nested_object_date_detection = false;
+            ops.nested_object_numeric_detection = false;
             ops
         } else {
             PgBox::from_pg(relation.rd_options as *mut ZDBIndexOptionsInternal)
@@ -185,6 +191,22 @@ impl ZDBIndexOptionsInternal {
         }
     }
 
+    fn nested_object_text_mapping(&self) -> serde_json::Value {
+        let value = self.get_str(self.nested_object_text_mapping_offset, || "".to_owned());
+        if value.is_empty() {
+            serde_json::json! {
+                {
+                   "type": "keyword",
+                   "ignore_above": 10922,
+                   "normalizer": "lowercase",
+                   "copy_to": "zdb_all"
+                 }
+            }
+        } else {
+            serde_json::from_str(&value).expect("invalid 'nested_object_text_mapping' value")
+        }
+    }
+
     fn get_str<F: FnOnce() -> String>(&self, offset: i32, default: F) -> String {
         if offset == 0 {
             default()
@@ -218,6 +240,10 @@ pub struct ZDBIndexOptions {
     bulk_concurrency: i32,
     batch_size: i32,
     llapi: bool,
+
+    nested_object_date_detection: bool,
+    nested_object_numeric_detection: bool,
+    nested_object_text_mapping: serde_json::Value,
 }
 
 #[allow(dead_code)]
@@ -244,6 +270,9 @@ impl ZDBIndexOptions {
             optimize_after: internal.optimize_after,
             translog_durability: internal.translog_durability(),
             llapi: internal.llapi,
+            nested_object_date_detection: internal.nested_object_date_detection,
+            nested_object_numeric_detection: internal.nested_object_numeric_detection,
+            nested_object_text_mapping: internal.nested_object_text_mapping(),
         }
     }
 
@@ -328,6 +357,18 @@ impl ZDBIndexOptions {
             Some(field_lists) => field_lists.clone(),
             None => HashMap::new(),
         }
+    }
+
+    pub fn nested_object_date_detection(&self) -> bool {
+        self.nested_object_date_detection
+    }
+
+    pub fn nested_object_numeric_detection(&self) -> bool {
+        self.nested_object_numeric_detection
+    }
+
+    pub fn nested_object_text_mapping(&self) -> &serde_json::Value {
+        &self.nested_object_text_mapping
     }
 }
 
@@ -531,11 +572,27 @@ extern "C" fn validate_field_lists(value: *const std::os::raw::c_char) {
     }
 
     let input = unsafe { CStr::from_ptr(value) };
-    let input = input.to_str().expect("options is not valid UTF8");
+    let input = input.to_str().expect("field_lists is not valid UTF8");
     parse_field_lists(input);
 }
 
-const NUM_REL_OPTS: usize = 16;
+#[pg_guard]
+extern "C" fn validate_text_mapping(value: *const std::os::raw::c_char) {
+    if value.is_null() {
+        // null is fine
+        return;
+    }
+
+    let input = unsafe { CStr::from_ptr(value) };
+    serde_json::from_str::<serde_json::Value>(
+        input
+            .to_str()
+            .expect("nested_object_text_mapping value is not valid UTF8"),
+    )
+    .expect("invalid nested_object_text_mapping");
+}
+
+const NUM_REL_OPTS: usize = 19;
 #[allow(clippy::unneeded_field_pattern)] // b/c of offset_of!()
 #[pg_guard]
 pub unsafe extern "C" fn amoptions(
@@ -623,6 +680,21 @@ pub unsafe extern "C" fn amoptions(
             optname: "field_lists".as_pg_cstr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, field_lists_offset) as i32,
+        },
+        pg_sys::relopt_parse_elt {
+            optname: "nested_object_date_detection".as_pg_cstr(),
+            opttype: pg_sys::relopt_type_RELOPT_TYPE_BOOL,
+            offset: offset_of!(ZDBIndexOptionsInternal, nested_object_date_detection) as i32,
+        },
+        pg_sys::relopt_parse_elt {
+            optname: "nested_object_numeric_detection".as_pg_cstr(),
+            opttype: pg_sys::relopt_type_RELOPT_TYPE_BOOL,
+            offset: offset_of!(ZDBIndexOptionsInternal, nested_object_numeric_detection) as i32,
+        },
+        pg_sys::relopt_parse_elt {
+            optname: "nested_object_text_mapping".as_pg_cstr(),
+            opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
+            offset: offset_of!(ZDBIndexOptionsInternal, nested_object_text_mapping_offset) as i32,
         },
     ];
 
@@ -864,6 +936,37 @@ pub unsafe fn init() {
         "Combine fields into named lists during search".as_pg_cstr(),
         std::ptr::null(),
         Some(validate_field_lists),
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
+    );
+    pg_sys::add_bool_reloption(
+        RELOPT_KIND_ZDB,
+        "nested_object_date_detection".as_pg_cstr(),
+        "Should ES try to automatically detect dates in nested objects".as_pg_cstr(),
+        false,
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
+    );
+    pg_sys::add_bool_reloption(
+        RELOPT_KIND_ZDB,
+        "nested_object_numeric_detection".as_pg_cstr(),
+        "Should ES try to automatically detect numbers in nested objects".as_pg_cstr(),
+        false,
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
+    );
+    pg_sys::add_string_reloption(
+        RELOPT_KIND_ZDB,
+        "nested_object_text_mapping".as_pg_cstr(),
+        "As a JSON mapping definition, how should dynamic text values in JSON be mapped?".as_pg_cstr(),
+        r#"{ "type": "keyword", "ignore_above": 10922, "normalizer": "lowercase", "copy_to": "zdb_all" }"#.as_pg_cstr(),
+        Some(validate_text_mapping),
         #[cfg(feature = "pg13")]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE

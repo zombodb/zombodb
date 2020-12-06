@@ -99,16 +99,13 @@ impl ElasticsearchCreateIndexRequest {
                },
                "mappings": {
                      "_source": { "enabled": true },
+                     "date_detection": self.elasticsearch.options.nested_object_date_detection(),
+                     "numeric_detection": self.elasticsearch.options.nested_object_numeric_detection(),
                      "dynamic_templates": [
                           {
                              "strings": {
                                 "match_mapping_type": "string",
-                                "mapping": {
-                                   "type": "keyword",
-                                   "ignore_above": 10922,
-                                   "normalizer": "lowercase",
-                                   "copy_to": "zdb_all"
-                                 }
+                                "mapping": self.elasticsearch.options.nested_object_text_mapping()
                               }
                           },
                           {

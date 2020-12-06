@@ -159,6 +159,56 @@ Range: [0, 9]
 Sets the HTTP(s) transport (and request body) deflate compression level.  Over slow networks, it may make sense to set this to a higher value.  Setting to zero turns off all compression.  Changes via `ALTER INDEX` take effect immediately.
 
 
+### Nested Object Mapping Options
+
+#### `nesed_object_date_detection`
+```
+Type: bool
+Default: false
+```
+
+If `nesed_object_date_detection` is enabled (default is false), then new string fields 
+in nested objects (fields of type 'json' or 'jsonb') are checked to see whether their 
+contents match any of the date patterns specified in dynamic_date_formats. If a match is 
+found, a new date field is added with the corresponding format.
+
+The default value for dynamic_date_formats is:
+
+```json
+ [ "strict_date_optional_time","yyyy/MM/dd HH:mm:ss Z||yyyy/MM/dd Z"]
+```
+
+See:  https://www.elastic.co/guide/en/elasticsearch/reference/current/dynamic-field-mapping.html#date-detection
+
+#### `nested_object_numeric_detection`
+```
+Type: bool
+Default: true
+```
+
+While JSON has support for native floating point and integer data types, some 
+applications or languages may sometimes render numbers as strings. Usually the correct 
+solution is to map these fields explicitly, but numeric detection (which is disabled by 
+default) can be enabled to do this automatically.
+
+See:  https://www.elastic.co/guide/en/elasticsearch/reference/current/dynamic-field-mapping.html#numeric-detection
+
+#### `nested_object_text_mapping`
+```
+Type: String (as JSON)
+Default: {
+           "type": "keyword",
+           "ignore_above": 10922,
+           "normalizer": "lowercase",
+           "copy_to": "zdb_all"
+         }
+```
+
+By default, ZomboDB will map "string" properties found in nested objects (fields of type
+'json' or 'jsonb') using the above type mapping -- they'll be indexed as full-value keywords.
+
+You can override this at `CREATE INDEX` time.
+
 ### Advanced Options
 
 #### `options`
