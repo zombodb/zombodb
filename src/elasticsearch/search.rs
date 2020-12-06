@@ -59,7 +59,6 @@ pub struct InnerHit {
 #[derive(Deserialize)]
 pub struct Hits {
     total: HitsTotal,
-    max_score: Option<f64>,
     hits: Option<Vec<InnerHit>>,
 }
 
@@ -77,9 +76,6 @@ pub struct ElasticsearchSearchResponse {
     #[serde(rename = "_scroll_id")]
     scroll_id: Option<String>,
 
-    #[serde(rename = "_shards")]
-    shards: Option<Shards>,
-
     hits: Option<Hits>,
 }
 
@@ -89,7 +85,7 @@ impl InnerHit {
         let fields = self.fields.unwrap_or_default();
         let score = self.score.unwrap_or_default();
         let highlight = self.highlight;
-        let ctid = fields.zdb_ctid.unwrap_or([0])[0];
+        let ctid = fields.zdb_ctid.map_or(0, |v| v[0]);
 
         if ctid == 0 {
             // this most likely represents the "zdb_aborted_xids" document,
@@ -169,7 +165,6 @@ impl ElasticsearchSearchRequest {
                     offset: None,
                     should_sort_hits,
                     scroll_id: None,
-                    shards: None,
                     hits: None,
                 });
             }
@@ -312,7 +307,7 @@ impl ElasticsearchSearchRequest {
                 .body(serde_json::to_string(&body).unwrap()),
             |code, body| {
                 let response: serde_cbor::error::Result<ElasticsearchSearchResponse> =
-                    serde_cbor::from_reader(body);
+                    serde_cbor::from_slice(body);
                 let mut response = match response {
                     Ok(json) => json,
                     Err(_) => {
@@ -368,7 +363,7 @@ impl ElasticsearchSearchResponse {
 }
 
 pub struct Scroller {
-    receiver: crossbeam_channel::Receiver<Vec<InnerHit>>,
+    receiver: std::sync::mpsc::Receiver<Vec<InnerHit>>,
     current_hits: Option<std::vec::IntoIter<InnerHit>>,
     terminate: Arc<AtomicBool>,
 }
@@ -380,7 +375,7 @@ impl Scroller {
         initial_hits: Vec<InnerHit>,
         should_sort_hits: bool,
     ) -> Self {
-        let (sender, receiver) = crossbeam_channel::unbounded();
+        let (sender, receiver) = std::sync::mpsc::channel();
         let terminate_arc = Arc::new(AtomicBool::new(false));
 
         // spawn a thread to continually get the next scroll chunk from Elasticsearch
@@ -389,41 +384,39 @@ impl Scroller {
         let elasticsearch = orig_elasticsearch;
         let terminate = terminate_arc.clone();
         std::thread::spawn(move || {
-            std::panic::catch_unwind(|| {
-                while let Some(sid) = scroll_id {
-                    if terminate.load(Ordering::SeqCst) {
-                        break;
-                    }
+            while let Some(sid) = scroll_id {
+                if terminate.load(Ordering::SeqCst) {
+                    break;
+                }
 
-                    match ElasticsearchSearchRequest::scroll(&elasticsearch, &sid, should_sort_hits)
-                    {
-                        Ok(response) => {
-                            scroll_id = response.scroll_id;
+                match ElasticsearchSearchRequest::scroll(&elasticsearch, &sid, should_sort_hits) {
+                    Ok(response) => {
+                        scroll_id = response.scroll_id;
 
-                            match response.hits.unwrap().hits {
-                                Some(inner_hits) => {
-                                    // send the hits across the scroll_sender channel
-                                    // so they can be iterated from another thread
-                                    sender
-                                        .send(inner_hits)
-                                        .expect("failed to send iter over scroll_sender");
-                                }
-                                None => {
+                        match response.hits.unwrap().hits {
+                            Some(inner_hits) => {
+                                // send the hits across the scroll_sender channel
+                                // so they can be iterated by the main thread
+                                if sender.send(inner_hits).is_err() {
+                                    // failed to send the hits over 'sender'.
+                                    // nothing else we can do here
                                     break;
                                 }
                             }
-                        }
-                        Err(_) => {
-                            break;
+                            None => {
+                                break;
+                            }
                         }
                     }
-
-                    if scroll_id.is_none() {
+                    Err(_) => {
                         break;
                     }
                 }
-            })
-            .ok();
+
+                if scroll_id.is_none() {
+                    break;
+                }
+            }
 
             // we're done scrolling, so drop the sender
             // which will cause the receiver to terminate as soon
@@ -450,28 +443,31 @@ impl Scroller {
         }
     }
 
+    #[inline]
     fn next(&mut self) -> Option<(f64, u64, Fields, Option<HashMap<String, Vec<String>>>)> {
-        while self.current_hits.is_some() {
-            let next_hit = self.current_hits.as_mut().unwrap().next();
-            if next_hit.is_some() {
-                match next_hit.unwrap().into_tuple() {
-                    Some(tuple) => {
-                        // we have a valid tuple
-                        return Some(tuple);
-                    }
-                    None => {
-                        // this likely represents the "zdb_aborted_xids" hit, so we'll just
-                        // loop around to the next hit
-                        continue;
+        while let Some(current_hits) = self.current_hits.as_mut() {
+            match current_hits.next() {
+                Some(next_hit) => {
+                    match next_hit.into_tuple() {
+                        Some(tuple) => {
+                            // we have a valid tuple
+                            return Some(tuple);
+                        }
+                        None => {
+                            // this likely represents the "zdb_aborted_xids" hit, so we'll just
+                            // loop around to the next hit
+                            continue;
+                        }
                     }
                 }
-            } else {
-                self.current_hits = match self.receiver.recv() {
-                    // the receiver has more hits for us
-                    Ok(hits) => Some(hits.into_iter()),
+                None => {
+                    self.current_hits = match self.receiver.recv() {
+                        // the receiver has more hits for us
+                        Ok(hits) => Some(hits.into_iter()),
 
-                    // the receiver is probably closed now.  we don't care about the error
-                    Err(_) => None,
+                        // the receiver is probably closed now.  we don't care about the error
+                        Err(_) => None,
+                    }
                 }
             }
         }
