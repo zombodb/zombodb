@@ -1,10 +1,12 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
+use crate::utils::read_vint;
 use crate::zdbquery::mvcc::apply_visibility_clause;
 use crate::zdbquery::ZDBPreparedQuery;
 use pgx::PgBuiltInOids;
 use serde::*;
 use serde_json::*;
 use std::collections::HashMap;
+use std::io::BufReader;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -70,11 +72,23 @@ pub struct ElasticsearchSearchResponse {
     scroll_id: Option<String>,
 
     hits: Option<Hits>,
+
+    #[serde(skip)]
+    fast_terms: Option<Vec<u64>>,
+    // fast_terms: Option<Vec<[u8; 6]>>,
+    // fast_terms: Option<roaring::RoaringTreemap>,
 }
 
 impl InnerHit {
     #[inline]
-    fn into_tuple(self) -> Option<(f64, u64, Fields, Option<HashMap<String, Vec<String>>>)> {
+    fn into_tuple(
+        self,
+    ) -> Option<(
+        f64,
+        u64,
+        Option<Fields>,
+        Option<HashMap<String, Vec<String>>>,
+    )> {
         let fields = self.fields.unwrap_or_default();
         let score = self.score.unwrap_or_default();
         let highlight = self.highlight;
@@ -85,7 +99,7 @@ impl InnerHit {
             // so we can just skip it
             None
         } else {
-            Some((score, ctid, fields, highlight))
+            Some((score, ctid, Some(fields), highlight))
         }
     }
 }
@@ -127,9 +141,9 @@ impl ElasticsearchSearchRequest {
         url.push_str("&scroll=10m");
         url.push_str("&stored_fields=_none_");
 
-        let mut docvalue_fields = extra_fields.unwrap_or_default();
-
         // we always want the zdb_ctid field
+        let have_extra_fields = extra_fields.is_some();
+        let mut docvalue_fields = extra_fields.unwrap_or_default();
         docvalue_fields.push("zdb_ctid");
         url.push_str(&format!("&docvalue_fields={}", docvalue_fields.join(",")));
 
@@ -160,9 +174,10 @@ impl ElasticsearchSearchRequest {
                     should_sort_hits,
                     scroll_id: None,
                     hits: None,
+                    fast_terms: None,
                 });
             }
-            Some(limit) if limit < 10_000 => {
+            Some(limit) if limit <= elasticsearch.options.max_result_window() as u64 => {
                 url.push_str(&format!("&size={}", limit));
                 // if we don't already have a sort_json, create one to
                 // order by _score desc
@@ -177,6 +192,8 @@ impl ElasticsearchSearchRequest {
                 ));
             }
         }
+
+        let have_user_sort = sort_json.is_some();
 
         // if we made it this far and never set a sort, we'll hard-code
         // sorting in the index _doc order so that we return rows in heap
@@ -252,6 +269,14 @@ impl ElasticsearchSearchRequest {
             query.take_query_dsl()
         };
 
+        let can_do_fastterms = limit.is_none()
+            && offset.is_none()
+            && highlight.is_none()
+            && min_score.is_none()
+            && have_extra_fields == false
+            && track_scores == false
+            && have_user_sort == false;
+
         let body = Body {
             track_scores,
             min_score,
@@ -261,6 +286,7 @@ impl ElasticsearchSearchRequest {
         };
 
         ElasticsearchSearchRequest::get_hits(
+            can_do_fastterms,
             url,
             limit,
             offset,
@@ -287,6 +313,7 @@ impl ElasticsearchSearchRequest {
         }
 
         ElasticsearchSearchRequest::get_hits(
+            false,
             url,
             None,
             None,
@@ -302,6 +329,7 @@ impl ElasticsearchSearchRequest {
     }
 
     fn get_hits(
+        fast_terms: bool,
         mut url: String,
         limit: Option<u64>,
         offset: Option<u64>,
@@ -309,6 +337,116 @@ impl ElasticsearchSearchRequest {
         should_sort_hits: bool,
         body: serde_json::Value,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
+        if fast_terms {
+            use byteorder::*;
+
+            let mut url = String::new();
+            url.push_str(&elasticsearch.base_url());
+            url.push_str("/_fastterms");
+            let start = std::time::Instant::now();
+
+            let response = ureq::post(&url)
+                .set("content-type", "application/json")
+                .send_json(body);
+
+            if response.ok() {
+                let elapsed = start.elapsed();
+
+                let mut reader = BufReader::new(response.into_reader());
+                let size_in_bytes = reader
+                    .read_u32::<LittleEndian>()
+                    .expect("failed to read _fastterms 'size_in_bytes'")
+                    as usize;
+
+                let dec_start = std::time::Instant::now();
+                let mut fast_terms = Vec::with_capacity(size_in_bytes / 3);
+                while let Ok(blockno) = read_vint(&mut reader) {
+                    let cnt = reader
+                        .read_u32::<LittleEndian>()
+                        .expect("failed to read number of items in block");
+                    for _ in 0..cnt {
+                        let offno = read_vint(&mut reader).expect("failed to read offno");
+                        fast_terms.push(((blockno as u64) << 32) | (offno as u64));
+                    }
+                }
+
+                pgx::info!(
+                    "ttl={:?}, data={}, total={} bytes, many={}, dec={:?}",
+                    elapsed,
+                    size_in_bytes,
+                    size_in_bytes + 4,
+                    fast_terms.len(),
+                    dec_start.elapsed()
+                );
+
+                return Ok(ElasticsearchSearchResponse {
+                    elasticsearch: None,
+                    limit,
+                    offset,
+                    track_scores: false,
+                    should_sort_hits,
+                    scroll_id: None,
+                    hits: None,
+                    fast_terms: Some(fast_terms),
+                    // fast_terms: Some(deserialize_roaring_treemap(body)),
+                });
+            } else {
+                panic!(
+                    "error {}: {}",
+                    response.status(),
+                    response
+                        .into_string()
+                        .expect("_fastterms response not a string")
+                );
+            }
+
+            // return Elasticsearch::execute_binary_request(
+            //     Elasticsearch::client()
+            //         .post(&url)
+            //         .header("content-type", "application/json")
+            //         .body(serde_json::to_string(&body).unwrap()),
+            //     |_, mut body| {
+            //         use byteorder::*;
+            //         let elapsed = start.elapsed();
+            //
+            //         let size_in_bytes = body
+            //             .read_u32::<LittleEndian>()
+            //             .expect("failed to read length");
+            //         let mut v = Vec::with_capacity(size_in_bytes as usize);
+            //         body.copy_to(&mut v).expect("failed to read response bytes");
+            //         let mut raw_data = std::mem::ManuallyDrop::new(v);
+            //
+            //         pgx::info!(
+            //             "ttl={:?}, many={}, size={} bytes",
+            //             elapsed,
+            //             size_in_bytes,
+            //             size_in_bytes + 4
+            //         );
+            //
+            //         panic!("this ain't gonna work yet");
+            //         let fast_terms = unsafe {
+            //             Vec::from_raw_parts(
+            //                 raw_data.as_mut_ptr() as *mut [u8; 6],
+            //                 raw_data.len() / 6,
+            //                 raw_data.capacity(),
+            //             )
+            //         };
+            //
+            //         Ok(ElasticsearchSearchResponse {
+            //             elasticsearch: None,
+            //             limit,
+            //             offset,
+            //             track_scores: false,
+            //             should_sort_hits,
+            //             scroll_id: None,
+            //             hits: None,
+            //             fast_terms: Some(fast_terms),
+            //             // fast_terms: Some(deserialize_roaring_treemap(body)),
+            //         })
+            //     },
+            // );
+        }
+
         url.push_str("&format=cbor");
         Elasticsearch::execute_binary_request(
             Elasticsearch::client()
@@ -317,7 +455,7 @@ impl ElasticsearchSearchRequest {
                 .body(serde_json::to_string(&body).unwrap()),
             |code, body| {
                 let response: serde_cbor::error::Result<ElasticsearchSearchResponse> =
-                    serde_cbor::from_slice(body);
+                    serde_cbor::from_reader(body);
                 let mut response = match response {
                     Ok(json) => json,
                     Err(_) => {
@@ -352,6 +490,7 @@ impl ElasticsearchSearchRequest {
                 response.limit = limit;
                 response.offset = offset;
                 response.should_sort_hits = should_sort_hits;
+                response.fast_terms = None;
 
                 Ok(response)
             },
@@ -460,7 +599,14 @@ impl Scroller {
     }
 
     #[inline]
-    fn next(&mut self) -> Option<(f64, u64, Fields, Option<HashMap<String, Vec<String>>>)> {
+    fn next(
+        &mut self,
+    ) -> Option<(
+        f64,
+        u64,
+        Option<Fields>,
+        Option<HashMap<String, Vec<String>>>,
+    )> {
         while let Some(current_hits) = self.current_hits.as_mut() {
             match current_hits.next() {
                 Some(next_hit) => {
@@ -496,6 +642,9 @@ pub struct SearchResponseIntoIter {
     scroller: Option<Scroller>,
     limit: Option<u64>,
     cnt: u64,
+    fast_terms: Option<std::vec::IntoIter<u64>>,
+    // fast_terms: Option<std::vec::IntoIter<[u8; 6]>>,
+    // fast_terms: Option<roaring::treemap::IntoIter>,
 }
 
 impl Drop for SearchResponseIntoIter {
@@ -507,33 +656,63 @@ impl Drop for SearchResponseIntoIter {
 }
 
 impl Iterator for SearchResponseIntoIter {
-    type Item = (f64, u64, Fields, Option<HashMap<String, Vec<String>>>);
+    type Item = (
+        f64,
+        u64,
+        Option<Fields>,
+        Option<HashMap<String, Vec<String>>>,
+    );
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(limit) = self.limit {
-            if self.cnt >= limit {
-                // we've reached our limit
-                return None;
+        match self.fast_terms.as_mut() {
+            Some(fast_terms) => fast_terms.next().map_or(None, |ctid| {
+                // use byteorder::*;
+                // let slice = &mut ctid.as_ref();
+                // let blockno = slice.read_u32::<LittleEndian>().unwrap() as u64;
+                // let offno = slice.read_u16::<LittleEndian>().unwrap() as u64;
+                // let ctid = (blockno << 32) | offno;
+                Some((0.0, ctid, None, None))
+            }),
+            None => {
+                if let Some(limit) = self.limit {
+                    if self.cnt >= limit {
+                        // we've reached our limit
+                        return None;
+                    }
+                }
+
+                let scroller = self.scroller.as_mut().unwrap();
+                let item = scroller.next();
+                self.cnt += 1;
+                item
             }
         }
-
-        let scroller = self.scroller.as_mut().unwrap();
-        let item = scroller.next();
-        self.cnt += 1;
-        item
     }
 }
 
 impl IntoIterator for ElasticsearchSearchResponse {
-    type Item = (f64, u64, Fields, Option<HashMap<String, Vec<String>>>);
+    type Item = (
+        f64,
+        u64,
+        Option<Fields>,
+        Option<HashMap<String, Vec<String>>>,
+    );
     type IntoIter = SearchResponseIntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
-        if self.elasticsearch.is_none() {
+        if self.fast_terms.is_some() {
+            SearchResponseIntoIter {
+                scroller: None,
+                limit: self.limit,
+                cnt: 0,
+                fast_terms: Some(self.fast_terms.unwrap().into_iter()),
+            }
+        } else if self.elasticsearch.is_none() {
             SearchResponseIntoIter {
                 scroller: None,
                 limit: Some(0),
                 cnt: 0,
+                fast_terms: None,
             }
         } else {
             let mut scroller = Scroller::new(
@@ -557,6 +736,7 @@ impl IntoIterator for ElasticsearchSearchResponse {
                 scroller: Some(scroller),
                 limit: self.limit,
                 cnt: 0,
+                fast_terms: None,
             }
         }
     }

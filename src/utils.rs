@@ -1,7 +1,10 @@
+use byteorder::ReadBytesExt;
 use pgx::pg_sys::AsPgCStr;
 use pgx::*;
+use roaring::RoaringBitmap;
 use serde::*;
 use serde_json::Value;
+use std::io::{BufReader, Read};
 
 pub fn has_zdb_index(heap_relation: &PgRelation, current_index: &PgRelation) -> bool {
     for index in heap_relation.indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
@@ -249,4 +252,110 @@ pub fn type_is_domain(typoid: pg_sys::Oid) -> Option<(pg_sys::Oid, String)> {
     } else {
         None
     }
+}
+
+/*
+   public void deserialize(DataInput in) throws IOException {
+       this.clear();
+       this.signedLongs = in.readBoolean();
+       int nbHighs = in.readInt();
+       if (this.signedLongs) {
+           this.highToBitmap = new TreeMap();
+       } else {
+           this.highToBitmap = new TreeMap(RoaringIntPacking.unsignedComparator());
+       }
+
+       for(int i = 0; i < nbHighs; ++i) {
+           int high = in.readInt();
+           RoaringBitmap provider = new RoaringBitmap();
+           provider.deserialize(in);
+           this.highToBitmap.put(high, provider);
+       }
+
+       this.resetPerfHelpers();
+   }
+*/
+#[allow(dead_code)]
+pub fn deserialize_roaring_treemap<T: std::io::Read>(input: T) -> roaring::RoaringTreemap {
+    use byteorder::*;
+    let start = std::time::Instant::now();
+    let mut reader = BufReader::new(input);
+    let mut maps = Vec::new();
+
+    let signed_longs = reader.read_i8().expect("failed to read signedLongs");
+    debug_assert!(signed_longs == 1); // we require signed longs
+    let nb_highs = reader
+        .read_i32::<BigEndian>()
+        .expect("failed to read nbHighs");
+
+    for _ in 0..nb_highs {
+        let high = reader.read_u32::<BigEndian>().expect("failed to read high");
+        let bitmap = RoaringBitmap::deserialize_from(&mut reader)
+            .expect("failed to deserialize RoaringBitmap");
+        maps.push((high, bitmap));
+    }
+
+    let bitmap = roaring::RoaringTreemap::from_bitmaps(maps.into_iter());
+
+    pgx::info!("   decode={:?}", start.elapsed());
+
+    bitmap
+}
+
+/*
+   public int readVInt() throws IOException {
+       byte b = readByte();
+       int i = b & 0x7F;
+       if ((b & 0x80) == 0) {
+           return i;
+       }
+       b = readByte();
+       i |= (b & 0x7F) << 7;
+       if ((b & 0x80) == 0) {
+           return i;
+       }
+       b = readByte();
+       i |= (b & 0x7F) << 14;
+       if ((b & 0x80) == 0) {
+           return i;
+       }
+       b = readByte();
+       i |= (b & 0x7F) << 21;
+       if ((b & 0x80) == 0) {
+           return i;
+       }
+       b = readByte();
+       if ((b & 0x80) != 0) {
+           throw new IOException("Invalid vInt ((" + Integer.toHexString(b) + " & 0x7f) << 28) | " + Integer.toHexString(i));
+       }
+       return i | ((b & 0x7F) << 28);
+   }
+*/
+#[inline(always)]
+pub fn read_vint<T: Read>(input: &mut T) -> std::io::Result<u32> {
+    let mut b = input.read_u8()? as u32;
+    let mut i = (b & 0x7F) as u32;
+    if (b & 0x80) == 0 {
+        return Ok(i);
+    }
+    b = input.read_u8()? as u32;
+    i |= (b & 0x7F) << 7;
+    if (b & 0x80) == 0 {
+        return Ok(i);
+    }
+    b = input.read_u8()? as u32;
+    i |= (b & 0x7F) << 14;
+    if (b & 0x80) == 0 {
+        return Ok(i);
+    }
+    b = input.read_u8()? as u32;
+    i |= (b & 0x7F) << 21;
+    if (b & 0x80) == 0 {
+        return Ok(i);
+    }
+    b = input.read_u8()? as u32;
+    if (b & 0x80) != 0 {
+        panic!("Invalid vInt");
+    }
+    return Ok(i | ((b & 0x7F) << 28));
 }

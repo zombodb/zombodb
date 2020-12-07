@@ -46,7 +46,7 @@ pub use bulk::*;
 pub use create_index::*;
 use lazy_static::*;
 use pgx::*;
-use reqwest::RequestBuilder;
+use reqwest::{RequestBuilder, Response};
 use serde::de::DeserializeOwned;
 use serde_json::json;
 use serde_json::Value;
@@ -406,25 +406,25 @@ impl Elasticsearch {
         response_parser: F,
     ) -> std::result::Result<R, ElasticsearchError>
     where
-        F: FnOnce(reqwest::StatusCode, &[u8]) -> std::result::Result<R, ElasticsearchError>,
+        F: FnOnce(reqwest::StatusCode, Response) -> std::result::Result<R, ElasticsearchError>,
     {
         match builder.send() {
             // the request was processed by ES, but maybe not successfully
             Ok(mut response) => {
                 let code = response.status();
 
-                let mut buff =
-                    Vec::with_capacity(response.content_length().unwrap_or(0x80000) as usize);
-                response
-                    .copy_to(&mut buff)
-                    .expect("unable to read HTTP response to bytes");
-
                 if code.as_u16() != 200 {
+                    let mut buff =
+                        Vec::with_capacity(response.content_length().unwrap_or(0x80000) as usize);
+                    response
+                        .copy_to(&mut buff)
+                        .expect("unable to read HTTP response to bytes");
+
                     let error = serde_cbor::from_slice::<serde_cbor::Value>(&buff)
                         .expect("unable to create error Value from binary response");
                     Err(ElasticsearchError(Some(code), format!("{:?}", error)))
                 } else {
-                    response_parser(code, &buff)
+                    response_parser(code, response)
                 }
             }
 

@@ -39,6 +39,7 @@ impl Default for QueryState {
 }
 
 impl QueryState {
+    #[inline]
     pub fn add_score(&mut self, heap_oid: pg_sys::Oid, ctid64: u64, score: f64) {
         if score > 0.0f64 {
             let key = (heap_oid, u64_to_item_pointer_parts(ctid64));
@@ -57,6 +58,7 @@ impl QueryState {
             .unwrap_or(&0.0f64)
     }
 
+    #[inline]
     pub fn add_highlight(
         &mut self,
         heap_oid: pg_sys::Oid,

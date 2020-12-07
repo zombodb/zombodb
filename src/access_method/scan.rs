@@ -78,33 +78,37 @@ pub extern "C" fn amgettuple(
     scan: pg_sys::IndexScanDesc,
     _direction: pg_sys::ScanDirection,
 ) -> bool {
-    let mut scan: PgBox<pg_sys::IndexScanDescData> = PgBox::from_pg(scan);
-    let heap_relation = unsafe { PgRelation::from_pg(scan.heapRelation) };
-    let state = unsafe { (scan.opaque as *mut ZDBScanState).as_mut() }.expect("no scandesc state");
+    unsafe {
+        let state = &mut *((*scan).opaque as *mut ZDBScanState);
 
-    // no need to recheck the returned tuples as ZomboDB indices are not lossy
-    scan.xs_recheck = false;
+        // no need to recheck the returned tuples as ZomboDB indices are not lossy
+        (*scan).xs_recheck = false;
 
-    let iter = unsafe { state.iterator.as_mut() }.expect("no iterator in state");
-    match iter.next() {
-        Some((score, ctid, _, highlights)) => {
-            #[cfg(any(feature = "pg10", feature = "pg11"))]
-            let tid = &mut scan.xs_ctup.t_self;
-            #[cfg(any(feature = "pg12", feature = "pg13"))]
-            let tid = &mut scan.xs_heaptid;
+        let iter = &mut *(*state).iterator;
+        match iter.next() {
+            Some((score, ctid, _, highlights)) => {
+                #[cfg(any(feature = "pg10", feature = "pg11"))]
+                let tid = &mut ((*scan).xs_ctup).t_self;
+                #[cfg(any(feature = "pg12", feature = "pg13"))]
+                let tid = &mut (*scan).xs_heaptid;
 
-            u64_to_item_pointer(ctid, tid);
-            if !item_pointer_is_valid(tid) {
-                panic!("invalid item pointer: {:?}", item_pointer_get_both(*tid));
+                u64_to_item_pointer(ctid, tid);
+                if !item_pointer_is_valid(tid) {
+                    panic!("invalid item pointer: {:?}", item_pointer_get_both(*tid));
+                }
+
+                if score > 0.0 || highlights.is_some() {
+                    // safe: scan.heapRelation won't even be null
+                    let heap_oid = (*(*scan).heapRelation).rd_id;
+                    let (_, qstate) = get_executor_manager().peek_query_state().unwrap();
+                    qstate.add_score(heap_oid, ctid, score);
+                    qstate.add_highlight(heap_oid, ctid, highlights);
+                }
+
+                true
             }
-
-            let (_, qstate) = get_executor_manager().peek_query_state().unwrap();
-            qstate.add_score(heap_relation.oid(), ctid, score);
-            qstate.add_highlight(heap_relation.oid(), ctid, highlights);
-
-            true
+            None => false,
         }
-        None => false,
     }
 }
 

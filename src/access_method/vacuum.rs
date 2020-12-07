@@ -202,7 +202,7 @@ fn vacuum_xmax(
     for (_, ctid, fields, _) in vacuum_xmax_docs.into_iter() {
         check_for_interrupts!();
 
-        if let Some(xmax) = fields.zdb_xmax {
+        if let Some(xmax) = fields.unwrap().zdb_xmax {
             let xmax64 = xmax[0];
             let xmax = xmax64 as pg_sys::TransactionId;
 
@@ -240,7 +240,7 @@ fn delete_by_xmax(
     for (_, ctid, fields, _) in delete_by_xmax_docs.into_iter() {
         check_for_interrupts!();
 
-        if let Some(xmax) = fields.zdb_xmax {
+        if let Some(xmax) = fields.unwrap().zdb_xmax {
             let xmax64 = xmax[0];
             let xmax = xmax64 as pg_sys::TransactionId;
 
@@ -278,7 +278,7 @@ fn delete_by_xmin(
     for (_, ctid, fields, _) in delete_by_xmin_docs.into_iter() {
         check_for_interrupts!();
 
-        if let Some(xmin) = fields.zdb_xmin {
+        if let Some(xmin) = fields.unwrap().zdb_xmin {
             let xmin64 = xmin[0];
             let xmin = xmin64 as pg_sys::TransactionId;
 
