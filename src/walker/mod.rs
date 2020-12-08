@@ -137,7 +137,7 @@ unsafe extern "C" fn plan_walker(node: *mut pg_sys::Node, context_ptr: void_mut_
             //     panic!("zdb.highlight() can only be used as a target entry");
             // }
         }
-    } else if is_a(node, pg_sys::NodeTag_T_OpExpr) && context.rtable.len() > 0 {
+    } else if false && is_a(node, pg_sys::NodeTag_T_OpExpr) && context.rtable.len() > 0 {
         let op_expr = PgBox::from_pg(node as *mut pg_sys::OpExpr);
         if op_expr.opfuncid == context.zdb_anyelement_cmp_func_oid {
             let mut op_args = PgList::from_pg(op_expr.args);

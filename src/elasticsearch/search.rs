@@ -1,5 +1,5 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
-use crate::utils::read_vint;
+use crate::utils::{read_vint, read_vlong};
 use crate::zdbquery::mvcc::apply_visibility_clause;
 use crate::zdbquery::ZDBPreparedQuery;
 use pgx::PgBuiltInOids;
@@ -360,13 +360,11 @@ impl ElasticsearchSearchRequest {
 
                 let dec_start = std::time::Instant::now();
                 let mut fast_terms = Vec::with_capacity(size_in_bytes / 3);
-                while let Ok(blockno) = read_vint(&mut reader) {
-                    let cnt = reader
-                        .read_u32::<LittleEndian>()
-                        .expect("failed to read number of items in block");
-                    for _ in 0..cnt {
-                        let offno = read_vint(&mut reader).expect("failed to read offno");
-                        fast_terms.push(((blockno as u64) << 32) | (offno as u64));
+                if let Ok(mut ctid) = read_vlong(&mut reader) {
+                    fast_terms.push(ctid);
+                    while let Ok(diff) = read_vlong(&mut reader) {
+                        ctid += diff;
+                        fast_terms.push(ctid);
                     }
                 }
 

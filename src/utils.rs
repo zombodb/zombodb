@@ -304,27 +304,27 @@ pub fn deserialize_roaring_treemap<T: std::io::Read>(input: T) -> roaring::Roari
 
 /*
    public int readVInt() throws IOException {
-       byte b = readByte();
+       byte b = input.read_u8()? as u64;
        int i = b & 0x7F;
        if ((b & 0x80) == 0) {
-           return i;
+           return Ok(i);
        }
-       b = readByte();
+       b = input.read_u8()? as u64;
        i |= (b & 0x7F) << 7;
        if ((b & 0x80) == 0) {
-           return i;
+           return Ok(i);
        }
-       b = readByte();
+       b = input.read_u8()? as u64;
        i |= (b & 0x7F) << 14;
        if ((b & 0x80) == 0) {
-           return i;
+           return Ok(i);
        }
-       b = readByte();
+       b = input.read_u8()? as u64;
        i |= (b & 0x7F) << 21;
        if ((b & 0x80) == 0) {
-           return i;
+           return Ok(i);
        }
-       b = readByte();
+       b = input.read_u8()? as u64;
        if ((b & 0x80) != 0) {
            throw new IOException("Invalid vInt ((" + Integer.toHexString(b) + " & 0x7f) << 28) | " + Integer.toHexString(i));
        }
@@ -358,4 +358,59 @@ pub fn read_vint<T: Read>(input: &mut T) -> std::io::Result<u32> {
         panic!("Invalid vInt");
     }
     return Ok(i | ((b & 0x7F) << 28));
+}
+
+#[inline(always)]
+pub fn read_vlong<T: Read>(input: &mut T) -> std::io::Result<u64> {
+    let mut b = input.read_u8()? as u64;
+    let mut i = (b & 0x7F) as u64;
+    if (b & 0x80) == 0 {
+        return Ok(i);
+    }
+    b = input.read_u8()? as u64;
+    i |= (b & 0x7F) << 7;
+    if (b & 0x80) == 0 {
+        return Ok(i);
+    }
+    b = input.read_u8()? as u64;
+    i |= (b & 0x7F) << 14;
+    if (b & 0x80) == 0 {
+        return Ok(i);
+    }
+    b = input.read_u8()? as u64;
+    i |= (b & 0x7F) << 21;
+    if (b & 0x80) == 0 {
+        return Ok(i);
+    }
+    b = input.read_u8()? as u64;
+    i |= (b & 0x7F) << 28;
+    if (b & 0x80) == 0 {
+        return Ok(i);
+    }
+    b = input.read_u8()? as u64;
+    i |= (b & 0x7F) << 35;
+    if (b & 0x80) == 0 {
+        return Ok(i);
+    }
+    b = input.read_u8()? as u64;
+    i |= (b & 0x7F) << 42;
+    if (b & 0x80) == 0 {
+        return Ok(i);
+    }
+    b = input.read_u8()? as u64;
+    i |= (b & 0x7F) << 49;
+    if (b & 0x80) == 0 {
+        return Ok(i);
+    }
+    b = input.read_u8()? as u64;
+    i |= (b & 0x7F) << 56;
+    if (b & 0x80) == 0 {
+        return Ok(i);
+    }
+    b = input.read_u8()? as u64;
+    if b != 0 && b != 1 {
+        panic!("Invalid VLong");
+    }
+    i |= (b as u64) << 63;
+    return Ok(i);
 }
