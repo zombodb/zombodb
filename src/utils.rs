@@ -81,8 +81,7 @@ pub fn find_zdb_index(
                     let shadow_index = find_zdb_shadow_index(&heap, func_expr.funcid);
                     let options = ZDBIndexOptions::from_relation(&shadow_index);
                     let links = options.links().clone();
-                    let (index, _) = find_zdb_index(&heap)?;
-                    return Ok((index, links));
+                    return Ok((shadow_index, links));
                 }
             }
         }

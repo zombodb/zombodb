@@ -379,9 +379,15 @@ impl ZDBIndexOptions {
     }
 }
 
-#[pg_extern(immutable, parallel_safe)]
-fn shadow(row: AnyElement) -> AnyElement {
-    row
+/// ```sql
+/// /*
+///    we don't want any SQL generated for the "shadow" function, but we do want its '_wrapper' symbol
+///    exported so that shadow indexes can reference it using whatever argument type they want
+/// */
+/// ```
+#[pg_extern(immutable, parallel_safe, raw, no_guard)]
+fn shadow(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
+    pg_getarg_datum_raw(fcinfo, 0)
 }
 
 #[pg_extern(volatile, parallel_safe)]

@@ -323,19 +323,23 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
                         }
                     }
                 } else if is_a(first_arg, pg_sys::NodeTag_T_FuncExpr) {
-                    let first_arg = PgBox::from_pg(first_arg as *mut pg_sys::FuncExpr);
-                    let mut var = PgBox::<pg_sys::Var>::alloc_node(pg_sys::NodeTag_T_Var);
-                    context.replacements.insert(first_arg.funcresulttype);
-                    var.vartype = pg_sys::TIDOID;
-                    var.varno = 1;
-                    var.varattno = -1;
-                    #[cfg(any(feature = "pg10", feature = "pg11", feature = "pg12"))]
-                    {
-                        var.varoattno = -1;
-                    }
-                    var.location = first_arg.location;
+                    let func_expr = PgBox::from_pg(first_arg as *mut pg_sys::FuncExpr);
+                    let mut fn_args = PgList::<pg_sys::Node>::from_pg(func_expr.args);
 
-                    args.replace_ptr(0, var.into_pg() as NodePtr);
+                    let first_arg = fn_args.get_ptr(0).unwrap();
+                    if is_a(first_arg, pg_sys::NodeTag_T_Var) {
+                        let mut var = PgBox::from_pg(first_arg as *mut pg_sys::Var);
+                        context.replacements.insert(func_expr.funcresulttype);
+                        var.vartype = pg_sys::TIDOID;
+                        #[cfg(any(feature = "pg10", feature = "pg11", feature = "pg12"))]
+                        {
+                            var.varoattno = -1;
+                        }
+                        if var.varattno == 0 {
+                            var.varattno = -1;
+                        }
+                        args.replace_ptr(0, var.into_pg() as *mut pg_sys::Node)
+                    }
                 }
             }
         } else {

@@ -10,8 +10,8 @@ CREATE TABLE c (
 
 CREATE INDEX idxc ON c USING zombodb((c.*));
 
-CREATE FUNCTION c_shadow (anyelement) RETURNS anyelement IMMUTABLE STRICT PARALLEL SAFE LANGUAGE c AS '$libdir/zombodb.so', 'shadow_wrapper';
-CREATE INDEX idxc_shadow ON c USING zombodb (c_shadow(c.*)) with (shadow='true');
+CREATE FUNCTION c_shadow (c) RETURNS c IMMUTABLE STRICT PARALLEL SAFE LANGUAGE c AS '$libdir/zombodb.so', 'shadow_wrapper';
+CREATE INDEX idxc_shadow ON c USING zombodb (c_shadow(c.*)) with (shadow=true);
 
 CREATE VIEW issue_58_view AS
   SELECT
@@ -29,5 +29,4 @@ select assert(zdb.determine_index('issue_58_view')::regclass, 'idxc_shadow'::reg
 DROP VIEW issue_58_view;
 DROP TABLE a;
 DROP TABLE b;
-DROP TABLE c;
-DROP FUNCTION c_shadow;
+DROP TABLE c CASCADE;
