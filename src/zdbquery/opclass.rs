@@ -15,7 +15,7 @@ fn anyelement_cmpfunc(
         Some((query_desc, query_state)) => (query_desc, query_state),
         None => return false,
     };
-    let heap_oid = match query_state.lookup_heap_oid_for_first_field(*query_desc, fcinfo) {
+    let index_oid = match query_state.lookup_index_for_first_field(*query_desc, fcinfo) {
         Some(oid) => oid,
         None => return false,
     };
@@ -27,15 +27,18 @@ fn anyelement_cmpfunc(
                 .unwrap(),
         ))
     } else {
-        panic!("lhs of anyelement_cmpfunc is not a tid");
+        panic!(
+            "lhs of anyelement_cmpfunc is not a tid, it is OID {}",
+            element.oid()
+        );
     };
 
     match tid {
         Some(tid) => {
             let lookup = pg_func_extra(fcinfo, || {
-                let heap_relation =
-                    PgRelation::with_lock(heap_oid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
-                let es = Elasticsearch::new(&heap_relation);
+                let index =
+                    PgRelation::with_lock(index_oid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
+                let es = Elasticsearch::new(&index);
                 let search = es
                     .open_search(query.prepare(&es.index_relation(), None).0)
                     .execute()
@@ -47,8 +50,8 @@ fn anyelement_cmpfunc(
 
                     // remember the score, globaly
                     let (_, qstate) = get_executor_manager().peek_query_state().unwrap();
-                    qstate.add_score(heap_oid, ctid, score);
-                    qstate.add_highlight(heap_oid, ctid, highlights);
+                    qstate.add_score(index.oid(), ctid, score);
+                    qstate.add_highlight(index.oid(), ctid, highlights);
 
                     // remember this ctid for this function context
                     lookup.insert(ctid);

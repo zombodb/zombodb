@@ -81,15 +81,15 @@ WHERE testlcase ==> 'terms:("T1")';
 (1 row)
 
 SELECT zdb.dump_query('idx_zdb_testlcase', 'terms:("T1")');
-     dump_query      
----------------------
- {                  +
-   "match": {       +
-     "terms": {     +
-       "boost": 1.0,+
-       "query": "T1"+
-     }              +
-   }                +
+      dump_query      
+----------------------
+ {                   +
+   "match": {        +
+     "terms": {      +
+       "query": "T1",+
+       "boost": 1.0  +
+     }               +
+   }                 +
  }
 (1 row)
 
@@ -111,22 +111,22 @@ WHERE testlcase ==> 'subjs.sid:("S1")';
 (1 row)
 
 SELECT zdb.dump_query('idx_zdb_testlcase', 'subjs.sid:("S1")');
-          dump_query           
--------------------------------
- {                            +
-   "nested": {                +
-     "ignore_unmapped": false,+
-     "path": "subjs",         +
-     "query": {               +
-       "match": {             +
-         "subjs.sid": {       +
-           "boost": 1.0,      +
-           "query": "S1"      +
-         }                    +
-       }                      +
-     },                       +
-     "score_mode": "avg"      +
-   }                          +
+          dump_query          
+------------------------------
+ {                           +
+   "nested": {               +
+     "path": "subjs",        +
+     "query": {              +
+       "match": {            +
+         "subjs.sid": {      +
+           "query": "S1",    +
+           "boost": 1.0      +
+         }                   +
+       }                     +
+     },                      +
+     "score_mode": "avg",    +
+     "ignore_unmapped": false+
+   }                         +
  }
 (1 row)
 

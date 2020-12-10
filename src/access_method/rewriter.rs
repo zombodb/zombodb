@@ -323,7 +323,7 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
                         }
                     }
                 } else if is_a(first_arg, pg_sys::NodeTag_T_FuncExpr) {
-                    let func_expr = PgBox::from_pg(first_arg as *mut pg_sys::FuncExpr);
+                    let mut func_expr = PgBox::from_pg(first_arg as *mut pg_sys::FuncExpr);
                     let mut fn_args = PgList::<pg_sys::Node>::from_pg(func_expr.args);
 
                     let first_arg = fn_args.get_ptr(0).unwrap();
@@ -338,7 +338,8 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
                         if var.varattno == 0 {
                             var.varattno = -1;
                         }
-                        args.replace_ptr(0, var.into_pg() as *mut pg_sys::Node)
+                        // args.replace_ptr(0, var.into_pg() as *mut pg_sys::Node)
+                        func_expr.funcresulttype = pg_sys::TIDOID;
                     }
                 }
             }

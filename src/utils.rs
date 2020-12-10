@@ -196,6 +196,10 @@ pub fn lookup_zdb_index_tupdesc(indexrel: &PgRelation) -> PgTupleDesc<'static> {
     })
 }
 
+pub fn lookup_all_zdb_index_oids() -> Option<Vec<pg_sys::Oid>> {
+    Spi::get_one("select array_agg(oid) from pg_class where relkind = 'i' and relam = (select oid from pg_am where amname = 'zombodb');")
+}
+
 pub fn lookup_function(
     name_parts: Vec<&str>,
     arg_oids: Option<Vec<pg_sys::Oid>>,

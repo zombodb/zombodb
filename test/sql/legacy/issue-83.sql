@@ -20,7 +20,7 @@ CREATE INDEX es_documents ON documents USING zombodb ((documents.*));
 CREATE INDEX es_docs_usage ON docs_usage USING zombodb ((docs_usage.*));
 CREATE INDEX es_library_profile ON library_profile USING zombodb ((library_profile.*));
 
-CREATE FUNCTION documents_shadow(documents) RETURNS documents IMMUTABLE STRICT PARALLEL SAFE LANGUAGE c AS '$libdir/zombodb.so', 'shadow_wrapper';
+CREATE FUNCTION documents_shadow(anyelement) RETURNS anyelement IMMUTABLE STRICT PARALLEL SAFE LANGUAGE c AS '$libdir/zombodb.so', 'shadow_wrapper';
 CREATE INDEX idxdocuments_master_view_shadow ON documents USING zombodb (documents_shadow(documents.*))
     WITH (
         shadow = true,
@@ -54,6 +54,12 @@ VALUES (1, 1, 'somewhere'), (2, 2, 'anywhere'), (3, 3, 'everywhere'), (3, 1, 'so
 SELECT count(*) FROM documents_master_view WHERE public.documents_master_view.zdb ==> 'somewhere';
 SELECT count(*) FROM documents_master_view WHERE public.documents_master_view.zdb ==> 'GSO';
 
+set enable_indexscan to off;
+set enable_bitmapscan to off;
+explain (costs off) SELECT count(*) FROM documents_master_view WHERE public.documents_master_view.zdb ==> 'somewhere';
+SELECT count(*) FROM documents_master_view WHERE public.documents_master_view.zdb ==> 'somewhere';
+
 DROP TABLE documents CASCADE;
 DROP TABLE docs_usage CASCADE;
 DROP TABLE library_profile CASCADE;
+DROP FUNCTION documents_shadow CASCADE;

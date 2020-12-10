@@ -8,7 +8,7 @@ CREATE TABLE c (
   id SERIAL8 PRIMARY KEY
 );
 CREATE INDEX idxc ON c USING zombodb((c.*));
-CREATE FUNCTION c_shadow (c) RETURNS c IMMUTABLE STRICT PARALLEL SAFE LANGUAGE c AS '$libdir/zombodb.so', 'shadow_wrapper';
+CREATE FUNCTION c_shadow (anyelement) RETURNS anyelement IMMUTABLE STRICT PARALLEL SAFE LANGUAGE c AS '$libdir/zombodb.so', 'shadow_wrapper';
 CREATE INDEX idxc_shadow ON c USING zombodb (c_shadow(c.*)) with (shadow=true);
 CREATE VIEW issue_58_view AS
   SELECT
@@ -20,8 +20,8 @@ CREATE VIEW issue_58_view AS
 set enable_seqscan to off;
 set ENABLE_BITMAPSCAN to off;
 explain (costs off) select * from issue_58_view where zdb==>'';
-                            QUERY PLAN                             
--------------------------------------------------------------------
+                                 QUERY PLAN                                  
+-----------------------------------------------------------------------------
  Nested Loop
    ->  Nested Loop
          ->  Index Only Scan using a_pkey on a
@@ -29,7 +29,7 @@ explain (costs off) select * from issue_58_view where zdb==>'';
                ->  Index Only Scan using b_pkey on b
    ->  Materialize
          ->  Index Scan using idxc_shadow on c
-               Index Cond: (ctid ==> '{"match_all":{}}'::zdbquery)
+               Index Cond: (c_shadow(ctid) ==> '{"match_all":{}}'::zdbquery)
 (8 rows)
 
 select assert(zdb.determine_index('issue_58_view')::regclass, 'idxc_shadow'::regclass, 'Found correct index');
@@ -42,3 +42,4 @@ DROP VIEW issue_58_view;
 DROP TABLE a;
 DROP TABLE b;
 DROP TABLE c CASCADE;
+DROP FUNCTION c_shadow;
