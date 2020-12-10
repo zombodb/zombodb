@@ -1,7 +1,6 @@
 use crate::access_method::options::ZDBIndexOptions;
 use pgx::pg_sys::AsPgCStr;
 use pgx::*;
-use serde::*;
 use serde_json::Value;
 
 pub fn has_zdb_index(heap_relation: &PgRelation, current_index: &PgRelation) -> bool {

@@ -1,4 +1,4 @@
-use crate::utils::{find_zdb_index, lookup_function};
+use crate::utils::lookup_function;
 use pgx::*;
 
 pub struct PlanWalker {
@@ -8,7 +8,6 @@ pub struct PlanWalker {
     zdb_anyelement_cmp_func_oid: pg_sys::Oid,
     zdb_want_score_oid: pg_sys::Oid,
     zdb_want_highlight_oid: pg_sys::Oid,
-    dsl_link_options_direct: pg_sys::Oid,
     in_te: usize,
     in_sort: usize,
     want_scores: bool,
@@ -48,11 +47,6 @@ impl PlanWalker {
             zdb_want_highlight_oid: lookup_function(
                 vec!["zdb", "want_highlight"],
                 Some(vec![zdbquery_oid, pg_sys::TEXTOID, pg_sys::JSONOID]),
-            )
-            .unwrap_or(pg_sys::InvalidOid),
-            dsl_link_options_direct: lookup_function(
-                vec!["dsl", "link_options_direct"],
-                Some(vec![pg_sys::TEXTOID, zdbquery_oid]),
             )
             .unwrap_or(pg_sys::InvalidOid),
             in_te: 0,

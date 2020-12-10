@@ -307,7 +307,7 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
     } else if is_a(node, pg_sys::NodeTag_T_OpExpr) {
         let opexpr = PgBox::from_pg(node as *mut pg_sys::OpExpr);
         if opexpr.opfuncid == context.funcoid {
-            let mut args = PgList::<pg_sys::Node>::from_pg(opexpr.args);
+            let args = PgList::<pg_sys::Node>::from_pg(opexpr.args);
             if let Some(first_arg) = args.get_ptr(0) {
                 if is_a(first_arg, pg_sys::NodeTag_T_Var) {
                     let mut first_arg = PgBox::from_pg(first_arg as *mut pg_sys::Var);
@@ -324,7 +324,7 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
                     }
                 } else if is_a(first_arg, pg_sys::NodeTag_T_FuncExpr) {
                     let mut func_expr = PgBox::from_pg(first_arg as *mut pg_sys::FuncExpr);
-                    let mut fn_args = PgList::<pg_sys::Node>::from_pg(func_expr.args);
+                    let fn_args = PgList::<pg_sys::Node>::from_pg(func_expr.args);
 
                     let first_arg = fn_args.get_ptr(0).unwrap();
                     if is_a(first_arg, pg_sys::NodeTag_T_Var) {

@@ -5,7 +5,7 @@ use pgx::{
 
 use crate::elasticsearch::Elasticsearch;
 use crate::gucs::ZDB_LOG_LEVEL;
-use crate::utils::{is_non_shadow_zdb_index, is_zdb_index, lookup_zdb_extension_oid};
+use crate::utils::{is_non_shadow_zdb_index, lookup_zdb_extension_oid};
 
 pub fn drop_index(index: &PgRelation) {
     // we can only delete the remote index for actual ZDB indices
