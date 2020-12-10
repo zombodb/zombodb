@@ -57,6 +57,7 @@ struct ZDBIndexOptionsInternal {
     translog_durability_offset: i32,
     options_offset: i32,
     field_lists_offset: i32,
+    shadow_index: bool,
 
     max_result_window: i32,
     optimize_after: i32,
@@ -232,6 +233,7 @@ pub struct ZDBIndexOptions {
     translog_durability: String,
     links: Option<Vec<String>>,
     field_lists: Option<HashMap<String, Vec<QualifiedField>>>,
+    shadow_index: bool,
 
     optimize_after: i32,
     compression_level: i32,
@@ -262,6 +264,7 @@ impl ZDBIndexOptions {
             uuid: internal.uuid(&heap_relation, &relation),
             links: options.map_or_else(|| internal.links(), |v| Some(v)),
             field_lists: internal.field_lists(),
+            shadow_index: internal.shadow_index,
             compression_level: internal.compression_level,
             shards: internal.shards,
             replicas: internal.replicas,
@@ -359,6 +362,10 @@ impl ZDBIndexOptions {
         }
     }
 
+    pub fn is_shadow_index(&self) -> bool {
+        self.shadow_index
+    }
+
     pub fn nested_object_date_detection(&self) -> bool {
         self.nested_object_date_detection
     }
@@ -370,6 +377,11 @@ impl ZDBIndexOptions {
     pub fn nested_object_text_mapping(&self) -> &serde_json::Value {
         &self.nested_object_text_mapping
     }
+}
+
+#[pg_extern(immutable, parallel_safe)]
+fn shadow(row: AnyElement) -> AnyElement {
+    row
 }
 
 #[pg_extern(volatile, parallel_safe)]
@@ -592,7 +604,7 @@ extern "C" fn validate_text_mapping(value: *const std::os::raw::c_char) {
     .expect("invalid nested_object_text_mapping");
 }
 
-const NUM_REL_OPTS: usize = 19;
+const NUM_REL_OPTS: usize = 20;
 #[allow(clippy::unneeded_field_pattern)] // b/c of offset_of!()
 #[pg_guard]
 pub unsafe extern "C" fn amoptions(
@@ -680,6 +692,11 @@ pub unsafe extern "C" fn amoptions(
             optname: "field_lists".as_pg_cstr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, field_lists_offset) as i32,
+        },
+        pg_sys::relopt_parse_elt {
+            optname: "shadow".as_pg_cstr(),
+            opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
+            offset: offset_of!(ZDBIndexOptionsInternal, shadow_index) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "nested_object_date_detection".as_pg_cstr(),
@@ -936,6 +953,16 @@ pub unsafe fn init() {
         "Combine fields into named lists during search".as_pg_cstr(),
         std::ptr::null(),
         Some(validate_field_lists),
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
+    );
+    pg_sys::add_bool_reloption(
+        RELOPT_KIND_ZDB,
+        "shadow".as_pg_cstr(),
+        "Is this index a shadow index, and if so, to which one".as_pg_cstr(),
+        false,
         #[cfg(feature = "pg13")]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
