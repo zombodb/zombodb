@@ -341,21 +341,17 @@ impl ElasticsearchSearchRequest {
             let mut url = String::new();
             url.push_str(&elasticsearch.base_url());
             url.push_str("/_fastterms");
-            let start = std::time::Instant::now();
 
             Elasticsearch::execute_json_request(
                 Elasticsearch::client().post(&url),
                 Some(body),
                 |mut body| {
-                    let elapsed = start.elapsed();
-
                     use byteorder::*;
 
                     let many = body
                         .read_i32::<BigEndian>()
                         .expect("failed to read _fastterms 'size_in_bytes'");
 
-                    let dec_start = std::time::Instant::now();
                     let mut fast_terms =
                         Vec::with_capacity(many.try_into().expect("unable to use 'many' as usize"));
 
@@ -366,14 +362,6 @@ impl ElasticsearchSearchRequest {
                             fast_terms.push(ctid);
                         }
                     }
-
-                    pgx::info!(
-                        "ttl={:?}, many={}, len={}, dec={:?}",
-                        elapsed,
-                        many,
-                        fast_terms.len(),
-                        dec_start.elapsed()
-                    );
 
                     Ok(ElasticsearchSearchResponse {
                         elasticsearch: None,
