@@ -350,7 +350,7 @@ impl ElasticsearchSearchRequest {
 
                     let many = body
                         .read_i32::<BigEndian>()
-                        .expect("failed to read _fastterms 'size_in_bytes'");
+                        .expect("failed to read _fastterms header");
 
                     let mut fast_terms =
                         Vec::with_capacity(many.try_into().expect("unable to use 'many' as usize"));
