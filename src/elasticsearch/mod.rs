@@ -433,7 +433,7 @@ impl Elasticsearch {
                             .expect("failed to convert response to a string"),
                     ))
                 } else {
-                    response_parser(Box::new(response.into_reader()))
+                    response_parser(Box::new(std::io::BufReader::new(response.into_reader())))
                 }
             }
 
