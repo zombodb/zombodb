@@ -317,27 +317,6 @@ impl ElasticsearchSearchRequest {
                 let mut response: ElasticsearchSearchResponse =
                     serde_cbor::from_reader(body).expect("failed to deserialize CBOR response");
 
-                if should_sort_hits {
-                    // sort the hits in this block so we can try to do sequential reads against the
-                    // underlying heap
-                    if let Some(hits) = response.hits.as_mut() {
-                        if let Some(inner_hits) = hits.hits.as_mut() {
-                            use rayon::prelude::*;
-
-                            inner_hits.par_sort_unstable_by(|a, b| {
-                                if let Some(a) = a.fields.as_ref() {
-                                    if let Some(b) = b.fields.as_ref() {
-                                        let a = a.zdb_ctid.unwrap_or_default()[0];
-                                        let b = b.zdb_ctid.unwrap_or_default()[0];
-                                        return a.cmp(&b);
-                                    }
-                                }
-                                core::cmp::Ordering::Equal
-                            })
-                        }
-                    }
-                }
-
                 // assign a clone of our ES client to the response too,
                 // for future use during iteration
                 response.elasticsearch = Some(elasticsearch.clone());
@@ -368,13 +347,14 @@ pub struct Scroller {
     receiver: std::sync::mpsc::Receiver<Vec<InnerHit>>,
     current_hits: Option<std::vec::IntoIter<InnerHit>>,
     terminate: Arc<AtomicBool>,
+    should_sort_hits: bool,
 }
 
 impl Scroller {
     fn new(
         orig_elasticsearch: Elasticsearch,
         orig_scroll_id: Option<String>,
-        initial_hits: Vec<InnerHit>,
+        mut initial_hits: Vec<InnerHit>,
         track_scores: bool,
         should_sort_hits: bool,
     ) -> Self {
@@ -447,8 +427,14 @@ impl Scroller {
 
         Scroller {
             receiver,
-            current_hits: Some(initial_hits.into_iter()),
+            current_hits: Some({
+                if should_sort_hits {
+                    Scroller::sort_hits(&mut initial_hits);
+                }
+                initial_hits.into_iter()
+            }),
             terminate: terminate_arc,
+            should_sort_hits,
         }
     }
 
@@ -472,7 +458,12 @@ impl Scroller {
                 None => {
                     self.current_hits = match self.receiver.recv() {
                         // the receiver has more hits for us
-                        Ok(hits) => Some(hits.into_iter()),
+                        Ok(mut hits) => Some({
+                            if self.should_sort_hits {
+                                Scroller::sort_hits(&mut hits);
+                            }
+                            hits.into_iter()
+                        }),
 
                         // the receiver is probably closed now.  we don't care about the error
                         Err(_) => None,
@@ -482,6 +473,21 @@ impl Scroller {
         }
 
         None
+    }
+
+    fn sort_hits(vec: &mut Vec<InnerHit>) {
+        use rayon::prelude::*;
+
+        vec.par_sort_unstable_by(|a, b| {
+            if let Some(a) = a.fields.as_ref() {
+                if let Some(b) = b.fields.as_ref() {
+                    let a = a.zdb_ctid.unwrap_or_default()[0];
+                    let b = b.zdb_ctid.unwrap_or_default()[0];
+                    return a.cmp(&b);
+                }
+            }
+            core::cmp::Ordering::Equal
+        })
     }
 }
 
