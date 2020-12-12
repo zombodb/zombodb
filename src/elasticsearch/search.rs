@@ -1,12 +1,12 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
-use crate::utils::{read_vint, read_vlong};
+use crate::utils::read_vlong;
 use crate::zdbquery::mvcc::apply_visibility_clause;
 use crate::zdbquery::ZDBPreparedQuery;
 use pgx::PgBuiltInOids;
 use serde::*;
 use serde_json::*;
 use std::collections::HashMap;
-use std::io::BufReader;
+use std::convert::TryInto;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -338,161 +338,75 @@ impl ElasticsearchSearchRequest {
         body: serde_json::Value,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
         if fast_terms {
-            use byteorder::*;
-
             let mut url = String::new();
             url.push_str(&elasticsearch.base_url());
             url.push_str("/_fastterms");
             let start = std::time::Instant::now();
 
-            let response = ureq::post(&url)
-                .set("content-type", "application/json")
-                .send_json(body);
+            Elasticsearch::execute_json_request(
+                Elasticsearch::client().post(&url),
+                Some(body),
+                |mut body| {
+                    let elapsed = start.elapsed();
 
-            if response.ok() {
-                let elapsed = start.elapsed();
+                    use byteorder::*;
 
-                let mut reader = BufReader::new(response.into_reader());
-                let size_in_bytes = reader
-                    .read_u32::<LittleEndian>()
-                    .expect("failed to read _fastterms 'size_in_bytes'")
-                    as usize;
+                    let many = body
+                        .read_i32::<BigEndian>()
+                        .expect("failed to read _fastterms 'size_in_bytes'");
 
-                let dec_start = std::time::Instant::now();
-                let mut fast_terms = Vec::with_capacity(size_in_bytes / 3);
-                if let Ok(mut ctid) = read_vlong(&mut reader) {
-                    fast_terms.push(ctid);
-                    while let Ok(diff) = read_vlong(&mut reader) {
-                        ctid += diff;
+                    let dec_start = std::time::Instant::now();
+                    let mut fast_terms =
+                        Vec::with_capacity(many.try_into().expect("unable to use 'many' as usize"));
+
+                    if let Ok(mut ctid) = read_vlong(&mut body) {
                         fast_terms.push(ctid);
-                    }
-                }
-
-                pgx::info!(
-                    "ttl={:?}, data={}, total={} bytes, many={}, dec={:?}",
-                    elapsed,
-                    size_in_bytes,
-                    size_in_bytes + 4,
-                    fast_terms.len(),
-                    dec_start.elapsed()
-                );
-
-                return Ok(ElasticsearchSearchResponse {
-                    elasticsearch: None,
-                    limit,
-                    offset,
-                    track_scores: false,
-                    should_sort_hits,
-                    scroll_id: None,
-                    hits: None,
-                    fast_terms: Some(fast_terms),
-                    // fast_terms: Some(deserialize_roaring_treemap(body)),
-                });
-            } else {
-                panic!(
-                    "error {}: {}",
-                    response.status(),
-                    response
-                        .into_string()
-                        .expect("_fastterms response not a string")
-                );
-            }
-
-            // return Elasticsearch::execute_binary_request(
-            //     Elasticsearch::client()
-            //         .post(&url)
-            //         .header("content-type", "application/json")
-            //         .body(serde_json::to_string(&body).unwrap()),
-            //     |_, mut body| {
-            //         use byteorder::*;
-            //         let elapsed = start.elapsed();
-            //
-            //         let size_in_bytes = body
-            //             .read_u32::<LittleEndian>()
-            //             .expect("failed to read length");
-            //         let mut v = Vec::with_capacity(size_in_bytes as usize);
-            //         body.copy_to(&mut v).expect("failed to read response bytes");
-            //         let mut raw_data = std::mem::ManuallyDrop::new(v);
-            //
-            //         pgx::info!(
-            //             "ttl={:?}, many={}, size={} bytes",
-            //             elapsed,
-            //             size_in_bytes,
-            //             size_in_bytes + 4
-            //         );
-            //
-            //         panic!("this ain't gonna work yet");
-            //         let fast_terms = unsafe {
-            //             Vec::from_raw_parts(
-            //                 raw_data.as_mut_ptr() as *mut [u8; 6],
-            //                 raw_data.len() / 6,
-            //                 raw_data.capacity(),
-            //             )
-            //         };
-            //
-            //         Ok(ElasticsearchSearchResponse {
-            //             elasticsearch: None,
-            //             limit,
-            //             offset,
-            //             track_scores: false,
-            //             should_sort_hits,
-            //             scroll_id: None,
-            //             hits: None,
-            //             fast_terms: Some(fast_terms),
-            //             // fast_terms: Some(deserialize_roaring_treemap(body)),
-            //         })
-            //     },
-            // );
-        }
-
-        url.push_str("&format=cbor");
-        Elasticsearch::execute_binary_request(
-            Elasticsearch::client()
-                .post(&url)
-                .header("content-type", "application/json")
-                .body(serde_json::to_string(&body).unwrap()),
-            |code, body| {
-                let response: serde_cbor::error::Result<ElasticsearchSearchResponse> =
-                    serde_cbor::from_reader(body);
-                let mut response = match response {
-                    Ok(json) => json,
-                    Err(_) => {
-                        return Err(ElasticsearchError(Some(code), "<binary response>".into()));
-                    }
-                };
-
-                if should_sort_hits {
-                    // sort the hits in this block so we can try to do sequential reads against the
-                    // underlying heap
-                    if let Some(hits) = response.hits.as_mut() {
-                        if let Some(inner_hits) = hits.hits.as_mut() {
-                            use rayon::prelude::*;
-
-                            inner_hits.par_sort_unstable_by(|a, b| {
-                                if let Some(a) = a.fields.as_ref() {
-                                    if let Some(b) = b.fields.as_ref() {
-                                        let a = a.zdb_ctid.unwrap_or_default()[0];
-                                        let b = b.zdb_ctid.unwrap_or_default()[0];
-                                        return a.cmp(&b);
-                                    }
-                                }
-                                core::cmp::Ordering::Equal
-                            })
+                        while let Ok(diff) = read_vlong(&mut body) {
+                            ctid += diff;
+                            fast_terms.push(ctid);
                         }
                     }
-                }
 
-                // assign a clone of our ES client to the response too,
-                // for future use during iteration
-                response.elasticsearch = Some(elasticsearch.clone());
-                response.limit = limit;
-                response.offset = offset;
-                response.should_sort_hits = should_sort_hits;
-                response.fast_terms = None;
+                    pgx::info!(
+                        "ttl={:?}, many={}, len={}, dec={:?}",
+                        elapsed,
+                        many,
+                        fast_terms.len(),
+                        dec_start.elapsed()
+                    );
 
-                Ok(response)
-            },
-        )
+                    Ok(ElasticsearchSearchResponse {
+                        elasticsearch: None,
+                        limit: None,
+                        offset: None,
+                        track_scores: false,
+                        should_sort_hits: false,
+                        scroll_id: None,
+                        hits: None,
+                        fast_terms: Some(fast_terms),
+                    })
+                },
+            )
+        } else {
+            url.push_str("&format=cbor");
+            Elasticsearch::execute_json_request(
+                Elasticsearch::client().post(&url),
+                Some(body),
+                |body| {
+                    let mut response: ElasticsearchSearchResponse =
+                        serde_cbor::from_reader(body).expect("failed to deserialize CBOR response");
+
+                    // assign a clone of our ES client to the response too,
+                    // for future use during iteration
+                    response.elasticsearch = Some(elasticsearch.clone());
+                    response.limit = limit;
+                    response.offset = offset;
+                    response.should_sort_hits = should_sort_hits;
+
+                    Ok(response)
+                },
+            )
+        }
     }
 }
 
@@ -513,13 +427,14 @@ pub struct Scroller {
     receiver: std::sync::mpsc::Receiver<Vec<InnerHit>>,
     current_hits: Option<std::vec::IntoIter<InnerHit>>,
     terminate: Arc<AtomicBool>,
+    should_sort_hits: bool,
 }
 
 impl Scroller {
     fn new(
         orig_elasticsearch: Elasticsearch,
         orig_scroll_id: Option<String>,
-        initial_hits: Vec<InnerHit>,
+        mut initial_hits: Vec<InnerHit>,
         track_scores: bool,
         should_sort_hits: bool,
     ) -> Self {
@@ -577,13 +492,14 @@ impl Scroller {
             drop(sender);
 
             if let Some(scroll_id) = orig_scroll_id {
-                Elasticsearch::execute_request(
+                Elasticsearch::execute_json_request(
                     Elasticsearch::client().delete(&format!(
                         "{}_search/scroll/{}",
                         elasticsearch.url(),
                         scroll_id
                     )),
-                    |_, _| Ok(()),
+                    None,
+                    |_| Ok(()),
                 )
                 .expect("failed to delete scroll");
             }
@@ -591,8 +507,14 @@ impl Scroller {
 
         Scroller {
             receiver,
-            current_hits: Some(initial_hits.into_iter()),
+            current_hits: Some({
+                if should_sort_hits {
+                    Scroller::sort_hits(&mut initial_hits);
+                }
+                initial_hits.into_iter()
+            }),
             terminate: terminate_arc,
+            should_sort_hits,
         }
     }
 
@@ -623,7 +545,12 @@ impl Scroller {
                 None => {
                     self.current_hits = match self.receiver.recv() {
                         // the receiver has more hits for us
-                        Ok(hits) => Some(hits.into_iter()),
+                        Ok(mut hits) => Some({
+                            if self.should_sort_hits {
+                                Scroller::sort_hits(&mut hits);
+                            }
+                            hits.into_iter()
+                        }),
 
                         // the receiver is probably closed now.  we don't care about the error
                         Err(_) => None,
@@ -633,6 +560,21 @@ impl Scroller {
         }
 
         None
+    }
+
+    fn sort_hits(vec: &mut Vec<InnerHit>) {
+        use rayon::prelude::*;
+
+        vec.par_sort_unstable_by(|a, b| {
+            if let Some(a) = a.fields.as_ref() {
+                if let Some(b) = b.fields.as_ref() {
+                    let a = a.zdb_ctid.unwrap_or_default()[0];
+                    let b = b.zdb_ctid.unwrap_or_default()[0];
+                    return a.cmp(&b);
+                }
+            }
+            core::cmp::Ordering::Equal
+        })
     }
 }
 

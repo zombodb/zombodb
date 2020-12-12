@@ -9,24 +9,19 @@ impl ElasticsearchUpdateSettingsRequest {
     }
 
     pub fn execute(self) -> std::result::Result<(), ElasticsearchError> {
-        Elasticsearch::execute_request(
-            Elasticsearch::client()
-                .put(&format!("{}/_settings", self.0.base_url()))
-                .header("content-type", "application/json")
-                .body(
-                    serde_json::to_string(&json! {
-                        {
-                            "index": {
-                                "max_result_window": self.0.options.max_result_window(),
-                                "refresh_interval": self.0.options.refresh_interval().as_str(),
-                                "number_of_replicas": self.0.options.replicas(),
-                                "translog.durability": self.0.options.translog_durability(),
-                            }
-                        }
-                    })
-                    .unwrap(),
-                ),
-            |_, _| Ok(()),
+        Elasticsearch::execute_json_request(
+            Elasticsearch::client().put(&format!("{}/_settings", self.0.base_url())),
+            Some(json! {
+                {
+                    "index": {
+                        "max_result_window": self.0.options.max_result_window(),
+                        "refresh_interval": self.0.options.refresh_interval().as_str(),
+                        "number_of_replicas": self.0.options.replicas(),
+                        "translog.durability": self.0.options.translog_durability(),
+                    }
+                }
+            }),
+            |_| Ok(()),
         )
     }
 }

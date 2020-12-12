@@ -36,19 +36,17 @@ impl ElasticsearchCountRequest {
 
         let mut url = self.elasticsearch.alias_url();
         url.push_str("/_count");
-        Elasticsearch::execute_request(
-            Elasticsearch::client()
-                .post(&url)
-                .header("content-type", "application/json")
-                .body(serde_json::to_string(&body).unwrap()),
-            |_, body| {
+        Elasticsearch::execute_json_request(
+            Elasticsearch::client().post(&url),
+            Some(body),
+            |body| {
                 #[derive(Deserialize)]
                 struct Count {
                     count: u64,
                 }
 
                 let count: Count =
-                    serde_json::from_str(&body).expect("failed to deserialize count response");
+                    serde_json::from_reader(body).expect("failed to deserialize count response");
                 Ok(count.count)
             },
         )

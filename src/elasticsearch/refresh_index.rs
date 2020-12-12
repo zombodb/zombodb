@@ -7,10 +7,11 @@ impl ElasticsearchRefreshIndexRequest {
         ElasticsearchRefreshIndexRequest(elasticsearch.clone())
     }
 
-    pub fn execute(&self) -> Result<(), ElasticsearchError> {
-        Elasticsearch::execute_request(
+    pub fn execute(self) -> Result<(), ElasticsearchError> {
+        Elasticsearch::execute_json_request(
             Elasticsearch::client().post(&format!("{}/_refresh", self.0.base_url())),
-            |_, _| Ok(()),
+            None,
+            |_| Ok(()),
         )
     }
 }

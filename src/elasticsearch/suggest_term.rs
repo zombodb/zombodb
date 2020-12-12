@@ -67,12 +67,10 @@ impl ElasticsearchSuggestTermRequest {
 
         let mut url = self.elasticsearch.alias_url();
         url.push_str("/_search?size=0");
-        Elasticsearch::execute_request(
-            Elasticsearch::client()
-                .post(&url)
-                .header("content-type", "application/json")
-                .body(serde_json::to_string(&body).unwrap()),
-            |_, body| {
+        Elasticsearch::execute_json_request(
+            Elasticsearch::client().post(&url),
+            Some(body),
+            |body| {
                 #[derive(Deserialize)]
                 #[serde(rename(deserialize = "suggest"))]
                 struct Suggest {
@@ -84,7 +82,7 @@ impl ElasticsearchSuggestTermRequest {
                     suggest: Suggest,
                 }
 
-                let response: WholeResponse = serde_json::from_str(&body)
+                let response: WholeResponse = serde_json::from_reader(body)
                     .expect("failed to deserialize suggest terms response");
                 Ok(response.suggest.suggestion)
             },

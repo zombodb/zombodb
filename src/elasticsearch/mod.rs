@@ -46,7 +46,6 @@ pub use bulk::*;
 pub use create_index::*;
 use lazy_static::*;
 use pgx::*;
-use reqwest::{RequestBuilder, Response};
 use serde::de::DeserializeOwned;
 use serde_json::json;
 use serde_json::Value;
@@ -77,11 +76,15 @@ pub struct Elasticsearch {
 }
 
 #[derive(Debug)]
-pub struct ElasticsearchError(Option<reqwest::StatusCode>, String);
+pub struct ElasticsearchError(Option<u16>, String);
 
 impl ElasticsearchError {
-    pub fn status(&self) -> Option<reqwest::StatusCode> {
+    pub fn status(&self) -> Option<u16> {
         self.0
+    }
+
+    pub fn is_404(&self) -> bool {
+        self.0 == Some(404)
     }
 
     pub fn message(&self) -> &str {
@@ -108,19 +111,24 @@ impl Elasticsearch {
         self.options.heap_relation()
     }
 
-    pub fn client() -> reqwest::Client {
-        reqwest::ClientBuilder::new()
-            .gzip(true)
-            .timeout(std::time::Duration::from_secs(3600))
-            .build()
-            .expect("failed to build reqwest Client")
+    pub fn client() -> &'static ureq::Agent {
+        lazy_static::lazy_static! {
+            static ref AGENT: ureq::Agent = {
+                ureq::AgentBuilder::new()
+                .timeout_read(std::time::Duration::from_secs(3600))  // a 1hr timeout waiting on ES to return
+                .max_idle_connections_per_host(num_cpus::get())     // 1 for each CPU -- only really used during _bulk
+                .build()
+            };
+        }
+
+        &AGENT
     }
 
     pub fn arbitrary_request(
         &self,
         method: ArbitraryRequestType,
         mut endpoint: &str,
-        post_data: Option<&'static str>,
+        post_data: Option<serde_json::Value>,
     ) -> Result<String, ElasticsearchError> {
         let mut url = String::new();
 
@@ -136,20 +144,19 @@ impl Elasticsearch {
 
         url.push_str(endpoint);
 
-        let mut builder = match method {
+        let request = match method {
             ArbitraryRequestType::GET => Elasticsearch::client().get(&url),
             ArbitraryRequestType::POST => Elasticsearch::client().post(&url),
             ArbitraryRequestType::PUT => Elasticsearch::client().put(&url),
             ArbitraryRequestType::DELETE => Elasticsearch::client().delete(&url),
         };
 
-        if let Some(post_data) = post_data {
-            builder = builder
-                .header("content-type", "application/json")
-                .body(post_data);
-        }
-
-        Elasticsearch::execute_request(builder, |_, body| Ok(body))
+        Elasticsearch::execute_json_request(request, post_data, |mut body| {
+            let mut response = Vec::new();
+            body.read_to_end(&mut response)
+                .expect("failed to read response stream");
+            Ok(String::from_utf8(response).expect("arbitrary request response is not valid UTF8"))
+        })
     }
 
     pub fn analyze_text(&self, analyzer: &str, text: &str) -> ElasticsearchAnalyzerRequest {
@@ -372,64 +379,66 @@ impl Elasticsearch {
         self.options.type_name()
     }
 
-    pub fn execute_request<F, R>(
-        builder: RequestBuilder,
+    pub fn execute_request<F, R, Reader: std::io::Read>(
+        request: ureq::Request,
+        post_data: Reader,
         response_parser: F,
     ) -> std::result::Result<R, ElasticsearchError>
     where
-        F: FnOnce(reqwest::StatusCode, String) -> std::result::Result<R, ElasticsearchError>,
+        F: FnOnce(Box<dyn std::io::Read + Send>) -> std::result::Result<R, ElasticsearchError>,
     {
-        match builder.send() {
-            // the request was processed by ES, but maybe not successfully
-            Ok(mut response) => {
-                let code = response.status();
-                let mut body_string = String::new();
-                response
-                    .read_to_string(&mut body_string)
-                    .expect("unable to convert HTTP response to a string");
-
-                if code.as_u16() != 200 {
-                    // it wasn't a valid response code
-                    Err(ElasticsearchError(Some(code), body_string))
-                } else {
-                    response_parser(code, body_string)
-                }
-            }
-
-            // the request didn't reach ES
-            Err(e) => Err(ElasticsearchError(e.status(), e.to_string())),
-        }
+        Elasticsearch::handle_response(
+            response_parser,
+            request.error_on_non_2xx(false).send(post_data),
+        )
     }
 
-    pub fn execute_binary_request<F, R>(
-        builder: RequestBuilder,
+    pub fn execute_json_request<F, R>(
+        request: ureq::Request,
+        post_data: Option<serde_json::Value>,
         response_parser: F,
     ) -> std::result::Result<R, ElasticsearchError>
     where
-        F: FnOnce(reqwest::StatusCode, Response) -> std::result::Result<R, ElasticsearchError>,
+        F: FnOnce(Box<dyn std::io::Read + Send>) -> std::result::Result<R, ElasticsearchError>,
     {
-        match builder.send() {
+        let response = if post_data.is_some() {
+            request
+                .error_on_non_2xx(false)
+                .send_json(post_data.unwrap())
+        } else {
+            request.error_on_non_2xx(false).call()
+        };
+
+        Elasticsearch::handle_response(response_parser, response)
+    }
+
+    fn handle_response<F, R>(
+        response_parser: F,
+        response: Result<ureq::Response, ureq::Error>,
+    ) -> Result<R, ElasticsearchError>
+    where
+        F: FnOnce(Box<dyn std::io::Read + Send>) -> std::result::Result<R, ElasticsearchError>,
+    {
+        match response {
             // the request was processed by ES, but maybe not successfully
-            Ok(mut response) => {
+            Ok(response) => {
                 let code = response.status();
 
-                if code.as_u16() != 200 {
-                    let mut buff =
-                        Vec::with_capacity(response.content_length().unwrap_or(0x80000) as usize);
-                    response
-                        .copy_to(&mut buff)
-                        .expect("unable to read HTTP response to bytes");
-
-                    let error = serde_cbor::from_slice::<serde_cbor::Value>(&buff)
-                        .expect("unable to create error Value from binary response");
-                    Err(ElasticsearchError(Some(code), format!("{:?}", error)))
+                if code != 200 {
+                    // it wasn't a valid response code
+                    Err(ElasticsearchError(
+                        Some(code),
+                        response
+                            .into_string()
+                            .expect("failed to convert response to a string"),
+                    ))
                 } else {
-                    response_parser(code, response)
+                    response_parser(Box::new(std::io::BufReader::new(response.into_reader())))
                 }
             }
 
             // the request didn't reach ES
-            Err(e) => Err(ElasticsearchError(e.status(), e.to_string())),
+            Err(e) => Err(ElasticsearchError(None, e.to_string())),
         }
     }
 
@@ -476,9 +485,9 @@ fn request(
     index: PgRelation,
     endpoint: &str,
     method: default!(ArbitraryRequestType, "'GET'"),
-    post_data: Option<default!(&'static str, "NULL")>,
+    post_data: Option<default!(JsonB, "NULL")>,
 ) -> String {
     let es = Elasticsearch::new(&index);
-    es.arbitrary_request(method, endpoint, post_data)
+    es.arbitrary_request(method, endpoint, post_data.map_or(None, |v| Some(v.0)))
         .expect("failed to execute arbitrary request")
 }

@@ -22,31 +22,30 @@ impl<'a, T: serde::de::DeserializeOwned> ElasticsearchGetDocumentRequest<'a, T> 
         }
     }
 
-    pub fn execute(&self) -> Result<Option<T>, ElasticsearchError> {
-        let result = Elasticsearch::execute_request(
+    pub fn execute(self) -> Result<Option<T>, ElasticsearchError> {
+        let result = Elasticsearch::execute_json_request(
             Elasticsearch::client().get(&format!(
                 "{}/_doc/{}?realtime={}",
                 self.elasticsearch.base_url(),
                 self.id,
                 if self.realtime { "true" } else { "false" }
             )),
-            |_, body| {
+            None,
+            |body| {
                 //
                 let value =
-                    serde_json::from_str(&body).expect("failed to parse document into a value");
+                    serde_json::from_reader(body).expect("failed to parse document into a value");
                 Ok(serde_json::from_value::<T>(value).expect("failed to deserialize document"))
             },
         );
 
         match result {
+            // a 404 is okay
+            Err(e) if e.is_404() => Ok(None),
+            // other errors are not
+            Err(e) => Err(e),
+            // it worked
             Ok(result) => Ok(Some(result)),
-            Err(e) => {
-                if e.status().is_some() && e.status().unwrap().as_u16() == 404 {
-                    Ok(None)
-                } else {
-                    Err(e)
-                }
-            }
         }
     }
 }

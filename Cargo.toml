@@ -33,13 +33,11 @@ pgx = "0.1.6"
 pgx-macros = "0.1.6"
 rayon = "1.5.0"
 regex = "1.4.2"
-reqwest = "0.9.24"
-roaring = "0.6.2"
 serde = { version = "1.0.117", features = [ "derive" ] }
 serde_json = { version = "1.0.59", features = [ "preserve_order" ] }
 serde_cbor = "0.11.1"
 sqlformat = "0.1.5"
-ureq = { version = "1.5.4", features = ["json"] }
+ureq = { version = "2.0.0-rc2", features = [ "json" ] }
 url = "2.2.0"
 
 [build-dependencies]

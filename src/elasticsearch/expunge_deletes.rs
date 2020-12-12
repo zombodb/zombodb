@@ -7,13 +7,14 @@ impl ElasticsearchExpungeDeletesRequest {
         ElasticsearchExpungeDeletesRequest(elasticsearch.clone())
     }
 
-    pub fn execute(&self) -> Result<(), ElasticsearchError> {
-        Elasticsearch::execute_request(
+    pub fn execute(self) -> Result<(), ElasticsearchError> {
+        Elasticsearch::execute_json_request(
             Elasticsearch::client().post(&format!(
                 "{}/_forcemerge?only_expunge_deletes=true&flush=false",
                 self.0.base_url()
             )),
-            |_, _| Ok(()),
+            None,
+            |_| Ok(()),
         )
     }
 }

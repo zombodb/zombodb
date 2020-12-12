@@ -68,12 +68,9 @@ where
         url.push_str("/_search");
         url.push_str("?size=0");
 
-        let client = Elasticsearch::client()
-            .get(&url)
-            .header("content-type", "application/json")
-            .body(serde_json::to_string(&self.json_query).unwrap());
+        let client = Elasticsearch::client().get(&url);
 
-        Elasticsearch::execute_request(client, |_, body| {
+        Elasticsearch::execute_json_request(client, Some(self.json_query), |body| {
             #[derive(Deserialize)]
             struct Shards {
                 total: u32,
@@ -90,7 +87,7 @@ where
             }
 
             let agg_resp: AggregateResponse =
-                serde_json::from_str(&body).expect("received invalid aggregate json response");
+                serde_json::from_reader(body).expect("received invalid aggregate json response");
             let mut aggregations = agg_resp.aggregations;
             let mut unrolled = HashMap::new();
             let mut unrolled_cnt = 0;
