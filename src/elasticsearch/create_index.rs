@@ -17,18 +17,10 @@ impl ElasticsearchCreateIndexRequest {
 
     pub fn execute(self) -> std::result::Result<(), ElasticsearchError> {
         let url = format!("{}", self.elasticsearch.base_url());
-        let create_index_result = Elasticsearch::execute_request(
-            Elasticsearch::client()
-                .put(&url)
-                .header("content-type", "application/json")
-                .body(serde_json::to_string(&self.create_request_body()).unwrap()),
-            |status, body| {
-                if status.is_success() {
-                    Ok(())
-                } else {
-                    Err(ElasticsearchError(Some(status), body))
-                }
-            },
+        let create_index_result = Elasticsearch::execute_json_request(
+            Elasticsearch::client().put(&url),
+            Some(self.create_request_body()),
+            |_| Ok(()),
         );
 
         if create_index_result.is_err() {
@@ -41,14 +33,8 @@ impl ElasticsearchCreateIndexRequest {
             self.elasticsearch.index_name()
         );
 
-        Elasticsearch::execute_request(Elasticsearch::client().get(&url), |status, body| {
-            if status.is_success() {
-                Ok(())
-            } else {
-                Err(ElasticsearchError(Some(status), body))
-            }
-        })
-        .expect("failed to wait for yellow status");
+        Elasticsearch::execute_json_request(Elasticsearch::client().get(&url), None, |_| Ok(()))
+            .expect("failed to wait for yellow status");
 
         create_index_result
     }

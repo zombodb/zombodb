@@ -310,20 +310,12 @@ impl ElasticsearchSearchRequest {
         body: serde_json::Value,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
         url.push_str("&format=cbor");
-        Elasticsearch::execute_binary_request(
-            Elasticsearch::client()
-                .post(&url)
-                .header("content-type", "application/json")
-                .body(serde_json::to_string(&body).unwrap()),
-            |code, body| {
-                let response: serde_cbor::error::Result<ElasticsearchSearchResponse> =
-                    serde_cbor::from_slice(body);
-                let mut response = match response {
-                    Ok(json) => json,
-                    Err(_) => {
-                        return Err(ElasticsearchError(Some(code), "<binary response>".into()));
-                    }
-                };
+        Elasticsearch::execute_json_request(
+            Elasticsearch::client().post(&url),
+            Some(body),
+            |body| {
+                let mut response: ElasticsearchSearchResponse =
+                    serde_cbor::from_reader(body).expect("failed to deserialize CBOR response");
 
                 if should_sort_hits {
                     // sort the hits in this block so we can try to do sequential reads against the
@@ -440,13 +432,14 @@ impl Scroller {
             drop(sender);
 
             if let Some(scroll_id) = orig_scroll_id {
-                Elasticsearch::execute_request(
+                Elasticsearch::execute_json_request(
                     Elasticsearch::client().delete(&format!(
                         "{}_search/scroll/{}",
                         elasticsearch.url(),
                         scroll_id
                     )),
-                    |_, _| Ok(()),
+                    None,
+                    |_| Ok(()),
                 )
                 .expect("failed to delete scroll");
             }

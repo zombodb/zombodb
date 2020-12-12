@@ -16,7 +16,7 @@ impl ElasticsearchProfileQueryRequest {
         }
     }
 
-    pub fn execute(&self) -> std::result::Result<serde_json::Value, ElasticsearchError> {
+    pub fn execute(self) -> std::result::Result<serde_json::Value, ElasticsearchError> {
         let body = json! {
             {
                 "profile": true,
@@ -29,15 +29,10 @@ impl ElasticsearchProfileQueryRequest {
         url.push_str("/_search");
         url.push_str("?size=0");
         url.push_str("&filter_path=profile");
-        Elasticsearch::execute_request(
-            Elasticsearch::client()
-                .post(&url)
-                .header("content-type", "application/json")
-                .body(serde_json::to_string(&body).expect("failed to generate body")),
-            |status, body| match serde_json::from_str::<serde_json::Value>(&body) {
-                Ok(value) => Ok(value),
-                Err(e) => Err(ElasticsearchError(Some(status), e.to_string())),
-            },
+        Elasticsearch::execute_json_request(
+            Elasticsearch::client().post(&url),
+            Some(body),
+            |body| Ok(serde_json::from_reader(body).expect("failed to parse response json")),
         )
     }
 }

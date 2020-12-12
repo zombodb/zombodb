@@ -26,7 +26,7 @@ impl ElasticsearchAliasRequest {
         }
     }
 
-    pub fn execute(&self) -> std::result::Result<(), ElasticsearchError> {
+    pub fn execute(self) -> std::result::Result<(), ElasticsearchError> {
         let json_body = match &self.command {
             AliasCommand::Add(alias_name) => {
                 json! {
@@ -49,12 +49,10 @@ impl ElasticsearchAliasRequest {
             }
         };
 
-        Elasticsearch::execute_request(
-            Elasticsearch::client()
-                .post(&format!("{}_aliases", self.elasticsearch.url()))
-                .header("content-type", "application/json")
-                .body(serde_json::to_string(&json_body).unwrap()),
-            |_, _| Ok(()),
+        Elasticsearch::execute_json_request(
+            Elasticsearch::client().post(&format!("{}_aliases", self.elasticsearch.url())),
+            Some(json_body),
+            |_| Ok(()),
         )
     }
 }

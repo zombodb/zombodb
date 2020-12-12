@@ -4,7 +4,7 @@ use crate::executor_manager::get_executor_manager;
 use crate::gucs::ZDB_LOG_LEVEL;
 use crate::json::builder::JsonBuilder;
 use pgx::*;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::any::Any;
 use std::io::{Error, ErrorKind, Write};
@@ -565,12 +565,6 @@ impl<'a> BulkReceiver<'a> {
     }
 }
 
-impl From<BulkReceiver<'static>> for reqwest::Body {
-    fn from(reader: BulkReceiver<'static>) -> Self {
-        reqwest::Body::new(reader)
-    }
-}
-
 impl Handler {
     pub(crate) fn new(
         elasticsearch: Elasticsearch,
@@ -686,15 +680,15 @@ impl Handler {
                 if let Err(e) = Elasticsearch::execute_request(
                     Elasticsearch::client()
                         .post(&url)
-                        .header("content-type", "application/json")
-                        .body(reader),
-                    |code, resp_string| {
-                        #[derive(Deserialize, Debug)]
+                        .set("content-type", "application/json"),
+                    reader,
+                    |body| {
+                        #[derive(Serialize, Deserialize, Debug)]
                         struct ErrorObject {
                             reason: String,
                         }
 
-                        #[derive(Deserialize, Debug)]
+                        #[derive(Serialize, Deserialize, Debug)]
                         struct BulkResponse {
                             error: Option<ErrorObject>,
                             errors: Option<bool>,
@@ -703,22 +697,19 @@ impl Handler {
 
                         // NB:  this is stupid that ES forces us to parse the response for requests
                         // that contain an error, but here we are
-                        let response: BulkResponse = match serde_json::from_str(&resp_string) {
-                            Ok(response) => response,
-
-                            // it didn't parse as json, but we don't care as we just return
-                            // the entire response string anyway
-                            Err(_) => {
-                                return Err(ElasticsearchError(Some(code), resp_string));
-                            }
-                        };
+                        let response: BulkResponse =
+                            serde_json::from_reader(body).expect("invalid _bulk response");
 
                         if !response.errors.unwrap_or(false) && response.error.is_none() {
                             successful_requests.fetch_add(1, Ordering::SeqCst);
                             Ok(())
                         } else {
                             // yup, the response contains an error
-                            Err(ElasticsearchError(Some(code), resp_string))
+                            Err(ElasticsearchError(
+                                Some(200), // but it was given to us as a 200 OK, otherwise we wouldn't be here at all
+                                serde_json::to_string(&response)
+                                    .expect("failed to convert _bulk response errors to a string"),
+                            ))
                         }
                     },
                 ) {
@@ -743,7 +734,7 @@ impl Handler {
 
     fn send_error(
         sender: crossbeam_channel::Sender<BulkRequestError>,
-        code: Option<reqwest::StatusCode>,
+        code: Option<u16>,
         message: &str,
         total_docs_out: usize,
     ) -> usize {
