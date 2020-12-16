@@ -1,4 +1,5 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
+use crate::gucs::ZDB_ACCELERATOR;
 use crate::utils::read_vlong;
 use crate::zdbquery::mvcc::apply_visibility_clause;
 use crate::zdbquery::ZDBPreparedQuery;
@@ -269,7 +270,8 @@ impl ElasticsearchSearchRequest {
             query.take_query_dsl()
         };
 
-        let can_do_fastterms = limit.is_none()
+        let can_do_fastterms = ZDB_ACCELERATOR.get()
+            && limit.is_none()
             && offset.is_none()
             && highlight.is_none()
             && min_score.is_none()

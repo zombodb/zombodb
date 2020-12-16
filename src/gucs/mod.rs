@@ -37,6 +37,7 @@ pub static ZDB_DEFAULT_ROW_ESTIMATE: GucSetting<i32> = GucSetting::new(2500);
 pub static ZDB_DEFAULT_REPLICAS: GucSetting<i32> = GucSetting::new(0);
 pub static ZDB_DEFAULT_ELASTICSEARCH_URL: GucSetting<Option<&'static str>> = GucSetting::new(None);
 pub static ZDB_LOG_LEVEL: GucSetting<ZDBLogLevel> = GucSetting::new(ZDBLogLevel::Debug);
+pub static ZDB_ACCELERATOR: GucSetting<bool> = GucSetting::new(false);
 
 pub fn init() {
     GucRegistry::define_bool_guc("zdb.ignore_visibility",
@@ -72,6 +73,14 @@ pub fn init() {
         "ZomboDB's logging level",
         "The Postgres log level to which ZomboDB emits all of its (non-vacuum) log messages.",
         &ZDB_LOG_LEVEL,
+        GucContext::Userset,
+    );
+
+    GucRegistry::define_bool_guc(
+        "zdb.enable_search_accelerator",
+        "Do you have ZomboDB's search accelerator installed on your Elasticsearch cluster?",
+        "ZomboDB's search accelerator improves the performance of certain types of queries.",
+        &ZDB_ACCELERATOR,
         GucContext::Userset,
     );
 }
