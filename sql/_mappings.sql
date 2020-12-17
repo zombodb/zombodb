@@ -445,6 +445,15 @@ VALUES ('uuid', '{
   "normalizer": "lowercase"
 }', true);
 
+INSERT INTO zdb.type_mappings(type_name, definition, is_default)
+VALUES ('tsvector', '{
+  "type": "text",
+  "copy_to": "zdb_all",
+  "fielddata": true,
+  "index_prefixes": { },
+  "analyzer": "zdb_standard"
+}', true);
+
 CREATE DOMAIN zdb.arabic AS text;
 CREATE DOMAIN zdb.armenian AS text;
 CREATE DOMAIN zdb.basque AS text;
