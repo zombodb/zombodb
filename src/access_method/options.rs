@@ -17,6 +17,8 @@ const DEFAULT_COMPRESSION_LEVEL: i32 = 1;
 const DEFAULT_SHARDS: i32 = 5;
 const DEFAULT_OPTIMIZE_AFTER: i32 = 0;
 const DEFAULT_MAX_RESULT_WINDOW: i32 = 10000;
+const DEFAULT_NESTED_FIELDS_LIMIT: i32 = 1000;
+const DEFAULT_TOTAL_FIELDS_LIMIT: i32 = 1000;
 const DEFAULT_URL: &str = "default";
 const DEFAULT_TYPE_NAME: &str = "doc";
 const DEFAULT_REFRESH_INTERVAL: &str = "-1";
@@ -52,6 +54,8 @@ struct ZDBIndexOptionsInternal {
     url_offset: i32,
     type_name_offset: i32,
     refresh_interval_offset: i32,
+    nested_fields_limit: i32,
+    total_fields_limit: i32,
     alias_offset: i32,
     uuid_offset: i32,
     translog_durability_offset: i32,
@@ -87,6 +91,8 @@ impl ZDBIndexOptionsInternal {
             ops.batch_size = DEFAULT_BATCH_SIZE;
             ops.optimize_after = DEFAULT_OPTIMIZE_AFTER;
             ops.max_result_window = DEFAULT_MAX_RESULT_WINDOW;
+            ops.nested_fields_limit = DEFAULT_NESTED_FIELDS_LIMIT;
+            ops.total_fields_limit = DEFAULT_TOTAL_FIELDS_LIMIT;
             ops.nested_object_date_detection = false;
             ops.nested_object_numeric_detection = false;
             ops
@@ -227,6 +233,8 @@ pub struct ZDBIndexOptions {
     type_name: String,
     refresh_interval: RefreshInterval,
     max_result_window: i32,
+    nested_fields_limit: i32,
+    total_field_limit: i32,
     alias: String,
     uuid: String,
     translog_durability: String,
@@ -258,6 +266,8 @@ impl ZDBIndexOptions {
             type_name: internal.type_name(),
             refresh_interval: internal.refresh_interval(),
             max_result_window: internal.max_result_window,
+            nested_fields_limit: internal.nested_fields_limit,
+            total_field_limit: internal.total_fields_limit,
             alias: internal.alias(&heap_relation, &relation),
             uuid: internal.uuid(&heap_relation, &relation),
             links: options.map_or_else(|| internal.links(), |v| Some(v)),
@@ -330,6 +340,14 @@ impl ZDBIndexOptions {
 
     pub fn max_result_window(&self) -> i32 {
         self.max_result_window
+    }
+
+    pub fn nested_fields_limit(&self) -> i32 {
+        self.nested_fields_limit
+    }
+
+    pub fn total_fields_limit(&self) -> i32 {
+        self.total_field_limit
     }
 
     pub fn alias(&self) -> &str {
@@ -592,7 +610,7 @@ extern "C" fn validate_text_mapping(value: *const std::os::raw::c_char) {
     .expect("invalid nested_object_text_mapping");
 }
 
-const NUM_REL_OPTS: usize = 19;
+const NUM_REL_OPTS: usize = 21;
 #[allow(clippy::unneeded_field_pattern)] // b/c of offset_of!()
 #[pg_guard]
 pub unsafe extern "C" fn amoptions(
@@ -645,6 +663,16 @@ pub unsafe extern "C" fn amoptions(
             optname: "max_result_window".as_pg_cstr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
             offset: offset_of!(ZDBIndexOptionsInternal, max_result_window) as i32,
+        },
+        pg_sys::relopt_parse_elt {
+            optname: "nested_fields_limit".as_pg_cstr(),
+            opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
+            offset: offset_of!(ZDBIndexOptionsInternal, nested_fields_limit) as i32,
+        },
+        pg_sys::relopt_parse_elt {
+            optname: "total_fields_limit".as_pg_cstr(),
+            opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
+            offset: offset_of!(ZDBIndexOptionsInternal, total_fields_limit) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "alias".as_pg_cstr(),
@@ -857,6 +885,30 @@ pub unsafe fn init() {
         "The number of docs to page in from Elasticsearch at one time.  Default is 10,000"
             .as_pg_cstr(),
         DEFAULT_MAX_RESULT_WINDOW,
+        1,
+        std::i32::MAX,
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
+    );
+    pg_sys::add_int_reloption(
+        RELOPT_KIND_ZDB,
+        "nested_fields_limit".as_pg_cstr(),
+        "The maximum number of distinct nested mappings in an index.  Default is 1000".as_pg_cstr(),
+        DEFAULT_NESTED_FIELDS_LIMIT,
+        1,
+        std::i32::MAX,
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
+    );
+    pg_sys::add_int_reloption(
+        RELOPT_KIND_ZDB,
+        "total_fields_limit".as_pg_cstr(),
+        "The maximum number of fields in an index. Field and object mappings, as well as field aliases count towards this limit. The default value is 1000.".as_pg_cstr(),
+        DEFAULT_TOTAL_FIELDS_LIMIT,
         1,
         std::i32::MAX,
         #[cfg(feature = "pg13")]

@@ -129,6 +129,32 @@ The maximum number of docs ZomboDB will retrieve from Elasticsearch in a single 
 
 See: https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules.html#index-max-result-window
 
+#### `nested_fields_limit`
+```
+Type: integer
+Default: 1000
+Range: [1, INT_32_MAX]
+```
+
+The maximum number of distinct nested mappings in an index. The nested type should only be used 
+in special cases, when arrays of objects need to be queried independently of each other. To 
+safeguard against poorly designed mappings, this setting limits the number of unique nested 
+types per index.
+
+See: https://www.elastic.co/guide/en/elasticsearch/reference/master/mapping-settings-limit.html
+
+#### `total_fields_limit`
+```
+Type: integer
+Default: 1000
+Range: [1, INT_32_MAX]
+```
+The maximum number of fields in an index. Field and object mappings, as well as field aliases 
+count towards this limit. The default value is 1000.
+
+See: https://www.elastic.co/guide/en/elasticsearch/reference/master/mapping-settings-limit.html
+
+
 ### Network Options
 
 #### `bulk_concurrency`

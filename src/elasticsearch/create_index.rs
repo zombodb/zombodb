@@ -53,7 +53,8 @@ impl ElasticsearchCreateIndexRequest {
               "refresh_interval": "-1",
               "query.default_field": "zdb_all",
               "translog.durability": self.elasticsearch.options.translog_durability(),
-              "mapping.nested_fields.limit": 1000,
+              "mapping.nested_fields.limit": self.elasticsearch.options.nested_fields_limit(),
+              "mapping.total_fields.limit": self.elasticsearch.options.total_fields_limit(),
               "max_result_window": self.elasticsearch.options.max_result_window()
             } }
         } else {
@@ -64,7 +65,8 @@ impl ElasticsearchCreateIndexRequest {
               "refresh_interval": "-1",
               "query.default_field": "zdb_all",
               "translog.durability": self.elasticsearch.options.translog_durability(),
-              "mapping.nested_fields.limit": 1000,
+              "mapping.nested_fields.limit": self.elasticsearch.options.nested_fields_limit(),
+              "mapping.total_fields.limit": self.elasticsearch.options.total_fields_limit(),
               "sort.field": "zdb_ctid",
               "sort.order": "asc",
               "max_result_window": self.elasticsearch.options.max_result_window()
