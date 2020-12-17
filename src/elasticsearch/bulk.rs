@@ -713,6 +713,11 @@ impl Handler {
                         }
                     },
                 ) {
+                    // we received an error, so there's no need for any other active thread to expect
+                    // to be able to use the receiver anymore
+                    drop(rx);
+
+                    // send the error back to the main thread
                     return Handler::send_error(error, e.status(), e.message(), total_docs_out);
                 }
 
