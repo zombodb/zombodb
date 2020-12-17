@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-mod aggregates;
+pub(crate) mod aggregates;
 mod aliases;
 pub(crate) mod analyze;
 mod bulk;

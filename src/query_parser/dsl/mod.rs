@@ -4,7 +4,8 @@ use pgx::*;
 use serde_json::json;
 
 use crate::access_method::options::ZDBIndexOptions;
-use crate::gucs::ZDB_IGNORE_VISIBILITY;
+use crate::elasticsearch::aggregates::terms::terms_array_agg;
+use crate::gucs::{ZDB_ACCELERATOR, ZDB_IGNORE_VISIBILITY};
 use crate::query_parser::ast::{
     ComparisonOpcode, Expr, IndexLink, ProximityPart, ProximityTerm, QualifiedField, Term,
 };
@@ -106,9 +107,9 @@ pub fn expr_to_dsl(
         }
 
         Expr::Linked(link, e) => {
-            let mut query = expr_to_dsl(root, index_links, e.as_ref());
+            let mut query_dsl = expr_to_dsl(root, index_links, e.as_ref());
             if link.left_field.is_none() {
-                query
+                query_dsl
             } else {
                 let target_relation = link.open_index().unwrap_or_else(|e| {
                     panic!("failed to open index '{}': {}", link.qualified_index, e)
@@ -116,14 +117,14 @@ pub fn expr_to_dsl(
                 let index_options = ZDBIndexOptions::from_relation(&target_relation);
                 let es_index_name = index_options.index_name();
 
-                query = if ZDB_IGNORE_VISIBILITY.get() {
-                    query
+                query_dsl = if ZDB_IGNORE_VISIBILITY.get() {
+                    query_dsl
                 } else {
                     let visibility_clause = build_visibility_clause(es_index_name);
                     json! {
                         {
                             "bool": {
-                                "must": [query],
+                                "must": [query_dsl],
                                 "filter": [visibility_clause]
                             }
                         }
@@ -137,15 +138,37 @@ pub fn expr_to_dsl(
                     left_field = parts.next().unwrap().to_string();
                 }
 
-                json! {
-                    {
-                        "subselect": {
-                            "index": es_index_name,
-                            "alias": index_options.alias(),
-                            "type": "_doc",
-                            "left_fieldname": left_field,
-                            "right_fieldname": link.right_field,
-                            "query": query
+                if ZDB_ACCELERATOR.get() {
+                    // the search accelerator is said to installed, so lets use it to solve the join
+                    json! {
+                        {
+                            "subselect": {
+                                "index": es_index_name,
+                                "alias": index_options.alias(),
+                                "type": "_doc",
+                                "left_fieldname": left_field,
+                                "right_fieldname": link.right_field,
+                                "query": query_dsl
+                            }
+                        }
+                    }
+                } else {
+                    // otherwise, we'll do a poor-man's version where we just collect up the results
+                    // of a `zdb.terms()` query
+                    let terms_query = ZDBQuery::new_with_query_dsl(query_dsl);
+                    let values = terms_array_agg(
+                        target_relation,
+                        link.right_field.as_ref().unwrap(),
+                        terms_query,
+                        Some(2147483647),
+                        None,
+                    );
+
+                    json! {
+                        {
+                            "terms": {
+                                left_field: values
+                            }
                         }
                     }
                 }
