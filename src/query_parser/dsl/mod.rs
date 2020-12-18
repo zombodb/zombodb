@@ -381,7 +381,7 @@ fn proximity_chain(field: &QualifiedField, parts: &Vec<ProximityPart>) -> serde_
 
 fn range<'a>(term: &'a Term) -> (&'a str, &'a Option<f32>) {
     match term {
-        Term::String(s, b) => (s, b),
+        Term::String(s, b) | Term::Phrase(s, b) => (s, b),
         _ => panic!("invalid term type for a range"),
     }
 }
