@@ -30,6 +30,7 @@ pub fn find_fields(expr: &mut Expr, root_index: &IndexLink, indexes: &Vec<IndexL
         Expr::Regex(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
         Expr::MoreLikeThis(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
         Expr::FuzzyLikeThis(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
+        Expr::Matches(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
     }
 }
 

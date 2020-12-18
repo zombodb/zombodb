@@ -80,6 +80,11 @@ pub fn expand_field_lists(e: &mut Expr, lists: &HashMap<String, Vec<QualifiedFie
                 *e = expr;
             }
         }
+        Expr::Matches(f, t) => {
+            if let Some(expr) = make_or_list(f, t, &lists, |f, t| Expr::Matches(f, t)) {
+                *e = expr;
+            }
+        }
     }
 }
 

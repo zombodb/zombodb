@@ -65,6 +65,7 @@ pub fn group_nested(index: &Option<&PgRelation>, expr: &mut Expr) {
         Expr::Regex(_, _) => maybe_nest(index, expr),
         Expr::MoreLikeThis(_, _) => maybe_nest(index, expr),
         Expr::FuzzyLikeThis(_, _) => maybe_nest(index, expr),
+        Expr::Matches(_, _) => maybe_nest(index, expr),
     }
 }
 

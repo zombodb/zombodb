@@ -722,6 +722,7 @@ mod tests {
         assert_expr("a:~'.*'", Regex!(Regex, "a", ".*"));
         assert_expr("a:@b", String!(MoreLikeThis, "a", "b"));
         assert_expr("a:@~b", String!(FuzzyLikeThis, "a", "b"));
+        assert_expr("a==>b", String!(Matches, "a", "b"));
     }
 
     #[pg_test]

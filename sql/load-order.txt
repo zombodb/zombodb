@@ -73,3 +73,7 @@ query_parser_dsl_mod.generated.sql
 _finalize.sql
 query_dsl_zdb.generated.sql
 elasticsearch_suggest_term.generated.sql
+elasticsearch_search.generated.sql
+gucs_mod.generated.sql
+mapping_mod.generated.sql
+query_parser_mod.generated.sql

@@ -57,7 +57,8 @@ fn determine_link(
         | Expr::DoesNotContain(f, _)
         | Expr::Regex(f, _)
         | Expr::MoreLikeThis(f, _)
-        | Expr::FuzzyLikeThis(f, _) => f.index.clone(),
+        | Expr::FuzzyLikeThis(f, _)
+        | Expr::Matches(f, _) => f.index.clone(),
     }
 }
 

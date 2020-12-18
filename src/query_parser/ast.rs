@@ -123,6 +123,7 @@ pub enum ComparisonOpcode {
     Regex,
     MoreLikeThis,
     FuzzyLikeThis,
+    Matches,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -174,6 +175,7 @@ pub enum Expr<'input> {
     Regex(QualifiedField, Term<'input>),
     MoreLikeThis(QualifiedField, Term<'input>),
     FuzzyLikeThis(QualifiedField, Term<'input>),
+    Matches(QualifiedField, Term<'input>),
 }
 
 impl<'input> Term<'input> {
@@ -562,6 +564,7 @@ impl<'input> Expr<'input> {
             ComparisonOpcode::Regex => Expr::Regex(field_name, right),
             ComparisonOpcode::MoreLikeThis => Expr::MoreLikeThis(field_name, right),
             ComparisonOpcode::FuzzyLikeThis => Expr::FuzzyLikeThis(field_name, right),
+            ComparisonOpcode::Matches => Expr::Matches(field_name, right),
         }
     }
 
@@ -647,6 +650,7 @@ impl<'input> Expr<'input> {
             Expr::Regex(f, _) => f.nested_path(),
             Expr::MoreLikeThis(f, _) => f.nested_path(),
             Expr::FuzzyLikeThis(f, _) => f.nested_path(),
+            Expr::Matches(f, _) => f.nested_path(),
         }
     }
 }
@@ -1059,6 +1063,7 @@ impl<'input> Display for Expr<'input> {
             Expr::FuzzyLikeThis(l, r) => {
                 write!(fmt, "{}{}{}", l, ComparisonOpcode::FuzzyLikeThis, r)
             }
+            Expr::Matches(l, r) => write!(fmt, "{}{}{}", l, ComparisonOpcode::Matches, r),
         }
     }
 }
@@ -1091,6 +1096,7 @@ impl Display for ComparisonOpcode {
             Regex => write!(fmt, ":~"),
             MoreLikeThis => write!(fmt, ":@"),
             FuzzyLikeThis => write!(fmt, ":@~"),
+            Matches => write!(fmt, "==>"),
         }
     }
 }

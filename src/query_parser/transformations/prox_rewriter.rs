@@ -32,6 +32,7 @@ pub fn rewrite_proximity_chains(expr: &mut Expr) {
         Expr::Regex(_, _) => {}
         Expr::MoreLikeThis(_, _) => {}
         Expr::FuzzyLikeThis(_, _) => {}
+        Expr::Matches(_, _) => {}
     }
 }
 

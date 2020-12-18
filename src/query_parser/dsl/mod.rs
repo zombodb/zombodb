@@ -94,6 +94,8 @@ pub fn expr_to_dsl(
         Expr::MoreLikeThis(_, _) => unimplemented!("more like this is not implemented yet"),
         Expr::FuzzyLikeThis(_, _) => unimplemented!("fuzzy like this is not implemented yet"),
 
+        Expr::Matches(f, t) => term_to_dsl(f, t, ComparisonOpcode::Matches),
+
         Expr::Gt(f, t) => term_to_dsl(f, t, ComparisonOpcode::Gt),
         Expr::Gte(f, t) => term_to_dsl(f, t, ComparisonOpcode::Gte),
         Expr::Lt(f, t) => term_to_dsl(f, t, ComparisonOpcode::Lt),
@@ -207,6 +209,29 @@ pub fn term_to_dsl(
             let (v, b) = range(term);
             json! { { "range": { field.field_name(): { "lte": v, "boost": b.unwrap_or(1.0) }} } }
         }
+        ComparisonOpcode::Matches => match term {
+            Term::String(s, b)
+            | Term::Phrase(s, b)
+            | Term::PhrasePrefix(s, b)
+            | Term::PhraseWithWildcard(s, b) => {
+                if s.contains('\\') {
+                    let s = unescape(s);
+                    json! { { "match": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
+                } else {
+                    json! { { "match": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
+                }
+            }
+            Term::Fuzzy(s, f, b) => {
+                if s.contains('\\') {
+                    let s = unescape(s);
+                    json! { { "match": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0), "minimum_should_match": f } } } }
+                } else {
+                    json! { { "match": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0), "minimum_should_match": f } } } }
+                }
+            }
+            _ => panic!("unsupported Term {:?} for Matches", term),
+        },
+
         // ComparisonOpcode::MoreLikeThis => {}
         // ComparisonOpcode::FuzzyLikeThis => {}
         _ => panic!("unsupported opcode {:?}", opcode),

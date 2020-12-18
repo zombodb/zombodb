@@ -184,6 +184,7 @@ impl<'a> QueryHighligther<'a> {
 
             Expr::MoreLikeThis(_, _) => unimplemented!(),
             Expr::FuzzyLikeThis(_, _) => unimplemented!(),
+            Expr::Matches(_, _) => unimplemented!(),
         }
     }
 

@@ -19,6 +19,7 @@ match {
     ":~" => REGEX,
     ":@" => MORE_LIKE_THIS,
     ":@~" => FUZZY_LIKE_THIS,
+    "==>" => MATCHES,
 
     "[" => O_BRACKET,
     "]" => C_BRACKET,
@@ -268,6 +269,7 @@ ComparisonOp: ComparisonOpcode = {
     REGEX => ComparisonOpcode::Regex,
     MORE_LIKE_THIS => ComparisonOpcode::MoreLikeThis,
     FUZZY_LIKE_THIS => ComparisonOpcode::FuzzyLikeThis,
+    MATCHES => ComparisonOpcode::Matches,
 };
 
 Term: Term<'input> = {

@@ -52,5 +52,6 @@ pub(crate) fn expand(expr: &mut Expr, root_index: &IndexLink, indexes: &Vec<Inde
         Expr::Regex(_, _) => {}
         Expr::MoreLikeThis(_, _) => {}
         Expr::FuzzyLikeThis(_, _) => {}
+        Expr::Matches(_, _) => {}
     }
 }
