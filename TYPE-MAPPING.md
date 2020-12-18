@@ -364,3 +364,8 @@ SELECT * FROM test WHERE test ==> dsl.nested('data', dsl.term('data.title', 'thi
 
 ```
 
+# Similarity Module Support
+
+ZomboDB supports Elasticsearch's "Similarity Module" in a manner similar to the above.
+
+TODO:  finish above...

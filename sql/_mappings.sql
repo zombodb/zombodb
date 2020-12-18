@@ -65,6 +65,12 @@ CREATE TABLE zdb.type_conversions
     is_default boolean DEFAULT false
 );
 
+CREATE TABLE zdb.similarities
+(
+    name       text NOT NULL PRIMARY KEY,
+    definition jsonb
+);
+
 SELECT pg_catalog.pg_extension_config_dump('zdb.filters', 'WHERE NOT is_default');
 SELECT pg_catalog.pg_extension_config_dump('zdb.char_filters', 'WHERE NOT is_default');
 SELECT pg_catalog.pg_extension_config_dump('zdb.analyzers', 'WHERE NOT is_default');
@@ -73,6 +79,7 @@ SELECT pg_catalog.pg_extension_config_dump('zdb.mappings', '');
 SELECT pg_catalog.pg_extension_config_dump('zdb.tokenizers', 'WHERE NOT is_default');
 SELECT pg_catalog.pg_extension_config_dump('zdb.type_mappings', 'WHERE NOT is_default');
 SELECT pg_catalog.pg_extension_config_dump('zdb.type_conversions', 'WHERE NOT is_default');
+SELECT pg_catalog.pg_extension_config_dump('zdb.similarities', 'WHERE NOT is_default');
 
 
 CREATE OR REPLACE FUNCTION zdb.define_filter(name text, definition json) RETURNS void
@@ -174,6 +181,14 @@ FROM zdb.tokenizers
 WHERE name = $1;
 INSERT INTO zdb.tokenizers(name, definition)
 VALUES ($1, $2);
+$$;
+
+CREATE OR REPLACE FUNCTION zdb.define_similarity(name text, definition json) RETURNS void
+    LANGUAGE sql
+    VOLATILE STRICT AS
+$$
+    DELETE FROM zdb.similarities WHERE name = $1;
+    INSERT INTO zdb.similarities(name, definition) VALUES ($1, $2);
 $$;
 
 INSERT INTO zdb.filters(name, definition, is_default)

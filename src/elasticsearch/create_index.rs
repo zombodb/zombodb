@@ -83,7 +83,8 @@ impl ElasticsearchCreateIndexRequest {
                      "tokenizer" : lookup_analysis_thing("tokenizers"),
                      "analyzer": lookup_analysis_thing("analyzers"),
                      "normalizer": lookup_analysis_thing("normalizers")
-                  }
+                  },
+                 "similarity": lookup_analysis_thing("similarities")
                },
                "mappings": {
                      "_source": { "enabled": true },

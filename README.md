@@ -58,6 +58,7 @@ ZomboDB allows you to use the power and scalability of Elasticsearch directly fr
     - Per-field custom mappings
     - `json/jsonb` automatically mapped as dynamic nested objects
     - Supports full set of [Elasticsearch language analyzers](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-lang-analyzer.html)
+    - Supports [Elasticsearch's Similarity Module](https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules-similarity.html) 
  - Hot-Standby compatible
  - Support for indexing & searching [PostGIS `geometry` and `geography` types](POSTGIS-SUPPORT.md)
 
