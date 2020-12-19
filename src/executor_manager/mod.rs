@@ -1,6 +1,6 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchBulkRequest};
 use crate::mapping::{categorize_tupdesc, CategorizedAttribute};
-use crate::utils::lookup_zdb_index_tupdesc;
+use crate::utils::{find_zdb_index, lookup_all_zdb_index_oids, lookup_zdb_index_tupdesc};
 use pgx::*;
 use std::collections::{HashMap, HashSet};
 
@@ -108,7 +108,7 @@ impl QueryState {
         }
     }
 
-    pub fn lookup_heap_oid_for_first_field(
+    pub fn lookup_index_for_first_field(
         &self,
         query_desc: *mut pg_sys::QueryDesc,
         fcinfo: pg_sys::FunctionCallInfo,
@@ -139,7 +139,39 @@ impl QueryState {
             let rentry = unsafe { pg_sys::rt_fetch(var.varnoold, rtable) };
             let heap_oid = unsafe { rentry.as_ref().unwrap().relid };
 
-            Some(heap_oid)
+            match find_zdb_index(&PgRelation::with_lock(
+                heap_oid,
+                pg_sys::AccessShareLock as pg_sys::LOCKMODE,
+            )) {
+                Ok((index, _)) => Some(index.oid()),
+                Err(_) => None,
+            }
+        } else if is_a(first_arg, pg_sys::NodeTag_T_FuncExpr) {
+            let func_expr = PgBox::from_pg(first_arg as *mut pg_sys::FuncExpr);
+            match lookup_all_zdb_index_oids() {
+                Some(oids) => {
+                    let funcoid = func_expr.funcid;
+                    for oid in oids {
+                        let index =
+                            PgRelation::with_lock(oid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
+                        let exprs = PgList::<pg_sys::Expr>::from_pg(unsafe {
+                            pg_sys::RelationGetIndexExpressions(index.as_ptr())
+                        });
+
+                        if let Some(expr) = exprs.get_ptr(0) {
+                            if is_a(expr as *mut pg_sys::Node, pg_sys::NodeTag_T_FuncExpr) {
+                                let func_expr = PgBox::from_pg(expr as *mut pg_sys::FuncExpr);
+                                if func_expr.funcid == funcoid {
+                                    return Some(index.oid());
+                                }
+                            }
+                        }
+                    }
+
+                    None
+                }
+                None => None,
+            }
         } else {
             None
         }

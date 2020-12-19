@@ -29,8 +29,8 @@ levenshtein = "1.0.4"
 memoffset = "0.6.1"
 num_cpus = "1.13.0"
 pathfinding = "2.0.4"
-pgx = "0.1.6"
-pgx-macros = "0.1.6"
+pgx = "0.1.7"
+pgx-macros = "0.1.7"
 rayon = "1.5.0"
 regex = "1.4.2"
 serde = { version = "1.0.117", features = [ "derive" ] }
@@ -44,7 +44,7 @@ url = "2.2.0"
 lalrpop = { version = "0.19.1", features = [ "lexer" ] }
 
 [dev-dependencies]
-pgx-tests = "0.1.6"
+pgx-tests = "0.1.7"
 libc = "0.2.80"
 
 [profile.dev]

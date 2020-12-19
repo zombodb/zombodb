@@ -1,3 +1,4 @@
+use crate::access_method::options::ZDBIndexOptions;
 use crate::access_method::triggers::create_triggers;
 use crate::elasticsearch::{Elasticsearch, ElasticsearchBulkRequest};
 use crate::executor_manager::get_executor_manager;
@@ -37,6 +38,11 @@ pub extern "C" fn ambuild(
 ) -> *mut pg_sys::IndexBuildResult {
     let heap_relation = unsafe { PgRelation::from_pg(heaprel) };
     let index_relation = unsafe { PgRelation::from_pg(indexrel) };
+
+    if ZDBIndexOptions::from_relation(&index_relation).is_shadow_index() {
+        // nothing for us to do for a shadow index
+        return PgBox::<pg_sys::IndexBuildResult>::alloc0().into_pg();
+    }
 
     unsafe {
         if has_zdb_index(&heap_relation, &index_relation) {

@@ -142,7 +142,7 @@ fn highlight_field(
 ) -> Option<Vec<Option<&'static String>>> {
     let highlights = match get_executor_manager().peek_query_state() {
         Some((query_desc, query_state)) => {
-            match query_state.lookup_heap_oid_for_first_field(*query_desc, fcinfo) {
+            match query_state.lookup_index_for_first_field(*query_desc, fcinfo) {
                 Some(heap_oid) => query_state.get_highlight(heap_oid, ctid, field),
                 None => None,
             }

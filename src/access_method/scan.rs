@@ -6,6 +6,7 @@ use pgx::*;
 
 struct ZDBScanState {
     zdbregtype: pg_sys::Oid,
+    index_oid: pg_sys::Oid,
     iterator: *mut SearchResponseIntoIter,
 }
 
@@ -25,6 +26,7 @@ pub extern "C" fn ambeginscan(
             )
             .expect("failed to lookup type oid for pg_catalog.zdbquery")
         },
+        index_oid: unsafe { (*index_relation).rd_id },
         iterator: std::ptr::null_mut(),
     };
 
@@ -78,37 +80,32 @@ pub extern "C" fn amgettuple(
     scan: pg_sys::IndexScanDesc,
     _direction: pg_sys::ScanDirection,
 ) -> bool {
-    unsafe {
-        let state = &mut *((*scan).opaque as *mut ZDBScanState);
+    let mut scan: PgBox<pg_sys::IndexScanDescData> = PgBox::from_pg(scan);
+    let state = unsafe { (scan.opaque as *mut ZDBScanState).as_mut() }.expect("no scandesc state");
 
-        // no need to recheck the returned tuples as ZomboDB indices are not lossy
-        (*scan).xs_recheck = false;
+    // no need to recheck the returned tuples as ZomboDB indices are not lossy
+    scan.xs_recheck = false;
 
-        let iter = &mut *(*state).iterator;
-        match iter.next() {
-            Some((score, ctid, _, highlights)) => {
-                #[cfg(any(feature = "pg10", feature = "pg11"))]
-                let tid = &mut ((*scan).xs_ctup).t_self;
-                #[cfg(any(feature = "pg12", feature = "pg13"))]
-                let tid = &mut (*scan).xs_heaptid;
+    let iter = unsafe { state.iterator.as_mut() }.expect("no iterator in state");
+    match iter.next() {
+        Some((score, ctid, _, highlights)) => {
+            #[cfg(any(feature = "pg10", feature = "pg11"))]
+            let tid = &mut scan.xs_ctup.t_self;
+            #[cfg(any(feature = "pg12", feature = "pg13"))]
+            let tid = &mut scan.xs_heaptid;
 
-                u64_to_item_pointer(ctid, tid);
-                if !item_pointer_is_valid(tid) {
-                    panic!("invalid item pointer: {:?}", item_pointer_get_both(*tid));
-                }
-
-                if score > 0.0 || highlights.is_some() {
-                    // safe: scan.heapRelation won't even be null
-                    let heap_oid = (*(*scan).heapRelation).rd_id;
-                    let (_, qstate) = get_executor_manager().peek_query_state().unwrap();
-                    qstate.add_score(heap_oid, ctid, score);
-                    qstate.add_highlight(heap_oid, ctid, highlights);
-                }
-
-                true
+            u64_to_item_pointer(ctid, tid);
+            if !item_pointer_is_valid(tid) {
+                panic!("invalid item pointer: {:?}", item_pointer_get_both(*tid));
             }
-            None => false,
+
+            let (_, qstate) = get_executor_manager().peek_query_state().unwrap();
+            qstate.add_score(state.index_oid, ctid, score);
+            qstate.add_highlight(state.index_oid, ctid, highlights);
+
+            true
         }
+        None => false,
     }
 }
 
@@ -122,10 +119,6 @@ pub extern "C" fn ambitmapscan(scan: pg_sys::IndexScanDesc, tbm: *mut pg_sys::TI
     let scan = PgBox::from_pg(scan);
     let index_relation = unsafe { PgRelation::from_pg(scan.indexRelation) };
     let state = unsafe { (scan.opaque as *mut ZDBScanState).as_mut() }.expect("no scandesc state");
-    let heap_oid = index_relation
-        .heap_relation()
-        .expect("no heap relation for index")
-        .oid();
     let (_query, qstate) = get_executor_manager().peek_query_state().unwrap();
 
     let mut cnt = 0i64;
@@ -138,8 +131,8 @@ pub extern "C" fn ambitmapscan(scan: pg_sys::IndexScanDesc, tbm: *mut pg_sys::TI
             pg_sys::tbm_add_tuples(tbm, &mut tid, 1, false);
         }
 
-        qstate.add_score(heap_oid, ctid_u64, score);
-        qstate.add_highlight(heap_oid, ctid_u64, highlights);
+        qstate.add_score(index_relation.oid(), ctid_u64, score);
+        qstate.add_highlight(index_relation.oid(), ctid_u64, highlights);
         cnt += 1;
     }
 

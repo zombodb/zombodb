@@ -5,11 +5,11 @@ use pgx::{
 
 use crate::elasticsearch::Elasticsearch;
 use crate::gucs::ZDB_LOG_LEVEL;
-use crate::utils::{is_zdb_index, lookup_zdb_extension_oid};
+use crate::utils::{is_non_shadow_zdb_index, lookup_zdb_extension_oid};
 
 pub fn drop_index(index: &PgRelation) {
     // we can only delete the remote index for actual ZDB indices
-    if is_zdb_index(index) {
+    if is_non_shadow_zdb_index(index) {
         // when the transaction commits, we'll make a best effort to delete this index
         // from its remote Elasticsearch server
         let es = Elasticsearch::new(index);

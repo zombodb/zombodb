@@ -20,6 +20,16 @@ CREATE INDEX es_documents ON documents USING zombodb ((documents.*));
 CREATE INDEX es_docs_usage ON docs_usage USING zombodb ((docs_usage.*));
 CREATE INDEX es_library_profile ON library_profile USING zombodb ((library_profile.*));
 
+CREATE FUNCTION documents_shadow(anyelement) RETURNS anyelement IMMUTABLE STRICT PARALLEL SAFE LANGUAGE c AS '$libdir/zombodb.so', 'shadow_wrapper';
+CREATE INDEX idxdocuments_master_view_shadow ON documents USING zombodb (documents_shadow(documents.*))
+    WITH (
+        shadow = true,
+        options = $$
+            docs_usage_data:(pk_documents=<public.docs_usage.es_docs_usage>fk_documents),
+            fk_library_profile=<public.library_profile.es_library_profile>pk_library_profile
+        $$
+    );
+
 CREATE OR REPLACE VIEW documents_master_view AS
   SELECT
     documents.*,
@@ -31,16 +41,8 @@ CREATE OR REPLACE VIEW documents_master_view AS
               WHERE library_profile.pk_library_profile = docs_usage.fk_library_profile) AS library_name
            FROM docs_usage
            WHERE documents.pk_documents = docs_usage.fk_documents) du) AS usage_data,
-
-    documents AS zdb
+                 documents_shadow(documents) AS zdb
   FROM public.documents;
-COMMENT ON VIEW documents_master_view IS $${
-    "index": "public.es_documents",
-    "options": [
-                "docs_usage_data:(pk_documents=<public.docs_usage.es_docs_usage>fk_documents)",
-                "fk_library_profile=<public.library_profile.es_library_profile>pk_library_profile"
-    ]
-}$$;
 
 INSERT INTO documents (doc_stuff)
 VALUES ('Every good boy does fine.'), ('Sally sells sea shells down by the seashore.'),
@@ -52,6 +54,12 @@ VALUES (1, 1, 'somewhere'), (2, 2, 'anywhere'), (3, 3, 'everywhere'), (3, 1, 'so
 SELECT count(*) FROM documents_master_view WHERE public.documents_master_view.zdb ==> 'somewhere';
 SELECT count(*) FROM documents_master_view WHERE public.documents_master_view.zdb ==> 'GSO';
 
+set enable_indexscan to off;
+set enable_bitmapscan to off;
+explain (costs off) SELECT count(*) FROM documents_master_view WHERE public.documents_master_view.zdb ==> 'somewhere';
+SELECT count(*) FROM documents_master_view WHERE public.documents_master_view.zdb ==> 'somewhere';
+
 DROP TABLE documents CASCADE;
 DROP TABLE docs_usage CASCADE;
 DROP TABLE library_profile CASCADE;
+DROP FUNCTION documents_shadow CASCADE;

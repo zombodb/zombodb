@@ -18,6 +18,12 @@ pub extern "C" fn ambulkdelete(
     let result = PgBox::<pg_sys::IndexBulkDeleteResult>::alloc0();
     let info = PgBox::from_pg(info);
     let index_relation = unsafe { PgRelation::from_pg(info.index) };
+
+    if ZDBIndexOptions::from_relation(&index_relation).is_shadow_index() {
+        // nothing for us to do for a shadow index
+        return result.into_pg();
+    }
+
     let elasticsearch = Elasticsearch::new(&index_relation);
     let options = ZDBIndexOptions::from_relation(&index_relation);
     let es_index_name = options.index_name();
@@ -92,13 +98,18 @@ pub extern "C" fn amvacuumcleanup(
     stats: *mut pg_sys::IndexBulkDeleteResult,
 ) -> *mut pg_sys::IndexBulkDeleteResult {
     let result = PgBox::<pg_sys::IndexBulkDeleteResult>::alloc0();
-
-    if stats.is_null() {
-        ambulkdelete(info, result.as_ptr(), None, std::ptr::null_mut());
-    }
-
     let info = PgBox::from_pg(info);
     let index_relation = unsafe { PgRelation::from_pg(info.index) };
+
+    if ZDBIndexOptions::from_relation(&index_relation).is_shadow_index() {
+        // nothing for us to do for a shadow index
+        return result.into_pg();
+    }
+
+    if stats.is_null() {
+        ambulkdelete(info.as_ptr(), result.as_ptr(), None, std::ptr::null_mut());
+    }
+
     let elasticsearch = Elasticsearch::new(&index_relation);
 
     elasticsearch
