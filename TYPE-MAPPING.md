@@ -366,6 +366,43 @@ SELECT * FROM test WHERE test ==> dsl.nested('data', dsl.term('data.title', 'thi
 
 # Similarity Module Support
 
-ZomboDB supports Elasticsearch's "Similarity Module" in a manner similar to the above.
+ZomboDB supports [Elasticsearch's "Similarity Module"](https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules-similarity.html)) in a manner similar to the above.
 
-TODO:  finish above...
+This allows you to define different similarity algorithms and apply them to individual field mappings.
+
+It uses the function
+
+```sql
+FUNCTION zdb.define_similarity(name text, definition json) 
+```
+
+An short example of defining `LMJelinekMercer` algorithm:
+
+```sql
+SELECT zdb.define_similarity('my_similarity', '
+{
+    "type": "LMJelinekMercer",
+    "lambda": 0.075
+}
+');
+```
+
+And then we'd define it for a field in a table.  Note that in doing so, we are required to define the entire
+field mapping for this field.
+
+```sql
+CREATE TABLE test (
+  id serial8 NOT NULL PRIMARY KEY,
+  data text
+);
+
+SELECT zdb.define_field_mapping('test', 'data', '
+{
+    "type": "text",
+    "analyzer": "zdb_standard",
+    "similarity": "my_similarity"
+}
+');
+
+CREATE INDEX idxtest ON test USING zombodb ((test.*));
+```
