@@ -79,7 +79,7 @@ SELECT pg_catalog.pg_extension_config_dump('zdb.mappings', '');
 SELECT pg_catalog.pg_extension_config_dump('zdb.tokenizers', 'WHERE NOT is_default');
 SELECT pg_catalog.pg_extension_config_dump('zdb.type_mappings', 'WHERE NOT is_default');
 SELECT pg_catalog.pg_extension_config_dump('zdb.type_conversions', 'WHERE NOT is_default');
-SELECT pg_catalog.pg_extension_config_dump('zdb.similarities', 'WHERE NOT is_default');
+SELECT pg_catalog.pg_extension_config_dump('zdb.similarities', '');
 
 
 CREATE OR REPLACE FUNCTION zdb.define_filter(name text, definition json) RETURNS void
