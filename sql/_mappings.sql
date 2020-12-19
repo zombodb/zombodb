@@ -544,6 +544,7 @@ GRANT ALL ON zdb.analyzers TO PUBLIC;
 GRANT ALL ON zdb.char_filters TO PUBLIC;
 GRANT ALL ON zdb.filters TO PUBLIC;
 GRANT ALL ON zdb.mappings TO PUBLIC;
+GRANT ALL ON zdb.similarities TO PUBLIC;
 GRANT ALL ON zdb.tokenizers TO PUBLIC;
 GRANT ALL ON zdb.type_mappings TO PUBLIC;
 GRANT ALL ON zdb.normalizers TO PUBLIC;
