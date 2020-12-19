@@ -10,7 +10,7 @@ mod dsl {
         #[serde(skip_serializing_if = "Option::is_none")]
         boost: Option<f32>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        fuzziness: Option<i64>,
+        fuzziness: Option<i32>,
         #[serde(skip_serializing_if = "Option::is_none")]
         prefix_length: Option<i64>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -24,7 +24,7 @@ mod dsl {
         field: &str,
         value: &str,
         boost: Option<default!(f32, NULL)>,
-        fuzziness: Option<default!(i64, NULL)>,
+        fuzziness: Option<default!(i32, NULL)>,
         prefix_length: Option<default!(i64, NULL)>,
         max_expansions: Option<default!(i64, 50)>,
         transpositions: Option<default!(bool, NULL)>,
