@@ -1,4 +1,4 @@
-use crate::query_parser::ast::{Expr, IndexLink};
+use crate::zql::ast::{Expr, IndexLink};
 use indexmap::IndexMap;
 
 pub fn assign_links<'a>(root_index: &IndexLink, expr: &mut Expr<'a>, indexes: &Vec<IndexLink>) {

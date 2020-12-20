@@ -1,6 +1,6 @@
 use std::str::FromStr;
 use std::collections::HashSet;
-use crate::query_parser::ast::*;
+use crate::zql::ast::*;
 use std::collections::HashMap;
 use pgx::*;
 

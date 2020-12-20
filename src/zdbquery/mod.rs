@@ -7,9 +7,9 @@ mod opclass;
 
 use crate::gucs::ZDB_DEFAULT_ROW_ESTIMATE;
 use crate::query_dsl::nested::pg_catalog::ScoreMode;
-use crate::query_parser::ast::{Expr, IndexLink, QualifiedField};
-use crate::query_parser::dsl::expr_to_dsl;
-use crate::query_parser::transformations::field_finder::find_link_for_field;
+use crate::zql::ast::{Expr, IndexLink, QualifiedField};
+use crate::zql::dsl::expr_to_dsl;
+use crate::zql::transformations::field_finder::find_link_for_field;
 pub use pg_catalog::*;
 use serde::*;
 use std::collections::{HashMap, HashSet};
@@ -107,8 +107,8 @@ impl PartialEq<Value> for ZDBQueryClause {
 
 mod pg_catalog {
     #![allow(non_camel_case_types)]
-    use crate::query_parser::ast::IndexLink;
     use crate::zdbquery::ZDBQueryClause;
+    use crate::zql::ast::IndexLink;
     use pgx::*;
     use serde::*;
     use serde_json::Value;

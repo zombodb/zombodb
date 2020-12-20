@@ -6,11 +6,11 @@ use serde_json::json;
 use crate::access_method::options::ZDBIndexOptions;
 use crate::elasticsearch::aggregates::terms::terms_array_agg;
 use crate::gucs::{ZDB_ACCELERATOR, ZDB_IGNORE_VISIBILITY};
-use crate::query_parser::ast::{
-    ComparisonOpcode, Expr, IndexLink, ProximityPart, ProximityTerm, QualifiedField, Term,
-};
 use crate::zdbquery::mvcc::build_visibility_clause;
 use crate::zdbquery::ZDBQuery;
+use crate::zql::ast::{
+    ComparisonOpcode, Expr, IndexLink, ProximityPart, ProximityTerm, QualifiedField, Term,
+};
 
 #[pg_extern(immutable, parallel_safe)]
 fn dump_query(index: PgRelation, query: ZDBQuery) -> String {

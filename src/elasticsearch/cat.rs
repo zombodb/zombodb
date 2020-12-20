@@ -20,7 +20,7 @@ impl ElasticsearchCatRequest {
         url.push_str(&self.endpoint);
         url.push_str("?h=*&format=json&time=ms&bytes=b&size=k");
 
-        Elasticsearch::execute_json_request(Elasticsearch::client().get(&url), None, |mut body| {
+        Elasticsearch::execute_json_request(Elasticsearch::client().get(&url), None, |body| {
             let mut response = Vec::new();
             body.read_to_end(&mut response)
                 .expect("failed to read response stream");

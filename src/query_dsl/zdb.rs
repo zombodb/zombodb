@@ -1,8 +1,8 @@
 mod dsl {
-    use crate::query_parser::ast::IndexLink;
-    use crate::query_parser::dsl::expr_to_dsl;
-    use crate::query_parser::INDEX_LINK_PARSER;
     use crate::zdbquery::ZDBQuery;
+    use crate::zql::ast::IndexLink;
+    use crate::zql::dsl::expr_to_dsl;
+    use crate::zql::INDEX_LINK_PARSER;
     use pgx::*;
     use std::collections::HashSet;
 
@@ -10,7 +10,7 @@ mod dsl {
     fn zdb(index: PgRelation, input: &str) -> ZDBQuery {
         let mut used_fields = HashSet::new();
         let index_links = IndexLink::from_zdb(&index);
-        let query = crate::query_parser::ast::Expr::from_str(
+        let query = crate::zql::ast::Expr::from_str(
             &index,
             "zdb_all",
             input,

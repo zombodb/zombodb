@@ -16,18 +16,18 @@ mod json;
 mod mapping;
 mod misc;
 pub mod query_dsl;
-pub mod query_parser;
 pub mod scoring;
 mod utils;
 mod walker;
 mod zdbquery;
+pub mod zql;
 
 pg_module_magic!();
 
 #[allow(non_snake_case)]
 #[pg_guard]
 pub unsafe extern "C" fn _PG_init() {
-    query_parser::init();
+    zql::init();
     gucs::init();
     executor_manager::hooks::init_hooks();
     access_method::options::init();

@@ -8,7 +8,7 @@ use std::str::FromStr;
 
 use serde::export::Formatter;
 
-use crate::query_parser::ast::{IndexLink, QualifiedIndex};
+use crate::zql::ast::{IndexLink, QualifiedIndex};
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Clone)]
 struct NamedIndex {
@@ -356,8 +356,8 @@ impl RelationshipManager {
 
 #[cfg(test)]
 mod tests {
-    use crate::query_parser::ast::{IndexLink, QualifiedIndex};
-    use crate::query_parser::relationship_manager::RelationshipManager;
+    use crate::zql::ast::{IndexLink, QualifiedIndex};
+    use crate::zql::relationship_manager::RelationshipManager;
 
     fn case_profile() -> IndexLink {
         let case_profile = IndexLink {

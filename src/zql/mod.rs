@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::query_parser::ast::QualifiedField;
+use crate::zql::ast::QualifiedField;
 
 pub mod ast;
 pub mod dsl;
@@ -13,9 +13,9 @@ pub(crate) mod transformations;
 
 // global parsers to avoid recurring regex compilation
 thread_local! {
-    pub static ZDB_QUERY_PARSER: crate::query_parser::parser::ExprParser = crate::query_parser::parser::ExprParser::new();
-    pub static FIELD_LIST_PARSER: crate::query_parser::parser::FieldListParser = crate::query_parser::parser::FieldListParser::new();
-    pub static INDEX_LINK_PARSER: crate::query_parser::parser::IndexLinkParser = crate::query_parser::parser::IndexLinkParser::new();
+    pub static ZDB_QUERY_PARSER: crate::zql::parser::ExprParser = crate::zql::parser::ExprParser::new();
+    pub static FIELD_LIST_PARSER: crate::zql::parser::FieldListParser = crate::zql::parser::FieldListParser::new();
+    pub static INDEX_LINK_PARSER: crate::zql::parser::IndexLinkParser = crate::zql::parser::IndexLinkParser::new();
 }
 
 pub(crate) fn init() {
@@ -66,12 +66,12 @@ mod macros {
     #[allow(non_snake_case)]
     macro_rules! MatchAll {
         ($operator:tt, $field:literal) => {
-            crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField {
+            crate::zql::ast::Expr::$operator(
+                crate::zql::ast::QualifiedField {
                     index: Some(IndexLink::default()),
                     field: $field.into(),
                 },
-                crate::query_parser::ast::Term::MatchAll,
+                crate::zql::ast::Term::MatchAll,
             )
         };
     }
@@ -79,230 +79,230 @@ mod macros {
     #[allow(non_snake_case)]
     macro_rules! String {
         ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
-            crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField {
+            crate::zql::ast::Expr::$operator(
+                crate::zql::ast::QualifiedField {
                     index: Some(IndexLink::default()),
                     field: $field.into(),
                 },
-                crate::query_parser::ast::Term::String($val.into(), Some($boost)),
+                crate::zql::ast::Term::String($val.into(), Some($boost)),
             )
         };
         ($operator:tt, $table:literal, $index:literal, $field:literal, $val:expr) => {
-            crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField {
+            crate::zql::ast::Expr::$operator(
+                crate::zql::ast::QualifiedField {
                     index: Some(IndexLink::default()),
                     field: $field.into(),
                 },
-                crate::query_parser::ast::Term::String($val.into(), None),
+                crate::zql::ast::Term::String($val.into(), None),
             )
         };
         ($operator:tt, $field:literal, $val:expr) => {
-            crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField {
+            crate::zql::ast::Expr::$operator(
+                crate::zql::ast::QualifiedField {
                     index: Some(IndexLink::default()),
                     field: $field.into(),
                 },
-                crate::query_parser::ast::Term::String($val.into(), None),
+                crate::zql::ast::Term::String($val.into(), None),
             )
         };
         ($val:expr) => {
-            crate::query_parser::ast::Term::String($val.into(), None)
+            crate::zql::ast::Term::String($val.into(), None)
         };
     }
 
     #[allow(non_snake_case)]
     macro_rules! ProximityString {
         ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
-            crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField {
+            crate::zql::ast::Expr::$operator(
+                crate::zql::ast::QualifiedField {
                     index: Some(IndexLink::default()),
                     field: $field.into(),
                 },
-                crate::query_parser::ast::ProximityTerm::String($val.into(), None),
+                crate::zql::ast::ProximityTerm::String($val.into(), None),
             )
         };
         ($operator:tt, $table:literal, $index:literal, $field:literal, $val:expr) => {
-            crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField {
+            crate::zql::ast::Expr::$operator(
+                crate::zql::ast::QualifiedField {
                     index: Some(IndexLink::default()),
                     field: $field.into(),
                 },
-                crate::query_parser::ast::ProximityTerm::String($val.into(), None),
+                crate::zql::ast::ProximityTerm::String($val.into(), None),
             )
         };
         ($operator:tt, $field:literal, $val:expr) => {
-            crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField {
+            crate::zql::ast::Expr::$operator(
+                crate::zql::ast::QualifiedField {
                     index: Some(IndexLink::default()),
                     field: $field.into(),
                 },
-                crate::query_parser::ast::ProximityTerm::String($val.into(), None),
+                crate::zql::ast::ProximityTerm::String($val.into(), None),
             )
         };
         ($val:expr) => {
-            crate::query_parser::ast::ProximityTerm::String($val.into(), None)
+            crate::zql::ast::ProximityTerm::String($val.into(), None)
         };
     }
 
     #[allow(non_snake_case)]
     macro_rules! Wildcard {
         ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
-            crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField {
+            crate::zql::ast::Expr::$operator(
+                crate::zql::ast::QualifiedField {
                     index: Some(IndexLink::default()),
                     field: $field.into(),
                 },
-                crate::query_parser::ast::Term::Wildcard($val.into(), Some($boost)),
+                crate::zql::ast::Term::Wildcard($val.into(), Some($boost)),
             )
         };
         ($operator:tt, $field:literal, $val:expr) => {
-            crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField {
+            crate::zql::ast::Expr::$operator(
+                crate::zql::ast::QualifiedField {
                     index: Some(IndexLink::default()),
                     field: $field.into(),
                 },
-                crate::query_parser::ast::Term::Wildcard($val.into(), None),
+                crate::zql::ast::Term::Wildcard($val.into(), None),
             )
         };
         ($val:expr) => {
-            crate::query_parser::ast::Term::Wildcard($val.into(), None)
+            crate::zql::ast::Term::Wildcard($val.into(), None)
         };
     }
 
     #[allow(non_snake_case)]
     macro_rules! Prefix {
         ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
-            crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField {
+            crate::zql::ast::Expr::$operator(
+                crate::zql::ast::QualifiedField {
                     index: Some(IndexLink::default()),
                     field: $field.into(),
                 },
-                crate::query_parser::ast::Term::Prefix($val.into(), Some($boost)),
+                crate::zql::ast::Term::Prefix($val.into(), Some($boost)),
             )
         };
         ($operator:tt, $field:literal, $val:expr) => {
-            crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField {
+            crate::zql::ast::Expr::$operator(
+                crate::zql::ast::QualifiedField {
                     index: Some(IndexLink::default()),
                     field: $field.into(),
                 },
-                crate::query_parser::ast::Term::Prefix($val.into(), None),
+                crate::zql::ast::Term::Prefix($val.into(), None),
             )
         };
         ($val:expr) => {
-            crate::query_parser::ast::Term::Prefix($val.into(), None)
+            crate::zql::ast::Term::Prefix($val.into(), None)
         };
     }
 
     #[allow(non_snake_case)]
     macro_rules! PhrasePrefix {
         ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
-            crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField {
+            crate::zql::ast::Expr::$operator(
+                crate::zql::ast::QualifiedField {
                     index: Some(IndexLink::default()),
                     field: $field.into(),
                 },
-                crate::query_parser::ast::Term::PhrasePrefix($val.into(), Some($boost)),
+                crate::zql::ast::Term::PhrasePrefix($val.into(), Some($boost)),
             )
         };
         ($operator:tt, $field:literal, $val:expr) => {
-            crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField {
+            crate::zql::ast::Expr::$operator(
+                crate::zql::ast::QualifiedField {
                     index: Some(IndexLink::default()),
                     field: $field.into(),
                 },
-                crate::query_parser::ast::Term::PhrasePrefix($val.into(), None),
+                crate::zql::ast::Term::PhrasePrefix($val.into(), None),
             )
         };
         ($val:expr) => {
-            crate::query_parser::ast::Term::PhrasePrefix($val.into(), None)
+            crate::zql::ast::Term::PhrasePrefix($val.into(), None)
         };
     }
 
     #[allow(non_snake_case)]
     macro_rules! Regex {
         ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
-            crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField {
+            crate::zql::ast::Expr::$operator(
+                crate::zql::ast::QualifiedField {
                     index: Some(IndexLink::default()),
                     field: $field.into(),
                 },
-                crate::query_parser::ast::Term::Regex($val.into(), Some($boost)),
+                crate::zql::ast::Term::Regex($val.into(), Some($boost)),
             )
         };
         ($operator:tt, $field:literal, $val:expr) => {
-            crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField {
+            crate::zql::ast::Expr::$operator(
+                crate::zql::ast::QualifiedField {
                     index: Some(IndexLink::default()),
                     field: $field.into(),
                 },
-                crate::query_parser::ast::Term::Regex($val.into(), None),
+                crate::zql::ast::Term::Regex($val.into(), None),
             )
         };
         ($val:expr) => {
-            crate::query_parser::ast::Term::Regex($val.into(), None)
+            crate::zql::ast::Term::Regex($val.into(), None)
         };
     }
 
     #[allow(non_snake_case)]
     macro_rules! Fuzzy {
         ($operator:tt, $field:literal, $val:expr, $slop:expr, $boost:expr) => {
-            crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField {
+            crate::zql::ast::Expr::$operator(
+                crate::zql::ast::QualifiedField {
                     index: Some(IndexLink::default()),
                     field: $field.into(),
                 },
-                crate::query_parser::ast::Term::Fuzzy($val, $slop, Some($boost)),
+                crate::zql::ast::Term::Fuzzy($val, $slop, Some($boost)),
             )
         };
         ($operator:tt, $field:literal, $val:expr, $slop:expr) => {
-            crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField {
+            crate::zql::ast::Expr::$operator(
+                crate::zql::ast::QualifiedField {
                     index: Some(IndexLink::default()),
                     field: $field.into(),
                 },
-                crate::query_parser::ast::Term::Fuzzy($val, $slop, None),
+                crate::zql::ast::Term::Fuzzy($val, $slop, None),
             )
         };
         ($val:expr, $slop:expr) => {
-            crate::query_parser::ast::Term::Fuzzy($val, $slop, None)
+            crate::zql::ast::Term::Fuzzy($val, $slop, None)
         };
     }
 
     #[allow(non_snake_case)]
     macro_rules! UnparsedArray {
         ($operator:tt, $field:literal, $val:expr, $boost:expr) => {
-            crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField {
+            crate::zql::ast::Expr::$operator(
+                crate::zql::ast::QualifiedField {
                     index: Some(IndexLink::default()),
                     field: $field.into(),
                 },
-                crate::query_parser::ast::Term::UnparsedArray($val, Some($boost)),
+                crate::zql::ast::Term::UnparsedArray($val, Some($boost)),
             )
         };
         ($operator:tt, $field:literal, $val:expr) => {
-            crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField {
+            crate::zql::ast::Expr::$operator(
+                crate::zql::ast::QualifiedField {
                     index: Some(IndexLink::default()),
                     field: $field.into(),
                 },
-                crate::query_parser::ast::Term::UnparsedArray($val, None),
+                crate::zql::ast::Term::UnparsedArray($val, None),
             )
         };
         ($val:expr) => {
-            crate::query_parser::ast::Term::UnparsedArray($val, None)
+            crate::zql::ast::Term::UnparsedArray($val, None)
         };
     }
 
     #[allow(non_snake_case)]
     macro_rules! ParsedArray {
         ($operator:tt, $field:literal, $($elements:expr),*) => {
-            crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField{
+            crate::zql::ast::Expr::$operator(
+                crate::zql::ast::QualifiedField{
                     index: Some(IndexLink::default()),
                     field: $field.into()
                 },
-                crate::query_parser::ast::Term::ParsedArray(
+                crate::zql::ast::Term::ParsedArray(
                     vec![$($elements),*],
                     None
                 )
@@ -313,12 +313,12 @@ mod macros {
     #[allow(non_snake_case)]
     macro_rules! ParsedArrayWithBoost {
         ($operator:tt, $field:literal, $boost:expr, $($elements:expr),*) => {
-            crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField{
+            crate::zql::ast::Expr::$operator(
+                crate::zql::ast::QualifiedField{
                     index: Some(IndexLink::default()),
                     field: $field.into()
                 },
-                crate::query_parser::ast::Term::ParsedArray(
+                crate::zql::ast::Term::ParsedArray(
                     vec![$($elements),*],
                     Some($boost)
                 )
@@ -329,12 +329,12 @@ mod macros {
     #[allow(non_snake_case)]
     macro_rules! ProximityChain {
         ($operator:tt, $field:literal, $($parts:expr),*) => {
-            crate::query_parser::ast::Expr::$operator(
-                crate::query_parser::ast::QualifiedField{
+            crate::zql::ast::Expr::$operator(
+                crate::zql::ast::QualifiedField{
                     index: Some(IndexLink::default()),
                     field: $field.into()
                 },
-                crate::query_parser::ast::Term::ProximityChain(vec![$($parts),*])
+                crate::zql::ast::Term::ProximityChain(vec![$($parts),*])
             )
         };
     }
@@ -342,16 +342,16 @@ mod macros {
     #[allow(non_snake_case)]
     macro_rules! Within {
         ($left:expr, $distance:literal, $in_order:literal) => {
-            crate::query_parser::ast::ProximityPart {
+            crate::zql::ast::ProximityPart {
                 words: $left,
-                distance: Some(crate::query_parser::ast::ProximityDistance {
+                distance: Some(crate::zql::ast::ProximityDistance {
                     distance: $distance,
                     in_order: $in_order,
                 }),
             }
         };
         ($left:expr) => {
-            crate::query_parser::ast::ProximityPart {
+            crate::zql::ast::ProximityPart {
                 words: $left,
                 distance: None,
             }
@@ -361,31 +361,31 @@ mod macros {
     #[allow(non_snake_case)]
     macro_rules! Not {
         ($e:expr) => {
-            crate::query_parser::ast::Expr::Not(Box!($e))
+            crate::zql::ast::Expr::Not(Box!($e))
         };
     }
 
     #[allow(non_snake_case)]
     macro_rules! With {
         ($left:expr, $right:expr) => {
-            crate::query_parser::ast::Expr::WithList(vec![$left, $right])
+            crate::zql::ast::Expr::WithList(vec![$left, $right])
         };
     }
 
     #[allow(non_snake_case)]
     macro_rules! And {
         ($left:expr, $right:expr) => {
-            crate::query_parser::ast::Expr::AndList(vec![$left, $right])
+            crate::zql::ast::Expr::AndList(vec![$left, $right])
         };
         ($one:expr, $two:expr, $three:expr) => {
-            crate::query_parser::ast::Expr::AndList(vec![$one, $two, $three])
+            crate::zql::ast::Expr::AndList(vec![$one, $two, $three])
         };
     }
 
     #[allow(non_snake_case)]
     macro_rules! Or {
         ($left:expr, $right:expr) => {
-            crate::query_parser::ast::Expr::OrList(vec![$left, $right])
+            crate::zql::ast::Expr::OrList(vec![$left, $right])
         };
     }
 }
@@ -396,7 +396,7 @@ mod tests {
 
     use pgx::*;
 
-    use crate::query_parser::ast::{Expr, IndexLink, ParserError, QualifiedIndex};
+    use crate::zql::ast::{Expr, IndexLink, ParserError, QualifiedIndex};
 
     pub(super) fn parse(input: &str) -> Result<Expr, ParserError> {
         let mut used_fields = HashSet::new();

@@ -1,6 +1,6 @@
 use crate::elasticsearch::Elasticsearch;
-use crate::query_parser::ast::{IndexLink, ProximityPart, QualifiedField};
-use crate::query_parser::ast::{ProximityTerm, Term};
+use crate::zql::ast::{IndexLink, ProximityPart, QualifiedField};
+use crate::zql::ast::{ProximityTerm, Term};
 use levenshtein::*;
 use pgx::PgRelation;
 use pgx::*;
@@ -698,7 +698,7 @@ fn highlight_proximity(
 #[cfg(any(test, feature = "pg_test"))]
 mod tests {
     use crate::highlighting::document_highlighter::{DocumentHighlighter, TokenEntry};
-    use crate::query_parser::ast::Term;
+    use crate::zql::ast::Term;
     use pgx::*;
     use regex::Regex;
     use serde_json::*;

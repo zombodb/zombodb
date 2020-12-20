@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::query_parser::ast::{Expr, QualifiedField, Term};
+use crate::zql::ast::{Expr, QualifiedField, Term};
 
 pub fn expand_field_lists(e: &mut Expr, lists: &HashMap<String, Vec<QualifiedField>>) {
     match e {

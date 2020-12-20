@@ -1,4 +1,4 @@
-use crate::query_parser::ast::{Expr, ProximityTerm, QualifiedField, Term};
+use crate::zql::ast::{Expr, ProximityTerm, QualifiedField, Term};
 
 pub fn rewrite_proximity_chains(expr: &mut Expr) {
     match expr {

@@ -151,7 +151,7 @@ impl Elasticsearch {
             ArbitraryRequestType::DELETE => Elasticsearch::client().delete(&url),
         };
 
-        Elasticsearch::execute_json_request(request, post_data, |mut body| {
+        Elasticsearch::execute_json_request(request, post_data, |body| {
             let mut response = Vec::new();
             body.read_to_end(&mut response)
                 .expect("failed to read response stream");
@@ -385,12 +385,9 @@ impl Elasticsearch {
         response_parser: F,
     ) -> std::result::Result<R, ElasticsearchError>
     where
-        F: FnOnce(Box<dyn std::io::Read + Send>) -> std::result::Result<R, ElasticsearchError>,
+        F: FnOnce(&mut (dyn std::io::Read + Send)) -> std::result::Result<R, ElasticsearchError>,
     {
-        Elasticsearch::handle_response(
-            response_parser,
-            request.error_on_non_2xx(false).send(post_data),
-        )
+        Elasticsearch::handle_response(response_parser, request.send(post_data))
     }
 
     pub fn execute_json_request<F, R>(
@@ -399,14 +396,12 @@ impl Elasticsearch {
         response_parser: F,
     ) -> std::result::Result<R, ElasticsearchError>
     where
-        F: FnOnce(Box<dyn std::io::Read + Send>) -> std::result::Result<R, ElasticsearchError>,
+        F: FnOnce(&mut (dyn std::io::Read + Send)) -> std::result::Result<R, ElasticsearchError>,
     {
         let response = if post_data.is_some() {
-            request
-                .error_on_non_2xx(false)
-                .send_json(post_data.unwrap())
+            request.send_json(post_data.unwrap())
         } else {
-            request.error_on_non_2xx(false).call()
+            request.call()
         };
 
         Elasticsearch::handle_response(response_parser, response)
@@ -417,25 +412,22 @@ impl Elasticsearch {
         response: Result<ureq::Response, ureq::Error>,
     ) -> Result<R, ElasticsearchError>
     where
-        F: FnOnce(Box<dyn std::io::Read + Send>) -> std::result::Result<R, ElasticsearchError>,
+        F: FnOnce(&mut (dyn Read + Send)) -> std::result::Result<R, ElasticsearchError>,
     {
         match response {
             // the request was processed by ES, but maybe not successfully
             Ok(response) => {
-                let code = response.status();
-
-                if code != 200 {
-                    // it wasn't a valid response code
-                    Err(ElasticsearchError(
-                        Some(code),
-                        response
-                            .into_string()
-                            .expect("failed to convert response to a string"),
-                    ))
-                } else {
-                    response_parser(Box::new(std::io::BufReader::new(response.into_reader())))
-                }
+                let mut reader = std::io::BufReader::new(response.into_reader());
+                response_parser(&mut reader)
             }
+
+            // it wasn't a valid HTTP response code
+            Err(ureq::Error::Status(code, response)) => Err(ElasticsearchError(
+                Some(code),
+                response
+                    .into_string()
+                    .expect("failed to convert response to a string"),
+            )),
 
             // the request didn't reach ES
             Err(e) => Err(ElasticsearchError(None, e.to_string())),

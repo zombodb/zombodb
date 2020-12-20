@@ -1,9 +1,9 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::gucs::{ZDB_DEFAULT_ELASTICSEARCH_URL, ZDB_DEFAULT_REPLICAS};
-use crate::query_parser::ast::{IndexLink, QualifiedField};
-use crate::query_parser::transformations::field_finder::find_link_for_field;
-use crate::query_parser::{parse_field_lists, INDEX_LINK_PARSER};
 use crate::utils::find_zdb_index;
+use crate::zql::ast::{IndexLink, QualifiedField};
+use crate::zql::transformations::field_finder::find_link_for_field;
+use crate::zql::{parse_field_lists, INDEX_LINK_PARSER};
 use lazy_static::*;
 use memoffset::*;
 use pgx::pg_sys::AsPgCStr;

@@ -1,5 +1,5 @@
-use crate::query_parser::ast::{Expr, IndexLink, QualifiedField};
-use crate::query_parser::transformations::field_finder::find_link_for_field;
+use crate::zql::ast::{Expr, IndexLink, QualifiedField};
+use crate::zql::transformations::field_finder::find_link_for_field;
 
 pub(crate) fn expand(expr: &mut Expr, root_index: &IndexLink, indexes: &Vec<IndexLink>) {
     match expr {

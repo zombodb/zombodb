@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use pgx::PgRelation;
 
-use crate::query_parser::ast::Expr;
 use crate::utils::is_nested_field;
+use crate::zql::ast::Expr;
 
 pub fn group_nested(index: &Option<&PgRelation>, expr: &mut Expr) {
     match expr {

@@ -1,6 +1,6 @@
 # Query Syntax
 
-The ZomboDB query syntax is designed with many conveniences for text-search operations.
+ZQL is designed with many conveniences for text-search operations.
 
 An example query might look like:
 
@@ -160,11 +160,12 @@ Symbol | Description
 `:~`     | field contains terms matching a [regular expression](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-regexp-query.html#regexp-syntax).  Note that regular expression searches are always **case sensitive**.
 `:@`     | ["more like this"](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-mlt-query.html)
 `:@~`    | ["fuzzy like this"](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-flt-field-query.html)
-`==>`    | uses the ["match query"](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-match-query.html)
+`==>`    | field "matches" the term, using Elasticsearch's ["match query"](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-match-query.html)
 
 ### Keywords
 
-The list of keywords is very short: `with`, `and`, `or`, `not`, and `null`.  To use one of these as a search term, simply quote it.
+The list of keywords is very short: `with`, `and`, `or`, `not`, `null`, `true`, and `false`.  
+To use one of these as a search term, simply quote it.
 
 
 ## Value Lists (`[]` and `[[]]`)

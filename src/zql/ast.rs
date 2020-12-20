@@ -11,20 +11,18 @@ pub use pg_catalog::ProximityTerm;
 
 use crate::access_method::options::ZDBIndexOptions;
 use crate::elasticsearch::Elasticsearch;
-use crate::query_parser::parser::Token;
-use crate::query_parser::relationship_manager::RelationshipManager;
-use crate::query_parser::transformations::expand::expand;
-use crate::query_parser::transformations::expand_index_links::{
-    expand_index_links, merge_adjacent_links,
-};
-use crate::query_parser::transformations::field_finder::{find_fields, find_link_for_field};
-use crate::query_parser::transformations::field_lists::expand_field_lists;
-use crate::query_parser::transformations::index_links::assign_links;
-use crate::query_parser::transformations::nested_groups::group_nested;
-use crate::query_parser::transformations::prox_rewriter::rewrite_proximity_chains;
-use crate::query_parser::transformations::retarget::retarget_expr;
-use crate::query_parser::{INDEX_LINK_PARSER, ZDB_QUERY_PARSER};
 use crate::utils::{find_zdb_index, get_null_copy_to_fields, get_search_analyzer};
+use crate::zql::parser::Token;
+use crate::zql::relationship_manager::RelationshipManager;
+use crate::zql::transformations::expand::expand;
+use crate::zql::transformations::expand_index_links::{expand_index_links, merge_adjacent_links};
+use crate::zql::transformations::field_finder::{find_fields, find_link_for_field};
+use crate::zql::transformations::field_lists::expand_field_lists;
+use crate::zql::transformations::index_links::assign_links;
+use crate::zql::transformations::nested_groups::group_nested;
+use crate::zql::transformations::prox_rewriter::rewrite_proximity_chains;
+use crate::zql::transformations::retarget::retarget_expr;
+use crate::zql::{INDEX_LINK_PARSER, ZDB_QUERY_PARSER};
 
 #[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ProximityDistance {
@@ -45,7 +43,7 @@ pub mod pg_catalog {
     use pgx::*;
     use serde::{Deserialize, Serialize};
 
-    use crate::query_parser::ast::ProximityDistance;
+    use crate::zql::ast::ProximityDistance;
 
     #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
     pub enum ProximityTerm {
@@ -179,7 +177,7 @@ pub enum Expr<'input> {
 }
 
 impl<'input> Term<'input> {
-    pub(in crate::query_parser) fn maybe_make_wildcard_or_regex(
+    pub(in crate::zql) fn maybe_make_wildcard_or_regex(
         opcode: Option<&ComparisonOpcode>,
         s: &'input str,
         b: Option<f32>,
@@ -542,7 +540,7 @@ impl<'input> Expr<'input> {
         Ok(expr)
     }
 
-    pub(in crate::query_parser) fn from_opcode(
+    pub(in crate::zql) fn from_opcode(
         field: &'input str,
         opcode: ComparisonOpcode,
         right: Term<'input>,
@@ -568,7 +566,7 @@ impl<'input> Expr<'input> {
         }
     }
 
-    pub(in crate::query_parser) fn range_from_opcode(
+    pub(in crate::zql) fn range_from_opcode(
         field: &'input str,
         opcode: ComparisonOpcode,
         start: &'input str,
@@ -590,7 +588,7 @@ impl<'input> Expr<'input> {
         }
     }
 
-    pub(in crate::query_parser) fn extract_prox_terms(
+    pub(in crate::zql) fn extract_prox_terms(
         &self,
         index: Option<&PgRelation>,
     ) -> Vec<ProximityTerm> {

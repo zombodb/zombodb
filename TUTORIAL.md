@@ -178,7 +178,7 @@ tutorial=#
 tutorial=# 
 ```
 
-From here, it's just a matter of coming up with a full-text query to answer your question.  See the [Query Syntax documentation](QUERY-SYNTAX.md) or the [DSL Query Builder documenation](QUERY-DSL.md) for details on what the full-text query syntax can do.
+From here, it's just a matter of coming up with a full-text query to answer your question.  See the [Query Syntax documentation](ZQL.md) or the [DSL Query Builder documenation](QUERY-DSL.md) for details on what the full-text query syntax can do.
 
 
 ## Summary

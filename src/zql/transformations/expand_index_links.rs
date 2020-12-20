@@ -1,5 +1,5 @@
-use crate::query_parser::ast::{Expr, IndexLink};
-use crate::query_parser::relationship_manager::RelationshipManager;
+use crate::zql::ast::{Expr, IndexLink};
+use crate::zql::relationship_manager::RelationshipManager;
 // use indexmap::IndexMap;
 use std::collections::HashMap as IndexMap;
 pub fn expand_index_links(

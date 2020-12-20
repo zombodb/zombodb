@@ -1,5 +1,5 @@
 use crate::highlighting::document_highlighter::*;
-use crate::query_parser::ast::{Expr, QualifiedField, Term};
+use crate::zql::ast::{Expr, QualifiedField, Term};
 use pgx::*;
 use pgx::{JsonB, PgRelation};
 use serde_json::Value;
@@ -353,7 +353,7 @@ fn highlight_document(
 #[cfg(any(test, feature = "pg_test"))]
 mod tests {
     use crate::highlighting::query_highlighter::QueryHighligther;
-    use crate::query_parser::ast::Expr;
+    use crate::zql::ast::Expr;
     use pgx::*;
     use serde_json::*;
     use std::collections::HashSet;
