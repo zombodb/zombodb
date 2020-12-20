@@ -9,7 +9,7 @@ _type-conversions.sql
 access_method_mod.generated.sql
 zdbquery_opclass.generated.sql
 misc_mod.generated.sql
-query_parser_ast.generated.sql
+zql_ast.generated.sql
 query_dsl_term.generated.sql
 query_dsl_terms.generated.sql
 query_dsl_prefix.generated.sql
@@ -69,11 +69,7 @@ _support-views.sql
 _join-support.sql
 highlighting_es_highlighting.generated.sql
 highlighting_query_highlighter.generated.sql
-query_parser_dsl_mod.generated.sql
-_finalize.sql
-query_dsl_zdb.generated.sql
+zql_dsl_mod.generated.sql
 elasticsearch_suggest_term.generated.sql
-elasticsearch_search.generated.sql
-gucs_mod.generated.sql
-mapping_mod.generated.sql
-query_parser_mod.generated.sql
+query_dsl_zdb.generated.sql
+_finalize.sql
