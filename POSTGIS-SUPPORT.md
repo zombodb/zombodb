@@ -11,7 +11,7 @@ If the `postgis` extension is already enabled when you install the ZomboDB plugi
 If the PostGIS plugin is installed after ZomboDB, you will need to run ```SELECT zdb.enable_postgis_support()``` to enable support for `postgis` in ZomboDB. If ZomboDB was able to detect the PostGIS extension, the above will return `true`.  Otherwise it'll return `false`.
 
 ## Supported Coordinate Reference Systems
-While PostGIS supports a plethora of coordinate systems, the current release of ElasticSearch(**6.6.1**) only supports [WGS84](https://epsg.io/4326). To bridge the CRS gap between the two products, ZomboDB creates casts from `postgis`'s `geography` and `geometry` types to `json` using `ST_AsGeoJSON()` and uses `ST_Translate()` to convert coordinates from their source CRS to [WGS84](https://epsg.io/4326) for storage in the ElasticSearch index.
+While PostGIS supports a plethora of coordinate systems, the current release of ElasticSearch(**6.6.1**) only supports [WGS84](https://epsg.io/4326). To bridge the CRS gap between the two products, ZomboDB creates casts from `postgis`'s `geography` and `geometry` types to `json` using `ST_AsGeoJSON()` and uses `ST_Transform()` to convert coordinates from their source CRS to [WGS84](https://epsg.io/4326) for storage in the ElasticSearch index.
 
 ## Examples and Sample Data
 There are two sample sets. 
@@ -123,11 +123,11 @@ WHERE sample_data_4326 ==>
       dsl.geo_shape('geom', st_asgeojson((SELECT geom FROM realescout.sample_data_4326 WHERE "HCAD_NUM" = '1292500000054'))::json,'INTERSECTS');
 ```
 
-Above, we select the `geom` field encompassing it in the ST_AsGeoJSON() function and cast it as JSON to pass to the `dsl.geo_shape` query. This is nice for when you have predefined shapes in the database. For example, if I had an additional table called `zip_codes` with the geometry for all of the zip codes in the dataset stored there, I could do aggregation or selections of items in that zip code based on the shape.
+Above, we select the `geom` field encompassing it in the `ST_AsGeoJSON()` function and cast it as JSON to pass to the `dsl.geo_shape` query. This is nice for when you have predefined shapes in the database. For example, if I had an additional table called `zip_codes` with the geometry for all of the zip codes in the dataset stored there, I could do aggregation or selections of items in that zip code based on the shape.
 
 ## Notes
 - All queries using ZDB's spatialized index data need to be in CRS `WGS84 - EPSG:4326`
-- During indexing, ZomboDB automatically converts `geography` and `geometry` to `json` (using `ST_AsGeoJSON`) and automatically uses `ST_Translate()` to translate them to CRS `4326`
+- During indexing, ZomboDB automatically converts `geography` and `geometry` to `json` (using `ST_AsGeoJSON`) and automatically uses `ST_Transform()` to transform them to CRS `4326`
 - Queries using ZDB's `dsl.geo_shape()` function need to be in CRS `4326`
 - The `CONTAINS` shape relationship has been removed from Elasticsearch 6.6
 - Postgres' `point` type is automatically mapped to the Elasticsearch `geo_point` type and can be queried with `dsl.geo_bounding_box()` and `dsl.geo_polygon()` queries
