@@ -44,3 +44,8 @@ FROM field_mapping
 WHERE mapping ->> 'type' = 'text'
   and mapping ->> 'copy_to' is null
 $$;
+
+CREATE FUNCTION version() RETURNS TABLE (schema_version text, internal_version text) LANGUAGE sql AS $$
+SELECT zdb.schema_version(), zdb.internal_version();
+$$;
+
