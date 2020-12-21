@@ -119,20 +119,6 @@ pub fn expr_to_dsl(
                 let index_options = ZDBIndexOptions::from_relation(&target_relation);
                 let es_index_name = index_options.index_name();
 
-                query_dsl = if ZDB_IGNORE_VISIBILITY.get() {
-                    query_dsl
-                } else {
-                    let visibility_clause = build_visibility_clause(es_index_name);
-                    json! {
-                        {
-                            "bool": {
-                                "must": [query_dsl],
-                                "filter": [visibility_clause]
-                            }
-                        }
-                    }
-                };
-
                 let mut left_field = link.left_field.clone().expect("no left field");
                 if left_field.contains('.') {
                     let mut parts = left_field.splitn(2, '.');
@@ -141,7 +127,23 @@ pub fn expr_to_dsl(
                 }
 
                 if ZDB_ACCELERATOR.get() {
-                    // the search accelerator is said to installed, so lets use it to solve the join
+                    // the search accelerator is said to be installed, so lets use it to solve the join
+
+                    // and we only need to apply the visibility filter if we're using the accelerator
+                    query_dsl = if ZDB_IGNORE_VISIBILITY.get() {
+                        query_dsl
+                    } else {
+                        let visibility_clause = build_visibility_clause(es_index_name);
+                        json! {
+                            {
+                                "bool": {
+                                    "must": [query_dsl],
+                                    "filter": [visibility_clause]
+                                }
+                            }
+                        }
+                    };
+
                     json! {
                         {
                             "subselect": {
