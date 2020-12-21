@@ -1,5 +1,5 @@
 use crate::executor_manager::get_executor_manager;
-use pgx::pg_sys::AsPgCStr;
+use pgx::pg_sys::{AsPgCStr, MaxOffsetNumber};
 use pgx::*;
 use std::ffi::CStr;
 
@@ -30,23 +30,25 @@ fn zdb_update_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
         error!("zdb_update_trigger: called with incorrect number of arguments");
     }
 
-    let args =
-        unsafe { std::slice::from_raw_parts(tg_trigger.tgargs, tg_trigger.tgnargs as usize) };
-    let index_relid_str = unsafe { CStr::from_ptr(args[0] as *const i8) }
-        .to_str()
-        .unwrap();
-    let index_relid = str::parse::<pg_sys::Oid>(index_relid_str).expect("malformed oid");
+    unsafe {
+        let args = std::slice::from_raw_parts(tg_trigger.tgargs, tg_trigger.tgnargs as usize);
+        let index_relid_str = CStr::from_ptr(args[0] as *const i8).to_str().unwrap();
+        let index_relid = str::parse::<pg_sys::Oid>(index_relid_str).expect("malformed oid");
+        let mut tid = (*trigdata.tg_trigtuple).t_self;
 
-    let bulk = get_executor_manager().checkout_bulk_context(index_relid);
-    bulk.bulk
-        .update(
-            (unsafe { *trigdata.tg_trigtuple }).t_self,
-            unsafe { pg_sys::GetCurrentCommandId(true) },
-            xid_to_64bit(unsafe { pg_sys::GetCurrentTransactionId() }),
-        )
-        .expect("failed to queue index update command");
+        maybe_find_hot_root(&trigdata, &mut tid);
 
-    trigdata.tg_newtuple as pg_sys::Datum
+        let bulk = get_executor_manager().checkout_bulk_context(index_relid);
+        bulk.bulk
+            .update(
+                tid,
+                pg_sys::GetCurrentCommandId(true),
+                xid_to_64bit(pg_sys::GetCurrentTransactionId()),
+            )
+            .expect("failed to queue index update command");
+
+        trigdata.tg_newtuple as pg_sys::Datum
+    }
 }
 
 /// ```sql
@@ -76,23 +78,69 @@ fn zdb_delete_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
         error!("zdb_delete_trigger: called with incorrect number of arguments");
     }
 
-    let args =
-        unsafe { std::slice::from_raw_parts(tg_trigger.tgargs, tg_trigger.tgnargs as usize) };
-    let index_relid_str = unsafe { CStr::from_ptr(args[0] as *const i8) }
-        .to_str()
-        .unwrap();
-    let index_relid = str::parse::<pg_sys::Oid>(index_relid_str).expect("malformed oid");
+    unsafe {
+        let args = std::slice::from_raw_parts(tg_trigger.tgargs, tg_trigger.tgnargs as usize);
+        let index_relid_str = CStr::from_ptr(args[0] as *const i8).to_str().unwrap();
+        let index_relid = str::parse::<pg_sys::Oid>(index_relid_str).expect("malformed oid");
+        let mut tid = (*trigdata.tg_trigtuple).t_self;
 
-    let bulk = get_executor_manager().checkout_bulk_context(index_relid);
-    bulk.bulk
-        .update(
-            (unsafe { *trigdata.tg_trigtuple }).t_self,
-            unsafe { pg_sys::GetCurrentCommandId(true) },
-            xid_to_64bit(unsafe { pg_sys::GetCurrentTransactionId() }),
-        )
-        .expect("failed to queue index delete command");
+        maybe_find_hot_root(&trigdata, &mut tid);
 
-    trigdata.tg_trigtuple as pg_sys::Datum
+        let bulk = get_executor_manager().checkout_bulk_context(index_relid);
+        bulk.bulk
+            .update(
+                tid,
+                pg_sys::GetCurrentCommandId(true),
+                xid_to_64bit(pg_sys::GetCurrentTransactionId()),
+            )
+            .expect("failed to queue index delete command");
+
+        trigdata.tg_trigtuple as pg_sys::Datum
+    }
+}
+
+#[inline]
+unsafe fn maybe_find_hot_root(
+    trigdata: &PgBox<pg_sys::TriggerData>,
+    mut tid: &mut pg_sys::ItemPointerData,
+) {
+    if pg_sys::HeapTupleHeaderIsHeapOnly((*trigdata.tg_trigtuple).t_data) {
+        let mut buf = 0 as pg_sys::Buffer;
+        #[cfg(any(feature = "pg10", feature = "pg11"))]
+        let found_tuple = pg_sys::heap_fetch(
+            (*trigdata).tg_relation,
+            pg_sys::GetTransactionSnapshot(),
+            trigdata.tg_trigtuple,
+            &mut buf,
+            false,
+            std::ptr::null_mut(),
+        );
+
+        #[cfg(any(feature = "pg12", feature = "pg13"))]
+        let found_tuple = pg_sys::heap_fetch(
+            (*trigdata).tg_relation,
+            pg_sys::GetTransactionSnapshot(),
+            trigdata.tg_trigtuple,
+            &mut buf,
+        );
+
+        if found_tuple {
+            let mut root_offsets: [pg_sys::OffsetNumber; MaxOffsetNumber as usize] =
+                [0; MaxOffsetNumber as usize];
+
+            let page = pg_sys::BufferGetPage(buf);
+
+            pg_sys::LockBuffer(buf, pg_sys::BUFFER_LOCK_SHARE as i32);
+            pg_sys::heap_get_root_tuples(page, root_offsets.as_mut_ptr());
+            pg_sys::LockBuffer(buf, pg_sys::BUFFER_LOCK_UNLOCK as i32);
+            pg_sys::ReleaseBuffer(buf);
+
+            let (blockno, offno) = item_pointer_get_both((*trigdata.tg_trigtuple).t_self);
+            let root_offno = root_offsets[(offno - 1) as usize];
+            *tid = tid.clone();
+            item_pointer_set_all(&mut tid, blockno, root_offno);
+        }
+    }
 }
 
 pub fn create_triggers(index_relation: &PgRelation) {
