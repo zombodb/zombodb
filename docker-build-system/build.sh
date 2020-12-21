@@ -30,6 +30,7 @@ if [ "x${CPUS}" == "x" ] ; then
 fi
 
 # trash any old target dir we might have
+echo "Removing old target directory"
 rm -rf ${TARGET_DIR} > /dev/null
 
 mkdir -p $LOGDIR > /dev/null
