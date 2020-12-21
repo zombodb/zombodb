@@ -478,8 +478,12 @@ fn request(
     endpoint: &str,
     method: default!(ArbitraryRequestType, "'GET'"),
     post_data: Option<default!(JsonB, "NULL")>,
-) -> String {
+    null_on_error: Option<default!(bool, false)>,
+) -> Option<String> {
     let es = Elasticsearch::new(&index);
-    es.arbitrary_request(method, endpoint, post_data.map_or(None, |v| Some(v.0)))
-        .expect("failed to execute arbitrary request")
+    match es.arbitrary_request(method, endpoint, post_data.map_or(None, |v| Some(v.0))) {
+        Ok(response) => Some(response),
+        Err(_) if null_on_error.unwrap_or(false) => None,
+        Err(e) => panic!("{:?}", e),
+    }
 }
