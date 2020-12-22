@@ -2,6 +2,9 @@ use pgx::JsonB;
 use serde_json::Value;
 use std::collections::HashMap;
 
+mod date_histogram;
+mod filter;
+mod filters;
 mod metrics;
 mod terms;
 
