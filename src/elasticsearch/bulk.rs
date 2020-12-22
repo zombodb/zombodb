@@ -3,6 +3,7 @@ use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
 use crate::executor_manager::get_executor_manager;
 use crate::gucs::ZDB_LOG_LEVEL;
 use crate::json::builder::JsonBuilder;
+use crossbeam_channel::TrySendError;
 use pgx::*;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -576,7 +577,7 @@ impl Handler {
     ) -> Self {
         // NB:  creating a large (queue_size * concurrency) bounded channel
         // is quite slow.  Going with 2 * concurrency, which should be twice the number of index shards
-        let (tx, rx) = crossbeam_channel::bounded((2 * concurrency).max(4));
+        let (tx, rx) = crossbeam_channel::bounded(2 * concurrency);
 
         Handler {
             terminatd: Arc::new(AtomicBool::new(false)),
@@ -597,7 +598,7 @@ impl Handler {
 
     pub fn queue_command(
         &mut self,
-        command: BulkRequestCommand<'static>,
+        mut command: BulkRequestCommand<'static>,
     ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand<'static>>> {
         match &command {
             BulkRequestCommand::Insert { .. } | BulkRequestCommand::Update { .. } => {
@@ -609,8 +610,43 @@ impl Handler {
             _ => {}
         }
 
-        // send the command
-        self.bulk_sender.as_ref().unwrap().send(command)?;
+        // try to send the command to a background thread
+        while let Err(e) = self.bulk_sender.as_ref().unwrap().try_send(command) {
+            match e {
+                // the channel is full, so lets see if we can figure out why?
+                TrySendError::Full(full_command) => {
+                    if self.terminatd.load(Ordering::SeqCst) {
+                        // We're all done because we've been asked to terminate
+                        //
+                        // Drop the sender and ultimately return an error
+                        //
+                        // The reason could be an error from a background thread or it could
+                        // be through a Postgres command interrupt (^C)
+                        //
+                        // We drop the bulk_sender to ensure that if there's a subsequent call
+                        // to .queue_command(), it'll just fail with a TrySendError::Disconnected.
+                        // In practice this shouldn't happen as callers to .queue_command() should
+                        // be properly handling the Result
+                        drop(self.bulk_sender.take());
+
+                        self.check_for_error(); // this will just panic if there's an error
+
+                        // if there's not an error, we'll just return a generic error
+                        // because we've been asked to terminate so there's no point in trying again
+                        return Err(crossbeam_channel::SendError(full_command));
+                    }
+
+                    // we'll loop around and try again
+                    command = full_command;
+                    check_for_interrupts!();
+                }
+
+                // the channel is disconnected, so return an error
+                TrySendError::Disconnected(disconnected_command) => {
+                    return Err(crossbeam_channel::SendError(disconnected_command));
+                }
+            }
+        }
 
         // now determine if we need to start a new thread to handle what's in the queue
         let nthreads = self.active_threads.load(Ordering::SeqCst);
@@ -636,7 +672,7 @@ impl Handler {
 
     fn create_thread(&self, _thread_id: usize) -> JoinHandle<usize> {
         let base_url = self.elasticsearch.base_url();
-        let rx = self.bulk_receiver.clone();
+        let bulk_receiver = self.bulk_receiver.clone();
         let in_flight = self.in_flight.clone();
         let error = self.error_sender.clone();
         let terminated = self.terminatd.clone();
@@ -653,22 +689,22 @@ impl Handler {
                     break;
                 }
 
-                let first = Some(match rx.recv_timeout(Duration::from_millis(333)) {
-                    Ok(command) => command,
+                let first = match bulk_receiver.recv_timeout(Duration::from_millis(333)) {
+                    Ok(command) => Some(command),
                     Err(_) => {
                         // we don't have a first command to deal with on this iteration b/c
                         // the channel has been shutdown.  we're simply out of records
                         // and can safely break out
                         break;
                     }
-                });
+                };
 
                 let docs_out = Arc::new(AtomicUsize::new(0));
                 let reader = BulkReceiver {
                     terminated: terminated.clone(),
                     first,
                     in_flight: in_flight.clone(),
-                    receiver: rx.clone(),
+                    receiver: bulk_receiver.clone(),
                     batch_size,
                     bytes_out: 0,
                     docs_out: docs_out.clone(),
@@ -676,7 +712,10 @@ impl Handler {
                     buffer: Vec::new(),
                 };
 
-                let url = format!("{}/_bulk?filter_path={}", base_url, BULK_FILTER_PATH);
+                let url = format!(
+                    "{}/_bulk?format=cbor&filter_path={}",
+                    base_url, BULK_FILTER_PATH
+                );
                 if let Err(e) = Elasticsearch::execute_request(
                     Elasticsearch::client()
                         .post(&url)
@@ -697,28 +736,39 @@ impl Handler {
 
                         // NB:  this is stupid that ES forces us to parse the response for requests
                         // that contain an error, but here we are
-                        let response: BulkResponse =
-                            serde_json::from_reader(body).expect("invalid _bulk response");
+                        let result: serde_cbor::Result<BulkResponse> =
+                            serde_cbor::from_reader(body);
+                        match result {
+                            // result deserialized okay, lets see if it's what we need
+                            Ok(response) => {
+                                if !response.errors.unwrap_or(false) && response.error.is_none() {
+                                    successful_requests.fetch_add(1, Ordering::SeqCst);
+                                    Ok(())
+                                } else {
+                                    // yup, the response contains an error
+                                    Err(ElasticsearchError(
+                                        Some(200), // but it was given to us as a 200 OK, otherwise we wouldn't be here at all
+                                        match serde_json::to_string(&response) {
+                                            Ok(s) => s,
+                                            Err(e) => format!("{:?}", e),
+                                        },
+                                    ))
+                                }
+                            }
 
-                        if !response.errors.unwrap_or(false) && response.error.is_none() {
-                            successful_requests.fetch_add(1, Ordering::SeqCst);
-                            Ok(())
-                        } else {
-                            // yup, the response contains an error
-                            Err(ElasticsearchError(
-                                Some(200), // but it was given to us as a 200 OK, otherwise we wouldn't be here at all
-                                serde_json::to_string(&response)
-                                    .expect("failed to convert _bulk response errors to a string"),
-                            ))
+                            // couldn't deserialize the result
+                            Err(e) => Err(ElasticsearchError(Some(200), format!("{:?}", e))),
                         }
                     },
                 ) {
                     // we received an error, so there's no need for any other active thread to expect
                     // to be able to use the receiver anymore
-                    drop(rx);
+                    drop(bulk_receiver);
 
                     // send the error back to the main thread
-                    return Handler::send_error(error, e.status(), e.message(), total_docs_out);
+                    terminated.store(true, Ordering::SeqCst);
+                    Handler::send_error(error, e.status(), e.message());
+                    break;
                 }
 
                 let docs_out = docs_out.load(Ordering::SeqCst);
@@ -741,15 +791,13 @@ impl Handler {
         sender: crossbeam_channel::Sender<BulkRequestError>,
         code: Option<u16>,
         message: &str,
-        total_docs_out: usize,
-    ) -> usize {
+    ) {
         sender
             .send(BulkRequestError::IndexingError(format!(
                 "code={:?}, {}",
                 code, message
             )))
-            .expect("failed to send error over channel");
-        total_docs_out
+            .ok(); // best attempt to send the error
     }
 
     pub fn wait_for_completion(mut self) -> Result<usize, BulkRequestError> {
