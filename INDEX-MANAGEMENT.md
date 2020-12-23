@@ -49,7 +49,7 @@ Type: string
 Default: zdb.default_elasticsearch_url
 ```
 
-The Elasticsearch Cluster URL for the index.  This option is required, but can be ommitted if the `postgresql.conf` setting `zdb.default_elasticsearch_url` is set.  This option can be changed with `ALTER INDEX`, but you must be a Postgres superuser to do so.
+The Elasticsearch Cluster URL for the index.  This option is required, but can be omitted if the `postgresql.conf` setting `zdb.default_elasticsearch_url` is set.  This option can be changed with `ALTER INDEX`, but you must be a Postgres superuser to do so.
 
 The value must end with a forward slash (`/`).
 
