@@ -19,6 +19,7 @@ pub struct BulkContext {
     pub bulk: ElasticsearchBulkRequest,
     pub attributes: Vec<CategorizedAttribute<'static>>,
     pub tupdesc: &'static PgTupleDesc<'static>,
+    pub is_shadow: bool,
 }
 
 pub struct QueryState {
@@ -271,7 +272,11 @@ impl ExecutorManager {
         if let Some(bulk_requests) = self.bulk_requests.take() {
             let mut replacement_requests = HashMap::with_capacity(bulk_requests.capacity());
 
-            for (key, bulk) in bulk_requests.into_iter() {
+            for (key, bulk) in bulk_requests
+                .into_iter()
+                .filter(|(_, bulk)| !bulk.is_shadow)
+            // shadow indexes don't change anything
+            {
                 let elasticsearch = bulk.elasticsearch;
                 let attributes = bulk.attributes;
                 let tupdesc = bulk.tupdesc;
@@ -288,6 +293,7 @@ impl ExecutorManager {
                         bulk,
                         attributes,
                         tupdesc,
+                        is_shadow: false,
                     },
                 );
             }
@@ -299,7 +305,11 @@ impl ExecutorManager {
     fn finalize_bulk_requests(&mut self) {
         if let Some(bulk_requests) = self.bulk_requests.take() {
             // finish any of the bulk requests we have going on
-            for (_, mut bulk) in bulk_requests.into_iter() {
+            for (_, mut bulk) in bulk_requests
+                .into_iter()
+                .filter(|(_, bulk)| !bulk.is_shadow)
+            // shadow indexes don't do anything
+            {
                 for xid in self.xids.as_ref().unwrap().iter() {
                     bulk.bulk
                         .transaction_committed(*xid)
@@ -316,7 +326,11 @@ impl ExecutorManager {
     fn terminate_bulk_requests(&mut self) {
         // forcefully terminate any of the bulk requests we have going on
         if let Some(bulk_requests) = self.bulk_requests.take() {
-            for (_, bulk) in bulk_requests.into_iter() {
+            for (_, bulk) in bulk_requests
+                .into_iter()
+                .filter(|(_, bulk)| !bulk.is_shadow)
+            // shadow indexes don't do anything
+            {
                 bulk.bulk.terminate_now();
             }
         }
@@ -378,13 +392,18 @@ impl ExecutorManager {
                 get_executor_manager().hooks_registered = true;
             }
 
-            // mark xids that are already known to be in progress as
-            // also in progress for this new bulk context too
+            let is_shadow = elasticsearch.is_shadow_index();
             let mut bulk = elasticsearch.start_bulk();
-            if let Some(xids) = xids.as_ref() {
-                for xid in xids {
-                    bulk.transaction_in_progress(*xid)
-                        .expect("Failed to mark transaction as in progress for new bulk");
+
+            // only non-shadow indexes are written to
+            if !is_shadow {
+                // mark xids that are already known to be in progress as
+                // also in progress for this new bulk context too
+                if let Some(xids) = xids.as_ref() {
+                    for xid in xids {
+                        bulk.transaction_in_progress(*xid)
+                            .expect("Failed to mark transaction as in progress for new bulk");
+                    }
                 }
             }
 
@@ -393,6 +412,7 @@ impl ExecutorManager {
                 bulk,
                 attributes,
                 tupdesc,
+                is_shadow,
             }
         })
     }

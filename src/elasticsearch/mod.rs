@@ -111,6 +111,10 @@ impl Elasticsearch {
         self.options.heap_relation()
     }
 
+    pub fn is_shadow_index(&self) -> bool {
+        self.options.is_shadow_index()
+    }
+
     pub fn client() -> &'static ureq::Agent {
         lazy_static::lazy_static! {
             static ref AGENT: ureq::Agent = {

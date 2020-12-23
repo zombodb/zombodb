@@ -39,13 +39,15 @@ fn zdb_update_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
         maybe_find_hot_root(&trigdata, &mut tid);
 
         let bulk = get_executor_manager().checkout_bulk_context(index_relid);
-        bulk.bulk
-            .update(
-                tid,
-                pg_sys::GetCurrentCommandId(true),
-                xid_to_64bit(pg_sys::GetCurrentTransactionId()),
-            )
-            .expect("failed to queue index update command");
+        if !bulk.is_shadow {
+            bulk.bulk
+                .update(
+                    tid,
+                    pg_sys::GetCurrentCommandId(true),
+                    xid_to_64bit(pg_sys::GetCurrentTransactionId()),
+                )
+                .expect("failed to queue index update command");
+        }
 
         trigdata.tg_newtuple as pg_sys::Datum
     }
@@ -87,13 +89,15 @@ fn zdb_delete_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
         maybe_find_hot_root(&trigdata, &mut tid);
 
         let bulk = get_executor_manager().checkout_bulk_context(index_relid);
-        bulk.bulk
-            .update(
-                tid,
-                pg_sys::GetCurrentCommandId(true),
-                xid_to_64bit(pg_sys::GetCurrentTransactionId()),
-            )
-            .expect("failed to queue index delete command");
+        if !bulk.is_shadow {
+            bulk.bulk
+                .update(
+                    tid,
+                    pg_sys::GetCurrentCommandId(true),
+                    xid_to_64bit(pg_sys::GetCurrentTransactionId()),
+                )
+                .expect("failed to queue index delete command");
+        }
 
         trigdata.tg_trigtuple as pg_sys::Datum
     }

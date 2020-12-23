@@ -179,6 +179,11 @@ pub unsafe extern "C" fn aminsert(
 ) -> bool {
     let index_relation = PgRelation::from_pg(index_relation);
     let bulk = get_executor_manager().checkout_bulk_context(index_relation.oid());
+    if bulk.is_shadow {
+        // shadow indexes don't do anything
+        return false;
+    }
+
     let values = std::slice::from_raw_parts(values, 1);
     let builder = row_to_json(values[0], bulk.tupdesc, &bulk.attributes);
     let cmin = pg_sys::GetCurrentCommandId(true);
