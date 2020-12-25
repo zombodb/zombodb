@@ -1,4 +1,5 @@
 use crate::json::builder::JsonBuilder;
+use crate::json::utils::escape_json;
 use crate::utils::type_is_domain;
 use pgx::*;
 use serde_json::*;
@@ -421,8 +422,11 @@ pub fn categorize_tupdesc<'a>(
                 .insert(attname.to_owned(), definition);
         }
 
+        let mut json_attname = String::with_capacity(attname.len());
+        escape_json(attname, &mut json_attname);
+        let attname = PgMemoryContexts::TopTransactionContext.leak_and_drop_on_delete(json_attname);
         categorized_attributes.push(CategorizedAttribute {
-            attname,
+            attname: unsafe { attname.as_ref().unwrap() },
             typoid: typoid.value(),
             conversion_func,
         });
