@@ -164,7 +164,7 @@ pub fn expr_to_dsl(
                         target_relation,
                         link.right_field.as_ref().unwrap(),
                         terms_query,
-                        Some(2147483647),
+                        Some(i32::MAX),
                         None,
                     );
 
