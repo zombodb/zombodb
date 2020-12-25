@@ -52,10 +52,11 @@ impl ElasticsearchCreateIndexRequest {
               "number_of_replicas": 0,
               "refresh_interval": "-1",
               "query.default_field": "zdb_all",
-              "translog.durability": self.elasticsearch.options.translog_durability(),
+              "translog.durability": "async",
               "mapping.nested_fields.limit": self.elasticsearch.options.nested_fields_limit(),
               "mapping.total_fields.limit": self.elasticsearch.options.total_fields_limit(),
-              "max_result_window": self.elasticsearch.options.max_result_window()
+              "max_result_window": self.elasticsearch.options.max_result_window(),
+              "max_terms_count": self.elasticsearch.options.max_terms_count()
             } }
         } else {
             // we can do an index-level sort on zdb_ctid:asc
@@ -64,12 +65,13 @@ impl ElasticsearchCreateIndexRequest {
               "number_of_replicas": 0,
               "refresh_interval": "-1",
               "query.default_field": "zdb_all",
-              "translog.durability": self.elasticsearch.options.translog_durability(),
+              "translog.durability": "async",
               "mapping.nested_fields.limit": self.elasticsearch.options.nested_fields_limit(),
               "mapping.total_fields.limit": self.elasticsearch.options.total_fields_limit(),
+              "max_result_window": self.elasticsearch.options.max_result_window(),
+              "max_terms_count": self.elasticsearch.options.max_terms_count(),
               "sort.field": "zdb_ctid",
-              "sort.order": "asc",
-              "max_result_window": self.elasticsearch.options.max_result_window()
+              "sort.order": "asc"
             } }
         };
 

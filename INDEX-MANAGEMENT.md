@@ -149,11 +149,25 @@ Type: integer
 Default: 1000
 Range: [1, INT_32_MAX]
 ```
+
 The maximum number of fields in an index. Field and object mappings, as well as field aliases 
 count towards this limit. The default value is 1000.
 
 See: https://www.elastic.co/guide/en/elasticsearch/reference/master/mapping-settings-limit.html
 
+#### `max_terms_count`
+```
+Type: integer
+Default: 65535
+Range: [1, INT_32_MAX]
+```
+
+The maximum number of terms that can be used in Terms Query.
+
+Increasing this limit might be necessary for performing large [cross-index joins](CROSS-INDEX-JOINS.md) 
+when the ZomboDB Search Accelerator is not installed.
+
+https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules.html#index-max-terms-count
 
 ### Network Options
 
