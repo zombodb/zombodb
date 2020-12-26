@@ -258,21 +258,40 @@ unsafe extern "C" fn build_callback_internal(
 
 unsafe fn row_to_json<'a>(
     row: pg_sys::Datum,
-    tupdesc: &PgTupleDesc,
-    attributes: &[CategorizedAttribute<'a>],
+    tupdesc: &'a PgTupleDesc,
+    attributes: &'a [CategorizedAttribute<'a>],
 ) -> JsonBuilder<'a> {
     let mut builder = JsonBuilder::new(attributes.len());
 
-    let datums = deconstruct_row_type(tupdesc, row);
-    for (attr, datum) in attributes
-        .iter()
-        .zip(datums.iter())
-        .filter(|(_, datum)| datum.is_some())
+    for (attr, datum) in decon_row(tupdesc, attributes, row)
+        .filter(|item| item.is_some())
+        .map(|item| item.unwrap())
     {
-        let datum = datum.expect("found NULL datum"); // shouldn't happen b/c None datums are filtered above
-
         (attr.conversion_func)(&mut builder, attr.attname, datum, attr.typoid);
     }
 
     builder
+}
+
+#[inline]
+unsafe fn decon_row<'a>(
+    tupdesc: &'a PgTupleDesc,
+    attributes: &'a [CategorizedAttribute<'a>],
+    row: pg_sys::Datum,
+) -> impl std::iter::Iterator<Item = Option<(&'a CategorizedAttribute<'a>, pg_sys::Datum)>> + 'a {
+    let td = pg_sys::pg_detoast_datum(row as *mut pg_sys::varlena) as pg_sys::HeapTupleHeader;
+    let tmptup = pg_sys::HeapTupleData {
+        t_len: varsize(td as *mut pg_sys::varlena) as u32,
+        t_self: Default::default(),
+        t_tableOid: 0,
+        t_data: td,
+    };
+
+    let tupdesc_ptr = tupdesc.as_ptr();
+    attributes.iter().map(move |attr| {
+        match heap_getattr_raw(&tmptup, attr.attno + 1, tupdesc_ptr) {
+            Some(datum) => Some((&attributes[attr.attno], datum)),
+            None => None,
+        }
+    })
 }

@@ -10,6 +10,7 @@ pub struct CategorizedAttribute<'a> {
     pub attname: &'a str,
     pub typoid: pg_sys::Oid,
     pub conversion_func: Box<ConversionFunc<'a>>,
+    pub attno: usize,
 }
 
 #[allow(clippy::cognitive_complexity)]
@@ -26,7 +27,7 @@ pub fn categorize_tupdesc<'a>(
         None
     };
 
-    for attribute in tupdesc.iter() {
+    for (attno, attribute) in tupdesc.iter().enumerate() {
         if attribute.is_dropped() {
             continue;
         }
@@ -429,6 +430,7 @@ pub fn categorize_tupdesc<'a>(
             attname: unsafe { attname.as_ref().unwrap() },
             typoid: typoid.value(),
             conversion_func,
+            attno,
         });
     }
 
