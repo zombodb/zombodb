@@ -279,6 +279,7 @@ pub(crate) struct Handler {
     bulk_receiver: crossbeam_channel::Receiver<BulkRequestCommand<'static>>,
     error_sender: crossbeam_channel::Sender<BulkRequestError>,
     error_receiver: crossbeam_channel::Receiver<BulkRequestError>,
+    current_xid: Option<pg_sys::TransactionId>,
 }
 
 struct BulkReceiver<'a> {
@@ -591,6 +592,7 @@ impl Handler {
             bulk_receiver: rx,
             error_sender,
             error_receiver: error_receiver.clone(),
+            current_xid: None,
         }
     }
 
@@ -598,14 +600,17 @@ impl Handler {
         &mut self,
         mut command: BulkRequestCommand<'static>,
     ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand<'static>>> {
-        match &command {
-            BulkRequestCommand::Insert { .. } | BulkRequestCommand::Update { .. } => {
-                let current_xid = unsafe { pg_sys::GetCurrentTransactionId() };
-                if current_xid != pg_sys::InvalidTransactionId {
-                    get_executor_manager().push_xid(current_xid);
+        if self.current_xid.is_none() {
+            match &command {
+                BulkRequestCommand::Insert { .. } | BulkRequestCommand::Update { .. } => {
+                    let current_xid = unsafe { pg_sys::GetCurrentTransactionId() };
+                    if current_xid != pg_sys::InvalidTransactionId {
+                        get_executor_manager().push_xid(current_xid);
+                    }
+                    self.current_xid.replace(current_xid);
                 }
+                _ => {}
             }
-            _ => {}
         }
 
         // try to send the command to a background thread
