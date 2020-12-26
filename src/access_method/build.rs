@@ -280,18 +280,34 @@ unsafe fn decon_row<'a>(
     row: pg_sys::Datum,
 ) -> impl std::iter::Iterator<Item = Option<(&'a CategorizedAttribute<'a>, pg_sys::Datum)>> + 'a {
     let td = pg_sys::pg_detoast_datum(row as *mut pg_sys::varlena) as pg_sys::HeapTupleHeader;
-    let tmptup = pg_sys::HeapTupleData {
+    let mut tmptup = pg_sys::HeapTupleData {
         t_len: varsize(td as *mut pg_sys::varlena) as u32,
         t_self: Default::default(),
         t_tableOid: 0,
         t_data: td,
     };
 
-    let tupdesc_ptr = tupdesc.as_ptr();
-    attributes.iter().map(move |attr| {
-        match heap_getattr_raw(&tmptup, attr.attno + 1, tupdesc_ptr) {
-            Some(datum) => Some((&attributes[attr.attno], datum)),
-            None => None,
+    let mut datums = vec![0 as pg_sys::Datum; tupdesc.natts as usize];
+    let mut nulls = vec![false; tupdesc.natts as usize];
+
+    pg_sys::heap_deform_tuple(
+        &mut tmptup,
+        tupdesc.as_ptr(),
+        datums.as_mut_ptr(),
+        nulls.as_mut_ptr(),
+    );
+
+    let mut drop_cnt = 0;
+    (0..tupdesc.natts as usize).into_iter().map(move |idx| {
+        let is_dropped = tupdesc.get(idx).unwrap().is_dropped();
+
+        if is_dropped {
+            drop_cnt += 1;
+            None
+        } else if nulls[idx] {
+            None
+        } else {
+            Some((&attributes[idx - drop_cnt], *&datums[idx]))
         }
     })
 }
