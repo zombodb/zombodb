@@ -3,7 +3,7 @@ use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
 use crate::executor_manager::get_executor_manager;
 use crate::gucs::ZDB_LOG_LEVEL;
 use crate::json::builder::JsonBuilder;
-use crossbeam_channel::TrySendError;
+use crossbeam_channel::SendTimeoutError;
 use pgx::*;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -611,10 +611,15 @@ impl Handler {
         }
 
         // try to send the command to a background thread
-        while let Err(e) = self.bulk_sender.as_ref().unwrap().try_send(command) {
+        while let Err(e) = self
+            .bulk_sender
+            .as_ref()
+            .unwrap()
+            .send_timeout(command, std::time::Duration::from_secs(10))
+        {
             match e {
                 // the channel is full, so lets see if we can figure out why?
-                TrySendError::Full(full_command) => {
+                SendTimeoutError::Timeout(full_command) => {
                     if self.terminatd.load(Ordering::SeqCst) {
                         // We're all done because we've been asked to terminate
                         //
@@ -642,7 +647,7 @@ impl Handler {
                 }
 
                 // the channel is disconnected, so return an error
-                TrySendError::Disconnected(disconnected_command) => {
+                SendTimeoutError::Disconnected(disconnected_command) => {
                     return Err(crossbeam_channel::SendError(disconnected_command));
                 }
             }
