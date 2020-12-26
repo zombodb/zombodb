@@ -575,9 +575,7 @@ impl Handler {
         error_sender: crossbeam_channel::Sender<BulkRequestError>,
         error_receiver: &crossbeam_channel::Receiver<BulkRequestError>,
     ) -> Self {
-        // NB:  creating a large (queue_size * concurrency) bounded channel
-        // is quite slow.  Going with 2 * concurrency, which should be twice the number of index shards
-        let (tx, rx) = crossbeam_channel::bounded(2 * concurrency);
+        let (tx, rx) = crossbeam_channel::bounded(10 * concurrency);
 
         Handler {
             terminatd: Arc::new(AtomicBool::new(false)),
