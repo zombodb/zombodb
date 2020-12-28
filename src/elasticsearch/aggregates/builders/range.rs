@@ -1,10 +1,15 @@
-// use crate::elasticsearch::aggregates::builders::make_children_map;
+use crate::elasticsearch::aggregates::builders::make_children_map;
 use pgx::*;
 use serde_json::*;
 
 // SELECT range_agg('name', 'field', ARRAY[ '{"to": 42}', '{"from":0, "to":99}', '{"from":0}'  ]::json[]);
 #[pg_extern(immutable, parallel_safe)]
-fn range_agg(aggregate_name: &str, field: &str, ranges: Vec<Json>) -> JsonB {
+fn range_agg(
+    aggregate_name: &str,
+    field: &str,
+    ranges: Vec<Json>,
+    children: Option<default!(Vec<JsonB>, NULL)>,
+) -> JsonB {
     JsonB(json! {
         {
             aggregate_name: {
@@ -12,7 +17,8 @@ fn range_agg(aggregate_name: &str, field: &str, ranges: Vec<Json>) -> JsonB {
                 {
                     "field": field,
                     "ranges": ranges
-                }
+                },
+                "aggs": make_children_map(children)
             }
         }
     })
