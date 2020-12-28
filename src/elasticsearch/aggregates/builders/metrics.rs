@@ -5,8 +5,8 @@ use serde_json::*;
 /// sum_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
-fn sum_agg(aggregate_name: &str, field: &str) -> Json {
-    Json(json! {
+fn sum_agg(aggregate_name: &str, field: &str) -> JsonB {
+    JsonB(json! {
        {
           aggregate_name: {
                 "sum": {
@@ -20,8 +20,8 @@ fn sum_agg(aggregate_name: &str, field: &str) -> Json {
 /// sum_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
-fn sum_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> Json {
-    Json(json! {
+fn sum_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> JsonB {
+    JsonB(json! {
        {
           aggregate_name: {
                 "sum": {
@@ -36,8 +36,8 @@ fn sum_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> Jso
 /// sum_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
-fn sum_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> Json {
-    Json(json! {
+fn sum_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
+    JsonB(json! {
        {
           aggregate_name: {
                 "sum": {
@@ -53,8 +53,8 @@ fn sum_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> Json 
 /// avg_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
-fn avg_agg(aggregate_name: &str, field: &str) -> Json {
-    Json(json! {
+fn avg_agg(aggregate_name: &str, field: &str) -> JsonB {
+    JsonB(json! {
        {
           aggregate_name: {
                 "avg": {
@@ -68,8 +68,8 @@ fn avg_agg(aggregate_name: &str, field: &str) -> Json {
 /// avg_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
-fn avg_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> Json {
-    Json(json! {
+fn avg_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
+    JsonB(json! {
        {
           aggregate_name: {
                 "avg": {
@@ -84,8 +84,8 @@ fn avg_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> Json 
 /// avg_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
-fn avg_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> Json {
-    Json(json! {
+fn avg_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> JsonB {
+    JsonB(json! {
        {
           aggregate_name: {
                 "avg": {
@@ -101,8 +101,8 @@ fn avg_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> Jso
 /// min_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
-fn min_agg(aggregate_name: &str, field: &str) -> Json {
-    Json(json! {
+fn min_agg(aggregate_name: &str, field: &str) -> JsonB {
+    JsonB(json! {
        {
           aggregate_name: {
                 "min": {
@@ -116,8 +116,8 @@ fn min_agg(aggregate_name: &str, field: &str) -> Json {
 /// min_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
-fn min_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> Json {
-    Json(json! {
+fn min_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
+    JsonB(json! {
        {
           aggregate_name: {
                 "min": {
@@ -132,8 +132,8 @@ fn min_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> Json 
 /// min_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
-fn min_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> Json {
-    Json(json! {
+fn min_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> JsonB {
+    JsonB(json! {
        {
           aggregate_name: {
                 "min": {
@@ -149,8 +149,8 @@ fn min_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> Jso
 /// max_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
-fn max_agg(aggregate_name: &str, field: &str) -> Json {
-    Json(json! {
+fn max_agg(aggregate_name: &str, field: &str) -> JsonB {
+    JsonB(json! {
        {
           aggregate_name: {
                 "max": {
@@ -164,8 +164,8 @@ fn max_agg(aggregate_name: &str, field: &str) -> Json {
 /// max_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
-fn max_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> Json {
-    Json(json! {
+fn max_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
+    JsonB(json! {
        {
           aggregate_name: {
                 "max": {
@@ -180,8 +180,8 @@ fn max_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> Json 
 /// max_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
-fn max_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> Json {
-    Json(json! {
+fn max_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> JsonB {
+    JsonB(json! {
        {
           aggregate_name: {
                 "max": {
@@ -197,8 +197,8 @@ fn max_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> Jso
 /// stats_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
-fn stats_agg(aggregate_name: &str, field: &str) -> Json {
-    Json(json! {
+fn stats_agg(aggregate_name: &str, field: &str) -> JsonB {
+    JsonB(json! {
        {
           aggregate_name: {
                 "stats": {
@@ -212,8 +212,8 @@ fn stats_agg(aggregate_name: &str, field: &str) -> Json {
 /// stats_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
-fn stats_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> Json {
-    Json(json! {
+fn stats_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
+    JsonB(json! {
        {
           aggregate_name: {
                 "stats": {
@@ -228,8 +228,8 @@ fn stats_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> Jso
 /// stats_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
-fn stats_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> Json {
-    Json(json! {
+fn stats_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> JsonB {
+    JsonB(json! {
        {
           aggregate_name: {
                 "stats": {
@@ -245,8 +245,8 @@ fn stats_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> J
 /// cardinality_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
-fn cardinality_agg(aggregate_name: &str, field: &str) -> Json {
-    Json(json! {
+fn cardinality_agg(aggregate_name: &str, field: &str) -> JsonB {
+    JsonB(json! {
        {
           aggregate_name: {
                 "cardinality": {
@@ -260,8 +260,8 @@ fn cardinality_agg(aggregate_name: &str, field: &str) -> Json {
 /// cardinality_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
-fn cardinality_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> Json {
-    Json(json! {
+fn cardinality_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
+    JsonB(json! {
        {
           aggregate_name: {
                 "cardinality": {
@@ -276,8 +276,8 @@ fn cardinality_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) 
 /// cardinality_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
-fn cardinality_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> Json {
-    Json(json! {
+fn cardinality_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> JsonB {
+    JsonB(json! {
        {
           aggregate_name: {
                 "cardinality": {
@@ -293,8 +293,8 @@ fn cardinality_agg_missing_float(aggregate_name: &str, field: &str, missing: f64
 /// extended_stats_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
-fn extended_stats_agg(aggregate_name: &str, field: &str) -> Json {
-    Json(json! {
+fn extended_stats_agg(aggregate_name: &str, field: &str) -> JsonB {
+    JsonB(json! {
        {
           aggregate_name: {
                 "extended_stats": {
@@ -308,8 +308,8 @@ fn extended_stats_agg(aggregate_name: &str, field: &str) -> Json {
 /// extended_stats_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
-fn extended_stats_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> Json {
-    Json(json! {
+fn extended_stats_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
+    JsonB(json! {
        {
           aggregate_name: {
                 "extended_stats": {
@@ -324,8 +324,8 @@ fn extended_stats_agg_missing_int(aggregate_name: &str, field: &str, missing: i6
 /// extended_stats_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
-fn extended_stats_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> Json {
-    Json(json! {
+fn extended_stats_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> JsonB {
+    JsonB(json! {
        {
           aggregate_name: {
                 "extended_stats": {
@@ -341,8 +341,8 @@ fn extended_stats_agg_missing_float(aggregate_name: &str, field: &str, missing: 
 /// matrix_stats_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
-fn matrix_stats_agg(aggregate_name: &str, field: Vec<&str>) -> Json {
-    Json(json! {
+fn matrix_stats_agg(aggregate_name: &str, field: Vec<&str>) -> JsonB {
+    JsonB(json! {
         {
             aggregate_name: {
                 "matrix_stats": { "fields": field
@@ -360,8 +360,8 @@ fn matrix_stats_agg_missing_i64(
     field: Vec<&str>,
     missing_field: &str,
     missing_value: i64,
-) -> Json {
-    Json(json! {
+) -> JsonB {
+    JsonB(json! {
         {
             aggregate_name: {
                 "matrix_stats": {
@@ -377,8 +377,8 @@ fn matrix_stats_agg_missing_i64(
 /// geo_bounds_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
-fn geo_bounds_agg(aggregate_name: &str, field: &str, wrap_longitude: bool) -> Json {
-    Json(json! {
+fn geo_bounds_agg(aggregate_name: &str, field: &str, wrap_longitude: bool) -> JsonB {
+    JsonB(json! {
         {
             aggregate_name: {
                 "geo_bounds": {
@@ -394,8 +394,8 @@ fn geo_bounds_agg(aggregate_name: &str, field: &str, wrap_longitude: bool) -> Js
 /// geo_bounds_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
-fn value_count_agg(aggregate_name: &str, field: &str) -> Json {
-    Json(json! {
+fn value_count_agg(aggregate_name: &str, field: &str) -> JsonB {
+    JsonB(json! {
         {
             aggregate_name : {
                 "value_count" : {
