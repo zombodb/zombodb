@@ -9,7 +9,7 @@ use serde_json::*;
 use std::collections::HashMap;
 use std::str::FromStr;
 
-mod pg_catalog {
+pub(crate) mod pg_catalog {
     use pgx::*;
     use serde::Serialize;
 

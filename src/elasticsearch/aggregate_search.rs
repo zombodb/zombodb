@@ -121,10 +121,18 @@ where
                 }
             }
 
-            let the_agg = unrolled.remove("the_agg").expect("didn't find 'the_agg'");
-            let data = serde_json::from_value::<ReturnType>(the_agg)
-                .expect("failed to deserialize 'the_agg' response");
-            Ok((data, unrolled))
+            if unrolled.contains_key("the_agg") {
+                let the_agg = unrolled.remove("the_agg").expect("didn't find 'the_agg'");
+                let data = serde_json::from_value::<ReturnType>(the_agg)
+                    .expect("failed to deserialize 'the_agg' response");
+                Ok((data, unrolled))
+            } else {
+                let data = serde_json::to_value(&unrolled)
+                    .expect("failed to deserialize arbitrary aggregate response");
+                let data = serde_json::from_value::<ReturnType>(data)
+                    .expect("failed to convert aggregate data into json value");
+                Ok((data, unrolled))
+            }
         })
     }
 }

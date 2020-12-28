@@ -247,6 +247,22 @@ impl Elasticsearch {
         ElasticsearchSearchRequest::new(self, query)
     }
 
+    pub fn arbitrary_aggregate<T: DeserializeOwned>(
+        &self,
+        field_name: Option<String>,
+        need_filter: bool,
+        query: ZDBPreparedQuery,
+        agg_request: serde_json::Value,
+    ) -> ElasticsearchAggregateSearchRequest<T> {
+        if let Value::Object(agg) = agg_request {
+            let mut agg_map = HashMap::new();
+            agg_map.extend(agg.into_iter());
+            self.aggregate_set(field_name, need_filter, query, agg_map)
+        } else {
+            panic!("arbitrary aggreate not in correct format")
+        }
+    }
+
     pub fn aggregate<T: DeserializeOwned>(
         &self,
         field_name: Option<String>,

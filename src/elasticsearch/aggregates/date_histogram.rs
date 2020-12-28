@@ -5,7 +5,7 @@ use pgx::*;
 use serde::*;
 use serde_json::*;
 
-mod pg_catalog {
+pub(crate) mod pg_catalog {
     use pgx::*;
     use serde::Serialize;
 
