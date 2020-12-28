@@ -6,6 +6,7 @@ mod date_histogram;
 mod filter;
 mod filters;
 mod metrics;
+mod range;
 mod terms;
 
 pub(crate) fn make_children_map(
