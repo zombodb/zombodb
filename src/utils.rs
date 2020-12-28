@@ -213,8 +213,16 @@ pub fn lookup_function(
     }
 
     let (num_args, args_ptr) = match arg_oids {
-        Some(oids) => (oids.len(), oids.as_ptr()),
-        None => (0, vec![].as_ptr()),
+        Some(oids) => unsafe {
+            // NB:  we copy the argument oids into a palloc'd array b/c pg_sys::LookupFuncName expects
+            //      that to be the case
+            let args_ptr =
+                pg_sys::palloc(oids.len() * std::mem::size_of::<pg_sys::Oid>()) as *mut pg_sys::Oid;
+            let slice = std::slice::from_raw_parts_mut(args_ptr, oids.len());
+            slice.copy_from_slice(oids.as_slice());
+            (oids.len(), args_ptr)
+        },
+        None => (0, std::ptr::null_mut()),
     };
 
     let func_oid =
