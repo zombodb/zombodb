@@ -5,6 +5,7 @@ use std::collections::HashMap;
 mod date_histogram;
 mod filter;
 mod filters;
+mod histogram;
 mod metrics;
 mod range;
 mod terms;
