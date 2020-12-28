@@ -1,25 +1,8 @@
-use crate::elasticsearch::aggregates::builders::date_histogram::pg_catalog::CalendarInterval;
 use crate::elasticsearch::aggregates::builders::make_children_map;
+use crate::elasticsearch::aggregates::date_histogram::pg_catalog::CalendarInterval;
 use pgx::*;
 use serde::*;
 use serde_json::*;
-
-mod pg_catalog {
-    use pgx::*;
-    use serde::Serialize;
-
-    #[allow(non_camel_case_types)]
-    #[derive(PostgresEnum, Serialize)]
-    pub(crate) enum CalendarInterval {
-        minute,
-        hour,
-        day,
-        week,
-        month,
-        quarter,
-        year,
-    }
-}
 
 #[pg_extern(immutable, parallel_safe)]
 fn date_histogram_agg(
