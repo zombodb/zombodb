@@ -1,3 +1,4 @@
+use crate::elasticsearch::aggregates::builders::make_children_map;
 use pgx::*;
 use serde::*;
 use serde_json::*;
@@ -22,6 +23,7 @@ fn histogram_agg(
     min_count: Option<default!(i64, NULL)>,
     keyed: Option<default!(bool, NULL)>,
     missing: Option<default!(i64, NULL)>,
+    children: Option<default!(Vec<JsonB>, NULL)>,
 ) -> JsonB {
     let histogram = Histogram {
         field,
@@ -34,7 +36,8 @@ fn histogram_agg(
     JsonB(json! {
         {
             aggregate_name: {
-                "histogram": histogram
+                "histogram": histogram,
+                "aggs": make_children_map(children)
             }
         }
     })
