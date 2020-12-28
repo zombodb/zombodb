@@ -28,8 +28,7 @@ fn anyelement_cmpfunc(
         ))
     } else {
         panic!(
-            "lhs of anyelement_cmpfunc is not a tid, it is OID {}",
-            element.oid()
+            "The '==>' operator could not find a \"USING zombodb\" index that matches the left-hand-side of the expression"
         );
     };
 
