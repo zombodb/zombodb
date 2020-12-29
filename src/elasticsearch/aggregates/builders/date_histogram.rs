@@ -1,3 +1,8 @@
+//! This Module is to build...
+//! https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-datehistogram-aggregation.html
+//!
+//! Returns JsonB that is a Date Histogram ES Query
+
 use crate::elasticsearch::aggregates::builders::make_children_map;
 use crate::elasticsearch::aggregates::date_histogram::pg_catalog::CalendarInterval;
 use pgx::*;

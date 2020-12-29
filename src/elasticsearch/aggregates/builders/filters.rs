@@ -1,3 +1,8 @@
+//! This Module is to build...
+//! https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-filters-aggregation.html
+//!
+//! Returns JsonB that is a Filers ES Query
+
 use crate::elasticsearch::Elasticsearch;
 use crate::zdbquery::mvcc::apply_visibility_clause;
 use crate::zdbquery::ZDBQuery;

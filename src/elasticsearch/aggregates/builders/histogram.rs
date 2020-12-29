@@ -1,3 +1,8 @@
+//! This Module is to build...
+//! https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-histogram-aggregation.html
+//!
+//! Returns JsonB that is a Histogram ES Query
+
 use crate::elasticsearch::aggregates::builders::make_children_map;
 use pgx::*;
 use serde::*;
