@@ -29,8 +29,8 @@ levenshtein = "1.0.4"
 memoffset = "0.6.1"
 num_cpus = "1.13.0"
 pathfinding = "2.1.1"
-pgx = "0.1.11"
-pgx-macros = "0.1.11"
+pgx = "=0.1.11"
+pgx-macros = "=0.1.11"
 rayon = "1.5.0"
 regex = "1.4.2"
 serde = { version = "1.0.118", features = [ "derive" ] }
@@ -45,7 +45,7 @@ lalrpop = { version = "0.19.3", features = [ "lexer" ] }
 built = { version = "0.4.4", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
-pgx-tests = "0.1.11"
+pgx-tests = "=0.1.11"
 libc = "0.2.81"
 
 [profile.dev]
