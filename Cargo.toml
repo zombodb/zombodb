@@ -23,28 +23,29 @@ byteorder = "1.3.4"
 chrono = "0.4.19"
 crossbeam-channel = "0.5.0"
 indexmap = "1.6.1"
-lalrpop-util = "0.19.1"
+lalrpop-util = "0.19.3"
 lazy_static = "1.4.0"
 levenshtein = "1.0.4"
 memoffset = "0.6.1"
 num_cpus = "1.13.0"
 pathfinding = "2.1.1"
-pgx = "0.1.9"
-pgx-macros = "0.1.9"
+pgx = "0.1.11"
+pgx-macros = "0.1.11"
 rayon = "1.5.0"
 regex = "1.4.2"
 serde = { version = "1.0.118", features = [ "derive" ] }
-serde_json = { version = "1.0.60", features = [ "preserve_order" ] }
+serde_json = { version = "1.0.61", features = [ "preserve_order" ] }
 serde_cbor = "0.11.1"
 sqlformat = "0.1.5"
 ureq = { version = "2.0.0-rc4", features = [ "json" ] }
 url = "2.2.0"
 
 [build-dependencies]
-lalrpop = { version = "0.19.1", features = [ "lexer" ] }
+lalrpop = { version = "0.19.3", features = [ "lexer" ] }
+built = { version = "0.4.4", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
-pgx-tests = "0.1.9"
+pgx-tests = "0.1.11"
 libc = "0.2.81"
 
 [profile.dev]

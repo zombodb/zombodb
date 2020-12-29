@@ -40,9 +40,23 @@ pub extern "C" fn _PG_fini() {
 }
 
 #[pg_extern(immutable, parallel_safe)]
-fn internal_version() -> &'static str {
-    let version = "3000.0.0-alpha3";
-    version
+fn internal_version() -> String {
+    #[allow(dead_code)]
+    mod built_info {
+        // The file has been placed there by the build script.
+        include!(concat!(env!("OUT_DIR"), "/built.rs"));
+    }
+
+    format!(
+        "{} ({}) --{}",
+        built_info::PKG_VERSION,
+        built_info::GIT_COMMIT_HASH.unwrap_or("no git commit hash available"),
+        if built_info::DEBUG {
+            "debug"
+        } else {
+            "release"
+        }
+    )
 }
 
 #[cfg(test)]
