@@ -1,6 +1,6 @@
 ALTER INDEX idxevents SET (replicas = 1, shards=32);
 WARNING:  Number of shards changed from 5 to 32.  You must issue a REINDEX before this change will take effect
-SELECT replicas FROM zdb.index_stats WHERE index_name = zdb.index_name('idxevents');
+SELECT replicas FROM zdb.index_stats WHERE es_index_name = zdb.index_name('idxevents');
  replicas 
 ----------
  1
@@ -8,7 +8,7 @@ SELECT replicas FROM zdb.index_stats WHERE index_name = zdb.index_name('idxevent
 
 ALTER INDEX idxevents SET (replicas = 0, shards=5);
 WARNING:  Number of shards changed from 32 to 5.  You must issue a REINDEX before this change will take effect
-SELECT replicas FROM zdb.index_stats WHERE index_name = zdb.index_name('idxevents');
+SELECT replicas FROM zdb.index_stats WHERE es_index_name = zdb.index_name('idxevents');
  replicas 
 ----------
  0
