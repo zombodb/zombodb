@@ -69,7 +69,7 @@ match {
     r#"(?i)`.+`"# => QUOTED_IDENTIFIER,
 } else {
     // even lower precedence values
-    r#"(([a-zA-Z0-9_*?]|(\\.))+\.?)+"# => UNQUOTED_VALUE,
+    r#"(([^:=<>~!,&%/\\^\[\](){}"'\t\n\v\f\r ]|(\\.))+\.?)+"# => UNQUOTED_VALUE,
     r#"'(?:\\.|[^'\\])*'"# => QUOTED_VALUE,
     r#""(?:\\.|[^"\\])*""# => DOUBLE_QUOTED_VALUE,
     r#"\[\[[^\]]*\]\]"# => UNPARSED_ARRAY,
