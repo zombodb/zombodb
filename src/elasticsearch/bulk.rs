@@ -129,7 +129,7 @@ impl ElasticsearchBulkRequest {
     pub fn terminate(
         &self,
     ) -> impl Fn() + std::panic::UnwindSafe + std::panic::RefUnwindSafe + 'static {
-        let terminate = self.handler.terminatd.clone();
+        let terminate = self.handler.terminated.clone();
         move || {
             terminate.store(true, Ordering::SeqCst);
         }
@@ -266,7 +266,7 @@ impl ElasticsearchBulkRequest {
 const BULK_FILTER_PATH: &str = "errors,items.*.error";
 
 pub(crate) struct Handler {
-    pub(crate) terminatd: Arc<AtomicBool>,
+    terminated: Arc<AtomicBool>,
     threads: Vec<Option<JoinHandle<usize>>>,
     in_flight: Arc<AtomicUsize>,
     total_docs: usize,
@@ -580,7 +580,7 @@ impl Handler {
         let (tx, rx) = crossbeam_channel::bounded(10 * concurrency);
 
         Handler {
-            terminatd: Arc::new(AtomicBool::new(false)),
+            terminated: Arc::new(AtomicBool::new(false)),
             threads: Vec::new(),
             in_flight: Arc::new(AtomicUsize::new(0)),
             total_docs: 0,
@@ -624,7 +624,7 @@ impl Handler {
             match e {
                 // the channel is full, so lets see if we can figure out why?
                 SendTimeoutError::Timeout(full_command) => {
-                    if self.terminatd.load(Ordering::SeqCst) {
+                    if self.terminated.load(Ordering::SeqCst) {
                         // We're all done because we've been asked to terminate
                         //
                         // Drop the sender and ultimately return an error
@@ -684,7 +684,7 @@ impl Handler {
         let bulk_receiver = self.bulk_receiver.clone();
         let in_flight = self.in_flight.clone();
         let error = self.error_sender.clone();
-        let terminated = self.terminatd.clone();
+        let terminated = self.terminated.clone();
         let batch_size = self.batch_size;
         let active_threads = self.active_threads.clone();
         let successful_requests = self.successful_requests.clone();
@@ -831,7 +831,7 @@ impl Handler {
     }
 
     pub(crate) fn terminate(&self) {
-        self.terminatd.store(true, Ordering::SeqCst);
+        self.terminated.store(true, Ordering::SeqCst);
     }
 
     #[inline]
