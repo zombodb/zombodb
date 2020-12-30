@@ -542,6 +542,11 @@ mod tests {
     }
 
     #[pg_test]
+    fn test_non_ascii_string() {
+        assert_expr("é", String!(Contains, "_", "é"))
+    }
+
+    #[pg_test]
     fn test_expr_regex() {
         assert_expr("field:~'^m.*$'", Regex!(Regex, "field", "^m.*$"))
     }
