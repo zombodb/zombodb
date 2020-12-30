@@ -298,7 +298,8 @@ impl<'a> std::io::Read for BulkReceiver<'a> {
     fn read(&mut self, mut buf: &mut [u8]) -> Result<usize, Error> {
         // were we asked to terminate?
         if self.terminated.load(Ordering::SeqCst) {
-            return Err(Error::new(ErrorKind::Interrupted, "terminated"));
+            // indicate that our reader "pipe" has been broken and there's nothing else we can do
+            return Err(Error::new(ErrorKind::BrokenPipe, "terminated"));
         }
 
         let command = if self.first.is_some() {
