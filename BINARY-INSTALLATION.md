@@ -8,7 +8,7 @@ If you instead prefer to install ZomboDB from source, please read the [SOURCE-IN
 
 ## Prerequisites
 
-- Postgres 10.x, 11.x, 12.x installed
+- Postgres 10.x, 11.x, 12.x, 13.x installed
 - A 64bit Intel Architecture
 
 ### Installation on CentOS/RHEL

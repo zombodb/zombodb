@@ -4,7 +4,7 @@ If you're a [sponsor](https://github.com/sponsors/eeeebbbbrrrr) you might want t
 
 ## Prerequisites
 
-- Postgres 10.x, 11.x, or 12.x installed (probably from your package manager), including the "-server" package
+- Postgres 10.x, 11.x, 12.x, or 13.x installed (probably from your package manager), including the "-server" package
 - A toolchain capable of building Postgres:
 
     For Ubuntu, this is enough:
@@ -37,7 +37,7 @@ $ cargo pgx install --release
 ```
 
 This will compile ZomboDB **and** install it into the Postgres installation described by `pg_config`.  The user that
-runs the above command will need write permissions to the Postgres `$PG_INSTALL_PATH/lib/postgresql/` and `$PG_INSTALL_PATH/share/postgresql/extension/` directories
+runs the above command will need write permissions to the Postgres `$PG_INSTALL_PATH/lib/postgresql/` and `$PG_INSTALL_PATH/share/postgresql/extension/` directories.
 
 ## Updating ZomboDB to a New Version
 
