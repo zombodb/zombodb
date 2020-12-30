@@ -39,7 +39,7 @@ pub extern "C" fn ambuild(
     let heap_relation = unsafe { PgRelation::from_pg(heaprel) };
     let index_relation = unsafe { PgRelation::from_pg(indexrel) };
 
-    if ZDBIndexOptions::from_relation(&index_relation).is_shadow_index() {
+    if ZDBIndexOptions::from_relation_no_lookup(&index_relation, None).is_shadow_index() {
         // nothing for us to do for a shadow index
         return PgBox::<pg_sys::IndexBuildResult>::alloc0().into_pg();
     }

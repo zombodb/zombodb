@@ -54,8 +54,20 @@ fn get_heap_relation_from_var(
 pub fn find_zdb_index(
     any_relation: &PgRelation,
 ) -> std::result::Result<(PgRelation, Option<Vec<String>>), String> {
-    if is_zdb_index(any_relation) {
+    if is_non_shadow_zdb_index(any_relation) {
         return Ok((any_relation.clone(), None));
+    } else if is_zdb_index(any_relation) {
+        // it's a shadow ZDB index, so lets pluck out the options
+        let options = ZDBIndexOptions::from_relation_no_lookup(any_relation, None);
+        for index in any_relation
+            .heap_relation()
+            .expect("not an index")
+            .indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE)
+        {
+            if is_non_shadow_zdb_index(&index) {
+                return Ok((index, options.links().clone()));
+            }
+        }
     } else if is_view(any_relation) {
         static ZDB_RESNAME: &[u8; 4] = b"zdb\0";
 
@@ -103,7 +115,7 @@ pub fn find_zdb_index(
 fn find_zdb_shadow_index(table: &PgRelation, funcid: pg_sys::Oid) -> PgRelation {
     for index in table.indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
         if is_zdb_index(&index) {
-            let options = ZDBIndexOptions::from_relation(&index);
+            let options = ZDBIndexOptions::from_relation_no_lookup(&index, None);
             if options.is_shadow_index() {
                 let exprs = PgList::<pg_sys::Expr>::from_pg(unsafe {
                     pg_sys::RelationGetIndexExpressions(index.as_ptr())
@@ -155,7 +167,7 @@ pub fn is_non_shadow_zdb_index(index: &PgRelation) -> bool {
     } else {
         let indam = PgBox::from_pg(routine);
         if indam.amvalidate == Some(crate::access_method::amvalidate) {
-            let options = ZDBIndexOptions::from_relation(index);
+            let options = ZDBIndexOptions::from_relation_no_lookup(index, None);
 
             return !options.is_shadow_index();
         }

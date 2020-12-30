@@ -264,6 +264,13 @@ pub struct ZDBIndexOptions {
 impl ZDBIndexOptions {
     pub fn from_relation(relation: &PgRelation) -> ZDBIndexOptions {
         let (relation, options) = find_zdb_index(relation).unwrap();
+        ZDBIndexOptions::from_relation_no_lookup(&relation, options)
+    }
+
+    pub fn from_relation_no_lookup(
+        relation: &PgRelation,
+        options: Option<Vec<String>>,
+    ) -> ZDBIndexOptions {
         let internal = ZDBIndexOptionsInternal::from_relation(&relation);
         let heap_relation = relation.heap_relation().expect("not an index");
         ZDBIndexOptions {
@@ -425,6 +432,12 @@ fn determine_index(relation: PgRelation) -> Option<PgRelation> {
         // we don't want to raise an error if we couldn't find the index for the relation
         Err(_) => None,
     }
+}
+
+#[pg_extern(volatile, parallel_safe)]
+fn index_links(relation: PgRelation) -> Option<Vec<String>> {
+    let (_, options) = find_zdb_index(&relation).expect("failed to lookup index link options");
+    options
 }
 
 #[pg_extern(volatile, parallel_safe)]

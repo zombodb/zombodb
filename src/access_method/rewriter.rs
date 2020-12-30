@@ -307,7 +307,7 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
     } else if is_a(node, pg_sys::NodeTag_T_OpExpr) {
         let opexpr = PgBox::from_pg(node as *mut pg_sys::OpExpr);
         if opexpr.opfuncid == context.funcoid {
-            let args = PgList::<pg_sys::Node>::from_pg(opexpr.args);
+            let mut args = PgList::<pg_sys::Node>::from_pg(opexpr.args);
             if let Some(first_arg) = args.get_ptr(0) {
                 if is_a(first_arg, pg_sys::NodeTag_T_Var) {
                     let mut first_arg = PgBox::from_pg(first_arg as *mut pg_sys::Var);
@@ -338,8 +338,16 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
                         if var.varattno == 0 {
                             var.varattno = -1;
                         }
-                        // args.replace_ptr(0, var.into_pg() as *mut pg_sys::Node)
-                        func_expr.funcresulttype = pg_sys::TIDOID;
+
+                        if pg_sys::get_func_rettype(func_expr.funcid) != pg_sys::ANYELEMENTOID {
+                            // functions that don't return ANYELEMENTOID are not "shadow" functions so
+                            // the top-level func_expr gets replaced with a var reference to
+                            // the ctid column
+                            args.replace_ptr(0, var.into_pg() as *mut pg_sys::Node)
+                        } else {
+                            // functions that do need their return type changed to TIDOID
+                            func_expr.funcresulttype = pg_sys::TIDOID;
+                        }
                     }
                 }
             }

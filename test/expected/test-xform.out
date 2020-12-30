@@ -38,10 +38,10 @@ explain (costs off) select * from xform_test where xform_test ==> 'login:falcao5
 
 -- and this an index scan
 explain (costs off) select * from xform_test where xform(xform_test) ==> 'login:falcao5';
-                                          QUERY PLAN                                           
------------------------------------------------------------------------------------------------
+                                   QUERY PLAN                                    
+---------------------------------------------------------------------------------
  Index Scan using idxxform_test on xform_test
-   Index Cond: (public.xform(ctid) ==> '{"query_string":{"query":"login:falcao5"}}'::zdbquery)
+   Index Cond: (ctid ==> '{"query_string":{"query":"login:falcao5"}}'::zdbquery)
 (2 rows)
 
 select id from xform_test where xform(xform_test) ==> 'login:falcao5' order by id;

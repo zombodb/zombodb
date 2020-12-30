@@ -37,9 +37,10 @@ fn anyelement_cmpfunc(
             let lookup = pg_func_extra(fcinfo, || {
                 let index =
                     PgRelation::with_lock(index_oid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
+
                 let es = Elasticsearch::new(&index);
                 let search = es
-                    .open_search(query.prepare(&es.index_relation(), None).0)
+                    .open_search(query.prepare(&index, None).0)
                     .execute()
                     .expect("failed to execute search");
 
