@@ -1286,7 +1286,7 @@ The query supports one way of defining the query shape:  by providing a whole sh
 
 ---
 
-####`dsl.geo_polygon()`
+#### `dsl.geo_polygon()`
 
 ```sql
 FUNCTION dsl.geo_polygon(
@@ -1301,7 +1301,7 @@ Given an array of Postgres `point` objects, generates an Elasticsearch `geo_poly
 
 ---
 
-####`dsl.geo_bounding_box()`
+#### `dsl.geo_bounding_box()`
 
 ```sql
 FUNCTION dsl.geo_bounding_box(
