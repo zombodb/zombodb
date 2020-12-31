@@ -7,11 +7,13 @@ Currently we support the following aggregations:
     Buckets: Date_Histogram, Histogram, Filter, Filters, Range, Terms 
 
 ## Examples
-If you want to do a query for the Sum it would look something like this: 
+If you want perform a `sum` aggregation it would look something like this: 
 ``` 
 SELECT * FROM zdb.sum_agg('example_agg', 'fieldname');
 ```
+
 Which will return
+
 ```
                     sum_agg                    
 -----------------------------------------------
@@ -20,12 +22,18 @@ Which will return
 
 Time: 18.449 ms
 ```
- If you do `\df zdb.*_agg` you will notice with the Metric Aggs have multiple function signatures. This is to accommodate different forms of the Aggregates.
- To Continue the Example form above:
+
+ If you do `\df zdb.*_agg` you will notice many of the "metric aggregations" have multiple function 
+ signatures. This is to accommodate different forms of the Aggregates.
+ 
+To Continue the Example from above:
+
  ```
 SELECT * FROM zdb.sum_agg('example_agg', 'field_name', 10);
 ``` 
-This will use 10 as the "missing" value producing 
+
+This will use 10 as the "missing" value producing
+
 ```sum_agg                             
    ----------------------------------------------------------------
     {"test_agg": {"sum": {"field": "fieldname", "missing": 10.0}}}
