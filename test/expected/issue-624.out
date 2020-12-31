@@ -11,15 +11,14 @@ select * from zdb.terms('issue624', 'title', '') order by term;
      term      | doc_count 
 ---------------+-----------
  ateliers      |         1
- d             |         1
  de            |         1
+ d’échange     |         1
  et            |         1
  les           |         1
  managers      |         1
  opérationnels |         1
  pour          |         1
  pratique      |         1
- échange       |         1
-(10 rows)
+(9 rows)
 
 drop table issue624;

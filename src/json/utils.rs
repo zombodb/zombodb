@@ -30,7 +30,7 @@ pub fn escape_json(input: &str, target: &mut String) {
                 target.push('\\');
                 target.push('f');
             }
-            other if other < 32 => {
+            other if c < ' ' => {
                 target.push_str(&format!("\\u{:04x}", other));
             }
             _ => target.push(c),
