@@ -1,0 +1,69 @@
+name: cargo pgx test pgXX
+
+on:
+  push:
+    branches: ["rust-rewrite"]
+  pull_request:
+    branches: ["rust-rewrite", "master", "develop"]
+
+jobs:
+  test:
+
+    runs-on: ${{ matrix.os }}
+    if: "!contains(github.event.head_commit.message, 'nogha')"
+
+    strategy:
+      matrix:
+        version: [10, 11, 12]
+        os: ["ubuntu-latest"]
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: cache cargo artifacts
+      id: cargo-artifacts-cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/bin
+          ~/.cargo/registry
+          ~/.cargo/git
+          ~/.cargo/cargo-pgx
+          target
+        key: ${{ matrix.os }}-pg${{ matrix.version }}-cargo-${{ hashFiles('**/Cargo.toml') }}
+
+    - name: cache cargo pgx init
+      id: cargo-pgx-init-cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.pgx/
+        key: ${{ matrix.os }}-pgx-init
+
+    - name: cargo version
+      run: cargo --version
+
+    # Ubuntu system dependencies required to build Postgres from sources
+    - name: install postgres build dependencies
+      if: steps.cargo-pgx-init-cache.outputs.cache-hit != 'true'
+      run: sudo apt install -y bison flex zlib1g zlib1g-dev pkg-config libssl-dev libreadline-dev curl
+
+    # download Elasticsearch
+    - name: download Elasticsearch
+      run: curl -s https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.6.0-linux-x86_64.tar.gz | tar xzf -
+
+    # install cargo-pgx
+    - name: install cargo-pgx
+      run: cargo install cargo-pgx --debug --force --git https://github.com/zombodb/pgx.git
+
+    # initialize pgx
+    - name: cargo pgx init
+      if: steps.cargo-pgx-init-cache.outputs.cache-hit != 'true'
+      run: cargo pgx init
+
+    # update cargo indexes so we're sure we get the latest things from 'git' repo dependencies
+    - name: cargo update
+      run: cargo update
+      
+    # test our code
+    - name: cargo pgx test pgXX
+      run: RUST_BACKTRACE=1 CARGO_TARGET_DIR=~/.cargo/cargo-pgx cargo pgx test pg${{ matrix.version }}
