@@ -91,7 +91,7 @@ fn zdb_delete_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
         let bulk = get_executor_manager().checkout_bulk_context(index_relid);
         if !bulk.is_shadow {
             bulk.bulk
-                .update(
+                .delete(
                     tid,
                     pg_sys::GetCurrentCommandId(true),
                     xid_to_64bit(pg_sys::GetCurrentTransactionId()),

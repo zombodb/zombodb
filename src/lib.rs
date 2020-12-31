@@ -59,6 +59,15 @@ fn internal_version() -> String {
     )
 }
 
+/// exists for debugging purposes
+#[pg_extern(immutable, parallel_safe)]
+fn ctid(as_u64: i64) -> pg_sys::ItemPointerData {
+    let as_u64 = as_u64 as u64;
+    let mut ctid = pg_sys::ItemPointerData::default();
+    u64_to_item_pointer(as_u64, &mut ctid);
+    ctid
+}
+
 #[cfg(test)]
 mod testing;
 

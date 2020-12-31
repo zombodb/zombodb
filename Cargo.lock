@@ -400,6 +400,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "dashmap"
+version = "4.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4b937cd1fbd1f194ac842196bd2529f21618088ee6d8bff6a46ece611451c96b"
+dependencies = [
+ "cfg-if 1.0.0",
+ "num_cpus",
+]
+
+[[package]]
 name = "diff"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2251,6 +2261,7 @@ dependencies = [
  "byteorder",
  "chrono",
  "crossbeam-channel",
+ "dashmap",
  "indexmap",
  "lalrpop",
  "lalrpop-util",
