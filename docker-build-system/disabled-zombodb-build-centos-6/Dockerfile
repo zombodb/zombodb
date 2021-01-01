@@ -22,7 +22,7 @@ ARG UID=1000
 ARG GID=1000
 RUN useradd -m ${USER} --uid=${UID}
 
-
+RUN yum install -y git
 RUN yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-6-x86_64/pgdg-redhat-repo-latest.noarch.rpm
 RUN yum install -y postgresql12-server postgresql12-devel
 RUN yum install -y postgresql11-server postgresql11-devel

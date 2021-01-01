@@ -22,7 +22,7 @@ ARG UID=1000
 ARG GID=1000
 RUN useradd -m ${USER} --uid=${UID}
 
-
+RUN dnf install -y git
 RUN dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/F-31-x86_64/pgdg-fedora-repo-latest.noarch.rpm
 RUN dnf install -y postgresql10-server postgresql10-devel
 RUN dnf install -y postgresql11-server postgresql11-devel

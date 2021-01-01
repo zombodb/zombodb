@@ -26,6 +26,7 @@ RUN adduser --uid=${UID} -D ${USER}
 ENV RUSTFLAGS="-C target-feature=-crt-static"
 
 RUN apk add --no-cache \
+    git \
 	curl \
 	bash \
 	ruby-dev \
