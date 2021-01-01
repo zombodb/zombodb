@@ -1,5 +1,5 @@
 [![logo](logo.png)](https://www.zombodb.com/) 
-###### Making Postgres and Elasticsearch work together like it's 2020
+###### Making Postgres and Elasticsearch work together like it's 2021
 [![Build Status](https://travis-ci.org/zombodb/zombodb.svg?branch=master)](https://travis-ci.com/zombodb/zombodb)
 [![Twitter Follow](https://img.shields.io/twitter/follow/zombodb.svg?style=flat)](https://twitter.com/zombodb)
 
@@ -174,7 +174,7 @@ ZomboDB was open-sourced in July 2015 and has since been used in numerous produc
 
 ## License
 
-Copyright 2018-2020 ZomboDB, LLC
+Copyright 2018-2021 ZomboDB, LLC
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
