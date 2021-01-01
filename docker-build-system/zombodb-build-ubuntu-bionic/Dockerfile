@@ -32,7 +32,7 @@ RUN apt update
 RUN apt-get update -y --fix-missing
 RUN apt-get install -y curl
 
-RUN apt-get install -y git
+RUN apt-get install -y git-all
 RUN apt-get install -y clang-9 llvm-9 gcc make build-essential libz-dev zlib1g-dev strace libssl-dev pkg-config
 RUN apt-get install -y postgresql-10 postgresql-server-dev-10
 RUN apt-get install -y postgresql-11 postgresql-server-dev-11
