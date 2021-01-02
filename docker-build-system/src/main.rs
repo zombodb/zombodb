@@ -269,7 +269,7 @@ fn docker_run(
         .arg(image)
         .arg("bash")
         .arg("-c")
-        .arg("CARGO_TARGET_DIR=/build /zombodb/docker-build-system/package.sh ${pgver} ${image}");
+        .arg("./docker-build-system/package.sh ${pgver} ${image}");
 
     println!(
         "{} {} for pg{}",
