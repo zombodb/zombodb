@@ -94,6 +94,17 @@ fn main() -> Result<(), std::io::Error> {
 
     let dockerfiles = find_dockerfiles()?;
 
+    std::thread::spawn(|| {
+        let mut sleep_time = 60;
+        loop {
+            let start = std::time::Instant::now();
+            std::thread::sleep(std::time::Duration::from_secs(sleep_time));
+            let ttl = std::time::Instant::now() - start;
+            println!("elapsed time: {:?}", durationfmt::to_string(ttl));
+            sleep_time = 10;
+        }
+    });
+
     let start = std::time::Instant::now();
     dockerfiles.par_iter().for_each(|(image, file)| {
         let dockerfile = handle_result!(
