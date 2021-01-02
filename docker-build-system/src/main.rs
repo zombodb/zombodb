@@ -35,26 +35,24 @@ macro_rules! handle_result {
 static PGVERS: &[u16; 4] = &[10, 11, 12, 13];
 
 fn do_exit() {
-    unsafe {
-        // best effort to kill the docker process
-        if let Ok(output) = Command::new("docker").arg("ps").output() {
-            let mut container_ids = Vec::new();
-            for line in String::from_utf8_lossy(&output.stdout).lines() {
-                if line.contains("zombodb-build") {
-                    if let Some(container_id) = line.split_whitespace().next() {
-                        container_ids.push(container_id.to_string())
-                    }
+    // best effort to kill the docker process
+    if let Ok(output) = Command::new("docker").arg("ps").output() {
+        let mut container_ids = Vec::new();
+        for line in String::from_utf8_lossy(&output.stdout).lines() {
+            if line.contains("zombodb-build") {
+                if let Some(container_id) = line.split_whitespace().next() {
+                    container_ids.push(container_id.to_string())
                 }
             }
+        }
 
-            if !container_ids.is_empty() {
-                eprintln!("{} {:?}", "KILLING".bold().red(), container_ids);
-                Command::new("docker")
-                    .arg("kill")
-                    .args(container_ids)
-                    .output()
-                    .ok();
-            }
+        if !container_ids.is_empty() {
+            eprintln!("{} {:?}", "KILLING".bold().red(), container_ids);
+            Command::new("docker")
+                .arg("kill")
+                .args(container_ids)
+                .output()
+                .ok();
         }
     }
     std::process::exit(1);
