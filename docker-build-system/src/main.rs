@@ -70,6 +70,7 @@ fn main() -> Result<(), std::io::Error> {
 
     let dockerfiles = find_dockerfiles()?;
 
+    let start = std::time::Instant::now();
     dockerfiles.par_iter().for_each(|(image, file)| {
         let dockerfile = handle_result!(
             parse_dockerfile(&file),
@@ -94,11 +95,20 @@ fn main() -> Result<(), std::io::Error> {
                     image,
                     start.elapsed()
                 );
+
+                let start = std::time::Instant::now();
                 handle_result!(
                     docker_run(&image, *pgver, &repodir, &builddir, &artifactdir),
                     "Failed to compile {} for {}",
                     image,
                     pgver
+                );
+                println!(
+                    "{} {} for pg{} in {:?}",
+                    "    Packaged".bold().green(),
+                    image,
+                    pgver,
+                    start.elapsed()
                 );
             });
         } else {
@@ -117,15 +127,24 @@ fn main() -> Result<(), std::io::Error> {
             );
 
             PGVERS.par_iter().for_each(|pgver| {
+                let start = std::time::Instant::now();
                 handle_result!(
                     docker_run(&image, *pgver, &repodir, &builddir, &artifactdir),
                     "Failed to compile {} for {}",
                     image,
                     pgver
                 );
+                println!(
+                    "{} {} for pg{} in {:?}",
+                    "    Packaged".bold().blue(),
+                    image,
+                    pgver,
+                    start.elapsed()
+                );
             });
         }
     });
+    println!("{} in {:?}", "    Finished".bold().blue(), start.elapsed());
 
     Ok(())
 }
