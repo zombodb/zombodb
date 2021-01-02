@@ -233,12 +233,10 @@ fn docker_run(
     );
 
     println!("{} repository for {}", "     Copying".bold().green(), image);
-    fs_extra::copy_items(
-        &[&repodir],
-        &builddir,
-        &fs_extra::dir::CopyOptions::default(),
-    )
-    .expect("failed to copy repository directory");
+    let mut options = fs_extra::dir::CopyOptions::default();
+    options.copy_inside = true;
+    fs_extra::copy_items(&[&repodir], &builddir, &options)
+        .expect("failed to copy repository directory");
 
     let mut command = Command::new("docker");
     command
