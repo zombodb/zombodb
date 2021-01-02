@@ -76,23 +76,8 @@ fn main() -> Result<(), std::io::Error> {
     let builddir = PathBuf::from_str("./target/zdb-build/build/").unwrap();
     let repodir = PathBuf::from_str("./target/zdb-build/zombodb/").unwrap();
 
-    if targetdir.exists() {
-        println!(
-            "{} `{}`",
-            "    Removing".bold().green(),
-            targetdir.display()
-        );
-        std::fs::remove_dir_all(&targetdir).expect("failed to remove existing targetdir");
-    }
-
-    if artifactdir.exists() {
-        println!(
-            "{} `{}`",
-            "    Removing".bold().green(),
-            artifactdir.display()
-        );
-        std::fs::remove_dir_all(&artifactdir).expect("failed to remove existing targetdir");
-    }
+    remove_dir(&targetdir);
+    remove_dir(&artifactdir);
     std::fs::create_dir_all(&artifactdir).expect("failed to create artifactdir");
     std::fs::create_dir_all(&builddir).expect("failed to create builddir");
     std::fs::create_dir_all(&repodir).expect("failed to create repodir");
@@ -176,6 +161,13 @@ fn main() -> Result<(), std::io::Error> {
     println!("{} in {:?}", "    Finished".bold().blue(), start.elapsed());
 
     Ok(())
+}
+
+fn remove_dir(dir: &PathBuf) {
+    if dir.exists() {
+        println!("{} `{}`", "    Removing".bold().green(), dir.display());
+        std::fs::remove_dir_all(&dir).expect("failed to remove existing targetdir");
+    }
 }
 
 fn docker_build(base_image: &str, pgver: Option<u16>) -> Result<String, std::io::Error> {
