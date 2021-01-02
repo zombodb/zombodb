@@ -3,7 +3,7 @@ use rayon::prelude::*;
 use std::collections::HashSet;
 use std::io::BufRead;
 use std::path::PathBuf;
-use std::process::{Command, Output, Stdio};
+use std::process::{Command, Output};
 use std::str::FromStr;
 
 macro_rules! exit_with_error {
@@ -14,7 +14,8 @@ macro_rules! exit_with_error {
         use colored::Colorize;
         eprint!("{} ", "[error]".bold().red());
         eprintln!($fmt, $($arg)+);
-        std::process::exit(1);
+        do_exit();
+        unreachable!();
     });
 }
 
@@ -33,7 +34,34 @@ macro_rules! handle_result {
 
 static PGVERS: &[u16; 4] = &[10, 11, 12, 13];
 
+fn do_exit() {
+    unsafe {
+        // best effort to kill the docker process
+        if let Ok(output) = Command::new("docker").arg("ps").output() {
+            let mut container_ids = Vec::new();
+            for line in String::from_utf8_lossy(&output.stdout).lines() {
+                if line.contains("zombodb-build") {
+                    if let Some(container_id) = line.split_whitespace().next() {
+                        container_ids.push(container_id.to_string())
+                    }
+                }
+            }
+
+            if !container_ids.is_empty() {
+                eprintln!("{} {:?}", "KILLING".bold().red(), container_ids);
+                Command::new("docker")
+                    .arg("kill")
+                    .args(container_ids)
+                    .output()
+                    .ok();
+            }
+        }
+    }
+    std::process::exit(1);
+}
+
 fn main() -> Result<(), std::io::Error> {
+    ctrlc::set_handler(do_exit).expect("unable to set ^C handler");
     let max_cpus = std::env::var("CPU").unwrap_or(num_cpus::get().to_string());
     rayon::ThreadPoolBuilder::new()
         .num_threads(max_cpus.parse().expect("`CPU` envvar is invalid"))
@@ -237,8 +265,6 @@ fn docker_run(
             users::get_current_uid(),
             users::get_current_gid()
         ))
-        .arg("-i")
-        .arg("-t")
         .arg(image)
         .arg("bash")
         .arg("-c")
@@ -250,6 +276,7 @@ fn docker_run(
         image,
         pgver
     );
+
     let command_str = format!("{:?}", command);
     let output = command.output()?;
     handle_command_output(image.into(), command_str, &output)
