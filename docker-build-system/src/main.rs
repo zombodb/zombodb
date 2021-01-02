@@ -237,6 +237,7 @@ fn docker_run(
             users::get_current_uid(),
             users::get_current_gid()
         ))
+        .arg("-it")
         .arg("-t")
         .arg(image)
         .arg("bash")
