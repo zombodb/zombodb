@@ -59,6 +59,7 @@ fn do_exit() {
 }
 
 fn main() -> Result<(), std::io::Error> {
+    let timer_start = std::time::Instant::now();
     ctrlc::set_handler(do_exit).expect("unable to set ^C handler");
     let max_cpus = std::env::var("CPUS").unwrap_or(num_cpus::get().to_string());
     rayon::ThreadPoolBuilder::new()
@@ -89,24 +90,18 @@ fn main() -> Result<(), std::io::Error> {
         .unwrap_or_else(|| exit_with_error!("usage:  cargo run <branch>"));
     let image = args.next();
     let pgver = args.next();
+    let dockerfiles = find_dockerfiles()?;
 
     handle_result!(git_clone(&branch, &repodir), "failed to clone ZomboDB repo");
 
-    let dockerfiles = find_dockerfiles()?;
-
-    std::thread::spawn(|| {
-        let start = std::time::Instant::now();
-
-        let mut sleep_time = 60;
-        loop {
-            std::thread::sleep(std::time::Duration::from_secs(sleep_time));
-            let ttl = std::time::Instant::now() - start;
-            println!("elapsed time: {}", durationfmt::to_string(ttl));
-            sleep_time = 10;
-        }
+    std::thread::spawn(move || loop {
+        std::thread::sleep(std::time::Duration::from_secs(60));
+        println!(
+            "elapsed time: {}",
+            durationfmt::to_string(std::time::Instant::now() - timer_start)
+        );
     });
 
-    let start = std::time::Instant::now();
     dockerfiles.par_iter().for_each(|(image, file)| {
         let dockerfile = handle_result!(
             parse_dockerfile(&file),
@@ -180,7 +175,11 @@ fn main() -> Result<(), std::io::Error> {
             });
         }
     });
-    println!("{} in {:?}", "    Finished".bold().green(), start.elapsed());
+    println!(
+        "{} in {:?}",
+        "    Finished".bold().green(),
+        timer_start.elapsed()
+    );
 
     Ok(())
 }
