@@ -139,7 +139,7 @@ fn main() -> Result<(), std::io::Error> {
                 );
                 println!(
                     "{} {} for pg{} in {:?}",
-                    "    Packaged".bold().green(),
+                    "    Packaged".bold().blue(),
                     image,
                     pgver,
                     start.elapsed()
