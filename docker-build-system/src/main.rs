@@ -252,6 +252,7 @@ fn docker_run(
     let mut command = Command::new("docker");
     command
         .arg("run")
+        .arg("--cpus=2")
         .arg("-e")
         .arg(&format!("pgver={}", pgver))
         .arg("-e")
