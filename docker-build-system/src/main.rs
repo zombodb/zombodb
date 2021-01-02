@@ -178,7 +178,7 @@ fn main() -> Result<(), std::io::Error> {
     println!(
         "{} in {:?}",
         "    Finished".bold().green(),
-        timer_start.elapsed()
+        durationfmt::to_string(std::time::Instant::now() - timer_start)
     );
 
     Ok(())
