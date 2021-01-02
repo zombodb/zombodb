@@ -154,7 +154,12 @@ fn main() -> Result<(), std::io::Error> {
                 "{}:  failed to run `docker build`",
                 image.bold().red()
             );
-            println!("{} {} in {:?}", "       Built", image, start.elapsed());
+            println!(
+                "{} {} in {:?}",
+                "       Built".bold().cyan(),
+                image,
+                start.elapsed()
+            );
 
             PGVERS.par_iter().for_each(|pgver| {
                 let start = std::time::Instant::now();
