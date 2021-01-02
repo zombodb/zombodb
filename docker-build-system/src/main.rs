@@ -40,6 +40,11 @@ fn main() -> Result<(), std::io::Error> {
         .build_global()
         .ok();
 
+    println!(
+        "{} `num_threads` to {}",
+        "     Setting".bold().green(),
+        max_cpus
+    );
     let targetdir = PathBuf::from_str("./target/zdb-build/").unwrap();
     let artifactdir = PathBuf::from_str("./target/zdb-build/artifacts/").unwrap();
     let builddir = PathBuf::from_str("./target/zdb-build/build/").unwrap();
