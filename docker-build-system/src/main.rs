@@ -113,7 +113,12 @@ fn main() -> Result<(), std::io::Error> {
                     image.bold().red(),
                     pgver.to_string().bold().red()
                 );
-                println!("{} {} in {:?}", "       Built", image, start.elapsed());
+                println!(
+                    "{} {} in {:?}",
+                    "       Built".bold().cyan(),
+                    image,
+                    start.elapsed()
+                );
 
                 let start = std::time::Instant::now();
                 handle_result!(
@@ -158,7 +163,7 @@ fn main() -> Result<(), std::io::Error> {
             });
         }
     });
-    println!("{} in {:?}", "    Finished".bold().blue(), start.elapsed());
+    println!("{} in {:?}", "    Finished".bold().green(), start.elapsed());
 
     Ok(())
 }
