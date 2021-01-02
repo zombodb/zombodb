@@ -101,7 +101,7 @@ fn main() -> Result<(), std::io::Error> {
         loop {
             std::thread::sleep(std::time::Duration::from_secs(sleep_time));
             let ttl = std::time::Instant::now() - start;
-            println!("elapsed time: {:?}", durationfmt::to_string(ttl));
+            println!("elapsed time: {}", durationfmt::to_string(ttl));
             sleep_time = 10;
         }
     });
