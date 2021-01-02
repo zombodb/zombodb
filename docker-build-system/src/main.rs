@@ -234,7 +234,7 @@ fn docker_run(
 
     println!("{} repository for {}", "     Copying".bold().green(), image);
     let mut options = fs_extra::dir::CopyOptions::default();
-    options.copy_inside = true;
+    options.content_only = true;
     fs_extra::copy_items(&[repodir], &builddir, &options)
         .expect("failed to copy repository directory");
 
