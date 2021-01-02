@@ -211,7 +211,7 @@ fn docker_build(base_image: &str, pgver: Option<u16>) -> Result<String, std::io:
 
     command.arg("-t").arg(&image_name).arg(base_image);
 
-    println!("{} {}", "    Building".bold().green(), image_name);
+    println!("{} {}", " Dockerizing".bold().green(), image_name);
     let command_str = format!("{:?}", command);
     let output = command.output()?;
     handle_command_output(image_name, command_str, &output)
