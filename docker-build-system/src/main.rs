@@ -60,9 +60,9 @@ fn do_exit() {
 
 fn main() -> Result<(), std::io::Error> {
     ctrlc::set_handler(do_exit).expect("unable to set ^C handler");
-    let max_cpus = std::env::var("CPU").unwrap_or(num_cpus::get().to_string());
+    let max_cpus = std::env::var("CPUS").unwrap_or(num_cpus::get().to_string());
     rayon::ThreadPoolBuilder::new()
-        .num_threads(max_cpus.parse().expect("`CPU` envvar is invalid"))
+        .num_threads(max_cpus.parse().expect("`CPUS` envvar is invalid"))
         .build_global()
         .ok();
 
