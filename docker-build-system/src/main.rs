@@ -3,7 +3,7 @@ use rayon::prelude::*;
 use std::collections::HashSet;
 use std::io::BufRead;
 use std::path::PathBuf;
-use std::process::{Command, Output};
+use std::process::{Command, Output, Stdio};
 use std::str::FromStr;
 
 macro_rules! exit_with_error {
@@ -237,7 +237,7 @@ fn docker_run(
             users::get_current_uid(),
             users::get_current_gid()
         ))
-        .arg("-it")
+        .arg("-i")
         .arg("-t")
         .arg(image)
         .arg("bash")
