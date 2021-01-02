@@ -261,7 +261,12 @@ fn docker_run(
         builddir.display().to_string().bold().yellow()
     );
 
-    println!("{} repository for {}", "     Copying".bold().green(), image);
+    println!(
+        "{} repository for {}:pg{}",
+        "     Copying".bold().green(),
+        image,
+        pgver
+    );
     let contents: Vec<_> = repodir
         .read_dir()
         .unwrap()
