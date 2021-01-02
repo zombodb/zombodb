@@ -232,6 +232,14 @@ fn docker_run(
         builddir.display().to_string().bold().yellow()
     );
 
+    println!("{} repository for {}", "     Copying".bold().green(), image);
+    fs_extra::copy_items(
+        &[&repodir],
+        &builddir,
+        &fs_extra::dir::CopyOptions::default(),
+    )
+    .expect("failed to copy repository directory");
+
     let mut command = Command::new("docker");
     command
         .arg("run")
@@ -240,12 +248,7 @@ fn docker_run(
         .arg("-e")
         .arg(&format!("image={}", image))
         .arg("-w")
-        .arg(&format!("/zombodb"))
-        .arg("--mount")
-        .arg(&format!(
-            "type=bind,source={},target=/zombodb",
-            repodir.canonicalize()?.display()
-        ))
+        .arg(&format!("/build"))
         .arg("--mount")
         .arg(&format!(
             "type=bind,source={},target=/build",
