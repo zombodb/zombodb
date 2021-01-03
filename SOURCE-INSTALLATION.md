@@ -57,7 +57,7 @@ $ cargo run <branch-name> [<docker-image-name> <pg major version>]
 Likely for the `<branch-name>` argument you'll want to specify `master`, unless perhaps you're
 working on a custom branch.
 
-If you're only targeting one Linux distro and Postgres version, you'll want to specify all three arugments.
+If you're only targeting one Linux distro and Postgres version, you'll want to specify all three arguments.
 
 This process will take a long time (potentially hours depending on your download speeds), but it will build
 ZomboDB for all supported Linux distro and Postgres version permutations.
@@ -70,5 +70,5 @@ The final binary artifacts will be placed in the `./target/zdb-build/artifacts/`
 No logs are created, but in the event of Docker/compilation errors, the entire output of the
 thing that failed is printed to stdout.
 
-Once binrary artifacts are build, follow the instructions in [BINARY-INSTALLATION.md] to install the proper artifact for 
+Once binary artifacts are build, follow the instructions in [BINARY-INSTALLATION.md] to install the proper artifact for 
 your environment.
