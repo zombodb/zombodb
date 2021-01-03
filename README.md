@@ -1,6 +1,6 @@
 [![logo](logo.png)](https://www.zombodb.com/) 
 ###### Making Postgres and Elasticsearch work together like it's 2021
-[![Build Status](https://travis-ci.org/zombodb/zombodb.svg?branch=master)](https://travis-ci.com/zombodb/zombodb)
+![cargo test --all](https://github.com/zombodb/zombodb/workflows/cargo%20pgx%20test%20pgXX/badge.svg)
 [![Twitter Follow](https://img.shields.io/twitter/follow/zombodb.svg?style=flat)](https://twitter.com/zombodb)
 
 
