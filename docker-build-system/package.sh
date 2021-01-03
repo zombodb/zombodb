@@ -54,8 +54,9 @@ cargo pgx package || exit $?
 #
 # cd into the package directory
 #
-BUILDDIR=`pwd`
-cd target/release/zombodb-${PGVER} || exit $?
+ARTIFACTDIR=/artifacts
+BUILDDIR=/build/target/release/zombodb-pg${PGVER}
+cd ${BUILDDIR} || exit $?
 
 # strip the binaries to make them smaller
 find ./ -name "*.so" -exec strip {} \;
@@ -70,7 +71,7 @@ if [ "${PKG_FORMAT}" == "deb" ]; then
 		-n zombodb-${PGVER} \
 		-v ${VERSION} \
 		--deb-no-default-config-files \
-		-p ${BUILDDIR}/target/release/zombodb_${OSNAME}_${PGVER}-${VERSION}_amd64.deb \
+		-p ${ARTIFACTDIR}/zombodb_${OSNAME}_${PGVER}-${VERSION}_amd64.deb \
 		-a amd64 \
 		. || exit 1
 
@@ -81,7 +82,7 @@ elif [ "${PKG_FORMAT}" == "rpm" ]; then
 		-n zombodb-${PGVER} \
 		-v ${VERSION} \
 		--rpm-os linux \
-		-p ${BUILDDIR}/target/release/zombodb_${OSNAME}_${PGVER}-${VERSION}_1.x86_64.rpm \
+		-p ${ARTIFACTDIR}/zombodb_${OSNAME}_${PGVER}-${VERSION}_1.x86_64.rpm \
 		-a x86_64 \
 		. || exit 1
 
@@ -91,7 +92,7 @@ elif [ "${PKG_FORMAT}" == "apk" ]; then
 		-t apk \
 		-n zombodb-${PGVER} \
 		-v ${VERSION} \
-		-p ${BUILDDIR}/target/release/zombodb_${OSNAME}_${PGVER}-${VERSION}.$(uname -m).apk \
+		-p ${ARTIFACTDIR}/zombodb_${OSNAME}_${PGVER}-${VERSION}.$(uname -m).apk \
 		-a $(uname -m) \
 		. \
 		|| exit 1

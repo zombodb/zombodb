@@ -1,0 +1,16 @@
+[package]
+name = "docker-build-system"
+version = "3000.0.0-alpha3"
+authors = ["Eric B. Ridge <eebbrr@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+colored = "2.0.0"
+ctrlc = { version = "3.1.7", features = ["termination"] }
+durationfmt = "0.1.1"
+fs_extra = "1.2.0"
+num_cpus = "1.13.0"
+rayon = "1.5.0"
+users = "0.11.0"
