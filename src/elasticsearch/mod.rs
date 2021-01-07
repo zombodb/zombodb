@@ -70,7 +70,7 @@ pub mod pg_catalog {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Elasticsearch {
     options: ZDBIndexOptions,
 }

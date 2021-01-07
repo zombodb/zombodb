@@ -20,7 +20,7 @@ pub struct ElasticsearchSearchRequest {
     query: ZDBPreparedQuery,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct HitsTotal {
     value: u64,
 }
@@ -42,7 +42,7 @@ impl Default for Fields {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct InnerHit {
     #[serde(rename = "_score")]
     score: Option<f64>,
@@ -50,13 +50,13 @@ pub struct InnerHit {
     highlight: Option<HashMap<String, Vec<String>>>,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Hits {
     total: HitsTotal,
     hits: Option<Vec<InnerHit>>,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct ElasticsearchSearchResponse {
     #[serde(skip)]
     elasticsearch: Option<Elasticsearch>,
