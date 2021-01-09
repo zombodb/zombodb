@@ -68,6 +68,7 @@ ZomboDB allows you to use the power and scalability of Elasticsearch directly fr
  - Only one ZomboDB index per table
  - ZomboDB indexes with predicates (ie, [partial indexes](https://www.postgresql.org/docs/10/indexes-partial.html)) are not supported
  - `CREATE INDEX CONCURRENTLY` is not supported
+ - Partitioned Tables are not properly supported.  This will be resolved in a near-future version (Issue #630)
 
 These limitations may be addressed in future versions of ZomboDB.
 
