@@ -47,6 +47,8 @@ pub use create_index::*;
 use lazy_static::*;
 use pgx::*;
 use serde::de::DeserializeOwned;
+use serde::export::fmt::Display;
+use serde::export::Formatter;
 use serde_json::json;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -77,6 +79,19 @@ pub struct Elasticsearch {
 
 #[derive(Debug)]
 pub struct ElasticsearchError(Option<u16>, String);
+
+impl Display for ElasticsearchError {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(
+            fmt,
+            "{}{}",
+            self.0
+                .as_ref()
+                .map_or(String::new(), |code| format!("HTTP {} ", code)),
+            self.1
+        )
+    }
+}
 
 impl ElasticsearchError {
     pub fn status(&self) -> Option<u16> {
@@ -442,12 +457,31 @@ impl Elasticsearch {
             }
 
             // it wasn't a valid HTTP response code
-            Err(ureq::Error::Status(code, response)) => Err(ElasticsearchError(
-                Some(code),
-                response
-                    .into_string()
-                    .expect("failed to convert response to a string"),
-            )),
+            Err(ureq::Error::Status(code, response)) => {
+                let as_string = match response.content_type() {
+                    "application/json" => {
+                        let value: serde_json::Value =
+                            serde_json::from_reader(response.into_reader()).unwrap();
+                        serde_json::to_string_pretty(&value).unwrap()
+                    }
+
+                    "application/cbor" => {
+                        // this might look a little weird but we're using serde_cbor to decode
+                        // the error response into a serde_json value so that we can convert it
+                        // into a String
+                        let value: serde_json::Value =
+                            serde_cbor::from_reader(response.into_reader()).unwrap();
+                        serde_json::to_string_pretty(&value).unwrap()
+                    }
+
+                    _ => response
+                        .into_string()
+                        .unwrap_or_else(|_| "no response data".into()),
+                };
+
+                // and return it back to the caller
+                Err(ElasticsearchError(Some(code), as_string))
+            }
 
             // the request didn't reach ES
             Err(e) => Err(ElasticsearchError(None, e.to_string())),

@@ -57,6 +57,15 @@ pub struct Hits {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct Shards {
+    total: usize,
+    successful: usize,
+    skipped: usize,
+    failed: usize,
+    failures: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct ElasticsearchSearchResponse {
     #[serde(skip)]
     elasticsearch: Option<Elasticsearch>,
@@ -71,13 +80,12 @@ pub struct ElasticsearchSearchResponse {
 
     #[serde(rename = "_scroll_id")]
     scroll_id: Option<String>,
-
+    #[serde(rename = "_shards")]
+    shards: Option<Shards>,
     hits: Option<Hits>,
 
     #[serde(skip)]
     fast_terms: Option<Vec<u64>>,
-    // fast_terms: Option<Vec<[u8; 6]>>,
-    // fast_terms: Option<roaring::RoaringTreemap>,
 }
 
 impl InnerHit {
@@ -174,6 +182,7 @@ impl ElasticsearchSearchRequest {
                     track_scores,
                     should_sort_hits,
                     scroll_id: None,
+                    shards: None,
                     hits: None,
                     fast_terms: None,
                 });
@@ -372,6 +381,7 @@ impl ElasticsearchSearchRequest {
                         track_scores: false,
                         should_sort_hits: false,
                         scroll_id: None,
+                        shards: None,
                         hits: None,
                         fast_terms: Some(fast_terms),
                     })
@@ -385,6 +395,18 @@ impl ElasticsearchSearchRequest {
                 |body| {
                     let mut response: ElasticsearchSearchResponse =
                         serde_cbor::from_reader(body).expect("failed to deserialize CBOR response");
+
+                    // make sure there's no failures listed in the response
+                    if response.shards.is_some()
+                        && response.shards.as_ref().unwrap().failures.is_some()
+                    {
+                        // ES gave us an error so report it back to the user
+                        let error_string = serde_json::to_string_pretty(
+                            &response.shards.as_ref().unwrap().failures.as_ref().unwrap(),
+                        )
+                        .unwrap_or_else(|e| format!("{:?}", e));
+                        return Err(ElasticsearchError(None, error_string));
+                    }
 
                     // assign a clone of our ES client to the response too,
                     // for future use during iteration

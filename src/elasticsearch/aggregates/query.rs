@@ -8,7 +8,7 @@ fn query(index: PgRelation, query: ZDBQuery) -> impl Iterator<Item = pg_sys::Ite
     let result = es
         .open_search(query.prepare(&index, None).0)
         .execute()
-        .expect("failed to execute search");
+        .unwrap_or_else(|e| panic!("{}", e));
 
     result
         .into_iter()

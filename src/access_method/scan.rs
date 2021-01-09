@@ -69,7 +69,7 @@ pub extern "C" fn amrescan(
     let response = elasticsearch
         .open_search(query.prepare(&indexrel, None).0)
         .execute()
-        .expect("failed to execute ES query");
+        .unwrap_or_else(|e| panic!("{}", e));
 
     state.iterator =
         PgMemoryContexts::CurrentMemoryContext.leak_and_drop_on_delete(response.into_iter());

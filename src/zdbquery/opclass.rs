@@ -42,7 +42,7 @@ fn anyelement_cmpfunc(
                 let search = es
                     .open_search(query.prepare(&index, None).0)
                     .execute()
-                    .expect("failed to execute search");
+                    .unwrap_or_else(|e| panic!("{}", e));
 
                 let mut lookup = HashSet::with_capacity(search.len());
                 for (score, ctid, _, highlights) in search.into_iter() {
