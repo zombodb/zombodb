@@ -90,9 +90,9 @@ FROM test_var_join_data.test_view as data
             '( ( fulltext : giraffe ) )'
         ) as highlights ON true
 WHERE field_name IS NOT NULL and pk_var_id = 1;
- pk_var_id | field_name |  term   |    type    | position | start_offset | end_offset |    query_clause    
------------+------------+---------+------------+----------+--------------+------------+--------------------
-         1 | fulltext   | giraffe | <ALPHANUM> |        2 |            4 |         11 | fulltext:"giraffe"
+ pk_var_id | field_name | array_index |  term   |    type    | position | start_offset | end_offset |    query_clause    
+-----------+------------+-------------+---------+------------+----------+--------------+------------+--------------------
+         1 | fulltext   |           0 | giraffe | <ALPHANUM> |        2 |            4 |         11 | fulltext:"giraffe"
 (1 row)
 
 DROP SCHEMA test_data_join_var cascade;
