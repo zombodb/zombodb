@@ -444,6 +444,7 @@ VALUES ('zdb.fulltext', '{
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('zdb.fulltext_with_shingles', '{
   "type": "text",
+  "fielddata": true,
   "analyzer": "fulltext_with_shingles",
   "search_analyzer": "fulltext_with_shingles_search"
 }', true);
