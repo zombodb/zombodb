@@ -1,5 +1,6 @@
 use crate::highlighting::document_highlighter::*;
-use crate::zql::ast::{Expr, QualifiedField, Term};
+use crate::utils::find_zdb_index;
+use crate::zql::ast::{Expr, IndexLink, QualifiedField, Term};
 use pgx::*;
 use pgx::{JsonB, PgRelation};
 use serde_json::Value;
@@ -336,18 +337,21 @@ fn highlight_document(
 > {
     // select * from zdb.highlight_document('idxbeer', '{"subject":"free beer", "authoremail":"Christi l nicolay"}', '!!subject:beer or subject:fr?? and authoremail:(christi, nicolay)') order by field_name, position;
     let mut used_fields = HashSet::new();
+    let (index, options) = find_zdb_index(&index).expect("unable to find ZomboDB index");
+    let links = IndexLink::from_options(&index, options);
     let query = Expr::from_str(
         &index,
         "zdb_all",
         query_string,
-        &vec![],
+        &links,
         &None,
         &mut used_fields,
     )
     .expect("failed to parse query");
 
-    let qh = QueryHighligther::new(&index, document.0, &used_fields, query);
-    qh.highlight().into_iter()
+    QueryHighligther::new(&index, document.0, &used_fields, query)
+        .highlight()
+        .into_iter()
 }
 
 #[cfg(any(test, feature = "pg_test"))]

@@ -752,6 +752,32 @@ impl IndexLink {
         }
     }
 
+    pub fn from_options(index: &PgRelation, options: Option<Vec<String>>) -> Vec<Self> {
+        match options {
+            None => Vec::new(),
+            Some(options) => {
+                let mut index_links = Vec::new();
+
+                for link in options {
+                    let link = INDEX_LINK_PARSER.with(|parser| {
+                        parser
+                            .parse(
+                                Some(index),
+                                &mut HashSet::new(),
+                                &mut Vec::new(),
+                                &mut Vec::new(),
+                                link.as_str(),
+                            )
+                            .expect("failed to parse index link")
+                    });
+                    index_links.push(link);
+                }
+
+                index_links
+            }
+        }
+    }
+
     pub fn from_zdb(index: &PgRelation) -> Vec<Self> {
         let mut index_links = Vec::new();
 
