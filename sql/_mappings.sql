@@ -437,6 +437,7 @@ VALUES ('zdb.phrase_array', '{
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('zdb.fulltext', '{
   "type": "text",
+  "fielddata": true,
   "analyzer": "fulltext"
 }', true);
 
