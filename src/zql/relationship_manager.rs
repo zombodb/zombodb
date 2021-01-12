@@ -1,12 +1,10 @@
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
-use std::fmt::{Debug, Error};
+use std::fmt::{Debug, Error, Formatter};
 use std::ops::Deref;
 use std::rc::Rc;
 use std::str::FromStr;
-
-use serde::export::Formatter;
 
 use crate::zql::ast::{IndexLink, QualifiedIndex};
 

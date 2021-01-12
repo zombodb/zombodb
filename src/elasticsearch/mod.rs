@@ -47,11 +47,10 @@ pub use create_index::*;
 use lazy_static::*;
 use pgx::*;
 use serde::de::DeserializeOwned;
-use serde::export::fmt::Display;
-use serde::export::Formatter;
 use serde_json::json;
 use serde_json::Value;
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 use std::io::Read;
 
 lazy_static! {

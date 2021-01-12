@@ -2,10 +2,10 @@ use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
 use crate::zdbquery::mvcc::apply_visibility_clause;
 use crate::zdbquery::ZDBPreparedQuery;
 use serde::de::DeserializeOwned;
-use serde::export::PhantomData;
 use serde::*;
 use serde_json::*;
 use std::collections::HashMap;
+use std::marker::PhantomData;
 
 pub struct ElasticsearchAggregateSearchRequest<ReturnType>
 where
