@@ -6,7 +6,7 @@
 
 # 🚨 Note 🚨
 
-This is ZomboDB 3000.0.0-**alpha3**.  This represents a year-long rewrite of ZomboDB to Rust.
+This is ZomboDB 3000.0.0-**alpha4**.  This represents a year-long rewrite of ZomboDB to Rust.
 
 It is expected that the alpha/beta phase will continue through January 2021.  That said, please
 get started with it today.  Report Issues, provide feedback, and also [sponsors our work](https://github.com/sponsors/eeeebbbbrrrr)!
