@@ -6,7 +6,7 @@ order by field_name, array_index, start_offset;
      field_name      | array_index | term  |      type      | position | start_offset | end_offset |        query_clause        
 ---------------------+-------------+-------+----------------+----------+--------------+------------+----------------------------
  comment_text.first  |           1 | david | <ALPHANUM>     |        1 |            0 |          5 | comment_text.first="david"
- comment_text.id.low |           0 | 0     | <UNSIGNED INT> |        1 |            0 |          0 | comment_text.id.low="0"
+ comment_text.id.low |           0 | 0     | <UNSIGNED_INT> |        1 |            0 |          0 | comment_text.id.low="0"
 (2 rows)
 
 select *
@@ -18,7 +18,7 @@ order by field_name, array_index, start_offset;
 ----------------------+-------------+-------+----------------+----------+--------------+------------+------------------------------
  comment_text.first   |           0 | eric  | <ALPHANUM>     |        1 |            0 |          4 | comment_text.first="eric r*"
  comment_text.first   |           0 | ridge | <ALPHANUM>     |        2 |            5 |         10 | comment_text.first="eric r*"
- comment_text.id.high |           0 | 42    | <UNSIGNED INT> |        1 |            0 |          0 | comment_text.id.high="42"
+ comment_text.id.high |           0 | 42    | <UNSIGNED_INT> |        1 |            0 |          0 | comment_text.id.high="42"
 (3 rows)
 
 select *
@@ -28,7 +28,7 @@ from zdb.highlight_document('so_comments',
 order by field_name, array_index, start_offset;
       field_name      | array_index | term |      type      | position | start_offset | end_offset |       query_clause        
 ----------------------+-------------+------+----------------+----------+--------------+------------+---------------------------
- comment_text.id.high |           0 | 42   | <UNSIGNED INT> |        1 |            0 |          0 | comment_text.id.high="42"
+ comment_text.id.high |           0 | 42   | <UNSIGNED_INT> |        1 |            0 |          0 | comment_text.id.high="42"
 (1 row)
 
 select *
@@ -41,6 +41,6 @@ order by field_name, array_index, start_offset;
  comment_text.first   |           0 | eric  | <ALPHANUM>     |        1 |            0 |          4 | comment_text.first="eric r*"
  comment_text.first   |           0 | ridge | <ALPHANUM>     |        2 |            5 |         10 | comment_text.first="eric r*"
  comment_text.first   |           1 | david | <ALPHANUM>     |        1 |            0 |          5 | comment_text.first:"david"
- comment_text.id.high |           0 | 42    | <UNSIGNED INT> |        1 |            0 |          0 | comment_text.id.high="42"
+ comment_text.id.high |           0 | 42    | <UNSIGNED_INT> |        1 |            0 |          0 | comment_text.id.high="42"
 (4 rows)
 

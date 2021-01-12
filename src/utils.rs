@@ -302,6 +302,10 @@ pub fn is_date_field(index: &PgRelation, field: &str) -> bool {
     lookup_es_field_type(index, field) == "date"
 }
 
+pub fn is_date_subfield(index: &PgRelation, field: &str) -> bool {
+    lookup_es_subfield_type(index, field) == "date"
+}
+
 pub fn is_nested_field(index: &PgRelation, field: &str) -> bool {
     lookup_es_field_type(index, field) == "nested"
 }
@@ -327,6 +331,32 @@ pub fn lookup_es_field_type(index: &PgRelation, field: &str) -> String {
         sql.push('\'');
     }
 
+    sql.push_str("->>'type';");
+    Spi::get_one(&sql).unwrap_or_default()
+}
+
+pub fn lookup_es_subfield_type(index: &PgRelation, field: &str) -> String {
+    let mut sql = String::new();
+
+    sql.push_str(&format!(
+        "select
+        zdb.index_mapping({}::regclass)->zdb.index_name({}::regclass)->'mappings'->'properties'",
+        index.oid(),
+        index.oid()
+    ));
+
+    for (idx, part) in field.split('.').enumerate() {
+        if idx > 0 {
+            sql.push_str("->'properties'");
+        }
+
+        sql.push_str("->");
+        sql.push('\'');
+        sql.push_str(part);
+        sql.push('\'');
+    }
+
+    sql.push_str("->'fields'->'date'");
     sql.push_str("->>'type';");
     Spi::get_one(&sql).unwrap_or_default()
 }

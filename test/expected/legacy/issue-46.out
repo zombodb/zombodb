@@ -1,4 +1,4 @@
-SELECT * FROM zdb.range('idxso_posts', 'closed_date', '', '[ {"from":"2010-12-01T00:00:00-04"}, {"key":"foo", "from":"2010-01-01T00:00:00-04", "to":"2012-12-31T00:00:00-04"}, {"to":"2010-12-14T00:00:00-04"} ]') ORDER BY doc_count DESC;
+SELECT * FROM zdb.range('idxso_posts', 'closed_date.date', '', '[ {"from":"2010-12-01T00:00:00-04"}, {"key":"foo", "from":"2010-01-01T00:00:00-04", "to":"2012-12-31T00:00:00-04"}, {"to":"2010-12-14T00:00:00-04"} ]') ORDER BY doc_count DESC;
             key             |     from      |      to       | doc_count 
 ----------------------------+---------------+---------------+-----------
  2010-12-01T04:00:00.000Z-* | 1291176000000 |               |      8862

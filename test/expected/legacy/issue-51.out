@@ -1,4 +1,4 @@
-select * from zdb_tally('so_posts', 'last_activity_date', 'week', 'cheese', 5000, 'term');
+select * from zdb.tally('idxso_posts', 'last_activity_date', 'week', 'cheese', 5000, 'term');
     term    | count 
 ------------+-------
  2009-07-20 |     1
@@ -47,7 +47,7 @@ select * from zdb_tally('so_posts', 'last_activity_date', 'week', 'cheese', 5000
  2015-02-09 |     1
 (44 rows)
 
-select * from zdb_tally('so_posts', 'last_activity_date', 'week:-1d', 'cheese', 5000, 'term');
+select * from zdb.tally('idxso_posts', 'last_activity_date', 'week:-1d', 'cheese', 5000, 'term');
     term    | count 
 ------------+-------
  2009-07-19 |     1

@@ -370,34 +370,60 @@ VALUES ('text', '{
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('time without time zone', '{
-  "type": "date",
+  "type": "keyword",
   "copy_to": "zdb_all",
-  "format": "HH:mm:ss.S||HH:mm:ss.SS||HH:mm:ss.SSS||HH:mm:ss.SSSS||HH:mm:ss.SSSSS||HH:mm:ss.SSSSSS"
+  "fields": {
+    "date": {
+      "type": "date",
+      "format": "HH:mm:ss.S||HH:mm:ss.SS||HH:mm:ss.SSS||HH:mm:ss.SSSS||HH:mm:ss.SSSSS||HH:mm:ss.SSSSSS"
+    }
+  }
 }', true);
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('time with time zone', '{
-  "type": "date",
+  "type": "keyword",
   "copy_to": "zdb_all",
-  "format": "HH:mm:ss.SX||HH:mm:ss.SSX||HH:mm:ss.SSSX||HH:mm:ss.SSSSX||HH:mm:ss.SSSSSX||HH:mm:ss.SSSSSSX"
-}', true);
+  "fields": {
+    "date": {
+      "type": "date",
+      "format": "HH:mm:ss.SX||HH:mm:ss.SSX||HH:mm:ss.SSSX||HH:mm:ss.SSSSX||HH:mm:ss.SSSSSX||HH:mm:ss.SSSSSSX"
+    }
+  }
+}
+', true);
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('date', '{
-  "type": "date",
-  "copy_to": "zdb_all"
+  "type": "keyword",
+  "copy_to": "zdb_all",
+  "fields": {
+    "date": {
+      "type": "date"
+    }
+  }
 }', true);
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('timestamp without time zone', '{
-  "type": "date",
-  "copy_to": "zdb_all"
+  "type": "keyword",
+  "copy_to": "zdb_all",
+  "fields": {
+    "date": {
+      "type": "date"
+    }
+  }
 }', true);
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('timestamp with time zone', '{
-  "type": "date",
-  "copy_to": "zdb_all"
+  "type": "keyword",
+  "copy_to": "zdb_all",
+  "fields": {
+    "date": {
+      "type": "date"
+    }
+  }
 }', true);
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)

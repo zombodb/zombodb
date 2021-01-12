@@ -1,6 +1,6 @@
 use crate::elasticsearch::aggregates::terms::pg_catalog::TermsOrderBy;
 use crate::elasticsearch::Elasticsearch;
-use crate::utils::{is_date_field, is_string_field, json_to_string};
+use crate::utils::{is_date_field, is_date_subfield, is_string_field, json_to_string};
 use crate::zdbquery::ZDBQuery;
 use chrono::{TimeZone, Utc};
 use pgx::*;
@@ -102,15 +102,17 @@ fn tally(
         doc_count: u64,
     }
 
-    #[derive(Serialize)]
-    struct Terms<'a> {
-        field: &'a str,
+    #[derive(Debug, Serialize)]
+    struct Terms {
+        field: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         include: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
         format: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
         calendar_interval: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        offset: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
         size: Option<i32>,
         min_doc_count: u64,
@@ -121,16 +123,65 @@ fn tally(
         order: Value,
     }
 
+    #[allow(non_camel_case_types)]
+    enum DateStem<'a> {
+        year(Option<&'a str>),
+        month(Option<&'a str>),
+        week(Option<&'a str>),
+        day(Option<&'a str>),
+        houur(Option<&'a str>),
+        minute(Option<&'a str>),
+        second(Option<&'a str>),
+    }
+
     let is_string_field = is_string_field(&index, field_name);
-    let is_raw_date_field = is_date_field(&index, field_name);
-    let is_date_field = (stem == Some("year")
-        || stem == Some("month")
-        || stem == Some("week")
-        || stem == Some("day")
-        || stem == Some("hour")
-        || stem == Some("minute")
-        || stem == Some("second"))
-        && is_raw_date_field;
+    let is_date_subfield = is_date_subfield(&index, field_name);
+    let is_raw_date_field = is_date_field(&index, field_name) || is_date_subfield;
+
+    let date_stem = if is_raw_date_field && stem.is_some() {
+        match stem.unwrap() {
+            stem if stem.starts_with("year") => Some(DateStem::year(if stem.contains(':') {
+                stem.rsplit(':').next()
+            } else {
+                None
+            })),
+            stem if stem.starts_with("month") => Some(DateStem::month(if stem.contains(':') {
+                stem.rsplit(':').next()
+            } else {
+                None
+            })),
+            stem if stem.starts_with("week") => Some(DateStem::week(if stem.contains(':') {
+                stem.rsplit(':').next()
+            } else {
+                None
+            })),
+            stem if stem.starts_with("day") => Some(DateStem::day(if stem.contains(':') {
+                stem.rsplit(':').next()
+            } else {
+                None
+            })),
+            stem if stem.starts_with("hour") => Some(DateStem::houur(if stem.contains(':') {
+                stem.rsplit(':').next()
+            } else {
+                None
+            })),
+            stem if stem.starts_with("minute") => Some(DateStem::minute(if stem.contains(':') {
+                stem.rsplit(':').next()
+            } else {
+                None
+            })),
+            stem if stem.starts_with("second") => Some(DateStem::second(if stem.contains(':') {
+                stem.rsplit(':').next()
+            } else {
+                None
+            })),
+            _ => None,
+        }
+    } else {
+        None
+    };
+    let is_date_field = date_stem.is_some();
+
     let count_nulls = count_nulls.unwrap_or_default();
     let order = match order_by {
         Some(order_by) => match order_by {
@@ -144,8 +195,13 @@ fn tally(
         }
     };
 
+    let field_name = if is_date_subfield {
+        format!("{}.date", field_name)
+    } else {
+        field_name.into()
+    };
     let body = Terms {
-        field: field_name,
+        field: field_name.clone(),
         include: if is_raw_date_field || !is_string_field {
             None
         } else {
@@ -157,34 +213,45 @@ fn tally(
                 None => None,
             }
         },
-        format: if is_date_field {
-            Some(match stem {
-                Some("year") => "yyyy".into(),
-                Some("month") => "yyyy-MM".into(),
-                Some("week") => "yyyy-MM-dd".into(),
-                Some("day") => "yyyy-MM-dd".into(),
-                Some("hour") => "yyyy-MM-dd HH".into(),
-                Some("minute") => "yyyy-MM-dd HH:mm".into(),
-                Some("second") => "yyyy-MM-dd HH:mm:ss".into(),
-                _ => panic!("unrecognized date format"),
-            })
-        } else {
-            None
+        format: match date_stem.as_ref() {
+            Some(date_stem) => match date_stem {
+                DateStem::year(_) => Some("yyyy".into()),
+                DateStem::month(_) => Some("yyyy-MM".into()),
+                DateStem::week(_) => Some("yyyy-MM-dd".into()),
+                DateStem::day(_) => Some("yyyy-MM-dd".into()),
+                DateStem::houur(_) => Some("yyyy-MM-dd HH".into()),
+                DateStem::minute(_) => Some("yyyy-MM-dd HH:mm".into()),
+                DateStem::second(_) => Some("yyyy-MM-dd HH:mm:ss".into()),
+            },
+            None => None,
         },
 
-        calendar_interval: if is_date_field {
-            Some(match stem {
-                Some("year") => "1y".into(),
-                Some("month") => "1M".into(),
-                Some("week") => "1w".into(),
-                Some("day") => "1d".into(),
-                Some("hour") => "1h".into(),
-                Some("minute") => "1m".into(),
-                Some("second") => "1s".into(),
-                _ => panic!("unrecognized date format"),
-            })
-        } else {
-            None
+        calendar_interval: match date_stem.as_ref() {
+            Some(date_stem) => match date_stem {
+                DateStem::year(_) => Some("1y".into()),
+                DateStem::month(_) => Some("1M".into()),
+                DateStem::week(_) => Some("1w".into()),
+                DateStem::day(_) => Some("1d".into()),
+                DateStem::houur(_) => Some("1h".into()),
+                DateStem::minute(_) => Some("1m".into()),
+                DateStem::second(_) => Some("1s".into()),
+            },
+            None => None,
+        },
+        offset: match date_stem.as_ref() {
+            Some(date_stem) => match date_stem {
+                DateStem::year(offset)
+                | DateStem::month(offset)
+                | DateStem::week(offset)
+                | DateStem::day(offset)
+                | DateStem::houur(offset)
+                | DateStem::minute(offset)
+                | DateStem::second(offset) => match offset {
+                    Some(offset) => Some(offset.to_string()),
+                    None => None,
+                },
+            },
+            None => None,
         },
         size: if is_date_field { None } else { size_limit },
         min_doc_count: 1,
@@ -207,16 +274,16 @@ fn tally(
             "count_nulls".into(),
             json! {
                 {
-                    "missing": { "field": field_name }
+                    "missing": { "field": field_name.clone() }
                 }
             },
         );
     }
 
-    let (prepared_query, index) = query.prepare(&index, Some(field_name.into()));
+    let (prepared_query, index) = query.prepare(&index, Some(field_name.clone()));
     let elasticsearch = Elasticsearch::new(&index);
     let request = elasticsearch.aggregate_set::<TermsAggData>(
-        Some(field_name.into()),
+        Some(field_name.clone()),
         is_nested,
         prepared_query,
         aggregates,

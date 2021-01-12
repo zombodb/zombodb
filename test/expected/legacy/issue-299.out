@@ -5,7 +5,7 @@ select highlights.* from
 where id = 1541;
  field_name | array_index | term |      type      | position | start_offset | end_offset | query_clause 
 ------------+-------------+------+----------------+----------+--------------+------------+--------------
- id         |           0 | 1541 | <UNSIGNED INT> |        1 |            0 |          0 | id:"1541"
+ id         |           0 | 1541 | <UNSIGNED_INT> |        1 |            0 |          0 | id:"1541"
 (1 row)
 
 -- highlight the entire value of 'Roger Pate' in "user_display_name"
@@ -15,7 +15,7 @@ select highlights.* from
 where id = 1541 order by field_name;
     field_name     | array_index |    term    |      type      | position | start_offset | end_offset |          query_clause          
 -------------------+-------------+------------+----------------+----------+--------------+------------+--------------------------------
- id                |           0 | 1541       | <UNSIGNED INT> |        1 |            0 |          0 | id:"1541"
+ id                |           0 | 1541       | <UNSIGNED_INT> |        1 |            0 |          0 | id:"1541"
  user_display_name |           0 | roger pate | word           |        1 |            0 |         10 | user_display_name="Roger Pate"
 (2 rows)
 
