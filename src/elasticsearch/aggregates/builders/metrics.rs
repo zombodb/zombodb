@@ -1,19 +1,34 @@
-//! This Module is to build...
-//! https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics.html
-//!
-//! Returns JsonB for different Metric ES Queries including:
-//! Sum: https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-sum-aggregation.html
-//! Avg: https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-avg-aggregation.html
-//! Min: https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-min-aggregation.html
-//! Max: https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-max-aggregation.html
-//! Stats: https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-stats-aggregation.html
-//! Cardinality: https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-cardinality-aggregation.html
-//! Extended Stats: https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-extendedstats-aggregation.html
-//! Matrix stats: https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-matrix-stats-aggregation.html
-//! Geo_Bound: https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-geobounds-aggregation.html
-
+/// This Module is to build...
+/// https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics.html
+///
+/// Returns JsonB for different Metric ES Queries including:
+/// Sum: https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-sum-aggregation.html
+/// Avg: https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-avg-aggregation.html
+/// Min: https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-min-aggregation.html
+/// Max: https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-max-aggregation.html
+/// Stats: https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-stats-aggregation.html
+/// Cardinality: https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-cardinality-aggregation.html
+/// Extended Stats: https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-extendedstats-aggregation.html
+/// Matrix stats: https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-matrix-stats-aggregation.html
+/// Geo_Bound: https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-geobounds-aggregation.html
+/// Value_count: https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-valuecount-aggregation.html
+/// Box_plot: https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-boxplot-aggregation.html
+/// Geo_Centroid: https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-geocentroid-aggregation.html
+/// Median_Absolute_Deviation:https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-median-absolute-deviation-aggregation.html
+///
+///
+///
+use crate::zdbquery::{SortDescriptor, ZDBQuery};
 use pgx::*;
+use serde::*;
 use serde_json::*;
+
+#[derive(PostgresEnum, Serialize, Deserialize)]
+pub enum TTestType {
+    Paired,
+    Homoscedastic,
+    Heteroscedastic,
+}
 
 /// ```funcname
 /// sum_agg
@@ -405,7 +420,7 @@ fn geo_bounds_agg(aggregate_name: &str, field: &str, wrap_longitude: bool) -> Js
 }
 
 /// ```funcname
-/// geo_bounds_agg
+/// value_count_agg
 /// ```
 #[pg_extern(immutable, parallel_safe)]
 fn value_count_agg(aggregate_name: &str, field: &str) -> JsonB {
@@ -414,6 +429,611 @@ fn value_count_agg(aggregate_name: &str, field: &str) -> JsonB {
             aggregate_name : {
                 "value_count" : {
                     "field" : field
+                }
+            }
+        }
+    })
+}
+
+/// ```funcname
+/// boxplot_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn boxplot_agg(aggregate_name: &str, field: &str) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name : {
+                "boxplot" : {
+                    "field" : field
+                }
+            }
+        }
+    })
+}
+/// ```funcname
+/// boxplot_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn boxplot_compression_agg(aggregate_name: &str, field: &str, compression: i64) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name : {
+                "boxplot" : {
+                    "field" : field,
+                    "compression" : compression
+                }
+            }
+        }
+    })
+}
+/// ```funcname
+/// boxplot_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn boxplot_missing_agg(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name : {
+                "boxplot" : {
+                    "field" : field,
+                    "missing" : missing
+                }
+            }
+        }
+    })
+}
+/// ```funcname
+/// boxplot_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn boxplot_compression_missing_agg(
+    aggregate_name: &str,
+    field: &str,
+    compression: i64,
+    missing: i64,
+) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name : {
+                "boxplot" : {
+                    "field" : field,
+                    "compression" : compression,
+                    "missing" : missing
+                }
+            }
+        }
+    })
+}
+
+/// ```funcname
+/// geo_centroid_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn geo_centroid_agg(aggregate_name: &str, field: &str) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name : {
+                "boxplot" : {
+                    "field" : field
+                }
+            }
+        }
+    })
+}
+
+/// ```funcname
+/// median_absolute_deviation_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn median_absolute_deviation_agg(aggregate_name: &str, field: &str) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name : {
+                "median_absolute_deviation" : {
+                    "field" : field
+                }
+            }
+        }
+    })
+}
+/// ```funcname
+/// median_absolute_deviation_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn median_absolute_deviation_compression_agg(
+    aggregate_name: &str,
+    field: &str,
+    compression: i64,
+) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name : {
+                "median_absolute_deviation" : {
+                    "field" : field,
+                    "compression" : compression
+                }
+            }
+        }
+    })
+}
+/// ```funcname
+/// median_absolute_deviation_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn median_absolute_deviation_missing_agg(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name : {
+                "median_absolute_deviation" : {
+                    "field" : field,
+                    "missing" : missing
+                }
+            }
+        }
+    })
+}
+/// ```funcname
+/// median_absolute_deviation_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn median_absolute_deviation_compression_missing_agg(
+    aggregate_name: &str,
+    field: &str,
+    compression: i64,
+    missing: i64,
+) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name : {
+                "median_absolute_deviation" : {
+                    "field" : field,
+                    "compression" : compression,
+                    "missing" : missing
+                }
+            }
+        }
+    })
+}
+
+/// ```funcname
+/// percentiles_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn percentiles_agg(aggregate_name: &str, field: &str) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name : {
+                "percentiles" : {
+                    "field" : field
+                }
+            }
+        }
+    })
+}
+/// ```funcname
+/// percentiles
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn percentiles_precents_agg(aggregate_name: &str, field: &str, percents: Vec<f64>) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name : {
+                "percentiles" : {
+                    "field" : field,
+                    "percents": percents
+                }
+            }
+        }
+    })
+}
+/// ```funcname
+/// percentiles
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn percentiles_keyed_agg(aggregate_name: &str, field: &str, keyed: bool) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name : {
+                "percentiles" : {
+                    "field" : field,
+                    "keyed": keyed
+                }
+            }
+        }
+    })
+}
+/// ```funcname
+/// percentiles_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn percentiles_missing_agg(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name : {
+                "percentiles" : {
+                    "field" : field,
+                    "missing": missing
+                }
+            }
+        }
+    })
+}
+/// ```funcname
+/// percentiles_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn percentiles_precent_keyed_agg(
+    aggregate_name: &str,
+    field: &str,
+    percents: Vec<f64>,
+    keyed: bool,
+) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name : {
+                "percentiles" : {
+                    "field" : field,
+                    "percents": percents,
+                    "keyed": keyed
+                }
+            }
+        }
+    })
+}
+/// ```funcname
+/// percentiles_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn percentiles_precent_missing_agg(
+    aggregate_name: &str,
+    field: &str,
+    precents: Vec<f64>,
+    missing: i64,
+) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name : {
+                "percentiles" : {
+                    "field" : field,
+                    "percents": precents,
+                    "missing": missing
+                }
+            }
+        }
+    })
+}
+/// ```funcname
+/// percentiles_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn percentiles_keyed_missing_agg(
+    aggregate_name: &str,
+    field: &str,
+    keyed: bool,
+    missing: i64,
+) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name : {
+                "percentiles" : {
+                    "field" : field,
+                    "keyed": keyed,
+                    "missing": missing
+                }
+            }
+        }
+    })
+}
+/// ```funcname
+/// percentiles_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn percentiles_precents_keyed_missing_agg(
+    aggregate_name: &str,
+    field: &str,
+    percents: Vec<f64>,
+    keyed: bool,
+    missing: i64,
+) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name : {
+                "percentiles" : {
+                    "field" : field,
+                    "percents": percents,
+                    "keyed": keyed,
+                    "missing": missing
+                }
+            }
+        }
+    })
+}
+
+/// ```funcname
+/// string_stats_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn string_stats_agg(aggregate_name: &str, field: &str) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name : {
+                "message_stats" : {
+                    "string_stats" : {
+                        "field": field
+                    }
+                }
+            }
+        }
+    })
+}
+/// ```funcname
+/// string_stats_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn string_stats_char_distribution_agg(
+    aggregate_name: &str,
+    field: &str,
+    show_distribution: bool,
+) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name :  {
+                "string_stats" : {
+                    "field": field,
+                    "show_distribution": show_distribution
+                }
+            }
+        }
+    })
+}
+/// ```funcname
+/// string_stats_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn string_stats_missing_agg(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name :  {
+                "string_stats" : {
+                    "field": field,
+                    "missing": missing
+                }
+            }
+        }
+    })
+}
+/// ```funcname
+/// string_stats_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn string_stats_char_distribution_missing_agg(
+    aggregate_name: &str,
+    field: &str,
+    show_distribution: bool,
+    missing: i64,
+) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name :  {
+                "string_stats" : {
+                    "field": field,
+                    "show_distribution": show_distribution,
+                    "missing": missing
+                }
+            }
+        }
+    })
+}
+
+/// ```funcname
+/// weighted_avg_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn weighted_avg_agg(aggregate_name: &str, field_value: &str, field_weight: &str) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name :  {
+                "weighted_avg" : {
+                    "field": field_value
+                },
+                "weight": {
+                    "field": field_weight
+                }
+            }
+        }
+    })
+}
+/// ```funcname
+/// weighted_avg_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn weighted_avg_missing_value_agg(
+    aggregate_name: &str,
+    field_value: &str,
+    field_weight: &str,
+    value_missing: i64,
+) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name :  {
+                "weighted_avg" : {
+                    "field": field_value,
+                    "missing": value_missing
+                },
+                "weight": {
+                    "field": field_weight
+                }
+            }
+        }
+    })
+}
+
+/// ```funcname
+/// weighted_avg_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn weighted_avg_missing_weight_agg(
+    aggregate_name: &str,
+    field_value: &str,
+    field_weight: &str,
+    weight_missing: i64,
+) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name :  {
+                "weighted_avg" : {
+                    "field": field_value
+                },
+                "weight": {
+                    "field": field_weight,
+                    "missing": weight_missing
+                }
+            }
+        }
+    })
+}
+/// ```funcname
+/// weighted_avg_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn weighted_avg_missings_agg(
+    aggregate_name: &str,
+    field_value: &str,
+    field_weight: &str,
+    value_missing: i64,
+    weight_missing: i64,
+) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name :  {
+                "weighted_avg" : {
+                    "field": field_value,
+                    "missing": value_missing
+                },
+                "weight": {
+                    "field": field_weight,
+                    "missing": weight_missing
+                }
+            }
+        }
+    })
+}
+
+/// ```funcname
+/// top_metrics_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn top_metric_sort_desc_agg(
+    aggregate_name: &str,
+    metric_field: &str,
+    sort_type: SortDescriptor,
+) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name :  {
+                "top_metrics" : {
+                    "metrics": {
+                        "field": metric_field
+                    },
+                    "sort" :
+                        sort_type
+                }
+            }
+        }
+    })
+}
+/// ```funcname
+/// top_metrics_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn top_metric_score_agg(aggregate_name: &str, metric_field: &str) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name :  {
+                "top_metrics" : {
+                    "metrics": {
+                        "field": metric_field
+                    },
+                    "sort" : "_score"
+                }
+            }
+        }
+    })
+}
+/// ```funcname
+/// top_metrics_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn top_metric_agg(aggregate_name: &str, metric_field: &str, sort_type_lat_long: Vec<f64>) -> JsonB {
+    JsonB(json! {
+        {
+            aggregate_name :  {
+                "top_metrics" : {
+                    "metrics": {
+                        "field": metric_field
+                    },
+                    "sort" :{
+                        "_geo_distance" : {
+                            "location": sort_type_lat_long
+                        }
+                    }
+                }
+            }
+        }
+    })
+}
+
+/// ```funcname
+/// t_test_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn t_test_fields_agg(aggregate_name: &str, fields: Vec<&str>, t_type: TTestType) -> JsonB {
+    if fields.len() > 2 || fields.len() < 2 {
+        PANIC!("Wrong amount of fields given, please list only 2")
+    }
+    JsonB(json! {
+        {
+            aggregate_name :  {
+                "t_test" : {
+                    "a": {
+                        "field": fields.first().unwrap(),
+                     },
+                    "b": { "field": fields.last().unwrap() },
+                    "type": t_type
+                }
+            }
+        }
+    })
+}
+/// ```funcname
+/// t_test_agg
+/// ```
+#[pg_extern(immutable, parallel_safe)]
+fn t_test_fields_queries_agg(
+    aggregate_name: &str,
+    fields: Vec<&str>,
+    queries: Vec<ZDBQuery>,
+    t_type: TTestType,
+) -> JsonB {
+    if fields.len() > 2 || fields.len() < 2 {
+        PANIC!("Wrong amount of fields given, please list only 2")
+    }
+    if queries.len() > 2 || queries.len() < 2 {
+        PANIC!("Wrong amount of queries given, please list only 2")
+    }
+    JsonB(json! {
+        {
+            aggregate_name :  {
+                "t_test" : {
+                    "a": {
+                        "field": fields.first().unwrap(),
+                        "filter": queries.first().unwrap()
+                     },
+                    "b": {
+                        "field": fields.last().unwrap(),
+                        "filter": queries.last().unwrap()
+                        },
+                    "type": t_type
                 }
             }
         }

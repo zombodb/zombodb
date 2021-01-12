@@ -3,7 +3,7 @@
 The ZDB Aggregate build API is a tool used to build complex aggregate Json that can be used with the Arbitrary Agg function.
 
 Currently we support the following aggregations: 
-    Metric: Sum, Avg, Min, Max, Stats, Cardinality, Extended Stats, Matrix stats, Geo_Bound
+    Metric: Sum, Avg, Min, Max, Stats, Cardinality, Extended Stats, Matrix stats, Geo_Bound, Box_plot, Geo_Centroid, Median_Absolute_Deviation, Percentiles, String_Stats, Weighted_Avg, Top_Metric, T_Test, Value_Count
     Buckets: Date_Histogram, Histogram, Filter, Filters, Range, Terms 
 
 ###Example
@@ -272,6 +272,298 @@ RETURNS JsonB
 ```
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-geobounds-aggregation.html
 A metric aggregation that computes the bounding box containing all geo values for a field.
+
+---
+### `box_plot_agg`
+```sql
+FUNCTION zdb.box_plot_agg (
+	aggregate_name: text, 
+    field: text
+)
+RETURNS jsonb
+```
+```sql
+FUNCTION zdb.box_plot_agg (
+	aggregate_name: text, 
+    field: text,  
+    compression: text
+)
+RETURNS jsonb
+```
+```sql
+FUNCTION zdb.box_plot_agg (
+	aggregate_name: text, 
+    field: text,  
+    missing: bigint
+)
+RETURNS jsonb
+```
+```sql
+FUNCTION zdb.box_plot_agg (
+	aggregate_name: text, 
+    field: text,  
+    compression: text,
+    missing: bigint
+)
+RETURNS jsonb
+```
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-boxplot-aggregation.html
+A boxplot metrics aggregation that computes boxplot of numeric values extracted from the aggregated documents.
+
+---
+### `geo_centroid_agg`
+```sql
+FUNCTION zdb.geo_centroid_agg (
+	aggregate_name: text, 
+    field: text,
+)
+RETURNS jsonb
+```
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-geocentroid-aggregation.html
+A metric aggregation that computes the weighted centroid from all coordinate values for geo fields.
+
+---
+### `median_absolute_deviation_agg`
+```sql
+FUNCTION zdb.median_absolute_deviation_agg (
+	aggregate_name: text, 
+    field: text,
+)
+RETURNS jsonb
+```
+```sql
+FUNCTION zdb.median_absolute_deviation_agg (
+	aggregate_name: text, 
+    field: text,  
+    compression: text
+)
+RETURNS jsonb
+```
+```sql
+FUNCTION zdb.median_absolute_deviation_agg (
+	aggregate_name: text, 
+    field: text,  
+    missing: bigint
+)
+RETURNS jsonb
+```
+```sql
+FUNCTION zdb.median_absolute_deviation_agg (
+	aggregate_name: text, 
+    field: text,  
+    compression: text,
+    missing: bigint
+)
+RETURNS jsonb
+```
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-median-absolute-deviation-aggregation.html
+This single-value aggregation approximates the median absolute deviation of its search results.
+
+---
+### `percentiles_agg`
+```sql
+FUNCTION zdb.percentiles_agg (
+	aggregate_name: text, 
+    field: text,
+)
+RETURNS jsonb
+```
+```sql
+FUNCTION zdb.percentiles_agg (
+	aggregate_name: text, 
+    field: text,
+    percents: double precision[],
+)
+RETURNS jsonb
+```
+```sql
+FUNCTION zdb.percentiles_agg (
+	aggregate_name: text, 
+    field: text,
+    missing: bigint
+)
+RETURNS jsonb
+```
+
+```sql
+FUNCTION zdb.percentiles_agg (
+	aggregate_name: text, 
+    field: text,
+    keyed: boolean
+)
+RETURNS jsonb
+```
+```sql
+FUNCTION zdb.percentiles_agg (
+	aggregate_name: text, 
+    field: text,
+    percents: double precision[],
+    keyed: boolean
+)
+RETURNS jsonb
+```
+```sql
+FUNCTION zdb.percentiles_agg (
+	aggregate_name: text, 
+    field: text,
+    percents: double precision[],
+    missing: bigint
+)
+RETURNS jsonb
+```
+```sql
+FUNCTION zdb.percentiles_agg (
+	aggregate_name: text, 
+    field: text,
+    keyed: boolean,
+    missing: bigint
+)
+RETURNS jsonb
+```
+```sql
+FUNCTION zdb.percentiles_agg (
+	aggregate_name: text, 
+    field: text,
+    percents: double precision[],
+    keyed: boolean,
+    missing: bigint
+)
+RETURNS jsonb
+```
+
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-percentile-aggregation.html#search-aggregations-metrics-percentile-aggregation
+A multi-value metrics aggregation that calculates one or more percentiles over numeric values extracted from the aggregated documents.
+By default, the percentile metric will generate a range of percentiles: [ 1, 5, 25, 50, 75, 95, 99 ].
+
+---
+### `string_stats_agg`
+```sql
+FUNCTION zdb.string_stats_agg (
+	aggregate_name: text, 
+    field: text,
+)
+RETURNS jsonb
+```
+```sql
+FUNCTION zdb.string_stats_agg (
+	aggregate_name: text, 
+    field: text,
+    show_distribution: boolean
+)
+RETURNS jsonb
+```
+```sql
+FUNCTION zdb.string_stats_agg (
+	aggregate_name: text, 
+    field: text,
+    missing: bigint
+)
+RETURNS jsonb
+```
+```sql
+FUNCTION zdb.string_stats_agg (
+	aggregate_name: text, 
+    field: text,
+    show_distribution: boolean,
+    missing: bigint
+)
+RETURNS jsonb
+```
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-string-stats-aggregation.html
+A multi-value metrics aggregation that computes statistics over string values extracted from the aggregated documents.
+
+---
+### `weighted_avg_agg`
+```sql
+FUNCTION zdb.weighted_avg_agg (
+	aggregate_name: text,
+    field_value: text,
+    field_weight: text
+)
+RETURNS jsonb
+```
+```sql
+FUNCTION zdb.weighted_avg_agg (
+	aggregate_name: text, 
+    field_value: text,
+    field_weight: text,
+    weight_missing: bigint,
+)
+RETURNS jsonb
+```
+```sql
+FUNCTION zdb.weighted_avg_agg (
+	aggregate_name: text, 
+    field_value: text,
+    field_weight: text,
+    value_missing: bigint,
+)
+RETURNS jsonb
+```
+```sql
+FUNCTION zdb.weighted_avg_agg (
+	aggregate_name: text, 
+    field_value: text,
+    field_weight: text,
+    value_missing: bigint,
+    weight_missing: bigint,
+)
+RETURNS jsonb
+```
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-weight-avg-aggregation.html
+A single-value metrics aggregation that computes the weighted average of numeric values that are extracted from the aggregated documents.
+
+---
+### `top_metrics_agg`
+```sql
+FUNCTION zdb.top_metrics_agg (
+	aggregate_name: text,
+    metric_field: text,
+    sort_type: SortDescriptor
+)
+RETURNS jsonb
+```
+```sql
+FUNCTION zdb.top_metrics_agg (
+	aggregate_name: text, 
+    metric_field: text,
+)
+RETURNS jsonb
+```
+```sql
+FUNCTION zdb.top_metrics_agg (
+	aggregate_name: text, 
+    metric_field: text,
+    sort_type_lat_long: double precision[]
+)
+RETURNS jsonb
+```
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-top-metrics.html
+The top_metrics aggregation selects metrics from the document with the largest or smallest "sort" value.
+
+---
+### `t_test_agg`
+```sql
+FUNCTION zdb.t_test_agg (
+	aggregate_name: text,
+    field: text[],
+    t_type: TTestType
+)
+RETURNS jsonb
+```
+```sql
+FUNCTION zdb.t_test_agg (
+	aggregate_name: text, 
+    field: text[],
+    queries: ZDBQuery[],
+    t_type: TTestType
+)
+RETURNS jsonb
+```
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-ttest-aggregation.html
+A t_test metrics aggregation that performs a statistical hypothesis test in which the test statistic follows a Student’s t-distribution under the null hypothesis on numeric values extracted from the aggregated documents or generated by provided scripts. 
+In practice, this will tell you if the difference between two population means are statistically significant and did not occur by chance alone.
+
 
 ---
 ## `date_histogram_agg`
