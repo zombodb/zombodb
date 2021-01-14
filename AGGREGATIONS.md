@@ -514,6 +514,32 @@ This aggregate is only supported by Elasticsearch 6+ clusters.
 ---
 
 ```sql
+FUNCTION zdb.suggest_terms(
+    index regclass,
+    field_name text,
+    suggest test,
+    query zdbquery,
+) RETURNS TABLE (
+        term text,
+        offset bigint,
+        length bigint,
+        suggestion text,
+        score double precision,
+        frequency bigint,
+
+)
+```
+
+https://www.elastic.co/guide/en/elasticsearch/reference/current/search-suggesters.html
+
+While not necessarily an aggregate, `zdb.terms_suggester` will tokenize an input textual suggestion string
+and provide suggestions for each token that contains suggestions.
+
+Useful for correcting misspellings -- ie, "Did you mean?"-style queries
+
+---
+
+```sql
 FUNCTION zdb.stats(
 	index regclass,
 	field text,
