@@ -673,7 +673,7 @@ FUNCTION dsl.match (
 	query text,
 	boost real DEFAULT NULL,
 	analyzer text DEFAULT NULL,
-	minimum_should_match text DEFAULT NULL,
+	minimum_should_match integer DEFAULT NULL,
 	lenient boolean DEFAULT NULL,
 	fuzziness integer DEFAULT NULL,
 	fuzzy_rewrite text DEFAULT NULL,
