@@ -20,32 +20,12 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: cache cargo artifacts
-      id: cargo-artifacts-cache
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cargo/bin
-          ~/.cargo/registry
-          ~/.cargo/git
-          ~/.cargo/cargo-pgx
-          target
-        key: ${{ matrix.os }}-pg${{ matrix.version }}-cargo-${{ hashFiles('**/Cargo.toml') }}
-
-    - name: cache cargo pgx init
-      id: cargo-pgx-init-cache
-      uses: actions/cache@v2
-      with:
-        path: ~/.pgx/
-        key: ${{ matrix.os }}-pg${{ matrix.version }}-pgx-init
-
     - name: cargo version
       run: cargo --version
 
-    # Ubuntu system dependencies required to build Postgres from sources
+    # Install postgres
     - name: install postgres build dependencies
-      if: steps.cargo-pgx-init-cache.outputs.cache-hit != 'true'
-      run: sudo apt install -y bison flex zlib1g zlib1g-dev pkg-config libssl-dev libreadline-dev curl
+      run: sudo apt-get install -y clang-10 llvm-10 clang gcc make build-essential libz-dev zlib1g-dev strace libssl-dev pkg-config postgresql-${{ matrix.version }} postgresql-server-dev-${{ matrix.version }}
 
     # download Elasticsearch
     - name: download Elasticsearch
@@ -57,13 +37,12 @@ jobs:
 
     # initialize pgx
     - name: cargo pgx init
-      if: steps.cargo-pgx-init-cache.outputs.cache-hit != 'true'
-      run: cargo pgx init
+      run: cargo pgx init --pg${{ matrix.version }}=`which pg_config`
 
     # update cargo indexes so we're sure we get the latest things from 'git' repo dependencies
     - name: cargo update
       run: cargo update
       
     # test our code
-    - name: cargo pgx test pgXX
-      run: RUST_BACKTRACE=1 CARGO_TARGET_DIR=~/.cargo/cargo-pgx cargo pgx test pg${{ matrix.version }}
+    - name: cargo test --all
+      run: RUST_BACKTRACE=1 cargo test --all --features "pg${{ matrix.version }} pg_test" -- --nocapture
