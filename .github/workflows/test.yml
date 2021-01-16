@@ -39,6 +39,9 @@ jobs:
     - name: cargo pgx init
       run: cargo pgx init --pg${{ matrix.version }}=`which pg_config`
 
+    - name: cat config.toml
+      run: cat ~/.pgx/config.toml
+
     # update cargo indexes so we're sure we get the latest things from 'git' repo dependencies
     - name: cargo update
       run: cargo update
