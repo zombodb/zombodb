@@ -23,6 +23,10 @@ jobs:
     - name: cargo version
       run: cargo --version
 
+    # Remove old Postgres
+    - name: remove aold Postgres
+      run: sudo apt-get remove -y postgres*
+
     # Install postgres
     - name: install postgres build dependencies
       run: sudo apt-get install -y clang-10 llvm-10 clang gcc make build-essential libz-dev zlib1g-dev strace libssl-dev pkg-config postgresql-${{ matrix.version }} postgresql-server-dev-${{ matrix.version }}
