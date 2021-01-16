@@ -715,7 +715,7 @@ mod tests {
             .map(
                 |(
                     field_name,
-                    array_index,
+                    _, // array_index -- we're not going to use it
                     term,
                     type_,
                     position,
