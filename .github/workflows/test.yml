@@ -51,7 +51,7 @@ jobs:
       run: cat ~/.pgx/config.toml
 
     - name: hack permissions
-      run: sudo chmod a+w `pg_config --pkglibdir` `pg_config --sharedir`/extension
+      run: sudo chmod a+rwx `pg_config --pkglibdir` `pg_config --sharedir`/extension /var/run/postgresql/
 
     # test our code
     - name: cargo test --all
