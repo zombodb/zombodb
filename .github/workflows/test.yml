@@ -35,22 +35,25 @@ jobs:
     - name: download Elasticsearch
       run: curl -s https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.6.0-linux-x86_64.tar.gz | tar xzf -
 
-    # install cargo-pgx
-    - name: install cargo-pgx
-      run: cargo install cargo-pgx --debug --force
-
-    # initialize pgx
-    - name: cargo pgx init
-      run: cargo pgx init --pg${{ matrix.version }}=`which pg_config`
-
-    - name: cat config.toml
-      run: cat ~/.pgx/config.toml
+    #
+    # we run these things as root so cargo-pgx has permission to write the various extension files
+    #
 
     # update cargo indexes so we're sure we get the latest things from 'git' repo dependencies
     - name: cargo update
-      run: cargo update
-      
+      run: sudo cargo update
+
+      # install cargo-pgx
+    - name: install cargo-pgx
+      run: sudo cargo install cargo-pgx --debug --force
+
+    # initialize pgx
+    - name: cargo pgx init
+      run: sudo cargo pgx init --pg${{ matrix.version }}=`which pg_config`
+
+    - name: cat config.toml
+      run: sudo cat ~/.pgx/config.toml
+
     # test our code
-    # we run this as root so cargo-pgx has permission to write the various extension files
     - name: cargo test --all
       run: RUST_BACKTRACE=1 sudo cargo test --all --no-default-features --features "pg${{ matrix.version }} pg_test" -- --nocapture
