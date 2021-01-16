@@ -24,7 +24,7 @@ jobs:
       run: cargo --version
 
     # Remove old Postgres
-    - name: remove aold Postgres
+    - name: remove old Postgres
       run: sudo apt-get remove -y postgres*
 
     # Install postgres
