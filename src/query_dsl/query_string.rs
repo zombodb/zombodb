@@ -50,7 +50,7 @@ mod dsl {
         #[serde(skip_serializing_if = "Option::is_none")]
         max_determinized_states: Option<i64>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        minimum_should_match: Option<i64>,
+        minimum_should_match: Option<i32>,
         #[serde(skip_serializing_if = "Option::is_none")]
         quote_analyzer: Option<&'a str>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -79,7 +79,7 @@ mod dsl {
         fuzzy_prefix_length: Option<default!(i64, NULL)>,
         lenient: Option<default!(bool, NULL)>,
         max_determinized_states: Option<default!(i64, NULL)>,
-        minimum_should_match: Option<default!(i64, NULL)>,
+        minimum_should_match: Option<default!(i32, NULL)>,
         quote_analyzer: Option<default!(&str, NULL)>,
         phrase_slop: Option<default!(i64, NULL)>,
         quote_field_suffix: Option<default!(&str, NULL)>,

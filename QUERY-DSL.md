@@ -553,7 +553,7 @@ FUNCTION dsl.common (
 	boost real DEFAULT NULL,
 	cutoff_frequency real DEFAULT NULL,
 	analyzer text DEFAULT NULL,
-	minimum_should_match text DEFAULT NULL)
+	minimum_should_match integer DEFAULT NULL)
 RETURNS zdbquery
 ```
 
@@ -764,7 +764,7 @@ FUNCTION dsl.more_like_this (
 	boost real DEFAULT NULL,
 	unlike text DEFAULT NULL,
 	analyzer text DEFAULT NULL,
-	minimum_should_match text DEFAULT NULL,
+	minimum_should_match integer DEFAULT NULL,
 	boost_terms real DEFAULT NULL,
 	include boolean DEFAULT NULL,
 	min_term_freq integer DEFAULT NULL,
@@ -794,7 +794,7 @@ FUNCTION dsl.more_like_this (
 	boost real DEFAULT NULL,
 	unlike text DEFAULT NULL,
 	analyzer text DEFAULT NULL,
-	minimum_should_match text DEFAULT NULL,
+	minimum_should_match integer DEFAULT NULL,
 	boost_terms real DEFAULT NULL,
 	include boolean DEFAULT NULL,
 	min_term_freq integer DEFAULT NULL,
@@ -824,7 +824,7 @@ FUNCTION dsl.multi_match (
 	boost real DEFAULT NULL,
 	type dsl.es_multi_match_type DEFAULT NULL,
 	analyzer text DEFAULT NULL,
-	minimum_should_match text DEFAULT NULL,
+	minimum_should_match integer DEFAULT NULL,
 	lenient boolean DEFAULT NULL,
 	fuzziness integer DEFAULT NULL,
 	fuzzy_rewrite text DEFAULT NULL,
