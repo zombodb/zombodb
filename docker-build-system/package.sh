@@ -64,6 +64,12 @@ find ./ -name "*.so" -exec strip {} \;
 #
 # then use 'fpm' to build either a .deb, .rpm or .apk
 #
+
+## hack for when we installed ruby via rvm.  if it doesn't work
+if [ -f "/etc/profile.d/rvm.sh" ]
+  source /etc/profile.d/rvm.sh || exit $?
+fi
+
 if [ "${PKG_FORMAT}" == "deb" ]; then
 	fpm \
 		-s dir \
