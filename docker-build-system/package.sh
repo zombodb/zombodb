@@ -66,8 +66,8 @@ find ./ -name "*.so" -exec strip {} \;
 #
 
 ## hack for when we installed ruby via rvm.  if it doesn't work
-if [ -f "/etc/profile.d/rvm.sh" ]
-  source /etc/profile.d/rvm.sh || exit $?
+if [ -f "~/.rvm/scripts/rvm" ]
+  source source ~/.rvm/scripts/rvm || exit $?
 fi
 
 if [ "${PKG_FORMAT}" == "deb" ]; then
