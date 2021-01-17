@@ -101,7 +101,7 @@ fn main() -> Result<(), std::io::Error> {
         std::thread::sleep(std::time::Duration::from_secs(60));
         println!(
             "elapsed time: {}",
-            durationfmt::to_string(std::time::Instant::now() - timer_start)
+            durationfmt::to_string(timer_start.elapsed())
         );
     });
 
@@ -132,10 +132,10 @@ fn main() -> Result<(), std::io::Error> {
                             pgver.to_string().bold().red()
                         );
                         println!(
-                            "{} {} in {:?}",
+                            "{} {} in {}",
                             "       Built".bold().cyan(),
                             image,
-                            start.elapsed()
+                            durationfmt::to_string(start.elapsed())
                         );
 
                         let start = std::time::Instant::now();
@@ -146,11 +146,11 @@ fn main() -> Result<(), std::io::Error> {
                             pgver
                         );
                         println!(
-                            "{} {} for pg{} in {:?}",
+                            "{} {} for pg{} in {}",
                             "    Packaged".bold().blue(),
                             image,
                             pgver,
-                            start.elapsed()
+                            durationfmt::to_string(start.elapsed())
                         );
                     });
             } else {
@@ -162,10 +162,10 @@ fn main() -> Result<(), std::io::Error> {
                     image.bold().red()
                 );
                 println!(
-                    "{} {} in {:?}",
+                    "{} {} in {}",
                     "       Built".bold().cyan(),
                     image,
-                    start.elapsed()
+                    durationfmt::to_string(start.elapsed())
                 );
 
                 PGVERS
@@ -182,19 +182,19 @@ fn main() -> Result<(), std::io::Error> {
                             pgver
                         );
                         println!(
-                            "{} {} for pg{} in {:?}",
+                            "{} {} for pg{} in {}",
                             "    Packaged".bold().blue(),
                             image,
                             pgver,
-                            start.elapsed()
+                            durationfmt::to_string(start.elapsed())
                         );
                     });
             }
         });
     println!(
-        "{} in {:?}",
+        "{} in {}",
         "    Finished".bold().green(),
-        durationfmt::to_string(std::time::Instant::now() - timer_start)
+        durationfmt::to_string(timer_start.elapsed())
     );
 
     Ok(())
