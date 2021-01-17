@@ -65,10 +65,8 @@ find ./ -name "*.so" -exec strip {} \;
 # then use 'fpm' to build either a .deb, .rpm or .apk
 #
 
-## hack for when we installed ruby via rvm.  if it doesn't work
-if [ -f "~/.rvm/scripts/rvm" ]; then
-  source source ~/.rvm/scripts/rvm || exit $?
-fi
+## hack for when we installed ruby via rvm.  if it doesn't work we don't care
+source ~/.rvm/scripts/rvm
 
 if [ "${PKG_FORMAT}" == "deb" ]; then
 	fpm \
