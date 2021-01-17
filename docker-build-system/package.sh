@@ -24,7 +24,7 @@ if [ "x${PGVER}" == "x" ] || [ "x${IMAGE}" == "x" ] ; then
 	exit 1
 fi
 
-if [[ ${IMAGE} == *"fedora"* ]] || [[ ${IMAGE} == *"centos"* ]]; then
+if [[ ${IMAGE} == *"amazonlinux"* ]] ||[[ ${IMAGE} == *"fedora"* ]] || [[ ${IMAGE} == *"centos"* ]]; then
 	PKG_FORMAT=rpm
 elif [[ ${IMAGE} == *"alpine"* ]]; then
 	PKG_FORMAT=apk
