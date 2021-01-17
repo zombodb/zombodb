@@ -567,8 +567,8 @@ The common terms query is a modern alternative to stopwords which improves the p
 
 ```sql
 FUNCTION dsl.constant_score (
-	query zdbquery,
-	boost real DEFAULT NULL)
+	boost real,
+	query zdbquery)
 RETURNS zdbquery
 ```
 
