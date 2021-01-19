@@ -3,11 +3,11 @@
 //!
 //! Returns JsonB that is a  adjacency matrix ES Query
 
-use crate::elasticsearch::aggregates::builders::make_children_map;
 use crate::elasticsearch::Elasticsearch;
 use crate::zdbquery::mvcc::apply_visibility_clause;
 use crate::zdbquery::ZDBQuery;
 use pgx::*;
+use serde::*;
 use serde_json::*;
 use std::collections::HashMap;
 
@@ -43,10 +43,12 @@ fn adjacency_matrix_agg(
     }
 
     JsonB(json! {
+    {
         aggregate_name : {
             "adjacency_matrix": {
                 "filters": filters_map
             }
         }
+    }
     })
 }
