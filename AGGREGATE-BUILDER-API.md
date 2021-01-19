@@ -677,3 +677,20 @@ RETURNS JsonB
 
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-adjacency-matrix-aggregation.html#search-aggregations-bucket-adjacency-matrix-aggregation
 A bucket aggregation returning a form of adjacency matrix. The request provides a collection of named filter expressions, similar to the filters aggregation request. 
+
+---
+## `adjacency_matrix_agg`
+```sql
+FUNCTION zdb.auto_date_histogram_agg (
+    aggregate_name: text,
+    buckets: bigint, 
+    format: text DEFAULT NULL::text,
+    minimum_interval: Interval DEFAULT NULL::Interval,
+    missing: text DEFAULT NULL::text,
+)
+RETURNS JsonB
+```
+
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-autodatehistogram-aggregation.html
+A multi-bucket aggregation similar to the Date histogram except instead of providing an interval to use as the width of each bucket, a target number of buckets is provided indicating the number of buckets needed and the interval of the buckets is automatically chosen to best achieve that target.
+
