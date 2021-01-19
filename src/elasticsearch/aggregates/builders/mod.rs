@@ -3,6 +3,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 
 mod adjacency_matrix;
+mod auto_date_histogram;
 mod date_histogram;
 mod filter;
 mod filters;
