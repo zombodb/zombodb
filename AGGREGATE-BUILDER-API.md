@@ -662,3 +662,18 @@ RETURNS JsonB
 
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-terms-aggregation.html
 A multi-bucket value source based aggregation where buckets are dynamically built - one per unique value.
+
+---
+## `adjacency_matrix_agg`
+```sql
+FUNCTION zdb.adjacency_matrix_agg (
+    index: regclass, 
+    aggregate_name: text,
+    labels: text[], 
+    filters: zdbquery[]
+)
+RETURNS JsonB
+```
+
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-adjacency-matrix-aggregation.html#search-aggregations-bucket-adjacency-matrix-aggregation
+A bucket aggregation returning a form of adjacency matrix. The request provides a collection of named filter expressions, similar to the filters aggregation request. 
