@@ -80,7 +80,3 @@ elasticsearch_aggregates_builders_filters.generated.sql
 elasticsearch_aggregates_builders_range.generated.sql
 elasticsearch_aggregates_builders_histogram.generated.sql
 _finalize.sql
-elasticsearch_search.generated.sql
-gucs_mod.generated.sql
-mapping_mod.generated.sql
-zql_mod.generated.sql

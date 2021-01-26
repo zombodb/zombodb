@@ -99,6 +99,11 @@ pub extern "C" fn amgettuple(
                 panic!("invalid item pointer: {:?}", item_pointer_get_both(*tid));
             }
 
+            // TODO:  the score/highlight values we stash away here relates to the index ctid, not
+            //        the heap ctid.  These could be different in the case of HOT-updated tuples
+            //        it's not clear how we can efficiently resolve the HOT chain here.
+            //        Likely side-effects of this will be that `zdb.score(ctid)` and `zdb.highlight(ctid...`
+            //        will end up returning NULL on the SQL-side of things.
             let (_, qstate) = get_executor_manager().peek_query_state().unwrap();
             qstate.add_score(state.index_oid, ctid, score);
             qstate.add_highlight(state.index_oid, ctid, highlights);

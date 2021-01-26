@@ -33,35 +33,65 @@ fn anyelement_cmpfunc(
     };
 
     match tid {
-        Some(tid) => {
-            let lookup = pg_func_extra(fcinfo, || {
-                let index =
-                    PgRelation::with_lock(index_oid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
-
-                let es = Elasticsearch::new(&index);
-                let search = es
-                    .open_search(query.prepare(&index, None).0)
-                    .execute()
-                    .unwrap_or_else(|e| panic!("{}", e));
-
-                let mut lookup = HashSet::with_capacity(search.len());
-                for (score, ctid, _, highlights) in search.into_iter() {
-                    check_for_interrupts!();
-
-                    // remember the score, globally
-                    let (_, qstate) = get_executor_manager().peek_query_state().unwrap();
-                    qstate.add_score(index.oid(), ctid, score);
-                    qstate.add_highlight(index.oid(), ctid, highlights);
-
-                    // remember this ctid for this function context
-                    lookup.insert(ctid);
-                }
-                lookup
-            });
-
-            lookup.contains(&tid)
-        }
+        Some(tid) => pg_func_extra(fcinfo, || do_seqscan(query, index_oid)).contains(&tid),
         None => false,
+    }
+}
+
+#[inline]
+fn do_seqscan(query: ZDBQuery, index_oid: u32) -> HashSet<u64> {
+    unsafe {
+        let index = pg_sys::index_open(index_oid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
+        let heap = pg_sys::relation_open(
+            index.as_ref().unwrap().rd_index.as_ref().unwrap().indrelid,
+            pg_sys::AccessShareLock as pg_sys::LOCKMODE,
+        );
+
+        let mut keys = PgBox::<pg_sys::ScanKeyData>::alloc0();
+        keys.sk_argument = query.into_datum().unwrap();
+
+        let scan = pg_sys::index_beginscan(heap, index, pg_sys::GetTransactionSnapshot(), 1, 0);
+        pg_sys::index_rescan(scan, keys.into_pg(), 1, std::ptr::null_mut(), 0);
+
+        let mut lookup = HashSet::new();
+        loop {
+            check_for_interrupts!();
+
+            #[cfg(any(feature = "pg10", feature = "pg11"))]
+            let tid = {
+                let htup = pg_sys::index_getnext(scan, pg_sys::ScanDirection_ForwardScanDirection);
+                if htup.is_null() {
+                    break;
+                }
+                item_pointer_to_u64(htup.as_ref().unwrap().t_self)
+            };
+
+            #[cfg(any(feature = "pg12", feature = "pg13"))]
+            let tid = {
+                let slot = pg_sys::MakeSingleTupleTableSlot(
+                    heap.as_ref().unwrap().rd_att,
+                    &pg_sys::TTSOpsBufferHeapTuple,
+                );
+
+                if !pg_sys::index_getnext_slot(
+                    scan,
+                    pg_sys::ScanDirection_ForwardScanDirection,
+                    slot,
+                ) {
+                    pg_sys::ExecDropSingleTupleTableSlot(slot);
+                    break;
+                }
+
+                let tid = item_pointer_to_u64(slot.as_ref().unwrap().tts_tid);
+                pg_sys::ExecDropSingleTupleTableSlot(slot);
+                tid
+            };
+            lookup.insert(tid);
+        }
+        pg_sys::index_endscan(scan);
+        pg_sys::index_close(index, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
+        pg_sys::relation_close(heap, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
+        lookup
     }
 }
 
