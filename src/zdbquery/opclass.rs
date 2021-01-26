@@ -48,7 +48,7 @@ fn anyelement_cmpfunc(
                 for (score, ctid, _, highlights) in search.into_iter() {
                     check_for_interrupts!();
 
-                    // remember the score, globaly
+                    // remember the score, globally
                     let (_, qstate) = get_executor_manager().peek_query_state().unwrap();
                     qstate.add_score(index.oid(), ctid, score);
                     qstate.add_highlight(index.oid(), ctid, highlights);
