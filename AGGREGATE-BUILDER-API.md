@@ -694,3 +694,16 @@ RETURNS JsonB
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-autodatehistogram-aggregation.html
 A multi-bucket aggregation similar to the Date histogram except instead of providing an interval to use as the width of each bucket, a target number of buckets is provided indicating the number of buckets needed and the interval of the buckets is automatically chosen to best achieve that target.
 
+---
+## `children_agg`
+```sql
+FUNCTION zdb.auto_date_histogram_agg (
+    aggregate_name: text,
+    join_type: text, 
+    children: jsonb[] DEFAULT NULL::jsonb[],
+)
+RETURNS JsonB
+```
+
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-children-aggregation.html
+A special single bucket aggregation that selects child documents that have the specified type, as defined in a join field.
