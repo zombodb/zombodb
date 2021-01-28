@@ -466,22 +466,22 @@ fn boxplot_compression_agg(aggregate_name: &str, field: &str, compression: i64) 
         }
     })
 }
-/// ```funcname
-/// boxplot_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
-fn boxplot_missing_agg(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
-    JsonB(json! {
-        {
-            aggregate_name : {
-                "boxplot" : {
-                    "field" : field,
-                    "missing" : missing
-                }
-            }
-        }
-    })
-}
+// /// ```funcname
+// /// boxplot_agg
+// /// ```
+// #[pg_extern(immutable, parallel_safe)]
+// fn boxplot_missing_agg(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
+//     JsonB(json! {
+//         {
+//             aggregate_name : {
+//                 "boxplot" : {
+//                     "field" : field,
+//                     "missing" : missing
+//                 }
+//             }
+//         }
+//     })
+// }
 /// ```funcname
 /// boxplot_agg
 /// ```
@@ -556,22 +556,22 @@ fn median_absolute_deviation_compression_agg(
         }
     })
 }
-/// ```funcname
-/// median_absolute_deviation_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
-fn median_absolute_deviation_missing_agg(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
-    JsonB(json! {
-        {
-            aggregate_name : {
-                "median_absolute_deviation" : {
-                    "field" : field,
-                    "missing" : missing
-                }
-            }
-        }
-    })
-}
+// /// ```funcname
+// /// median_absolute_deviation_agg
+// /// ```
+// #[pg_extern(immutable, parallel_safe)]
+// fn median_absolute_deviation_missing_agg(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
+//     JsonB(json! {
+//         {
+//             aggregate_name : {
+//                 "median_absolute_deviation" : {
+//                     "field" : field,
+//                     "missing" : missing
+//                 }
+//             }
+//         }
+//     })
+// }
 /// ```funcname
 /// median_absolute_deviation_agg
 /// ```
@@ -867,31 +867,30 @@ fn weighted_avg_missing_value_agg(
         }
     })
 }
-
-/// ```funcname
-/// weighted_avg_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
-fn weighted_avg_missing_weight_agg(
-    aggregate_name: &str,
-    field_value: &str,
-    field_weight: &str,
-    weight_missing: i64,
-) -> JsonB {
-    JsonB(json! {
-        {
-            aggregate_name :  {
-                "weighted_avg" : {
-                    "field": field_value
-                },
-                "weight": {
-                    "field": field_weight,
-                    "missing": weight_missing
-                }
-            }
-        }
-    })
-}
+// /// ```funcname
+// /// weighted_avg_agg
+// /// ```
+// #[pg_extern(immutable, parallel_safe)]
+// fn weighted_avg_missing_weight_agg(
+//     aggregate_name: &str,
+//     field_value: &str,
+//     field_weight: &str,
+//     weight_missing: i64,
+// ) -> JsonB {
+//     JsonB(json! {
+//         {
+//             aggregate_name :  {
+//                 "weighted_avg" : {
+//                     "field": field_value
+//                 },
+//                 "weight": {
+//                     "field": field_weight,
+//                     "missing": weight_missing
+//                 }
+//             }
+//         }
+//     })
+// }
 /// ```funcname
 /// weighted_avg_agg
 /// ```
