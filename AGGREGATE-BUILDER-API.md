@@ -697,7 +697,7 @@ A multi-bucket aggregation similar to the Date histogram except instead of provi
 ---
 ## `children_agg`
 ```sql
-FUNCTION zdb.auto_date_histogram_agg (
+FUNCTION zdb.children_agg (
     aggregate_name: text,
     join_type: text, 
     children: jsonb[] DEFAULT NULL::jsonb[],
@@ -707,3 +707,17 @@ RETURNS JsonB
 
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-children-aggregation.html
 A special single bucket aggregation that selects child documents that have the specified type, as defined in a join field.
+
+---
+## `sampler_agg`
+```sql
+FUNCTION zdb.sampler_agg (
+    aggregate_name: text,
+    shard_size: bigint, 
+    children: jsonb[] DEFAULT NULL::jsonb[],
+)
+RETURNS JsonB
+```
+
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-sampler-aggregation.html
+A filtering aggregation used to limit any sub aggregations' processing to a sample of the top-scoring documents.

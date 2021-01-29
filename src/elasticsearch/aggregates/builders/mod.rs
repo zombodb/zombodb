@@ -11,6 +11,7 @@ mod filters;
 mod histogram;
 mod metrics;
 mod range;
+mod sampler;
 mod terms;
 
 pub(crate) fn make_children_map(
