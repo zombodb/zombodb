@@ -721,3 +721,19 @@ RETURNS JsonB
 
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-sampler-aggregation.html
 A filtering aggregation used to limit any sub aggregations' processing to a sample of the top-scoring documents.
+
+---
+## `diversified_sampler_agg`
+```sql
+FUNCTION zdb.diversified_sampler_agg (
+    aggregate_name: text,
+    shard_size: bigint,
+    max_docs_per_value bigint DEFAULT NULL::bigint,
+    execution_hint zdb.executionhint DEFAULT NULL::zdb.executionhint,
+    children: jsonb[] DEFAULT NULL::jsonb[],
+)
+RETURNS JsonB
+```
+
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-diversified-sampler-aggregation.html#_max_docs_per_value
+Like the sampler aggregation this is a filtering aggregation used to limit any sub aggregations' processing to a sample of the top-scoring documents. The diversified_sampler aggregation adds the ability to limit the number of matches that share a common value such as an "author".
