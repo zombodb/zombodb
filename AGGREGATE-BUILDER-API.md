@@ -737,3 +737,21 @@ RETURNS JsonB
 
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-diversified-sampler-aggregation.html#_max_docs_per_value
 Like the sampler aggregation this is a filtering aggregation used to limit any sub aggregations' processing to a sample of the top-scoring documents. The diversified_sampler aggregation adds the ability to limit the number of matches that share a common value such as an "author".
+
+---
+## `date_range_agg`
+```sql
+FUNCTION zdb.date_range_agg (
+    aggregate_name: text,
+    field: bigint,
+    format: text,
+    range json[], 
+    missing text DEFAULT NULL::text, 
+    keyed boolean DEFAULT NULL::boolean, 
+    time_zone text DEFAULT NULL::text
+)
+RETURNS JsonB
+```
+
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-daterange-aggregation.html
+A range aggregation that is dedicated for date values. The main difference between this aggregation and the normal range aggregation is that the from and to values can be expressed in Date Math expressions, and it is also possible to specify a date format by which the from and to response fields will be returned.
