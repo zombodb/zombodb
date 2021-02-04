@@ -10,6 +10,7 @@ mod date_range;
 mod diversified_sampler;
 mod filter;
 mod filters;
+mod geo_distance;
 mod histogram;
 mod metrics;
 mod range;

@@ -755,3 +755,22 @@ RETURNS JsonB
 
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-daterange-aggregation.html
 A range aggregation that is dedicated for date values. The main difference between this aggregation and the normal range aggregation is that the from and to values can be expressed in Date Math expressions, and it is also possible to specify a date format by which the from and to response fields will be returned.
+
+---
+## `geo_distance_agg`
+```sql
+FUNCTION zdb.geo_distance_agg (
+    aggregate_name: text,
+    field: bigint,
+    origin text, 
+    range json[],
+    unit text DEFAULT NULL::text,
+    keyed boolean DEFAULT NULL::boolean
+)
+RETURNS JsonB
+``` 
+
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-geodistance-aggregation.html
+A multi-bucket aggregation that works on geo_point fields and conceptually works very similar to the range aggregation.
+
+
