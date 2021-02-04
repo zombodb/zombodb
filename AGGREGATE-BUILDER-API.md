@@ -773,4 +773,20 @@ RETURNS JsonB
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-geodistance-aggregation.html
 A multi-bucket aggregation that works on geo_point fields and conceptually works very similar to the range aggregation.
 
+---
+## `geohash_grid_agg`
+```sql
+FUNCTION zdb.geohash_grid_agg (
+    aggregate_name: text,
+    field: bigint,
+    "precision" smallint DEFAULT NULL::smallint,
+    bounds text DEFAULT NULL::text,
+    size bigint DEFAULT NULL::bigint,
+    shard_size bigint DEFAULT NULL::bigint
+)
+RETURNS JsonB
+``` 
+
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-geohashgrid-aggregation.html
+A multi-bucket aggregation that works on geo_point fields and groups points into buckets that represent cells in a grid.
 
