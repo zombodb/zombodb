@@ -43,7 +43,6 @@ fn date_range_agg(
             aggregate_name: {
                 "date_range":
                     date_range
-
             }
         }
     })
