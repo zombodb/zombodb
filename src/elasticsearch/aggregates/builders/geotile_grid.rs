@@ -8,7 +8,7 @@ use serde::*;
 use serde_json::*;
 
 #[derive(Serialize)]
-struct GeohashGrid<'a> {
+struct GeogridGrid<'a> {
     field: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]
     precision: Option<i16>,
@@ -21,7 +21,7 @@ struct GeohashGrid<'a> {
 }
 
 #[pg_extern(immutable, parallel_safe)]
-fn geohash_grid_agg(
+fn geogrid_grid_agg(
     aggregate_name: &str,
     field: &str,
     precision: Option<default!(i16, NULL)>,
@@ -29,7 +29,7 @@ fn geohash_grid_agg(
     size: Option<default!(i64, NULL)>,
     shard_size: Option<default!(i64, NULL)>,
 ) -> JsonB {
-    let geohash_grid = GeohashGrid {
+    let geogrid_grid = GeogridGrid {
         field,
         precision,
         bounds,
@@ -39,8 +39,8 @@ fn geohash_grid_agg(
     JsonB(json! {
         {
             aggregate_name: {
-                "geohash_grid":
-                    geohash_grid
+                "geogrid_grid":
+                    geogrid_grid
             }
         }
     })
