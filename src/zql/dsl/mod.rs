@@ -6,6 +6,7 @@ use serde_json::json;
 use crate::access_method::options::ZDBIndexOptions;
 use crate::elasticsearch::aggregates::terms::terms_array_agg;
 use crate::gucs::{ZDB_ACCELERATOR, ZDB_IGNORE_VISIBILITY};
+use crate::utils::lookup_es_field_type;
 use crate::zdbquery::mvcc::build_visibility_clause;
 use crate::zdbquery::ZDBQuery;
 use crate::zql::ast::{
@@ -298,11 +299,25 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
             }
         }
         Term::PhrasePrefix(s, b) => {
-            if s.contains('\\') {
-                let s = unescape(s);
-                json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0) } } } }
+            if lookup_es_field_type(
+                &field.index.as_ref().unwrap().open_index().unwrap(),
+                &field.field_name(),
+            ) == "keyword"
+            {
+                if s.contains('\\') {
+                    let s = unescape(s);
+
+                    json! { { "prefix": { field.field_name(): { "value": s[..s.len()-1], "rewrite": "constant_score", "boost": b.unwrap_or(1.0) } } } }
+                } else {
+                    json! { { "prefix": { field.field_name(): { "value": s[..s.len()-1], "rewrite": "constant_score", "boost": b.unwrap_or(1.0) } } } }
+                }
             } else {
-                json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0) } } } }
+                if s.contains('\\') {
+                    let s = unescape(s);
+                    json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0) } } } }
+                } else {
+                    json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0) } } } }
+                }
             }
         }
         Term::Wildcard(w, b) => {
