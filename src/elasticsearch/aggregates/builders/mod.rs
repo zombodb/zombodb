@@ -13,6 +13,7 @@ mod filters;
 mod geo_distance;
 mod geohash_grid;
 mod geotile_grid;
+mod global;
 mod histogram;
 mod metrics;
 mod range;

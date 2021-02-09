@@ -808,3 +808,15 @@ https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-
 A multi-bucket aggregation that works on geo_point fields and groups points into buckets that represent cells in a grid. 
 
 
+---
+## `global_agg`
+```sql
+FUNCTION zdb.global_agg (
+    aggregate_name: text,
+    children: jsonb[] DEFAULT NULL::jsonb[],
+)
+RETURNS JsonB
+``` 
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-global-aggregation.html
+Defines a single bucket of all the documents within the search execution context. This context is defined by the indices and the document types you’re searching on, but is not influenced by the search query itself.
+
