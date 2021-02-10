@@ -743,7 +743,7 @@ Like the sampler aggregation this is a filtering aggregation used to limit any s
 ```sql
 FUNCTION zdb.date_range_agg (
     aggregate_name: text,
-    field: bigint,
+    field: text,
     format: text,
     range json[], 
     missing text DEFAULT NULL::text, 
@@ -820,3 +820,19 @@ RETURNS JsonB
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-global-aggregation.html
 Defines a single bucket of all the documents within the search execution context. This context is defined by the indices and the document types you’re searching on, but is not influenced by the search query itself.
 
+---
+## `ip_range_agg`
+```sql
+FUNCTION zdb.ip_range_agg (
+    aggregate_name: text,
+    field: text,
+    format: text,
+    range json[], 
+    missing text DEFAULT NULL::text, 
+    keyed boolean DEFAULT NULL::boolean, 
+    time_zone text DEFAULT NULL::text
+)
+RETURNS JsonB
+``` 
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-iprange-aggregation.html
+Just like the dedicated date range aggregation, there is also a dedicated range aggregation for IP typed fields.

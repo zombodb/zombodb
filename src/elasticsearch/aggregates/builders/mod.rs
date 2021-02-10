@@ -15,6 +15,7 @@ mod geohash_grid;
 mod geotile_grid;
 mod global;
 mod histogram;
+mod ip_range;
 mod metrics;
 mod range;
 mod sampler;
