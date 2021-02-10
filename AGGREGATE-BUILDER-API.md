@@ -579,7 +579,6 @@ FUNCTION zdb.date_histogram_agg (
 )
 RETURNS JsonB
 ```
-
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-datehistogram-aggregation.html
 This multi-bucket aggregation is similar to the normal histogram, but it can only be used with date or date range values.
 
@@ -597,7 +596,6 @@ FUNCTION zdb.histogram_agg (
 )
 RETURNS JsonB
 ```
-
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-histogram-aggregation.html
 A multi-bucket values source based aggregation that can be applied on numeric values or numeric range values extracted from the documents.
 
@@ -613,7 +611,6 @@ FUNCTION zdb.filter_agg (
 )
 RETURNS JsonB
 ```
-
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-filter-aggregation.htmlA multi-bucket values source based aggregation that can be applied on numeric values or numeric range values extracted from the documents.
 Defines a single bucket of all the documents in the current document set context that match a specified filter.
 
@@ -628,7 +625,6 @@ FUNCTION zdb.filters_agg (
 )
 RETURNS JsonB
 ```
-
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-filters-aggregation.html
 Defines a multi bucket aggregation where each bucket is associated with a filter.
 
@@ -643,7 +639,6 @@ FUNCTION zdb.filters_agg (
 )
 RETURNS JsonB
 ```
-
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-range-aggregation.html
 A multi-bucket value source based aggregation that enables the user to define a set of ranges - each representing a bucket.
 
@@ -659,7 +654,6 @@ FUNCTION zdb.terms_agg (
 )
 RETURNS JsonB
 ```
-
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-terms-aggregation.html
 A multi-bucket value source based aggregation where buckets are dynamically built - one per unique value.
 
@@ -674,7 +668,6 @@ FUNCTION zdb.adjacency_matrix_agg (
 )
 RETURNS JsonB
 ```
-
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-adjacency-matrix-aggregation.html#search-aggregations-bucket-adjacency-matrix-aggregation
 A bucket aggregation returning a form of adjacency matrix. The request provides a collection of named filter expressions, similar to the filters aggregation request. 
 
@@ -690,7 +683,6 @@ FUNCTION zdb.auto_date_histogram_agg (
 )
 RETURNS JsonB
 ```
-
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-autodatehistogram-aggregation.html
 A multi-bucket aggregation similar to the Date histogram except instead of providing an interval to use as the width of each bucket, a target number of buckets is provided indicating the number of buckets needed and the interval of the buckets is automatically chosen to best achieve that target.
 
@@ -704,7 +696,6 @@ FUNCTION zdb.children_agg (
 )
 RETURNS JsonB
 ```
-
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-children-aggregation.html
 A special single bucket aggregation that selects child documents that have the specified type, as defined in a join field.
 
@@ -718,7 +709,6 @@ FUNCTION zdb.sampler_agg (
 )
 RETURNS JsonB
 ```
-
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-sampler-aggregation.html
 A filtering aggregation used to limit any sub aggregations' processing to a sample of the top-scoring documents.
 
@@ -734,7 +724,6 @@ FUNCTION zdb.diversified_sampler_agg (
 )
 RETURNS JsonB
 ```
-
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-diversified-sampler-aggregation.html#_max_docs_per_value
 Like the sampler aggregation this is a filtering aggregation used to limit any sub aggregations' processing to a sample of the top-scoring documents. The diversified_sampler aggregation adds the ability to limit the number of matches that share a common value such as an "author".
 
@@ -752,7 +741,6 @@ FUNCTION zdb.date_range_agg (
 )
 RETURNS JsonB
 ```
-
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-daterange-aggregation.html
 A range aggregation that is dedicated for date values. The main difference between this aggregation and the normal range aggregation is that the from and to values can be expressed in Date Math expressions, and it is also possible to specify a date format by which the from and to response fields will be returned.
 
@@ -768,8 +756,7 @@ FUNCTION zdb.geo_distance_agg (
     keyed boolean DEFAULT NULL::boolean
 )
 RETURNS JsonB
-``` 
-
+```
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-geodistance-aggregation.html
 A multi-bucket aggregation that works on geo_point fields and conceptually works very similar to the range aggregation.
 
@@ -785,8 +772,7 @@ FUNCTION zdb.geohash_grid_agg (
     shard_size bigint DEFAULT NULL::bigint
 )
 RETURNS JsonB
-``` 
-
+```
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-geohashgrid-aggregation.html
 A multi-bucket aggregation that works on geo_point fields and groups points into buckets that represent cells in a grid.
 
@@ -802,8 +788,7 @@ FUNCTION zdb.geohash_grid_agg (
     shard_size bigint DEFAULT NULL::bigint
 )
 RETURNS JsonB
-``` 
-
+```
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-geotilegrid-aggregation.html
 A multi-bucket aggregation that works on geo_point fields and groups points into buckets that represent cells in a grid. 
 
