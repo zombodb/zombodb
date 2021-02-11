@@ -17,7 +17,7 @@ DO LANGUAGE plpgsql $$
 $$;
 
 -- it's imperative for `update-versions.sh` that this function be formatted exactly this way
-CREATE FUNCTION schema_version() RETURNS text LANGUAGE sql AS $$
+CREATE FUNCTION zdb.schema_version() RETURNS text LANGUAGE sql AS $$
 SELECT '@DEFAULT_VERSION@ (@GIT_HASH@)'
 $$;
 
