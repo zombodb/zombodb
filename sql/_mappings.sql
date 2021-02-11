@@ -195,7 +195,7 @@ INSERT INTO zdb.filters(name, definition, is_default)
 VALUES ('zdb_truncate_to_fit', '{
   "type": "truncate",
   "length": 10922
-}', true);
+}', true) ON CONFLICT (name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.filters(name, definition, is_default)
 VALUES ('shingle_filter', '{
@@ -204,7 +204,7 @@ VALUES ('shingle_filter', '{
   "max_shingle_size": 2,
   "output_unigrams": true,
   "token_separator": "$"
-}', true);
+}', true) ON CONFLICT (name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.filters(name, definition, is_default)
 VALUES ('shingle_filter_search', '{
@@ -214,7 +214,7 @@ VALUES ('shingle_filter_search', '{
   "output_unigrams": false,
   "output_unigrams_if_no_shingles": true,
   "token_separator": "$"
-}', true);
+}', true) ON CONFLICT (name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.normalizers(name, definition, is_default)
 VALUES ('lowercase', '{
@@ -223,7 +223,7 @@ VALUES ('lowercase', '{
   "filter": [
     "lowercase"
   ]
-}', true);
+}', true) ON CONFLICT (name) DO UPDATE SET definition = excluded.definition;
 
 -- same as 'lowercase' for backwards compatibility
 INSERT INTO zdb.normalizers(name, definition, is_default)
@@ -233,7 +233,7 @@ VALUES ('exact', '{
   "filter": [
     "lowercase"
   ]
-}', true);
+}', true) ON CONFLICT (name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.analyzers(name, definition, is_default)
 VALUES ('zdb_standard', '{
@@ -242,7 +242,8 @@ VALUES ('zdb_standard', '{
     "zdb_truncate_to_fit",
     "lowercase"
   ]
-}', true);
+}', true) ON CONFLICT (name) DO UPDATE SET definition = excluded.definition;
+
 INSERT INTO zdb.analyzers(name, definition, is_default)
 VALUES ('zdb_all_analyzer', '{
   "type": "standard",
@@ -250,7 +251,8 @@ VALUES ('zdb_all_analyzer', '{
     "zdb_truncate_to_fit",
     "lowercase"
   ]
-}', true);
+}', true) ON CONFLICT (name) DO UPDATE SET definition = excluded.definition;
+
 INSERT INTO zdb.analyzers(name, definition, is_default)
 VALUES ('fulltext_with_shingles', '{
   "type": "custom",
@@ -260,7 +262,8 @@ VALUES ('fulltext_with_shingles', '{
     "shingle_filter",
     "zdb_truncate_to_fit"
   ]
-}', true);
+}', true) ON CONFLICT (name) DO UPDATE SET definition = excluded.definition;
+
 INSERT INTO zdb.analyzers(name, definition, is_default)
 VALUES ('fulltext_with_shingles_search', '{
   "type": "custom",
@@ -269,7 +272,8 @@ VALUES ('fulltext_with_shingles_search', '{
     "lowercase",
     "shingle_filter_search"
   ]
-}', true);
+}', true) ON CONFLICT (name) DO UPDATE SET definition = excluded.definition;
+
 INSERT INTO zdb.analyzers(name, definition, is_default)
 VALUES ('fulltext', '{
   "type": "standard",
@@ -277,7 +281,8 @@ VALUES ('fulltext', '{
     "zdb_truncate_to_fit",
     "lowercase"
   ]
-}', true);
+}', true) ON CONFLICT (name) DO UPDATE SET definition = excluded.definition;
+
 INSERT INTO zdb.analyzers(name, definition, is_default)
 VALUES ('phrase', '{
   "type": "standard",
@@ -286,7 +291,7 @@ VALUES ('phrase', '{
     "zdb_truncate_to_fit",
     "lowercase"
   ]
-}', true);
+}', true) ON CONFLICT (name) DO UPDATE SET definition = excluded.definition;
 
 
 CREATE DOMAIN zdb.phrase AS text;
@@ -298,7 +303,7 @@ CREATE DOMAIN zdb.zdb_standard AS text;
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('"char"', '{
   "type": "keyword"
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('char', '{
@@ -306,42 +311,42 @@ VALUES ('char', '{
   "copy_to": "zdb_all",
   "ignore_above": 10922,
   "normalizer": "lowercase"
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('bytea', '{
   "type": "binary"
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('boolean', '{
   "type": "boolean"
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('smallint', '{
   "type": "short"
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('integer', '{
   "type": "integer"
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('bigint', '{
   "type": "long"
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('real', '{
   "type": "float"
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('double precision', '{
   "type": "double"
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('character varying', '{
@@ -349,7 +354,7 @@ VALUES ('character varying', '{
   "copy_to": "zdb_all",
   "ignore_above": 10922,
   "normalizer": "lowercase"
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('text', '{
@@ -358,7 +363,7 @@ VALUES ('text', '{
   "fielddata": true,
   "index_prefixes": { },
   "analyzer": "zdb_standard"
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 --INSERT INTO zdb.type_mappings(type_name, definition, is_default) VALUES (
 --  'citext', '{
@@ -366,7 +371,7 @@ VALUES ('text', '{
 --    "copy_to": "zdb_all",
 --    "fielddata": true,
 --    "analyzer": "zdb_standard"
---  }', true);
+--  }', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('time without time zone', '{
@@ -378,7 +383,7 @@ VALUES ('time without time zone', '{
       "format": "HH:mm:ss.S||HH:mm:ss.SS||HH:mm:ss.SSS||HH:mm:ss.SSSS||HH:mm:ss.SSSSS||HH:mm:ss.SSSSSS"
     }
   }
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('time with time zone', '{
@@ -391,7 +396,7 @@ VALUES ('time with time zone', '{
     }
   }
 }
-', true);
+', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('date', '{
@@ -402,7 +407,7 @@ VALUES ('date', '{
       "type": "date"
     }
   }
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('timestamp without time zone', '{
@@ -413,7 +418,7 @@ VALUES ('timestamp without time zone', '{
       "type": "date"
     }
   }
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('timestamp with time zone', '{
@@ -424,25 +429,25 @@ VALUES ('timestamp with time zone', '{
       "type": "date"
     }
   }
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('json', '{
   "type": "nested",
   "include_in_parent": true
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('jsonb', '{
   "type": "nested",
   "include_in_parent": true
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('inet', '{
   "type": "ip",
   "copy_to": "zdb_all"
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('zdb.phrase', '{
@@ -450,7 +455,7 @@ VALUES ('zdb.phrase', '{
   "copy_to": "zdb_all",
   "fielddata": true,
   "analyzer": "phrase"
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('zdb.phrase_array', '{
@@ -458,14 +463,14 @@ VALUES ('zdb.phrase_array', '{
   "copy_to": "zdb_all",
   "fielddata": true,
   "analyzer": "phrase"
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('zdb.fulltext', '{
   "type": "text",
   "fielddata": true,
   "analyzer": "fulltext"
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('zdb.fulltext_with_shingles', '{
@@ -473,12 +478,12 @@ VALUES ('zdb.fulltext_with_shingles', '{
   "fielddata": true,
   "analyzer": "fulltext_with_shingles",
   "search_analyzer": "fulltext_with_shingles_search"
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('point', '{
   "type": "geo_point"
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('uuid', '{
@@ -486,7 +491,7 @@ VALUES ('uuid', '{
   "copy_to": "zdb_all",
   "ignore_above": 10922,
   "normalizer": "lowercase"
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.type_mappings(type_name, definition, is_default)
 VALUES ('tsvector', '{
@@ -495,7 +500,7 @@ VALUES ('tsvector', '{
   "fielddata": true,
   "index_prefixes": { },
   "analyzer": "zdb_standard"
-}', true);
+}', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
 CREATE DOMAIN zdb.arabic AS text;
 CREATE DOMAIN zdb.armenian AS text;
@@ -545,12 +550,12 @@ VALUES ('emoji', '{
   "type": "pattern",
   "pattern": "([\\ud83c\\udf00-\\ud83d\\ude4f]|[\\ud83d\\ude80-\\ud83d\\udeff])",
   "group": 1
-}', true);
+}', true) ON CONFLICT (name) DO UPDATE SET definition = excluded.definition;
 
 INSERT INTO zdb.analyzers(name, definition, is_default)
 VALUES ('emoji', '{
   "tokenizer": "emoji"
-}', true);
+}', true) ON CONFLICT (name) DO UPDATE SET definition = excluded.definition;
 
 CREATE OR REPLACE FUNCTION zdb.define_type_conversion(typeoid regtype, funcoid regproc) RETURNS void
     VOLATILE STRICT
