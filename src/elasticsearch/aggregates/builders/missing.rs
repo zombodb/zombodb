@@ -4,7 +4,6 @@
 //! Returns JsonB that is a Filer ES Query
 
 use pgx::*;
-use serde::*;
 use serde_json::*;
 
 #[pg_extern(immutable, parallel_safe)]
