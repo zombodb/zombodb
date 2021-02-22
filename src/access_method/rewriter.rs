@@ -390,6 +390,7 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
     } else if is_a(node, pg_sys::NodeTag_T_ArrayCoerceExpr) {
         let expr = PgBox::from_pg(node as *mut pg_sys::ArrayCoerceExpr);
         walk_node(expr.arg as NodePtr, context);
+        #[cfg(not(feature = "pg10"))]
         walk_node(expr.elemexpr as NodePtr, context);
     } else {
         let mut did_it = false;
