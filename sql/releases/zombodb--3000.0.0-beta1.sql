@@ -21,7 +21,7 @@ $$;
 
 -- it's imperative for `update-versions.sh` that this function be formatted exactly this way
 CREATE FUNCTION zdb.schema_version() RETURNS text LANGUAGE sql AS $$
-SELECT '3000.0.0-beta1 (e0ab27d1e8199a1f1f160c46ff8d9dbe7dda7956)'
+SELECT '3000.0.0-beta1 (ab62e48f53a9832bfd0df048f0aa0b3813780eca)'
 $$;
 
 CREATE SCHEMA dsl;

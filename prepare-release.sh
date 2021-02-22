@@ -5,6 +5,7 @@ if [ "x$2" == "x" ] ; then
 	exit 1
 fi
 
+cargo update
 cargo install --git https://github.com/zombodb/pg-schema-diff.git
 cargo pgx dump-schema ./sql/releases
 echo "diffing schema..."
