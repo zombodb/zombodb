@@ -854,7 +854,6 @@ RETURNS JsonB
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-missing-aggregation.html
 A field data based single bucket aggregation, that creates a bucket of all documents in the current document set context that are missing a field value (effectively, missing a field or having the configured NULL value set).
 
-
 ---
 ## `nested_agg`
 ```sql
@@ -868,3 +867,15 @@ RETURNS JsonB
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-nested-aggregation.html
 A special single bucket aggregation that enables aggregating nested documents.
 
+---
+## `parent_agg`
+```sql
+FUNCTION zdb.parent_agg (
+    aggregate_name: text,
+    type_: text,
+    children: jsonb[] DEFAULT NULL::jsonb[]
+)
+RETURNS JsonB
+``` 
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-parent-aggregation.html
+A special single bucket aggregation that selects parent documents that have the specified type, as defined in a join field.

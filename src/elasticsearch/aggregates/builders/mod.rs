@@ -19,6 +19,7 @@ mod ip_range;
 mod metrics;
 mod missing;
 mod nested;
+mod parent;
 mod range;
 mod sampler;
 mod terms;
