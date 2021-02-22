@@ -10,7 +10,9 @@ fi
 HEAD=$(git rev-parse HEAD)
 VERSION=$1
 
+cd docker-build-system && cargo release --workspace --skip-publish --skip-push --skip-tag --no-dev-version ${VERSION} || exit 1
 cargo release --workspace --skip-publish --skip-push --skip-tag --no-dev-version ${VERSION} || exit 1
+
 git reset --soft ${HEAD} || exit 1 
 git reset HEAD || exit 1
 sed -i '' -e "s/^version = .*$/version = \"${VERSION}\"/" ./Cargo.toml || exit 1
