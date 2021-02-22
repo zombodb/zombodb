@@ -21,7 +21,7 @@ $$;
 
 -- it's imperative for `update-versions.sh` that this function be formatted exactly this way
 CREATE FUNCTION zdb.schema_version() RETURNS text LANGUAGE sql AS $$
-SELECT '3000.0.0-beta1 (ab62e48f53a9832bfd0df048f0aa0b3813780eca)'
+SELECT '3000.0.0-beta1 (5a9bf6980021200bce82961cccdb290fb42ba6d4)'
 $$;
 
 CREATE SCHEMA dsl;
@@ -2388,6 +2388,107 @@ CREATE OR REPLACE FUNCTION zdb."range_agg"("aggregate_name" text, "field" text, 
 --
 -- ./src/elasticsearch/aggregates/builders/histogram.rs:23:0
 CREATE OR REPLACE FUNCTION zdb."histogram_agg"("aggregate_name" text, "field" text, "interval" bigint, "min_count" bigint DEFAULT NULL, "keyed" bool DEFAULT NULL, "missing" bigint DEFAULT NULL, "children" JsonB[] DEFAULT NULL) RETURNS JsonB IMMUTABLE PARALLEL SAFE LANGUAGE c AS 'MODULE_PATHNAME', 'histogram_agg_wrapper';
+
+
+
+--
+-- sql/elasticsearch_aggregates_builders_adjacency_matrix.generated.sql
+--
+-- ./src/elasticsearch/aggregates/builders/adjacency_matrix.rs:14:0
+CREATE OR REPLACE FUNCTION zdb."adjacency_matrix_agg"("index" regclass, "aggregate_name" text, "labels" text[], "filters" ZDBQuery[]) RETURNS JsonB IMMUTABLE STRICT PARALLEL SAFE LANGUAGE c AS 'MODULE_PATHNAME', 'adjacency_matrix_agg_wrapper';
+
+
+
+--
+-- sql/elasticsearch_aggregates_builders_auto_date_histogram.generated.sql
+--
+CREATE TYPE zdb.intervals AS ENUM (
+'Year',
+'Month',
+'Day',
+'Hour',
+'Minute',
+'Second'
+);
+-- ./src/elasticsearch/aggregates/builders/auto_date_histogram.rs:32:0
+CREATE OR REPLACE FUNCTION zdb."auto_date_histogram_agg"("aggregate_name" text, "field" text, "buckets" bigint, "format" text DEFAULT NULL, "minimum_interval" Intervals DEFAULT NULL, "missing" text DEFAULT NULL) RETURNS JsonB IMMUTABLE PARALLEL SAFE LANGUAGE c AS 'MODULE_PATHNAME', 'auto_date_histogram_agg_wrapper';
+
+
+
+--
+-- sql/elasticsearch_aggregates_builders_childern.generated.sql
+--
+-- ./src/elasticsearch/aggregates/builders/childern.rs:10:0
+CREATE OR REPLACE FUNCTION zdb."children_agg"("aggregate_name" text, "join_type" text, "children" JsonB[] DEFAULT NULL) RETURNS JsonB IMMUTABLE PARALLEL SAFE LANGUAGE c AS 'MODULE_PATHNAME', 'children_agg_wrapper';
+
+
+
+--
+-- sql/elasticsearch_aggregates_builders_diversified_sampler.generated.sql
+--
+CREATE TYPE zdb.executionhint AS ENUM (
+'Map',
+'GlobalOrdinals',
+'BytesHash'
+);
+-- ./src/elasticsearch/aggregates/builders/diversified_sampler.rs:28:0
+CREATE OR REPLACE FUNCTION zdb."diversified_sampler_agg"("aggregate_name" text, "shard_size" bigint DEFAULT NULL, "max_docs_per_value" bigint DEFAULT NULL, "execution_hint" ExecutionHint DEFAULT NULL, "children" JsonB[] DEFAULT NULL) RETURNS JsonB IMMUTABLE PARALLEL SAFE LANGUAGE c AS 'MODULE_PATHNAME', 'diversified_sampler_agg_wrapper';
+
+
+
+--
+-- sql/elasticsearch_aggregates_builders_sampler.generated.sql
+--
+-- ./src/elasticsearch/aggregates/builders/sampler.rs:10:0
+CREATE OR REPLACE FUNCTION zdb."sampler_agg"("aggregate_name" text, "shard_size" bigint, "children" JsonB[] DEFAULT NULL) RETURNS JsonB IMMUTABLE PARALLEL SAFE LANGUAGE c AS 'MODULE_PATHNAME', 'sampler_agg_wrapper';
+
+
+
+--
+-- sql/elasticsearch_aggregates_builders_date_range.generated.sql
+--
+-- ./src/elasticsearch/aggregates/builders/date_range.rs:23:0
+CREATE OR REPLACE FUNCTION zdb."date_range_agg"("aggregate_name" text, "field" text, "format" text, "range" json[], "missing" text DEFAULT NULL, "keyed" bool DEFAULT NULL, "time_zone" text DEFAULT NULL) RETURNS JsonB IMMUTABLE PARALLEL SAFE LANGUAGE c AS 'MODULE_PATHNAME', 'date_range_agg_wrapper';
+
+
+
+--
+-- sql/elasticsearch_aggregates_builders_geo_distance.generated.sql
+--
+-- ./src/elasticsearch/aggregates/builders/geo_distance.rs:21:0
+CREATE OR REPLACE FUNCTION zdb."geo_distance_agg"("aggregate_name" text, "field" text, "origin" text, "range" json[], "unit" text DEFAULT NULL, "keyed" bool DEFAULT NULL) RETURNS JsonB IMMUTABLE PARALLEL SAFE LANGUAGE c AS 'MODULE_PATHNAME', 'geo_distance_agg_wrapper';
+
+
+
+--
+-- sql/elasticsearch_aggregates_builders_geohash_grid.generated.sql
+--
+-- ./src/elasticsearch/aggregates/builders/geohash_grid.rs:23:0
+CREATE OR REPLACE FUNCTION zdb."geohash_grid_agg"("aggregate_name" text, "field" text, "precision" smallint DEFAULT NULL, "bounds" text DEFAULT NULL, "size" bigint DEFAULT NULL, "shard_size" bigint DEFAULT NULL) RETURNS JsonB IMMUTABLE PARALLEL SAFE LANGUAGE c AS 'MODULE_PATHNAME', 'geohash_grid_agg_wrapper';
+
+
+
+--
+-- sql/elasticsearch_aggregates_builders_geotile_grid.generated.sql
+--
+-- ./src/elasticsearch/aggregates/builders/geotile_grid.rs:23:0
+CREATE OR REPLACE FUNCTION zdb."geogrid_grid_agg"("aggregate_name" text, "field" text, "precision" smallint DEFAULT NULL, "bounds" text DEFAULT NULL, "size" bigint DEFAULT NULL, "shard_size" bigint DEFAULT NULL) RETURNS JsonB IMMUTABLE PARALLEL SAFE LANGUAGE c AS 'MODULE_PATHNAME', 'geogrid_grid_agg_wrapper';
+
+
+
+--
+-- sql/elasticsearch_aggregates_builders_global.generated.sql
+--
+-- ./src/elasticsearch/aggregates/builders/global.rs:10:0
+CREATE OR REPLACE FUNCTION zdb."global_agg"("aggregate_name" text, "children" JsonB[] DEFAULT NULL) RETURNS JsonB IMMUTABLE PARALLEL SAFE LANGUAGE c AS 'MODULE_PATHNAME', 'global_agg_wrapper';
+
+
+
+--
+-- sql/elasticsearch_aggregates_builders_ip_range.generated.sql
+--
+-- ./src/elasticsearch/aggregates/builders/ip_range.rs:18:0
+CREATE OR REPLACE FUNCTION zdb."ip_range_agg"("aggregate_name" text, "field" text, "range" json[], "keyed" bool DEFAULT NULL) RETURNS JsonB IMMUTABLE PARALLEL SAFE LANGUAGE c AS 'MODULE_PATHNAME', 'ip_range_agg_wrapper';
 
 
 
