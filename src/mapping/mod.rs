@@ -1,4 +1,5 @@
 use crate::json::builder::JsonBuilder;
+use crate::json::utils::escape_json;
 use crate::utils::type_is_domain;
 use pgx::*;
 use serde_json::*;
@@ -9,6 +10,7 @@ pub struct CategorizedAttribute<'a> {
     pub attname: &'a str,
     pub typoid: pg_sys::Oid,
     pub conversion_func: Box<ConversionFunc<'a>>,
+    pub attno: usize,
 }
 
 #[allow(clippy::cognitive_complexity)]
@@ -25,7 +27,7 @@ pub fn categorize_tupdesc<'a>(
         None
     };
 
-    for attribute in tupdesc.iter() {
+    for (attno, attribute) in tupdesc.iter().enumerate() {
         if attribute.is_dropped() {
             continue;
         }
@@ -421,10 +423,14 @@ pub fn categorize_tupdesc<'a>(
                 .insert(attname.to_owned(), definition);
         }
 
+        let mut json_attname = String::with_capacity(attname.len());
+        escape_json(attname, &mut json_attname);
+        let attname = PgMemoryContexts::TopTransactionContext.leak_and_drop_on_delete(json_attname);
         categorized_attributes.push(CategorizedAttribute {
-            attname,
+            attname: unsafe { attname.as_ref().unwrap() },
             typoid: typoid.value(),
             conversion_func,
+            attno,
         });
     }
 

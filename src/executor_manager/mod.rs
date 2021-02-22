@@ -1,6 +1,6 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchBulkRequest};
 use crate::mapping::{categorize_tupdesc, CategorizedAttribute};
-use crate::utils::lookup_zdb_index_tupdesc;
+use crate::utils::{find_zdb_index, lookup_all_zdb_index_oids, lookup_zdb_index_tupdesc};
 use pgx::*;
 use std::collections::{HashMap, HashSet};
 
@@ -19,6 +19,7 @@ pub struct BulkContext {
     pub bulk: ElasticsearchBulkRequest,
     pub attributes: Vec<CategorizedAttribute<'static>>,
     pub tupdesc: &'static PgTupleDesc<'static>,
+    pub is_shadow: bool,
 }
 
 pub struct QueryState {
@@ -39,6 +40,7 @@ impl Default for QueryState {
 }
 
 impl QueryState {
+    #[inline]
     pub fn add_score(&mut self, heap_oid: pg_sys::Oid, ctid64: u64, score: f64) {
         if score > 0.0f64 {
             let key = (heap_oid, u64_to_item_pointer_parts(ctid64));
@@ -57,6 +59,7 @@ impl QueryState {
             .unwrap_or(&0.0f64)
     }
 
+    #[inline]
     pub fn add_highlight(
         &mut self,
         heap_oid: pg_sys::Oid,
@@ -106,7 +109,7 @@ impl QueryState {
         }
     }
 
-    pub fn lookup_heap_oid_for_first_field(
+    pub fn lookup_index_for_first_field(
         &self,
         query_desc: *mut pg_sys::QueryDesc,
         fcinfo: pg_sys::FunctionCallInfo,
@@ -137,7 +140,39 @@ impl QueryState {
             let rentry = unsafe { pg_sys::rt_fetch(var.varnoold, rtable) };
             let heap_oid = unsafe { rentry.as_ref().unwrap().relid };
 
-            Some(heap_oid)
+            match find_zdb_index(&PgRelation::with_lock(
+                heap_oid,
+                pg_sys::AccessShareLock as pg_sys::LOCKMODE,
+            )) {
+                Ok((index, _)) => Some(index.oid()),
+                Err(_) => None,
+            }
+        } else if is_a(first_arg, pg_sys::NodeTag_T_FuncExpr) {
+            let func_expr = PgBox::from_pg(first_arg as *mut pg_sys::FuncExpr);
+            match lookup_all_zdb_index_oids() {
+                Some(oids) => {
+                    let funcoid = func_expr.funcid;
+                    for oid in oids {
+                        let index =
+                            PgRelation::with_lock(oid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
+                        let exprs = PgList::<pg_sys::Expr>::from_pg(unsafe {
+                            pg_sys::RelationGetIndexExpressions(index.as_ptr())
+                        });
+
+                        if let Some(expr) = exprs.get_ptr(0) {
+                            if is_a(expr as *mut pg_sys::Node, pg_sys::NodeTag_T_FuncExpr) {
+                                let func_expr = PgBox::from_pg(expr as *mut pg_sys::FuncExpr);
+                                if func_expr.funcid == funcoid {
+                                    return Some(index.oid());
+                                }
+                            }
+                        }
+                    }
+
+                    None
+                }
+                None => None,
+            }
         } else {
             None
         }
@@ -237,7 +272,11 @@ impl ExecutorManager {
         if let Some(bulk_requests) = self.bulk_requests.take() {
             let mut replacement_requests = HashMap::with_capacity(bulk_requests.capacity());
 
-            for (key, bulk) in bulk_requests.into_iter() {
+            for (key, bulk) in bulk_requests
+                .into_iter()
+                .filter(|(_, bulk)| !bulk.is_shadow)
+            // shadow indexes don't change anything
+            {
                 let elasticsearch = bulk.elasticsearch;
                 let attributes = bulk.attributes;
                 let tupdesc = bulk.tupdesc;
@@ -254,6 +293,7 @@ impl ExecutorManager {
                         bulk,
                         attributes,
                         tupdesc,
+                        is_shadow: false,
                     },
                 );
             }
@@ -265,7 +305,11 @@ impl ExecutorManager {
     fn finalize_bulk_requests(&mut self) {
         if let Some(bulk_requests) = self.bulk_requests.take() {
             // finish any of the bulk requests we have going on
-            for (_, mut bulk) in bulk_requests.into_iter() {
+            for (_, mut bulk) in bulk_requests
+                .into_iter()
+                .filter(|(_, bulk)| !bulk.is_shadow)
+            // shadow indexes don't do anything
+            {
                 for xid in self.xids.as_ref().unwrap().iter() {
                     bulk.bulk
                         .transaction_committed(*xid)
@@ -282,7 +326,11 @@ impl ExecutorManager {
     fn terminate_bulk_requests(&mut self) {
         // forcefully terminate any of the bulk requests we have going on
         if let Some(bulk_requests) = self.bulk_requests.take() {
-            for (_, bulk) in bulk_requests.into_iter() {
+            for (_, bulk) in bulk_requests
+                .into_iter()
+                .filter(|(_, bulk)| !bulk.is_shadow)
+            // shadow indexes don't do anything
+            {
                 bulk.bulk.terminate_now();
             }
         }
@@ -344,13 +392,18 @@ impl ExecutorManager {
                 get_executor_manager().hooks_registered = true;
             }
 
-            // mark xids that are already known to be in progress as
-            // also in progress for this new bulk context too
+            let is_shadow = elasticsearch.is_shadow_index();
             let mut bulk = elasticsearch.start_bulk();
-            if let Some(xids) = xids.as_ref() {
-                for xid in xids {
-                    bulk.transaction_in_progress(*xid)
-                        .expect("Failed to mark transaction as in progress for new bulk");
+
+            // only non-shadow indexes are written to
+            if !is_shadow {
+                // mark xids that are already known to be in progress as
+                // also in progress for this new bulk context too
+                if let Some(xids) = xids.as_ref() {
+                    for xid in xids {
+                        bulk.transaction_in_progress(*xid)
+                            .expect("Failed to mark transaction as in progress for new bulk");
+                    }
                 }
             }
 
@@ -359,6 +412,7 @@ impl ExecutorManager {
                 bulk,
                 attributes,
                 tupdesc,
+                is_shadow,
             }
         })
     }

@@ -7,10 +7,9 @@ ZomboDB provides a number of configuration settings that affect how it operates.
 The below settings can only be set in `postgresql.conf` and require a Postgres configuration reload (or server restart) to be changed.
 
 
+#### `zdb.default_elasticsearch_url`
 
 ```
-zdb.default_elasticsearch_url
-
 Type: string
 Default: null
 ```
@@ -21,14 +20,14 @@ Example:  `zdb.default_elasticsearch_url = 'http://es.cluster.ip:9200/'`
 
 
 
-```
-zdb.default_replicas
+#### `zdb.default_replicas`
 
+```
 Type: integer
 Default: 0
 ```
 
-Defines the number of replicas all new indices should have.  Changing this value does not propogate to existing indices.
+Defines the number of replicas all new indices should have.  Changing this value does not propagate to existing indices.
 
 
 ## Session-level "GUC" settings
@@ -36,9 +35,8 @@ Defines the number of replicas all new indices should have.  Changing this value
 The below settings may be set in `postgresql.conf`, but they can also be changed per session/transaction using Postgres `SET key TO value` command;
 
 
+#### `zdb.default_row_estimate`
 ```
-zdb.default_row_estimate
-
 Type: integer
 Default: 2500
 Range: [-1, INT_MAX]
@@ -48,9 +46,8 @@ ZomboDB needs to provide Postgres with an estimate of the number of rows Elastic
 
 
 
+#### `zdb.ignore_visibility`
 ```
-zdb.ignore_visibility
-
 Type: boolean
 Default: false
 ```
@@ -59,25 +56,29 @@ ZomboDB applies MVCC visibility rules to all queries and aggregate functions.  S
 
 
 
-```
-zdb.curl_verbose
-
-Type: boolean
-Default: false
-```
-
-ZomboDB uses libcurl to communicate with Elasticsearch.  Turning this on puts libcurl into debug mode and its debugging output goes to the Postgres log.
-
-
+#### `zdb.log_level`
 
 ```
-zdb.log_level
-
 Type: enum
 Default: DEBUG1
 Possible Values: DEBUG2, DEBUG5, DEBUG4, DEBUG3, DEBUG2, DEBUG1, INFO, NOTICE, WARNING, LOG
 ```
 
-The Postgres log level ZomboDB sends all of its (non-vacuum) log messages.
+The Postgres log level ZomboDB sends all of its log messages.
+
+
+#### `zdb.enable_search_accelerator`
+
+```
+Type: boolean
+Default: false
+```
+
+Indicates if you have the ZomboDB Search Accelerator installed on your backing Elasticsearch
+cluster.
+
+If you do, ZomboDB is able to highly optimize certain queries, especially those that perform
+[cross-index joins](CROSS-INDEX-JOINS.md).
+
 
 

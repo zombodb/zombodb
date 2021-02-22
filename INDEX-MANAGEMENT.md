@@ -49,7 +49,7 @@ Type: string
 Default: zdb.default_elasticsearch_url
 ```
 
-The Elasticsearch Cluster URL for the index.  This option is required, but can be ommitted if the `postgresql.conf` setting `zdb.default_elasticsearch_url` is set.  This option can be changed with `ALTER INDEX`, but you must be a Postgres superuser to do so.
+The Elasticsearch Cluster URL for the index.  This option is required, but can be omitted if the `postgresql.conf` setting `zdb.default_elasticsearch_url` is set.  This option can be changed with `ALTER INDEX`, but you must be a Postgres superuser to do so.
 
 The value must end with a forward slash (`/`).
 
@@ -118,6 +118,57 @@ the following parameters:
 
 See: https://www.elastic.co/guide/en/elasticsearch/reference/7.x/index-modules-translog.html#_translog_settings
 
+#### `max_result_window`
+```
+Tyoe: integer
+Default: 10000
+Range: [1, INT_32_MAX]
+```
+
+The maximum number of docs ZomboDB will retrieve from Elasticsearch in a single scroll request.
+
+See: https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules.html#index-max-result-window
+
+#### `nested_fields_limit`
+```
+Type: integer
+Default: 1000
+Range: [1, INT_32_MAX]
+```
+
+The maximum number of distinct nested mappings in an index. The nested type should only be used 
+in special cases, when arrays of objects need to be queried independently of each other. To 
+safeguard against poorly designed mappings, this setting limits the number of unique nested 
+types per index.
+
+See: https://www.elastic.co/guide/en/elasticsearch/reference/master/mapping-settings-limit.html
+
+#### `total_fields_limit`
+```
+Type: integer
+Default: 1000
+Range: [1, INT_32_MAX]
+```
+
+The maximum number of fields in an index. Field and object mappings, as well as field aliases 
+count towards this limit. The default value is 1000.
+
+See: https://www.elastic.co/guide/en/elasticsearch/reference/master/mapping-settings-limit.html
+
+#### `max_terms_count`
+```
+Type: integer
+Default: 65535
+Range: [1, INT_32_MAX]
+```
+
+The maximum number of terms that can be used in Terms Query.
+
+Increasing this limit might be necessary for performing large [cross-index joins](CROSS-INDEX-JOINS.md) 
+when the ZomboDB Search Accelerator is not installed.
+
+https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules.html#index-max-terms-count
+
 ### Network Options
 
 #### `bulk_concurrency`
@@ -147,6 +198,56 @@ Range: [0, 9]
 
 Sets the HTTP(s) transport (and request body) deflate compression level.  Over slow networks, it may make sense to set this to a higher value.  Setting to zero turns off all compression.  Changes via `ALTER INDEX` take effect immediately.
 
+
+### Nested Object Mapping Options
+
+#### `nesed_object_date_detection`
+```
+Type: bool
+Default: false
+```
+
+If `nesed_object_date_detection` is enabled (default is false), then new string fields 
+in nested objects (fields of type 'json' or 'jsonb') are checked to see whether their 
+contents match any of the date patterns specified in dynamic_date_formats. If a match is 
+found, a new date field is added with the corresponding format.
+
+The default value for dynamic_date_formats is:
+
+```json
+ [ "strict_date_optional_time","yyyy/MM/dd HH:mm:ss Z||yyyy/MM/dd Z"]
+```
+
+See:  https://www.elastic.co/guide/en/elasticsearch/reference/current/dynamic-field-mapping.html#date-detection
+
+#### `nested_object_numeric_detection`
+```
+Type: bool
+Default: true
+```
+
+While JSON has support for native floating point and integer data types, some 
+applications or languages may sometimes render numbers as strings. Usually the correct 
+solution is to map these fields explicitly, but numeric detection (which is disabled by 
+default) can be enabled to do this automatically.
+
+See:  https://www.elastic.co/guide/en/elasticsearch/reference/current/dynamic-field-mapping.html#numeric-detection
+
+#### `nested_object_text_mapping`
+```
+Type: String (as JSON)
+Default: {
+           "type": "keyword",
+           "ignore_above": 10922,
+           "normalizer": "lowercase",
+           "copy_to": "zdb_all"
+         }
+```
+
+By default, ZomboDB will map "string" properties found in nested objects (fields of type
+'json' or 'jsonb') using the above type mapping -- they'll be indexed as full-value keywords.
+
+You can override this at `CREATE INDEX` time.
 
 ### Advanced Options
 

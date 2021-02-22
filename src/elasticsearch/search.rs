@@ -1,9 +1,13 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
+use crate::gucs::ZDB_ACCELERATOR;
+use crate::utils::read_vlong;
 use crate::zdbquery::mvcc::apply_visibility_clause;
 use crate::zdbquery::ZDBPreparedQuery;
+use pgx::PgBuiltInOids;
 use serde::*;
 use serde_json::*;
 use std::collections::HashMap;
+use std::convert::TryInto;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -16,18 +20,9 @@ pub struct ElasticsearchSearchRequest {
     query: ZDBPreparedQuery,
 }
 
-#[derive(Deserialize)]
-pub struct Shards {
-    total: Option<u64>,
-    successful: Option<u64>,
-    skipped: Option<u64>,
-    failed: Option<u64>,
-}
-
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct HitsTotal {
     value: u64,
-    relation: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -35,9 +30,6 @@ pub struct Fields {
     pub zdb_ctid: Option<[u64; 1]>,
     pub zdb_xmin: Option<[u64; 1]>,
     pub zdb_xmax: Option<[u64; 1]>,
-
-    #[serde(flatten)]
-    pub other: HashMap<String, serde_json::Value>,
 }
 
 impl Default for Fields {
@@ -46,38 +38,34 @@ impl Default for Fields {
             zdb_ctid: None,
             zdb_xmin: None,
             zdb_xmax: None,
-            other: HashMap::new(),
         }
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct InnerHit {
-    #[serde(rename = "_index")]
-    index: Option<String>,
-
-    #[serde(rename = "_type")]
-    type_: Option<String>,
-
     #[serde(rename = "_score")]
     score: Option<f64>,
-
-    #[serde(rename = "_id")]
-    id: Option<String>,
-
     fields: Option<Fields>,
-
     highlight: Option<HashMap<String, Vec<String>>>,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Hits {
     total: HitsTotal,
-    max_score: Option<f64>,
     hits: Option<Vec<InnerHit>>,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
+pub struct Shards {
+    total: usize,
+    successful: usize,
+    skipped: usize,
+    failed: usize,
+    failures: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct ElasticsearchSearchResponse {
     #[serde(skip)]
     elasticsearch: Option<Elasticsearch>,
@@ -86,15 +74,43 @@ pub struct ElasticsearchSearchResponse {
     #[serde(skip)]
     offset: Option<u64>,
     #[serde(skip)]
+    track_scores: bool,
+    #[serde(skip)]
     should_sort_hits: bool,
 
     #[serde(rename = "_scroll_id")]
     scroll_id: Option<String>,
-
     #[serde(rename = "_shards")]
     shards: Option<Shards>,
-
     hits: Option<Hits>,
+
+    #[serde(skip)]
+    fast_terms: Option<Vec<u64>>,
+}
+
+impl InnerHit {
+    #[inline]
+    fn into_tuple(
+        self,
+    ) -> Option<(
+        f64,
+        u64,
+        Option<Fields>,
+        Option<HashMap<String, Vec<String>>>,
+    )> {
+        let fields = self.fields.unwrap_or_default();
+        let score = self.score.unwrap_or_default();
+        let highlight = self.highlight;
+        let ctid = fields.zdb_ctid.map_or(0, |v| v[0]);
+
+        if ctid == 0 {
+            // this most likely represents the "zdb_aborted_xids" document,
+            // so we can just skip it
+            None
+        } else {
+            Some((score, ctid, Some(fields), highlight))
+        }
+    }
 }
 
 impl ElasticsearchSearchRequest {
@@ -125,7 +141,7 @@ impl ElasticsearchSearchRequest {
         query: ZDBPreparedQuery,
         extra_fields: Option<Vec<&str>>,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
-        let mut should_sort_hits = true;
+        let mut should_sort_hits = false;
         let mut url = String::new();
         url.push_str(&elasticsearch.base_url());
         url.push_str("/_search");
@@ -134,9 +150,9 @@ impl ElasticsearchSearchRequest {
         url.push_str("&scroll=10m");
         url.push_str("&stored_fields=_none_");
 
-        let mut docvalue_fields = extra_fields.unwrap_or_default();
-
         // we always want the zdb_ctid field
+        let have_extra_fields = extra_fields.is_some();
+        let mut docvalue_fields = extra_fields.unwrap_or_default();
         docvalue_fields.push("zdb_ctid");
         url.push_str(&format!("&docvalue_fields={}", docvalue_fields.join(",")));
 
@@ -163,13 +179,15 @@ impl ElasticsearchSearchRequest {
                     elasticsearch: None,
                     limit: Some(0),
                     offset: None,
+                    track_scores,
                     should_sort_hits,
                     scroll_id: None,
                     shards: None,
                     hits: None,
+                    fast_terms: None,
                 });
             }
-            Some(limit) if limit < 10_000 => {
+            Some(limit) if limit <= elasticsearch.options.max_result_window() as u64 => {
                 url.push_str(&format!("&size={}", limit));
                 // if we don't already have a sort_json, create one to
                 // order by _score desc
@@ -178,18 +196,50 @@ impl ElasticsearchSearchRequest {
                 }
             }
             _ => {
-                url.push_str("&size=10000");
+                url.push_str(&format!(
+                    "&size={}",
+                    elasticsearch.options.max_result_window()
+                ));
             }
         }
+
+        let have_user_sort = sort_json.is_some();
 
         // if we made it this far and never set a sort, we'll hard-code
         // sorting in the index _doc order so that we return rows in heap
         // order (assuming the index was created with index.sort.field=zdb_ctid),
         // which is much nicer to disk I/O
         if sort_json.is_none() {
-            sort_json = Some(json!([{"_doc": "asc"}]));
-        } else {
-            should_sort_hits = false;
+            // determine if we also need to sort the hits as they're returned from ES
+            //
+            // We only need to do that if the table contains a column of type json or jsonb
+            // as indexes with nested objects can't have an index-organized sort
+            let indexrel = elasticsearch.heap_relation();
+            for att in indexrel.tuple_desc() {
+                if att.is_dropped() {
+                    continue;
+                }
+                let typoid = att.type_oid();
+                if typoid == PgBuiltInOids::JSONOID.oid() || typoid == PgBuiltInOids::JSONBOID.oid()
+                {
+                    // yes, we gotta sort the hits
+                    should_sort_hits = true;
+                    break;
+                }
+            }
+
+            if should_sort_hits {
+                // we need to sort the hits as they're returned from each scroll request, so
+                // lets elide any sorting within Elasticsearch and just return the docs back
+                // in index order
+                sort_json = Some(json!([{"_doc": "asc"}]));
+            } else {
+                // we do NOT need to sort the hits because we know the index is already sorted
+                // by zdb_ctid, so we apply a sort on that field to tell ES to return the docs
+                // in that order.  This is essentially "free" for ES since the index is already
+                // organized by zdb_ctid
+                sort_json = Some(json!([{"zdb_ctid": "asc"}]));
+            }
         }
 
         #[derive(Serialize)]
@@ -229,6 +279,15 @@ impl ElasticsearchSearchRequest {
             query.take_query_dsl()
         };
 
+        let can_do_fastterms = ZDB_ACCELERATOR.get()
+            && limit.is_none()
+            && offset.is_none()
+            && highlight.is_none()
+            && min_score.is_none()
+            && have_extra_fields == false
+            && track_scores == false
+            && have_user_sort == false;
+
         let body = Body {
             track_scores,
             min_score,
@@ -238,6 +297,7 @@ impl ElasticsearchSearchRequest {
         };
 
         ElasticsearchSearchRequest::get_hits(
+            can_do_fastterms,
             url,
             limit,
             offset,
@@ -250,15 +310,21 @@ impl ElasticsearchSearchRequest {
     fn scroll(
         elasticsearch: &Elasticsearch,
         scroll_id: &str,
+        track_scores: bool,
         should_sort_hits: bool,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
         let mut url = String::new();
         url.push_str(elasticsearch.options.url());
         url.push_str("_search/scroll");
         url.push_str("?filter_path=");
-        url.push_str(SEARCH_FILTER_PATH);
+        if track_scores {
+            url.push_str(SEARCH_FILTER_PATH);
+        } else {
+            url.push_str(SEARCH_FILTER_PATH_NO_SCORE);
+        }
 
         ElasticsearchSearchRequest::get_hits(
+            false,
             url,
             None,
             None,
@@ -274,63 +340,85 @@ impl ElasticsearchSearchRequest {
     }
 
     fn get_hits(
-        url: String,
+        fast_terms: bool,
+        mut url: String,
         limit: Option<u64>,
         offset: Option<u64>,
         elasticsearch: &Elasticsearch,
         should_sort_hits: bool,
         body: serde_json::Value,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
-        Elasticsearch::execute_request(
-            Elasticsearch::client()
-                .post(&url)
-                .header("content-type", "application/json")
-                .body(serde_json::to_string(&body).unwrap()),
-            |code, body| {
-                let mut response = match serde_json::from_str::<ElasticsearchSearchResponse>(&body)
-                {
-                    Ok(json) => json,
-                    Err(_) => {
-                        return Err(ElasticsearchError(Some(code), body));
-                    }
-                };
+        if fast_terms {
+            let mut url = String::new();
+            url.push_str(&elasticsearch.base_url());
+            url.push_str("/_fastterms");
 
-                if should_sort_hits {
-                    // sort the hits in this block so we can try to do sequential reads against the
-                    // underlying heap
-                    // TODO:  would like to find a way to avoid this if we know:
-                    //      a) the index is physically sorted by zdb_ctid
-                    //      b) the sort for this query is "_doc"
-                    //      Determining (b) is easy, determining (a) likely has quite a bit of overhead
-                    //
-                    if let Some(hits) = response.hits.as_mut() {
-                        if let Some(inner_hits) = hits.hits.as_mut() {
-                            use rayon::prelude::*;
+            Elasticsearch::execute_json_request(
+                Elasticsearch::client().post(&url),
+                Some(body),
+                |mut body| {
+                    use byteorder::*;
 
-                            inner_hits.par_sort_unstable_by(|a, b| {
-                                if let Some(a) = a.fields.as_ref() {
-                                    if let Some(b) = b.fields.as_ref() {
-                                        let a = a.zdb_ctid.unwrap_or_default()[0];
-                                        let b = b.zdb_ctid.unwrap_or_default()[0];
-                                        return a.cmp(&b);
-                                    }
-                                }
-                                core::cmp::Ordering::Equal
-                            })
+                    let many = body
+                        .read_i32::<BigEndian>()
+                        .expect("failed to read _fastterms header");
+
+                    let mut fast_terms =
+                        Vec::with_capacity(many.try_into().expect("unable to use 'many' as usize"));
+
+                    if let Ok(mut ctid) = read_vlong(&mut body) {
+                        fast_terms.push(ctid);
+                        while let Ok(diff) = read_vlong(&mut body) {
+                            ctid += diff;
+                            fast_terms.push(ctid);
                         }
                     }
-                }
 
-                // assign a clone of our ES client to the response too,
-                // for future use during iteration
-                response.elasticsearch = Some(elasticsearch.clone());
-                response.limit = limit;
-                response.offset = offset;
-                response.should_sort_hits = should_sort_hits;
+                    Ok(ElasticsearchSearchResponse {
+                        elasticsearch: None,
+                        limit: None,
+                        offset: None,
+                        track_scores: false,
+                        should_sort_hits: false,
+                        scroll_id: None,
+                        shards: None,
+                        hits: None,
+                        fast_terms: Some(fast_terms),
+                    })
+                },
+            )
+        } else {
+            url.push_str("&format=cbor");
+            Elasticsearch::execute_json_request(
+                Elasticsearch::client().post(&url),
+                Some(body),
+                |body| {
+                    let mut response: ElasticsearchSearchResponse =
+                        serde_cbor::from_reader(body).expect("failed to deserialize CBOR response");
 
-                Ok(response)
-            },
-        )
+                    // make sure there's no failures listed in the response
+                    if response.shards.is_some()
+                        && response.shards.as_ref().unwrap().failures.is_some()
+                    {
+                        // ES gave us an error so report it back to the user
+                        let error_string = serde_json::to_string_pretty(
+                            &response.shards.as_ref().unwrap().failures.as_ref().unwrap(),
+                        )
+                        .unwrap_or_else(|e| format!("{:?}", e));
+                        return Err(ElasticsearchError(None, error_string));
+                    }
+
+                    // assign a clone of our ES client to the response too,
+                    // for future use during iteration
+                    response.elasticsearch = Some(elasticsearch.clone());
+                    response.limit = limit;
+                    response.offset = offset;
+                    response.should_sort_hits = should_sort_hits;
+
+                    Ok(response)
+                },
+            )
+        }
     }
 }
 
@@ -348,25 +436,22 @@ impl ElasticsearchSearchResponse {
 }
 
 pub struct Scroller {
-    receiver: crossbeam_channel::Receiver<(f64, u64, Fields, Option<HashMap<String, Vec<String>>>)>,
+    receiver: std::sync::mpsc::Receiver<Vec<InnerHit>>,
+    current_hits: Option<std::vec::IntoIter<InnerHit>>,
     terminate: Arc<AtomicBool>,
+    should_sort_hits: bool,
 }
 
 impl Scroller {
     fn new(
         orig_elasticsearch: Elasticsearch,
         orig_scroll_id: Option<String>,
-        iter: std::vec::IntoIter<InnerHit>,
+        mut initial_hits: Vec<InnerHit>,
+        track_scores: bool,
         should_sort_hits: bool,
     ) -> Self {
-        let (sender, receiver) = crossbeam_channel::unbounded();
-        let (scroll_sender, scroll_receiver) = crossbeam_channel::unbounded();
+        let (sender, receiver) = std::sync::mpsc::channel();
         let terminate_arc = Arc::new(AtomicBool::new(false));
-
-        // go ahead and queue up the results we currently have from the initial search
-        scroll_sender
-            .send(iter)
-            .expect("scroll_sender channel is closed");
 
         // spawn a thread to continually get the next scroll chunk from Elasticsearch
         // until there's no more to get
@@ -374,100 +459,134 @@ impl Scroller {
         let elasticsearch = orig_elasticsearch;
         let terminate = terminate_arc.clone();
         std::thread::spawn(move || {
-            std::panic::catch_unwind(|| {
-                while let Some(sid) = scroll_id {
-                    if terminate.load(Ordering::SeqCst) {
-                        break;
-                    }
+            while let Some(sid) = scroll_id {
+                if terminate.load(Ordering::SeqCst) {
+                    break;
+                }
 
-                    match ElasticsearchSearchRequest::scroll(&elasticsearch, &sid, should_sort_hits)
-                    {
-                        Ok(response) => {
-                            scroll_id = response.scroll_id;
+                match ElasticsearchSearchRequest::scroll(
+                    &elasticsearch,
+                    &sid,
+                    track_scores,
+                    should_sort_hits,
+                ) {
+                    Ok(response) => {
+                        scroll_id = response.scroll_id;
 
-                            match response.hits.unwrap().hits {
-                                Some(inner_hits) => {
-                                    // send the hits across the scroll_sender channel
-                                    // so they can be iterated from another thread
-                                    scroll_sender
-                                        .send(inner_hits.into_iter())
-                                        .expect("failed to send iter over scroll_sender");
-                                }
-                                None => {
+                        match response.hits.unwrap().hits {
+                            Some(inner_hits) => {
+                                // send the hits across the scroll_sender channel
+                                // so they can be iterated by the main thread
+                                if sender.send(inner_hits).is_err() {
+                                    // failed to send the hits over 'sender'.
+                                    // nothing else we can do here
                                     break;
                                 }
                             }
-                        }
-                        Err(_) => {
-                            break;
+                            None => {
+                                break;
+                            }
                         }
                     }
-
-                    if scroll_id.is_none() {
+                    Err(_) => {
                         break;
                     }
                 }
-            })
-            .ok();
+
+                if scroll_id.is_none() {
+                    break;
+                }
+            }
 
             // we're done scrolling, so drop the sender
             // which will cause the receiver to terminate as soon
             // as it's drained
-            drop(scroll_sender);
+            drop(sender);
 
             if let Some(scroll_id) = orig_scroll_id {
-                Elasticsearch::execute_request(
+                Elasticsearch::execute_json_request(
                     Elasticsearch::client().delete(&format!(
                         "{}_search/scroll/{}",
                         elasticsearch.url(),
                         scroll_id
                     )),
-                    |_, _| Ok(()),
+                    None,
+                    |_| Ok(()),
                 )
                 .expect("failed to delete scroll");
             }
         });
 
-        // this thread sends the hits back to the main thread across the 'sender/receiver' channel
-        // until there's no more to send
-        std::thread::spawn(move || {
-            std::panic::catch_unwind(|| {
-                for itr in scroll_receiver {
-                    for hit in itr {
-                        let fields = hit.fields.unwrap_or_default();
-                        let highlight = hit.highlight;
-                        let ctid = fields.zdb_ctid.unwrap_or([0])[0];
-
-                        if ctid == 0 {
-                            // this most likely represents the "zdb_aborted_xids" document,
-                            // so we can just skip it
-                            continue;
-                        }
-
-                        if let Err(_) =
-                            sender.send((hit.score.unwrap_or_default(), ctid, fields, highlight))
-                        {
-                            // couldn't send the result, and that's okay, the receiving end has probably been closed
-                            // or otherwise cancelled by Postgres
-                            break;
-                        }
-                    }
-                }
-            })
-            .ok();
-        });
-
         Scroller {
             receiver,
+            current_hits: Some({
+                if should_sort_hits {
+                    Scroller::sort_hits(&mut initial_hits);
+                }
+                initial_hits.into_iter()
+            }),
             terminate: terminate_arc,
+            should_sort_hits,
         }
     }
 
-    fn next(&self) -> Option<(f64, u64, Fields, Option<HashMap<String, Vec<String>>>)> {
-        match self.receiver.recv() {
-            Ok(tuple) => Some(tuple),
-            Err(_) => None,
+    #[inline]
+    fn next(
+        &mut self,
+    ) -> Option<(
+        f64,
+        u64,
+        Option<Fields>,
+        Option<HashMap<String, Vec<String>>>,
+    )> {
+        while let Some(current_hits) = self.current_hits.as_mut() {
+            match current_hits.next() {
+                Some(next_hit) => {
+                    match next_hit.into_tuple() {
+                        Some(tuple) => {
+                            // we have a valid tuple
+                            return Some(tuple);
+                        }
+                        None => {
+                            // this likely represents the "zdb_aborted_xids" hit, so we'll just
+                            // loop around to the next hit
+                            continue;
+                        }
+                    }
+                }
+                None => {
+                    self.current_hits = match self.receiver.recv() {
+                        // the receiver has more hits for us
+                        Ok(mut hits) => Some({
+                            if self.should_sort_hits {
+                                Scroller::sort_hits(&mut hits);
+                            }
+                            hits.into_iter()
+                        }),
+
+                        // the receiver is probably closed now.  we don't care about the error
+                        Err(_) => None,
+                    }
+                }
+            }
         }
+
+        None
+    }
+
+    fn sort_hits(vec: &mut Vec<InnerHit>) {
+        use rayon::prelude::*;
+
+        vec.par_sort_unstable_by(|a, b| {
+            if let Some(a) = a.fields.as_ref() {
+                if let Some(b) = b.fields.as_ref() {
+                    let a = a.zdb_ctid.unwrap_or_default()[0];
+                    let b = b.zdb_ctid.unwrap_or_default()[0];
+                    return a.cmp(&b);
+                }
+            }
+            core::cmp::Ordering::Equal
+        })
     }
 }
 
@@ -475,6 +594,9 @@ pub struct SearchResponseIntoIter {
     scroller: Option<Scroller>,
     limit: Option<u64>,
     cnt: u64,
+    fast_terms: Option<std::vec::IntoIter<u64>>,
+    // fast_terms: Option<std::vec::IntoIter<[u8; 6]>>,
+    // fast_terms: Option<roaring::treemap::IntoIter>,
 }
 
 impl Drop for SearchResponseIntoIter {
@@ -486,39 +608,70 @@ impl Drop for SearchResponseIntoIter {
 }
 
 impl Iterator for SearchResponseIntoIter {
-    type Item = (f64, u64, Fields, Option<HashMap<String, Vec<String>>>);
+    type Item = (
+        f64,
+        u64,
+        Option<Fields>,
+        Option<HashMap<String, Vec<String>>>,
+    );
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(limit) = self.limit {
-            if self.cnt >= limit {
-                // we've reached our limit
-                return None;
+        match self.fast_terms.as_mut() {
+            Some(fast_terms) => fast_terms.next().map_or(None, |ctid| {
+                // use byteorder::*;
+                // let slice = &mut ctid.as_ref();
+                // let blockno = slice.read_u32::<LittleEndian>().unwrap() as u64;
+                // let offno = slice.read_u16::<LittleEndian>().unwrap() as u64;
+                // let ctid = (blockno << 32) | offno;
+                Some((0.0, ctid, None, None))
+            }),
+            None => {
+                if let Some(limit) = self.limit {
+                    if self.cnt >= limit {
+                        // we've reached our limit
+                        return None;
+                    }
+                }
+
+                let scroller = self.scroller.as_mut().unwrap();
+                let item = scroller.next();
+                self.cnt += 1;
+                item
             }
         }
-
-        let scroller = self.scroller.as_ref().unwrap();
-        let item = scroller.next();
-        self.cnt += 1;
-        item
     }
 }
 
 impl IntoIterator for ElasticsearchSearchResponse {
-    type Item = (f64, u64, Fields, Option<HashMap<String, Vec<String>>>);
+    type Item = (
+        f64,
+        u64,
+        Option<Fields>,
+        Option<HashMap<String, Vec<String>>>,
+    );
     type IntoIter = SearchResponseIntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
-        if self.elasticsearch.is_none() {
+        if self.fast_terms.is_some() {
+            SearchResponseIntoIter {
+                scroller: None,
+                limit: self.limit,
+                cnt: 0,
+                fast_terms: Some(self.fast_terms.unwrap().into_iter()),
+            }
+        } else if self.elasticsearch.is_none() {
             SearchResponseIntoIter {
                 scroller: None,
                 limit: Some(0),
                 cnt: 0,
+                fast_terms: None,
             }
         } else {
-            let scroller = Scroller::new(
+            let mut scroller = Scroller::new(
                 self.elasticsearch.expect("no elasticsearch"),
                 self.scroll_id,
-                self.hits.unwrap().hits.unwrap_or_default().into_iter(),
+                self.hits.unwrap().hits.unwrap_or_default(),
+                self.track_scores,
                 self.should_sort_hits,
             );
 
@@ -535,6 +688,7 @@ impl IntoIterator for ElasticsearchSearchResponse {
                 scroller: Some(scroller),
                 limit: self.limit,
                 cnt: 0,
+                fast_terms: None,
             }
         }
     }

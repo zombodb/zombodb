@@ -16,18 +16,18 @@ mod json;
 mod mapping;
 mod misc;
 pub mod query_dsl;
-pub mod query_parser;
 pub mod scoring;
 mod utils;
 mod walker;
 mod zdbquery;
+pub mod zql;
 
 pg_module_magic!();
 
 #[allow(non_snake_case)]
 #[pg_guard]
 pub unsafe extern "C" fn _PG_init() {
-    query_parser::init();
+    zql::init();
     gucs::init();
     executor_manager::hooks::init_hooks();
     access_method::options::init();
@@ -40,9 +40,32 @@ pub extern "C" fn _PG_fini() {
 }
 
 #[pg_extern(immutable, parallel_safe)]
-fn version() -> &'static str {
-    let version = "3000.0.0-alpha2";
-    version
+fn internal_version() -> String {
+    #[allow(dead_code)]
+    mod built_info {
+        // The file has been placed there by the build script.
+        include!(concat!(env!("OUT_DIR"), "/built.rs"));
+    }
+
+    format!(
+        "{} ({}) --{}",
+        built_info::PKG_VERSION,
+        built_info::GIT_COMMIT_HASH.unwrap_or("no git commit hash available"),
+        if built_info::DEBUG {
+            "debug"
+        } else {
+            "release"
+        }
+    )
+}
+
+/// exists for debugging purposes
+#[pg_extern(immutable, parallel_safe)]
+fn ctid(as_u64: i64) -> pg_sys::ItemPointerData {
+    let as_u64 = as_u64 as u64;
+    let mut ctid = pg_sys::ItemPointerData::default();
+    u64_to_item_pointer(as_u64, &mut ctid);
+    ctid
 }
 
 #[cfg(test)]

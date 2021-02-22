@@ -1,13 +1,13 @@
 use crate::highlighting::document_highlighter::*;
-use crate::query_parser::ast::{Expr, QualifiedField, Term};
+use crate::utils::find_zdb_index;
+use crate::zql::ast::{Expr, IndexLink, QualifiedField, Term};
 use pgx::*;
 use pgx::{JsonB, PgRelation};
-use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 
 struct QueryHighligther<'a> {
     query: Expr<'a>,
-    highlighters: HashMap<&'a str, DocumentHighlighter<'a>>,
+    highlighters: HashMap<String, DocumentHighlighter<'a>>,
     index: &'a PgRelation,
 }
 
@@ -21,17 +21,16 @@ impl<'a> QueryHighligther<'a> {
         let mut highlighters = HashMap::new();
         let document = document.as_object_mut().expect("document not an object");
 
+        let index_link = IndexLink::from_relation(index);
         fields.iter().for_each(|field| {
-            if let Some(value) = document.remove(*field) {
-                // for now, assume field value is a string and that it exists
-                let value = match value {
-                    Value::String(s) => s,
-                    _ => {
-                        serde_json::to_string(&value).expect("unable to convert value to a string")
-                    }
-                };
-                let dh = DocumentHighlighter::new(index, field, &value);
-                highlighters.insert(*field, dh);
+            let field = QualifiedField {
+                index: Some(index_link.clone()),
+                field: field.to_string(),
+            };
+
+            let base_field = field.base_field();
+            if let Some(value) = document.remove(&base_field) {
+                highlighters.extend(DocumentHighlighter::from_json(index, &base_field, &value));
             }
         });
 
@@ -42,7 +41,7 @@ impl<'a> QueryHighligther<'a> {
         }
     }
 
-    pub fn highlight(&'a self) -> Vec<(String, String, String, i32, i64, i64, String)> {
+    pub fn highlight(&'a self) -> Vec<(String, i32, String, String, i32, i64, i64, String)> {
         let mut highlights = HashMap::new();
         if self.walk_expression(&self.query, &mut highlights) {
             highlights
@@ -51,6 +50,7 @@ impl<'a> QueryHighligther<'a> {
                     entries.into_iter().map(move |(term, entry)| {
                         (
                             field.field.to_owned(),
+                            entry.array_index as i32,
                             term,
                             entry.type_.clone(),
                             entry.position as i32,
@@ -112,9 +112,18 @@ impl<'a> QueryHighligther<'a> {
 
             Expr::Nested(_, e) => self.walk_expression(e.as_ref(), highlights),
 
-            Expr::Subselect(_, _) => panic!("subselect not supported yet"),
-            Expr::Expand(_, _, _) => panic!("expand not supported yet"),
-            Expr::Json(_) => panic!("json not supported yet"),
+            Expr::Subselect(_, e) => self.walk_expression(e.as_ref(), highlights),
+            Expr::Expand(_, e, f) => {
+                let mut did_highlight = self.walk_expression(e.as_ref(), highlights);
+                if let Some(f) = f {
+                    did_highlight |= self.walk_expression(f.as_ref(), highlights);
+                }
+                did_highlight
+            }
+            Expr::Json(_) => {
+                // nothing we can do here to highlight a json query -- we don't know what it is
+                false
+            }
 
             Expr::Contains(f, t) | Expr::Eq(f, t) | Expr::Regex(f, t) => {
                 if let Some(dh) = self.highlighters.get(f.field.as_str()) {
@@ -182,8 +191,18 @@ impl<'a> QueryHighligther<'a> {
                 false
             }
 
-            Expr::MoreLikeThis(_, _) => unimplemented!(),
-            Expr::FuzzyLikeThis(_, _) => unimplemented!(),
+            Expr::MoreLikeThis(_, _) => {
+                // can't highlight this
+                false
+            }
+            Expr::FuzzyLikeThis(_, _) => {
+                // can't highlight this
+                false
+            }
+            Expr::Matches(_, _) => {
+                // can't highlight this
+                false
+            }
         }
     }
 
@@ -325,6 +344,7 @@ fn highlight_document(
 ) -> impl std::iter::Iterator<
     Item = (
         name!(field_name, String),
+        name!(array_index, i32),
         name!(term, String),
         name!(type, String),
         name!(position, i32),
@@ -335,24 +355,27 @@ fn highlight_document(
 > {
     // select * from zdb.highlight_document('idxbeer', '{"subject":"free beer", "authoremail":"Christi l nicolay"}', '!!subject:beer or subject:fr?? and authoremail:(christi, nicolay)') order by field_name, position;
     let mut used_fields = HashSet::new();
+    let (index, options) = find_zdb_index(&index).expect("unable to find ZomboDB index");
+    let links = IndexLink::from_options(&index, options);
     let query = Expr::from_str(
         &index,
         "zdb_all",
         query_string,
-        &vec![],
+        &links,
         &None,
         &mut used_fields,
     )
     .expect("failed to parse query");
 
-    let qh = QueryHighligther::new(&index, document.0, &used_fields, query);
-    qh.highlight().into_iter()
+    QueryHighligther::new(&index, document.0, &used_fields, query)
+        .highlight()
+        .into_iter()
 }
 
 #[cfg(any(test, feature = "pg_test"))]
 mod tests {
     use crate::highlighting::query_highlighter::QueryHighligther;
-    use crate::query_parser::ast::Expr;
+    use crate::zql::ast::Expr;
     use pgx::*;
     use serde_json::*;
     use std::collections::HashSet;
@@ -676,7 +699,43 @@ mod tests {
     ) -> Vec<(String, String, String, i32, i64, i64, String)> {
         let relation = start_table_and_index(table);
         let (query, used_fields) = make_query(&relation, query_string);
-        QueryHighligther::new(&relation, document, &used_fields, query).highlight()
+        /*
+           name!(field_name, String),
+           name!(array_index, i32),
+           name!(term, String),
+           name!(type, String),
+           name!(position, i32),
+           name!(start_offset, i64),
+           name!(end_offset, i64),
+           name!(query_clause, String),
+        */
+        QueryHighligther::new(&relation, document, &used_fields, query)
+            .highlight()
+            .into_iter()
+            .map(
+                |(
+                    field_name,
+                    _, // array_index -- we're not going to use it
+                    term,
+                    type_,
+                    position,
+                    start_offset,
+                    end_offset,
+                    query_clause,
+                )| {
+                    // remove the 'array_index' for testing convenience
+                    (
+                        field_name,
+                        term,
+                        type_,
+                        position,
+                        start_offset,
+                        end_offset,
+                        query_clause,
+                    )
+                },
+            )
+            .collect()
     }
 
     fn make_query<'a>(relation: &PgRelation, input: &'a str) -> (Expr<'a>, HashSet<&'a str>) {

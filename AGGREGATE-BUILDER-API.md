@@ -6,12 +6,14 @@ Currently we support the following aggregations:
     Metric: Sum, Avg, Min, Max, Stats, Cardinality, Extended Stats, Matrix stats, Geo_Bound, Box_plot, Geo_Centroid, Median_Absolute_Deviation, Percentiles, String_Stats, Weighted_Avg, Top_Metric, T_Test, Value_Count
     Buckets: Date_Histogram, Histogram, Filter, Filters, Range, Terms 
 
-###Example
-If you want to do a query for the Sum it would look something like this: 
+## Examples
+If you want perform a `sum` aggregation it would look something like this: 
 ``` 
 SELECT * FROM zdb.sum_agg('example_agg', 'fieldname');
 ```
+
 Which will return
+
 ```
                     sum_agg                    
 -----------------------------------------------
@@ -20,260 +22,273 @@ Which will return
 
 Time: 18.449 ms
 ```
- If you do `\df zdb.*_agg` you will notice with the Metric Aggs have multiple function signatures. This is to accommodate different forms of the Aggregates.
- To Continue the Example form above:
+
+ If you do `\df zdb.*_agg` you will notice many of the "metric aggregations" have multiple function 
+ signatures. This is to accommodate different forms of the Aggregates.
+ 
+To Continue the Example from above:
+
  ```
 SELECT * FROM zdb.sum_agg('example_agg', 'field_name', 10);
 ``` 
-This will use 10 as the "missing" value producing 
+
+This will use 10 as the "missing" value producing
+
 ```sum_agg                             
    ----------------------------------------------------------------
     {"test_agg": {"sum": {"field": "fieldname", "missing": 10.0}}}
    (1 row)
 ```
 
-###Function Signatures 
-## `sum_agg`
+## Function Signatures 
+
+### `sum_agg`
 ```sql
 FUNCTION zdb.sum_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 ```sql
 FUNCTION zdb.sum_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text, 
     missing: bigint,
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 ```sql
 FUNCTION zdb.sum_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text,  
     missing: double precision
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-sum-aggregation.html
 A single-value metrics aggregation that sums up numeric values that are extracted from the aggregated documents. 
  
 ---
 
-## `avg_agg`
+### `avg_agg`
 ```sql
 FUNCTION zdb.avg_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 ```sql
 FUNCTION zdb.avg_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text, 
     missing: bigint,
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 ```sql
 FUNCTION zdb.avg_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text,  
     missing: double precision
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-avg-aggregation.html
 A single-value metrics aggregation that computes the average of numeric values that are extracted from the aggregated documents. 
  
 ---
 
-## `min_agg`
+### `min_agg`
 ```sql
 FUNCTION zdb.min_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 ```sql
 FUNCTION zdb.min_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text, 
     missing: bigint,
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 ```sql
 FUNCTION zdb.min_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text,  
     missing: double precision
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-min-aggregation.html
 A single-value metrics aggregation that keeps track and returns the minimum value among numeric values extracted from the aggregated documents. 
 
 ---
 
-## `max_agg`
+### `max_agg`
 ```sql
 FUNCTION zdb.max_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 ```sql
 FUNCTION zdb.max_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text, 
     missing: bigint,
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 ```sql
 FUNCTION zdb.max_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text,  
     missing: double precision
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-max-aggregation.html
 A single-value metrics aggregation that keeps track and returns the maximum value among the numeric values extracted from the aggregated documents.
 
 ---
-## `stats_agg`
+
+### `stats_agg`
 ```sql
 FUNCTION zdb.stats_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 ```sql
 FUNCTION zdb.stats_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text,
     missing: bigint,
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 ```sql
 FUNCTION zdb.stats_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text,  
     missing: double precision
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-stats-aggregation.html
 A multi-value metrics aggregation that computes stats over numeric values extracted from the aggregated documents. 
 
 ---
-## `cardinality_agg`
+
+### `cardinality_agg`
 ```sql
 FUNCTION zdb.cardinality_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 ```sql
 FUNCTION zdb.cardinality_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text, 
     missing: bigint,
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 ```sql
 FUNCTION zdb.cardinality_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text,  
     missing: double precision
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-cardinality-aggregation.html
 A single-value metrics aggregation that calculates an approximate count of distinct values.
 
 ---
-## `extended_stats_agg`
+
+### `extended_stats_agg`
 ```sql
 FUNCTION zdb.extended_stats_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 ```sql
 FUNCTION zdb.extended_stats_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text, 
     missing: bigint,
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 ```sql
 FUNCTION zdb.extended_stats_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text,  
     missing: double precision
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-extendedstats-aggregation.html
 A multi-value metrics aggregation that computes stats over numeric values extracted from the aggregated documents.
 
 ---
-## `matrix_stats_agg`
+
+### `matrix_stats_agg`
 ```sql
 FUNCTION zdb.matrix_stats_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text[]
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 ```sql
 FUNCTION zdb.matrix_stats_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text[], 
     missing_field: text, 
     missing_value: bigint,
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-matrix-stats-aggregation.html
 The matrix_stats aggregation is a numeric aggregation that computes the following statistics over a set of document fields:
 count, mean, variance, skewness, kurtosis, covariance, correlation
 
 ---
-## `geo_bounds_agg`
+
+### `geo_bounds_agg`
 ```sql
 FUNCTION zdb.geo_bounds_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 ```sql
 FUNCTION zdb.geo_bounds_agg (
-	aggregate_name: text, 
+    aggregate_name: text, 
     field: text,  
     wrap_longitude: boolean,
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-metrics-geobounds-aggregation.html
 A metric aggregation that computes the bounding box containing all geo values for a field.
 
 ---
+
 ### `box_plot_agg`
 ```sql
 FUNCTION zdb.box_plot_agg (
@@ -577,13 +592,14 @@ FUNCTION zdb.date_histogram_agg (
     format: text DEFAULT 'yyyy-MM-dd'::text,
     children: jsonb[] DEFAULT NULL::jsonb[]
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-datehistogram-aggregation.html
 This multi-bucket aggregation is similar to the normal histogram, but it can only be used with date or date range values.
 
 ---
-## `histogram_agg`
+
+### `histogram_agg`
 ```sql
 FUNCTION zdb.histogram_agg (
     aggregate_name: text,
@@ -594,13 +610,14 @@ FUNCTION zdb.histogram_agg (
     missing bigint DEFAULT NULL::bigint, 
     children: jsonb[] DEFAULT NULL::jsonb[]
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-histogram-aggregation.html
 A multi-bucket values source based aggregation that can be applied on numeric values or numeric range values extracted from the documents.
 
 ---
-## `filter_agg`
+
+### `filter_agg`
 ```sql
 FUNCTION zdb.filter_agg (
     index: regclass,
@@ -609,13 +626,14 @@ FUNCTION zdb.filter_agg (
     filter: zdbquery, 
     children: jsonb[] DEFAULT NULL::jsonb[]
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-filter-aggregation.htmlA multi-bucket values source based aggregation that can be applied on numeric values or numeric range values extracted from the documents.
 Defines a single bucket of all the documents in the current document set context that match a specified filter.
 
 ---
-## `filters_agg`
+
+### `filters_agg`
 ```sql
 FUNCTION zdb.filters_agg (
     index: regclass, 
@@ -623,13 +641,14 @@ FUNCTION zdb.filters_agg (
     labels: text[], 
     filters: zdbquery[]
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-filters-aggregation.html
 Defines a multi bucket aggregation where each bucket is associated with a filter.
 
 ---
-## `range_agg`
+
+### `range_agg`
 ```sql
 FUNCTION zdb.filters_agg (
     aggregate_name: text, 
@@ -637,13 +656,14 @@ FUNCTION zdb.filters_agg (
     ranges: json[], 
     children: jsonb[] DEFAULT NULL::jsonb[]
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-range-aggregation.html
 A multi-bucket value source based aggregation that enables the user to define a set of ranges - each representing a bucket.
 
 ---
-## `terms_agg`
+
+### `terms_agg`
 ```sql
 FUNCTION zdb.terms_agg (
     aggregate_name: text, 
@@ -652,7 +672,7 @@ FUNCTION zdb.terms_agg (
     order_by: termsorderby 
     children: jsonb[] DEFAULT NULL::jsonb[]
 )
-RETURNS JsonB
+RETURNS jsonb
 ```
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-terms-aggregation.html
 A multi-bucket value source based aggregation where buckets are dynamically built - one per unique value.

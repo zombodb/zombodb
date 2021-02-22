@@ -20,8 +20,8 @@ CREATE TABLE book_content (
    content zdb.fulltext
 );
 
-CREATE INDEX idxbook ON book USING zombodb (zdb(book.*));
-CREATE INDEX idxcontent ON book_content USING zombodb (zdb(book_content.*));
+CREATE INDEX idxbook ON book USING zombodb ((book.*));
+CREATE INDEX idxcontent ON book_content USING zombodb ((book_content.*));
 
 CREATE VIEW books_with_content AS 
    SELECT book.*, 
@@ -38,7 +38,7 @@ Suppose you want to do a full-text query against the `books_with_content` view. 
 SELECT * FROM books_with_content WHERE zdb ==> 'author:foo and content:(beer w/3 wine w/30 cheese and food)';
 ```
 
-Unfortunately, the above query will return zero rows because the index on `book` (which will be the chosen index due to the `zdb('book', book.ctid) AS zdb` column in the VIEW) doesn't have a column named `content` -- that data lives in the `book_content` table.
+Unfortunately, the above query will return zero rows because the index on `book` (which will be the chosen index due to the `book AS zdb` column in the VIEW) doesn't have a column named `content` -- that data lives in the `book_content` table.
 
 We need to tell the index on `book` how to find corresponding `book_content` using an "index link".  This is done through ZomboDB's index `options`:
 
@@ -133,3 +133,76 @@ SELECT *
         'author:shakespeare and user.full_name:"John Doe"'
     );
 ```
+
+# Shadow Indexes
+
+Shadow indexes are indexes that use an existing ZomboDB index, but let you specify different `options`.  This is useful if an index is 
+used in many different SQL-level views (or JOIN) situations where different linking `options='...'` are desired.
+
+Shadow indexes do not consume additional disk resources, so they're "free" to create as needed.
+
+In order to create a shadow index, you first need to make a custom UDF to use as the first column of the `CREATE INDEX` statement, and 
+as the left-hand-side of the `==>` operator.  This is necessary so that Postgres will decide to use the shadow index instead of the real
+index.
+
+You also need to define a new index (via `CREATE INDEX`) that specifies a `WITH` parameter named `shadow` instead of using 
+the `url` parameter.  The `shadow` argument is simply a boolean, whose value should be `true`.
+
+## Custom "shadow function" UDF
+
+First, make a function that is defined exactly as below.  You can change the name of the function:
+
+```sql
+CREATE OR REPLACE FUNCTION my_shadow_func(anyelement)
+    RETURNS anyelement
+    IMMUTABLE STRICT
+    LANGUAGE c AS '$libdir/zombodb.so', 'shadow_wrapper';
+```
+
+Again, this function will be used for `CREATE INDEX` and queries.
+
+## The `shadow` Index
+
+Next, create a shadow index:
+
+```sql
+CREATE INDEX idxshadow ON (book) 
+       USING zombodb(my_shadow_func((book.*))) 
+        WITH (shadow=true, options='<custom set of options>');
+```
+
+This index is set to use the existing index named `idxbook` and doesn't consume additional disk space or overhead when updating.  
+Think of it as a "view" on top of another index.
+
+## Query
+
+```sql
+SELECT * 
+  FROM book 
+ WHERE my_shadow_func(book) ==> 'shakespeare';
+```
+
+Using the custom function you made above will allow Postgres to choose the shadow index that also uses that 
+function (`idxshadow`) and then ZomboDB will apply the `options='...'` from the shadow index rather than the base
+`idxbook` index.
+
+## Usage with Views
+
+If you want to use this in a view, it is **required** that you include `my_shadow_func()` in the output list and that it 
+be aliased `AS zdb`.  For example:
+
+```sql
+CREATE VIEW test AS 
+   SELECT *, my_shadow_func(bool) AS zdb FROM book;
+```
+
+Then you can query it as:
+
+```sql
+SELECT * FROM test WHERE zdb ==> 'shakespeare';
+```
+
+And of course, the view can be as complex as you need and can include whatever other tables you might want.
+
+It's important to remember that ZomboDB is only going to return matching rows from the base table (the table specified 
+as the argument to `my_shadow_func()`), so you'll need to structure your view accordingly.

@@ -38,7 +38,7 @@ mod dsl {
         #[serde(skip_serializing_if = "Option::is_none")]
         fields: Option<Array<'a, &'a str>>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        fuzziness: Option<&'a str>,
+        fuzziness: Option<i32>,
         #[serde(skip_serializing_if = "Option::is_none")]
         fuzzy_max_expansions: Option<i64>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -50,7 +50,7 @@ mod dsl {
         #[serde(skip_serializing_if = "Option::is_none")]
         max_determinized_states: Option<i64>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        minimum_should_match: Option<i64>,
+        minimum_should_match: Option<i32>,
         #[serde(skip_serializing_if = "Option::is_none")]
         quote_analyzer: Option<&'a str>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -73,13 +73,13 @@ mod dsl {
         default_operator: Option<default!(QueryStringDefaultOperator, NULL)>,
         enable_position_increments: Option<default!(bool, NULL)>,
         fields: Option<default!(Array<&str>, NULL)>,
-        fuzziness: Option<default!(&str, NULL)>,
+        fuzziness: Option<default!(i32, NULL)>,
         fuzzy_max_expansions: Option<default!(i64, NULL)>,
         fuzzy_transpositions: Option<default!(bool, NULL)>,
         fuzzy_prefix_length: Option<default!(i64, NULL)>,
         lenient: Option<default!(bool, NULL)>,
         max_determinized_states: Option<default!(i64, NULL)>,
-        minimum_should_match: Option<default!(i64, NULL)>,
+        minimum_should_match: Option<default!(i32, NULL)>,
         quote_analyzer: Option<default!(&str, NULL)>,
         phrase_slop: Option<default!(i64, NULL)>,
         quote_field_suffix: Option<default!(&str, NULL)>,
@@ -138,7 +138,7 @@ mod tests {
                 'and',
                 'false',
                 ARRAY['doe', 'ray', 'meh'],
-                'fuzziness',
+                3,
                 10,
                 'true',
                 255,
@@ -169,7 +169,7 @@ mod tests {
                         "default_operator": "and",
                         "enable_position_increments": false,
                         "fields": ["doe", "ray", "meh"],
-                        "fuzziness": "fuzziness",
+                        "fuzziness": 3,
                         "fuzzy_max_expansions": 10,
                         "fuzzy_transpositions": true,
                         "fuzzy_prefix_length": 255,

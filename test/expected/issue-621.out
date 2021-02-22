@@ -1,0 +1,53 @@
+create table test_zombodb ( id integer not null primary key);
+insert into test_zombodb (id) values (1);
+create type test_zombodb_es as (id integer, text text);
+create function index(test_zombodb test_zombodb) returns test_zombodb_es as $$
+select row(test_zombodb.id, 'some text')::test_zombodb_es
+$$ language sql immutable strict;
+create index idx_es_test_zombodb
+    on test_zombodb using zombodb(index(test_zombodb));
+explain select zdb.score(ctid) > 0.0, index(test_zombodb) from test_zombodb where index(test_zombodb) ==> 'text';
+                                               QUERY PLAN                                               
+--------------------------------------------------------------------------------------------------------
+ Index Scan using idx_es_test_zombodb on test_zombodb  (cost=0.00..0.54 rows=2 width=33)
+   Index Cond: (ctid ==> '{"query_dsl":{"query_string":{"query":"text"}},"want_score":true}'::zdbquery)
+(2 rows)
+
+select zdb.score(ctid) > 0.0, index(test_zombodb) from test_zombodb where index(test_zombodb) ==> 'text';
+ ?column? |      index      
+----------+-----------------
+ t        | (1,"some text")
+(1 row)
+
+set enable_indexscan to off;
+explain select zdb.score(ctid) > 0.0, index(test_zombodb) from test_zombodb where index(test_zombodb) ==> 'text';
+                                                  QUERY PLAN                                                  
+--------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on test_zombodb  (cost=-3.99..1.05 rows=2 width=33)
+   Recheck Cond: (ctid ==> '{"query_dsl":{"query_string":{"query":"text"}},"want_score":true}'::zdbquery)
+   ->  Bitmap Index Scan on idx_es_test_zombodb  (cost=0.00..-3.99 rows=2 width=0)
+         Index Cond: (ctid ==> '{"query_dsl":{"query_string":{"query":"text"}},"want_score":true}'::zdbquery)
+(4 rows)
+
+select zdb.score(ctid) > 0.0, index(test_zombodb) from test_zombodb where index(test_zombodb) ==> 'text';
+ ?column? |      index      
+----------+-----------------
+ t        | (1,"some text")
+(1 row)
+
+set enable_bitmapscan to off;
+explain select zdb.score(ctid) > 0.0, index(test_zombodb) from test_zombodb where index(test_zombodb) ==> 'text';
+                                             QUERY PLAN                                             
+----------------------------------------------------------------------------------------------------
+ Seq Scan on test_zombodb  (cost=0.00..2.04 rows=2 width=33)
+   Filter: (ctid ==> '{"query_dsl":{"query_string":{"query":"text"}},"want_score":true}'::zdbquery)
+(2 rows)
+
+select zdb.score(ctid) > 0.0, index(test_zombodb) from test_zombodb where index(test_zombodb) ==> 'text';
+ ?column? |      index      
+----------+-----------------
+ t        | (1,"some text")
+(1 row)
+
+drop table test_zombodb cascade;
+drop type test_zombodb_es cascade;

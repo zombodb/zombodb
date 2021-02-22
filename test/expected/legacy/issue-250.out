@@ -3,7 +3,7 @@ DECLARE
   errmsg text;
 BEGIN
   BEGIN
-    select id from so_Posts where so_posts ==> user_query;
+    perform id from so_Posts where so_posts ==> user_query;
   EXCEPTION WHEN OTHERS THEN
     GET STACKED DIAGNOSTICS errmsg = MESSAGE_TEXT;
 

@@ -13,7 +13,7 @@ INSERT INTO bytea_to_json (data) VALUES ('this is a test 4');
 
 -- finds "this is a test 3"
 SELECT * FROM bytea_to_json WHERE bytea_to_json ==> dsl.script(
-  format($$ doc['data'].value.utf8ToString().encodeBase64().equals('%s') $$, encode('this is a test 3', 'base64'))
+  format($$ if (doc['data'].size() == 0) { return false; } else { return doc['data'].value.utf8ToString().encodeBase64().equals('%s'); } $$, encode('this is a test 3', 'base64'))
 );
 
 

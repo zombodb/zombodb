@@ -42,7 +42,7 @@ mod dsl {
         #[serde(skip_serializing_if = "Option::is_none")]
         analyzer: Option<&'a str>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        minimum_should_match: Option<&'a str>,
+        minimum_should_match: Option<i32>,
         #[serde(skip_serializing_if = "Option::is_none")]
         lenient: Option<bool>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -72,7 +72,7 @@ mod dsl {
         #[serde(skip_serializing_if = "Option::is_none")]
         analyzer: Option<&'a str>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        minimum_should_match: Option<&'a str>,
+        minimum_should_match: Option<i32>,
         #[serde(skip_serializing_if = "Option::is_none")]
         lenient: Option<bool>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -133,7 +133,7 @@ mod dsl {
         query: &str,
         boost: Option<default!(f32, NULL)>,
         analyzer: Option<default!(&str, NULL)>,
-        minimum_should_match: Option<default!(&str, NULL)>,
+        minimum_should_match: Option<default!(i32, NULL)>,
         lenient: Option<default!(bool, NULL)>,
         fuzziness: Option<default!(i32, NULL)>,
         fuzzy_rewrite: Option<default!(&str, NULL)>,
@@ -174,7 +174,7 @@ mod dsl {
         query: &str,
         boost: Option<default!(f32, NULL)>,
         analyzer: Option<default!(&str, NULL)>,
-        minimum_should_match: Option<default!(&str, NULL)>,
+        minimum_should_match: Option<default!(i32, NULL)>,
         lenient: Option<default!(bool, NULL)>,
         fuzziness: Option<default!(i32, NULL)>,
         fuzzy_rewrite: Option<default!(&str, NULL)>,
@@ -291,7 +291,7 @@ mod tests {
                 'match_query',
                 2.0,
                 'match_analyzer',
-                'minimum_should_match',
+                42,
                 'true',
                 32,
                 'fuzzy_rewrite',
@@ -315,7 +315,7 @@ mod tests {
                             "query": "match_query",
                             "boost": boost,
                             "analyzer": "match_analyzer",
-                            "minimum_should_match": "minimum_should_match",
+                            "minimum_should_match": 42,
                             "lenient": true,
                             "fuzziness": 32,
                             "fuzzy_rewrite": "fuzzy_rewrite",
@@ -399,7 +399,7 @@ mod tests {
                     'match_query',
                     2.0,
                     'match_analyzer',
-                    'minimum_should_match',
+                    42,
                     'true',
                     32,
                     'fuzzy_rewrite',
@@ -424,7 +424,7 @@ mod tests {
                             "query": "match_query",
                             "boost": boost,
                             "analyzer": "match_analyzer",
-                            "minimum_should_match": "minimum_should_match",
+                            "minimum_should_match": 42,
                             "lenient": true,
                             "fuzziness": 32,
                             "fuzzy_rewrite": "fuzzy_rewrite",

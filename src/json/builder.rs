@@ -1,5 +1,4 @@
 use crate::json::json_string::JsonString;
-use crate::json::utils::escape_json;
 use pgx::{Date, JsonB, Time, TimeWithTimeZone, Timestamp, TimestampWithTimeZone};
 
 #[derive(Debug)]
@@ -243,7 +242,7 @@ impl<'a> JsonBuilder<'a> {
     }
 
     pub fn build(self) -> String {
-        let mut json = String::new();
+        let mut json = String::with_capacity(16 * 1024);
 
         json.push('{');
         for (idx, (key, value)) in self.values.into_iter().enumerate() {
@@ -252,7 +251,7 @@ impl<'a> JsonBuilder<'a> {
             }
 
             json.push('"');
-            escape_json(key, &mut json);
+            json.push_str(key);
             json.push('"');
             json.push(':');
 

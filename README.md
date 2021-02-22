@@ -1,12 +1,12 @@
 [![logo](logo.png)](https://www.zombodb.com/) 
-###### Making Postgres and Elasticsearch work together like it's 2020
-[![Build Status](https://travis-ci.org/zombodb/zombodb.svg?branch=master)](https://travis-ci.com/zombodb/zombodb)
+###### Making Postgres and Elasticsearch work together like it's 2021
+![cargo test --all](https://github.com/zombodb/zombodb/workflows/cargo%20pgx%20test%20pgXX/badge.svg)
 [![Twitter Follow](https://img.shields.io/twitter/follow/zombodb.svg?style=flat)](https://twitter.com/zombodb)
 
 
 # 🚨 Note 🚨
 
-This is ZomboDB 3000.0.0-**alpha2**.  This represents a year-long rewrite of ZomboDB to Rust.
+This is ZomboDB 3000.0.0-**beta1**.  This represents a year-long rewrite of ZomboDB to Rust.
 
 It is expected that the alpha/beta phase will continue through January 2021.  That said, please
 get started with it today.  Report Issues, provide feedback, and also [sponsors our work](https://github.com/sponsors/eeeebbbbrrrr)!
@@ -47,7 +47,7 @@ ZomboDB allows you to use the power and scalability of Elasticsearch directly fr
  - Works with current Elasticsearch releases (no plugins required)
  - Query using
     - Elasticsearch's [Query String Syntax](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-syntax) via `dsl.query_string()`
-    - ZomboDB's [custom query language](QUERY-SYNTAX.md)
+    - ZQL -- [ZomboDB's custom query language](ZQL.md)
     - Raw Elasticsearch QueryDSL JSON
     - ZomboDB's type-safe [query builder SQL syntax](QUERY-DSL.md)
     - Any combination of the above, even in combination with standard SQL
@@ -58,6 +58,7 @@ ZomboDB allows you to use the power and scalability of Elasticsearch directly fr
     - Per-field custom mappings
     - `json/jsonb` automatically mapped as dynamic nested objects
     - Supports full set of [Elasticsearch language analyzers](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-lang-analyzer.html)
+    - Supports [Elasticsearch's Similarity Module](TYPE-MAPPING.md#similarity-module-support) 
  - Hot-Standby compatible
  - Support for indexing & searching [PostGIS `geometry` and `geography` types](POSTGIS-SUPPORT.md)
 
@@ -67,6 +68,7 @@ ZomboDB allows you to use the power and scalability of Elasticsearch directly fr
  - Only one ZomboDB index per table
  - ZomboDB indexes with predicates (ie, [partial indexes](https://www.postgresql.org/docs/10/indexes-partial.html)) are not supported
  - `CREATE INDEX CONCURRENTLY` is not supported
+ - Partitioned Tables are not properly supported.  This will be resolved in a near-future version (Issue #630)
 
 These limitations may be addressed in future versions of ZomboDB.
 
@@ -163,8 +165,6 @@ Commercial support for all versions of ZomboDB is available by [contacting Zombo
 
 The name is an homage to zombo.com and its long history of continuous self-affirmation.
 
-This version of ZomboDB was graciously sponsored by [Impira](http://impira.com).
-
 Historically, ZomboDB began in 2013 by Technology Concepts & Design, Inc as a closed-source effort to provide transaction safe text-search on top of Postgres tables. While Postgres' "tsearch" features are useful, they're not necessarily adequate for 200 column-wide tables with 100M rows, each containing large text content.
 
 Initially designed on-top of Postgres' Foreign Data Wrapper API, ZomboDB quickly evolved into an index type so that queries are MVCC-safe and standard SQL can be used to query and manage indices.
@@ -175,7 +175,7 @@ ZomboDB was open-sourced in July 2015 and has since been used in numerous produc
 
 ## License
 
-Copyright 2018-2020 ZomboDB, LLC
+Copyright 2018-2021 ZomboDB, LLC
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

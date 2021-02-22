@@ -3,7 +3,6 @@
 /target
 *.iml
 **/*.rs.bk
-Cargo.lock
 sql/*.generated.sql
 **/cmake-build*
 foo.*
@@ -13,4 +12,4 @@ foo.*
 /test/sql/load-data.sql
 /regression.diffs
 /regression.out
-/src/query_parser/parser.rs
+/src/zql/parser.rs

@@ -12,6 +12,7 @@ pub struct PlanWalker {
     in_sort: usize,
     want_scores: bool,
     highlight_definitions: Vec<*mut pg_sys::FuncExpr>,
+    rtable: PgList<pg_sys::RangeTblEntry>,
 }
 
 impl PlanWalker {
@@ -52,6 +53,7 @@ impl PlanWalker {
             in_sort: 0,
             want_scores: false,
             highlight_definitions: Vec::new(),
+            rtable: PgList::new(),
         }
     }
 
@@ -62,6 +64,7 @@ impl PlanWalker {
             // nothing to do b/c one or both of our functions couldn't be found
             return;
         }
+        self.rtable = PgList::from_pg(query.rtable);
 
         if self.detect(query) {
             self.rewrite(query);

@@ -1,7 +1,7 @@
 ALTER INDEX idxevents SET (replicas = 1, shards=32);
-SELECT replicas FROM zdb.index_stats WHERE index_name = zdb.index_name('idxevents');
+SELECT replicas FROM zdb.index_stats WHERE es_index_name = zdb.index_name('idxevents');
 ALTER INDEX idxevents SET (replicas = 0, shards=5);
-SELECT replicas FROM zdb.index_stats WHERE index_name = zdb.index_name('idxevents');
+SELECT replicas FROM zdb.index_stats WHERE es_index_name = zdb.index_name('idxevents');
 
 ALTER INDEX idxevents SET (type_name = 'cant_chage_this');
 ALTER INDEX idxevents SET (uuid = 'foo');

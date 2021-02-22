@@ -7,21 +7,20 @@ impl ElasticsearchDeleteIndexRequest {
         ElasticsearchDeleteIndexRequest(elasticsearch.clone())
     }
 
-    pub fn execute(&self) -> Result<(), ElasticsearchError> {
-        if let Err(e) = Elasticsearch::execute_request(
+    pub fn execute(self) -> Result<(), ElasticsearchError> {
+        match Elasticsearch::execute_json_request(
             Elasticsearch::client().delete(&self.0.base_url()),
-            |_, _| Ok(()),
+            None,
+            |_| Ok(()),
         ) {
-            if let Some(status) = e.status() {
-                if status.as_u16() == 404 {
-                    // 404 NOT FOUND is okay for us
-                    return Ok(());
-                }
-            }
+            // 404 NOT FOUND is okay for us
+            Err(e) if e.is_404() => Ok(()),
 
-            // any other error, however, is worthy of reporting back to the caller
-            return Err(e);
+            // but other errors need to be reported back to the caller
+            Err(e) => Err(e),
+
+            // it worked as expected
+            Ok(v) => Ok(v),
         }
-        Ok(())
     }
 }

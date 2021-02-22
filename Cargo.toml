@@ -1,7 +1,7 @@
 [package]
 name = "zombodb"
-description = "Making Postgres and Elasticsearch work together like it's 2020"
-version = "3000.0.0-alpha2"
+description = "Making Postgres and Elasticsearch work together like it's 2021"
+version = "3000.0.0-beta1"
 edition = "2018"
 build = "build.rs"
 readme = "README.md"
@@ -19,31 +19,35 @@ pg13 = [ "pgx/pg13", "pgx-tests/pg13" ]
 pg_test = [ ]
 
 [dependencies]
+byteorder = "1.4.2"
 chrono = "0.4.19"
 crossbeam-channel = "0.5.0"
-indexmap = "1.6.0"
-lalrpop-util = "0.19.1"
+dashmap = "4.0.2"
+indexmap = "1.6.1"
+lalrpop-util = "0.19.4"
 lazy_static = "1.4.0"
-levenshtein = "1.0.4"
+levenshtein = "1.0.5"
 memoffset = "0.6.1"
 num_cpus = "1.13.0"
-pathfinding = "2.0.4"
-pgx = "0.1.5"
-pgx-macros = "0.1.5"
+pathfinding = "2.1.1"
+pgx = "0.1.19"
+pgx-macros = "0.1.19"
 rayon = "1.5.0"
-regex = "1.4.2"
-reqwest = "0.9.24"
-serde = { version = "1.0.117", features = [ "derive" ] }
-serde_json = "1.0.59"
+regex = "1.4.3"
+serde = { version = "1.0.123", features = [ "derive" ] }
+serde_json = { version = "1.0.62", features = [ "preserve_order" ] }
+serde_cbor = "0.11.1"
 sqlformat = "0.1.5"
-url = "2.2.0"
+ureq = { version = "2.0.2", features = [ "json" ] }
+url = "2.2.1"
 
 [build-dependencies]
-lalrpop = { version = "0.19.1", features = [ "lexer" ] }
+lalrpop = { version = "0.19.4", features = [ "lexer" ] }
+built = { version = "0.4.4", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
-pgx-tests = "0.1.5"
-libc = "0.2.80"
+pgx-tests = "0.1.19"
+libc = "0.2.86"
 
 [profile.dev]
 panic = "unwind"

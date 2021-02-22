@@ -8,22 +8,18 @@ CREATE TABLE c (
   id SERIAL8 PRIMARY KEY
 );
 
-CREATE INDEX idxc ON c USING zombodb((c));
-CREATE OR REPLACE FUNCTION public.issue_58_func(table_name REGCLASS, ctid tid)
-  RETURNS tid
-LANGUAGE C
-IMMUTABLE STRICT
-AS '$libdir/plugins/zombodb', 'zdb_table_ref_and_tid';
+CREATE INDEX idxc ON c USING zombodb((c.*));
 
-CREATE INDEX idxc_shadow ON c USING zombodb(('c')) WITH (shadow='idxc');
+CREATE FUNCTION c_shadow (anyelement) RETURNS anyelement IMMUTABLE STRICT PARALLEL SAFE LANGUAGE c AS '$libdir/zombodb.so', 'shadow_wrapper';
+CREATE INDEX idxc_shadow ON c USING zombodb (c_shadow(c.*)) with (shadow=true);
 
 CREATE VIEW issue_58_view AS
   SELECT
     a.id                       AS a_id,
     b.id                       AS b_id,
     c.id                       AS c_id,
-    issue_58_func('c', c.ctid) AS zdb
-  FROM a, b, C;
+    c_shadow(c)                AS zdb
+  FROM a, b, c;
 
 set enable_seqscan to off;
 set ENABLE_BITMAPSCAN to off;
@@ -33,5 +29,5 @@ select assert(zdb.determine_index('issue_58_view')::regclass, 'idxc_shadow'::reg
 DROP VIEW issue_58_view;
 DROP TABLE a;
 DROP TABLE b;
-DROP TABLE c;
-DROP FUNCTION issue_58_func( REGCLASS, tid );
+DROP TABLE c CASCADE;
+DROP FUNCTION c_shadow;

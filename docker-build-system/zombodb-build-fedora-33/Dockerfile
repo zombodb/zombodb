@@ -1,5 +1,5 @@
 #
-# Copyright 2018-2020 ZomboDB, LLC
+# Copyright 2018-2021 ZomboDB, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,7 +22,8 @@ ARG UID=1000
 ARG GID=1000
 RUN useradd -m ${USER} --uid=${UID}
 
-
+RUN dnf update -y
+RUN dnf install -y git
 RUN dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/F-33-x86_64/pgdg-fedora-repo-latest.noarch.rpm
 RUN dnf install -y postgresql10-server postgresql10-devel
 RUN dnf install -y postgresql11-server postgresql11-devel
@@ -32,6 +33,7 @@ RUN dnf group install -y "Development Tools"
 RUN dnf install -y openssl-devel
 RUN dnf install -y redhat-rpm-config
 RUN dnf install -y ruby-devel gcc make rpm-build libffi-devel
+RUN dnf update -y
 RUN gem install --no-document fpm
 
 

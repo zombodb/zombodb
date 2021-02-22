@@ -1,3 +1,4 @@
+use crate::access_method::options::ZDBIndexOptions;
 use crate::access_method::triggers::create_triggers;
 use crate::elasticsearch::{Elasticsearch, ElasticsearchBulkRequest};
 use crate::executor_manager::get_executor_manager;
@@ -37,6 +38,11 @@ pub extern "C" fn ambuild(
 ) -> *mut pg_sys::IndexBuildResult {
     let heap_relation = unsafe { PgRelation::from_pg(heaprel) };
     let index_relation = unsafe { PgRelation::from_pg(indexrel) };
+
+    if ZDBIndexOptions::from_relation_no_lookup(&index_relation, None).is_shadow_index() {
+        // nothing for us to do for a shadow index
+        return PgBox::<pg_sys::IndexBuildResult>::alloc0().into_pg();
+    }
 
     unsafe {
         if has_zdb_index(&heap_relation, &index_relation) {
@@ -173,6 +179,11 @@ pub unsafe extern "C" fn aminsert(
 ) -> bool {
     let index_relation = PgRelation::from_pg(index_relation);
     let bulk = get_executor_manager().checkout_bulk_context(index_relation.oid());
+    if bulk.is_shadow {
+        // shadow indexes don't do anything
+        return false;
+    }
+
     let values = std::slice::from_raw_parts(values, 1);
     let builder = row_to_json(values[0], bulk.tupdesc, &bulk.attributes);
     let cmin = pg_sys::GetCurrentCommandId(true);
@@ -247,21 +258,56 @@ unsafe extern "C" fn build_callback_internal(
 
 unsafe fn row_to_json<'a>(
     row: pg_sys::Datum,
-    tupdesc: &PgTupleDesc,
-    attributes: &[CategorizedAttribute<'a>],
+    tupdesc: &'a PgTupleDesc,
+    attributes: &'a [CategorizedAttribute<'a>],
 ) -> JsonBuilder<'a> {
     let mut builder = JsonBuilder::new(attributes.len());
 
-    let datums = deconstruct_row_type(tupdesc, row);
-    for (attr, datum) in attributes
-        .iter()
-        .zip(datums.iter())
-        .filter(|(_, datum)| datum.is_some())
+    for (attr, datum) in decon_row(tupdesc, attributes, row)
+        .filter(|item| item.is_some())
+        .map(|item| item.unwrap())
     {
-        let datum = datum.expect("found NULL datum"); // shouldn't happen b/c None datums are filtered above
-
         (attr.conversion_func)(&mut builder, attr.attname, datum, attr.typoid);
     }
 
     builder
+}
+
+#[inline]
+unsafe fn decon_row<'a>(
+    tupdesc: &'a PgTupleDesc,
+    attributes: &'a [CategorizedAttribute<'a>],
+    row: pg_sys::Datum,
+) -> impl std::iter::Iterator<Item = Option<(&'a CategorizedAttribute<'a>, pg_sys::Datum)>> + 'a {
+    let td = pg_sys::pg_detoast_datum(row as *mut pg_sys::varlena) as pg_sys::HeapTupleHeader;
+    let mut tmptup = pg_sys::HeapTupleData {
+        t_len: varsize(td as *mut pg_sys::varlena) as u32,
+        t_self: Default::default(),
+        t_tableOid: 0,
+        t_data: td,
+    };
+
+    let mut datums = vec![0 as pg_sys::Datum; tupdesc.natts as usize];
+    let mut nulls = vec![false; tupdesc.natts as usize];
+
+    pg_sys::heap_deform_tuple(
+        &mut tmptup,
+        tupdesc.as_ptr(),
+        datums.as_mut_ptr(),
+        nulls.as_mut_ptr(),
+    );
+
+    let mut drop_cnt = 0;
+    (0..tupdesc.natts as usize).into_iter().map(move |idx| {
+        let is_dropped = tupdesc.get(idx).unwrap().is_dropped();
+
+        if is_dropped {
+            drop_cnt += 1;
+            None
+        } else if nulls[idx] {
+            None
+        } else {
+            Some((&attributes[idx - drop_cnt], *&datums[idx]))
+        }
+    })
 }

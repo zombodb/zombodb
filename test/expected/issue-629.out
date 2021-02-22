@@ -1,0 +1,21 @@
+select count(*)
+from so_posts
+where so_posts ==>
+      '{ "function_score": { "query": { "match_all": {} }, "field_value_factor": { "field": "answer_countd" } } }';
+ERROR:  HTTP 500 {
+  "error": {
+    "root_cause": [
+      {
+        "type": "runtime_exception",
+        "reason": "ElasticsearchException[Unable to find a field mapper for field [answer_countd]. No 'missing' value defined.]"
+      }
+    ],
+    "type": "runtime_exception",
+    "reason": "ElasticsearchException[Unable to find a field mapper for field [answer_countd]. No 'missing' value defined.]",
+    "caused_by": {
+      "type": "exception",
+      "reason": "Unable to find a field mapper for field [answer_countd]. No 'missing' value defined."
+    }
+  },
+  "status": 500
+}

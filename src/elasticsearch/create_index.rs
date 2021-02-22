@@ -17,18 +17,10 @@ impl ElasticsearchCreateIndexRequest {
 
     pub fn execute(self) -> std::result::Result<(), ElasticsearchError> {
         let url = format!("{}", self.elasticsearch.base_url());
-        let create_index_result = Elasticsearch::execute_request(
-            Elasticsearch::client()
-                .put(&url)
-                .header("content-type", "application/json")
-                .body(serde_json::to_string(&self.create_request_body()).unwrap()),
-            |status, body| {
-                if status.is_success() {
-                    Ok(())
-                } else {
-                    Err(ElasticsearchError(Some(status), body))
-                }
-            },
+        let create_index_result = Elasticsearch::execute_json_request(
+            Elasticsearch::client().put(&url),
+            Some(self.create_request_body()),
+            |_| Ok(()),
         );
 
         if create_index_result.is_err() {
@@ -41,14 +33,8 @@ impl ElasticsearchCreateIndexRequest {
             self.elasticsearch.index_name()
         );
 
-        Elasticsearch::execute_request(Elasticsearch::client().get(&url), |status, body| {
-            if status.is_success() {
-                Ok(())
-            } else {
-                Err(ElasticsearchError(Some(status), body))
-            }
-        })
-        .expect("failed to wait for yellow status");
+        Elasticsearch::execute_json_request(Elasticsearch::client().get(&url), None, |_| Ok(()))
+            .expect("failed to wait for yellow status");
 
         create_index_result
     }
@@ -66,8 +52,11 @@ impl ElasticsearchCreateIndexRequest {
               "number_of_replicas": 0,
               "refresh_interval": "-1",
               "query.default_field": "zdb_all",
-              "translog.durability": self.elasticsearch.options.translog_durability(),
-              "mapping.nested_fields.limit": 1000
+              "translog.durability": "async",
+              "mapping.nested_fields.limit": self.elasticsearch.options.nested_fields_limit(),
+              "mapping.total_fields.limit": self.elasticsearch.options.total_fields_limit(),
+              "max_result_window": self.elasticsearch.options.max_result_window(),
+              "max_terms_count": self.elasticsearch.options.max_terms_count()
             } }
         } else {
             // we can do an index-level sort on zdb_ctid:asc
@@ -76,10 +65,13 @@ impl ElasticsearchCreateIndexRequest {
               "number_of_replicas": 0,
               "refresh_interval": "-1",
               "query.default_field": "zdb_all",
-              "translog.durability": self.elasticsearch.options.translog_durability(),
-              "mapping.nested_fields.limit": 1000,
+              "translog.durability": "async",
+              "mapping.nested_fields.limit": self.elasticsearch.options.nested_fields_limit(),
+              "mapping.total_fields.limit": self.elasticsearch.options.total_fields_limit(),
+              "max_result_window": self.elasticsearch.options.max_result_window(),
+              "max_terms_count": self.elasticsearch.options.max_terms_count(),
               "sort.field": "zdb_ctid",
-              "sort.order": "asc",
+              "sort.order": "asc"
             } }
         };
 
@@ -93,29 +85,31 @@ impl ElasticsearchCreateIndexRequest {
                      "tokenizer" : lookup_analysis_thing("tokenizers"),
                      "analyzer": lookup_analysis_thing("analyzers"),
                      "normalizer": lookup_analysis_thing("normalizers")
-                  }
+                  },
+                 "similarity": lookup_analysis_thing("similarities")
                },
                "mappings": {
                      "_source": { "enabled": true },
+                     "date_detection": self.elasticsearch.options.nested_object_date_detection(),
+                     "numeric_detection": self.elasticsearch.options.nested_object_numeric_detection(),
                      "dynamic_templates": [
                           {
                              "strings": {
                                 "match_mapping_type": "string",
-                                "mapping": {
-                                   "type": "keyword",
-                                   "ignore_above": 10922,
-                                   "normalizer": "lowercase",
-                                   "copy_to": "zdb_all"
-                                 }
+                                "mapping": self.elasticsearch.options.nested_object_text_mapping()
                               }
                           },
                           {
                              "dates_times": {
                                 "match_mapping_type": "date",
                                 "mapping": {
-                                   "type": "date",
-                                   "format": "strict_date_optional_time||epoch_millis||HH:mm:ss.S||HH:mm:ss.SX||HH:mm:ss.SS||HH:mm:ss.SSX||HH:mm:ss.SSS||HH:mm:ss.SSSX||HH:mm:ss.SSSS||HH:mm:ss.SSSSX||HH:mm:ss.SSSSS||HH:mm:ss.SSSSSX||HH:mm:ss.SSSSSS||HH:mm:ss.SSSSSSX",
-                                   "copy_to": "zdb_all"
+                                   "type": "keyword",
+                                   "copy_to": "zdb_all",
+                                   "fields": {
+                                     "date": {
+                                        "type": "date",
+                                        "format": "strict_date_optional_time||epoch_millis||HH:mm:ss.S||HH:mm:ss.SX||HH:mm:ss.SS||HH:mm:ss.SSX||HH:mm:ss.SSS||HH:mm:ss.SSSX||HH:mm:ss.SSSS||HH:mm:ss.SSSSX||HH:mm:ss.SSSSS||HH:mm:ss.SSSSSX||HH:mm:ss.SSSSSS||HH:mm:ss.SSSSSSX"                                      }
+                                    }
                                  }
                               }
                           },

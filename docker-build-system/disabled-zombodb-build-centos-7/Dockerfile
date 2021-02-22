@@ -1,5 +1,5 @@
 #
-# Copyright 2018-2020 ZomboDB, LLC
+# Copyright 2018-2021 ZomboDB, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ ARG UID=1000
 ARG GID=1000
 RUN useradd -m ${USER} --uid=${UID}
 
-
+RUN yum install -y git
 RUN yum install -y epel-release
 RUN yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
 RUN yum install -y centos-release-scl

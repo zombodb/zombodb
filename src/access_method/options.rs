@@ -1,9 +1,9 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::gucs::{ZDB_DEFAULT_ELASTICSEARCH_URL, ZDB_DEFAULT_REPLICAS};
-use crate::query_parser::ast::{IndexLink, QualifiedField};
-use crate::query_parser::transformations::field_finder::find_link_for_field;
-use crate::query_parser::{parse_field_lists, INDEX_LINK_PARSER};
 use crate::utils::find_zdb_index;
+use crate::zql::ast::{IndexLink, QualifiedField};
+use crate::zql::transformations::field_finder::find_link_for_field;
+use crate::zql::{parse_field_lists, INDEX_LINK_PARSER};
 use lazy_static::*;
 use memoffset::*;
 use pgx::pg_sys::AsPgCStr;
@@ -16,6 +16,10 @@ const DEFAULT_BATCH_SIZE: i32 = 8 * 1024 * 1024;
 const DEFAULT_COMPRESSION_LEVEL: i32 = 1;
 const DEFAULT_SHARDS: i32 = 5;
 const DEFAULT_OPTIMIZE_AFTER: i32 = 0;
+const DEFAULT_MAX_RESULT_WINDOW: i32 = 10000;
+const DEFAULT_NESTED_FIELDS_LIMIT: i32 = 1000;
+const DEFAULT_TOTAL_FIELDS_LIMIT: i32 = 1000;
+const DEFAULT_MAX_TERMS_COUNT: i32 = 65535;
 const DEFAULT_URL: &str = "default";
 const DEFAULT_TYPE_NAME: &str = "doc";
 const DEFAULT_REFRESH_INTERVAL: &str = "-1";
@@ -51,12 +55,17 @@ struct ZDBIndexOptionsInternal {
     url_offset: i32,
     type_name_offset: i32,
     refresh_interval_offset: i32,
+    nested_fields_limit: i32,
+    total_fields_limit: i32,
+    max_terms_count: i32,
     alias_offset: i32,
     uuid_offset: i32,
     translog_durability_offset: i32,
     options_offset: i32,
     field_lists_offset: i32,
+    shadow_index: bool,
 
+    max_result_window: i32,
     optimize_after: i32,
     compression_level: i32,
     shards: i32,
@@ -64,6 +73,10 @@ struct ZDBIndexOptionsInternal {
     bulk_concurrency: i32,
     batch_size: i32,
     llapi: bool,
+
+    nested_object_date_detection: bool,
+    nested_object_numeric_detection: bool,
+    nested_object_text_mapping_offset: i32,
 }
 
 #[allow(dead_code)]
@@ -80,6 +93,12 @@ impl ZDBIndexOptionsInternal {
             ops.bulk_concurrency = *DEFAULT_BULK_CONCURRENCY;
             ops.batch_size = DEFAULT_BATCH_SIZE;
             ops.optimize_after = DEFAULT_OPTIMIZE_AFTER;
+            ops.max_result_window = DEFAULT_MAX_RESULT_WINDOW;
+            ops.nested_fields_limit = DEFAULT_NESTED_FIELDS_LIMIT;
+            ops.total_fields_limit = DEFAULT_TOTAL_FIELDS_LIMIT;
+            ops.max_terms_count = DEFAULT_MAX_TERMS_COUNT;
+            ops.nested_object_date_detection = false;
+            ops.nested_object_numeric_detection = false;
             ops
         } else {
             PgBox::from_pg(relation.rd_options as *mut ZDBIndexOptionsInternal)
@@ -182,6 +201,22 @@ impl ZDBIndexOptionsInternal {
         }
     }
 
+    fn nested_object_text_mapping(&self) -> serde_json::Value {
+        let value = self.get_str(self.nested_object_text_mapping_offset, || "".to_owned());
+        if value.is_empty() {
+            serde_json::json! {
+                {
+                   "type": "keyword",
+                   "ignore_above": 10922,
+                   "normalizer": "lowercase",
+                   "copy_to": "zdb_all"
+                 }
+            }
+        } else {
+            serde_json::from_str(&value).expect("invalid 'nested_object_text_mapping' value")
+        }
+    }
+
     fn get_str<F: FnOnce() -> String>(&self, offset: i32, default: F) -> String {
         if offset == 0 {
             default()
@@ -201,11 +236,16 @@ pub struct ZDBIndexOptions {
     url: String,
     type_name: String,
     refresh_interval: RefreshInterval,
+    max_result_window: i32,
+    nested_fields_limit: i32,
+    total_field_limit: i32,
+    max_terms_count: i32,
     alias: String,
     uuid: String,
     translog_durability: String,
     links: Option<Vec<String>>,
     field_lists: Option<HashMap<String, Vec<QualifiedField>>>,
+    shadow_index: bool,
 
     optimize_after: i32,
     compression_level: i32,
@@ -214,12 +254,23 @@ pub struct ZDBIndexOptions {
     bulk_concurrency: i32,
     batch_size: i32,
     llapi: bool,
+
+    nested_object_date_detection: bool,
+    nested_object_numeric_detection: bool,
+    nested_object_text_mapping: serde_json::Value,
 }
 
 #[allow(dead_code)]
 impl ZDBIndexOptions {
     pub fn from_relation(relation: &PgRelation) -> ZDBIndexOptions {
-        let relation = find_zdb_index(relation, true).unwrap();
+        let (relation, options) = find_zdb_index(relation).unwrap();
+        ZDBIndexOptions::from_relation_no_lookup(&relation, options)
+    }
+
+    pub fn from_relation_no_lookup(
+        relation: &PgRelation,
+        options: Option<Vec<String>>,
+    ) -> ZDBIndexOptions {
         let internal = ZDBIndexOptionsInternal::from_relation(&relation);
         let heap_relation = relation.heap_relation().expect("not an index");
         ZDBIndexOptions {
@@ -227,10 +278,15 @@ impl ZDBIndexOptions {
             url: internal.url(),
             type_name: internal.type_name(),
             refresh_interval: internal.refresh_interval(),
+            max_result_window: internal.max_result_window,
+            nested_fields_limit: internal.nested_fields_limit,
+            total_field_limit: internal.total_fields_limit,
+            max_terms_count: internal.max_terms_count,
             alias: internal.alias(&heap_relation, &relation),
             uuid: internal.uuid(&heap_relation, &relation),
-            links: internal.links(),
+            links: options.map_or_else(|| internal.links(), |v| Some(v)),
             field_lists: internal.field_lists(),
+            shadow_index: internal.shadow_index,
             compression_level: internal.compression_level,
             shards: internal.shards,
             replicas: internal.replicas,
@@ -239,7 +295,18 @@ impl ZDBIndexOptions {
             optimize_after: internal.optimize_after,
             translog_durability: internal.translog_durability(),
             llapi: internal.llapi,
+            nested_object_date_detection: internal.nested_object_date_detection,
+            nested_object_numeric_detection: internal.nested_object_numeric_detection,
+            nested_object_text_mapping: internal.nested_object_text_mapping(),
         }
+    }
+
+    pub fn index_relation(&self) -> PgRelation {
+        PgRelation::with_lock(self.oid(), pg_sys::AccessShareLock as pg_sys::LOCKMODE)
+    }
+
+    pub fn heap_relation(&self) -> PgRelation {
+        self.index_relation().heap_relation().expect("not an index")
     }
 
     pub fn oid(&self) -> pg_sys::Oid {
@@ -286,6 +353,22 @@ impl ZDBIndexOptions {
         self.refresh_interval.clone()
     }
 
+    pub fn max_result_window(&self) -> i32 {
+        self.max_result_window
+    }
+
+    pub fn nested_fields_limit(&self) -> i32 {
+        self.nested_fields_limit
+    }
+
+    pub fn total_fields_limit(&self) -> i32 {
+        self.total_field_limit
+    }
+
+    pub fn max_terms_count(&self) -> i32 {
+        self.max_terms_count
+    }
+
     pub fn alias(&self) -> &str {
         &self.alias
     }
@@ -312,11 +395,49 @@ impl ZDBIndexOptions {
             None => HashMap::new(),
         }
     }
+
+    pub fn is_shadow_index(&self) -> bool {
+        self.shadow_index
+    }
+
+    pub fn nested_object_date_detection(&self) -> bool {
+        self.nested_object_date_detection
+    }
+
+    pub fn nested_object_numeric_detection(&self) -> bool {
+        self.nested_object_numeric_detection
+    }
+
+    pub fn nested_object_text_mapping(&self) -> &serde_json::Value {
+        &self.nested_object_text_mapping
+    }
+}
+
+/// ```sql
+/// /*
+///    we don't want any SQL generated for the "shadow" function, but we do want its '_wrapper' symbol
+///    exported so that shadow indexes can reference it using whatever argument type they want
+/// */
+/// ```
+#[pg_extern(immutable, parallel_safe, raw, no_guard)]
+fn shadow(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
+    pg_getarg_datum_raw(fcinfo, 0)
 }
 
 #[pg_extern(volatile, parallel_safe)]
 fn determine_index(relation: PgRelation) -> Option<PgRelation> {
-    find_zdb_index(&relation, false)
+    match find_zdb_index(&relation) {
+        Ok((relation, _)) => Some(relation),
+
+        // we don't want to raise an error if we couldn't find the index for the relation
+        Err(_) => None,
+    }
+}
+
+#[pg_extern(volatile, parallel_safe)]
+fn index_links(relation: PgRelation) -> Option<Vec<String>> {
+    let (_, options) = find_zdb_index(&relation).expect("failed to lookup index link options");
+    options
 }
 
 #[pg_extern(volatile, parallel_safe)]
@@ -368,7 +489,7 @@ fn index_settings(index_relation: PgRelation) -> JsonB {
 }
 
 #[pg_extern(volatile, parallel_safe)]
-fn index_options(index_relation: PgRelation) -> Option<Vec<String>> {
+pub(crate) fn index_options(index_relation: PgRelation) -> Option<Vec<String>> {
     ZDBIndexOptions::from_relation(&index_relation)
         .links()
         .clone()
@@ -509,11 +630,27 @@ extern "C" fn validate_field_lists(value: *const std::os::raw::c_char) {
     }
 
     let input = unsafe { CStr::from_ptr(value) };
-    let input = input.to_str().expect("options is not valid UTF8");
+    let input = input.to_str().expect("field_lists is not valid UTF8");
     parse_field_lists(input);
 }
 
-const NUM_REL_OPTS: usize = 15;
+#[pg_guard]
+extern "C" fn validate_text_mapping(value: *const std::os::raw::c_char) {
+    if value.is_null() {
+        // null is fine
+        return;
+    }
+
+    let input = unsafe { CStr::from_ptr(value) };
+    serde_json::from_str::<serde_json::Value>(
+        input
+            .to_str()
+            .expect("nested_object_text_mapping value is not valid UTF8"),
+    )
+    .expect("invalid nested_object_text_mapping");
+}
+
+const NUM_REL_OPTS: usize = 23;
 #[allow(clippy::unneeded_field_pattern)] // b/c of offset_of!()
 #[pg_guard]
 pub unsafe extern "C" fn amoptions(
@@ -563,6 +700,26 @@ pub unsafe extern "C" fn amoptions(
             offset: offset_of!(ZDBIndexOptionsInternal, compression_level) as i32,
         },
         pg_sys::relopt_parse_elt {
+            optname: "max_result_window".as_pg_cstr(),
+            opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
+            offset: offset_of!(ZDBIndexOptionsInternal, max_result_window) as i32,
+        },
+        pg_sys::relopt_parse_elt {
+            optname: "nested_fields_limit".as_pg_cstr(),
+            opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
+            offset: offset_of!(ZDBIndexOptionsInternal, nested_fields_limit) as i32,
+        },
+        pg_sys::relopt_parse_elt {
+            optname: "total_fields_limit".as_pg_cstr(),
+            opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
+            offset: offset_of!(ZDBIndexOptionsInternal, total_fields_limit) as i32,
+        },
+        pg_sys::relopt_parse_elt {
+            optname: "max_terms_count".as_pg_cstr(),
+            opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
+            offset: offset_of!(ZDBIndexOptionsInternal, max_terms_count) as i32,
+        },
+        pg_sys::relopt_parse_elt {
             optname: "alias".as_pg_cstr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, alias_offset) as i32,
@@ -596,6 +753,26 @@ pub unsafe extern "C" fn amoptions(
             optname: "field_lists".as_pg_cstr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, field_lists_offset) as i32,
+        },
+        pg_sys::relopt_parse_elt {
+            optname: "shadow".as_pg_cstr(),
+            opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
+            offset: offset_of!(ZDBIndexOptionsInternal, shadow_index) as i32,
+        },
+        pg_sys::relopt_parse_elt {
+            optname: "nested_object_date_detection".as_pg_cstr(),
+            opttype: pg_sys::relopt_type_RELOPT_TYPE_BOOL,
+            offset: offset_of!(ZDBIndexOptionsInternal, nested_object_date_detection) as i32,
+        },
+        pg_sys::relopt_parse_elt {
+            optname: "nested_object_numeric_detection".as_pg_cstr(),
+            opttype: pg_sys::relopt_type_RELOPT_TYPE_BOOL,
+            offset: offset_of!(ZDBIndexOptionsInternal, nested_object_numeric_detection) as i32,
+        },
+        pg_sys::relopt_parse_elt {
+            optname: "nested_object_text_mapping".as_pg_cstr(),
+            opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
+            offset: offset_of!(ZDBIndexOptionsInternal, nested_object_text_mapping_offset) as i32,
         },
     ];
 
@@ -752,6 +929,56 @@ pub unsafe fn init() {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
     );
+    pg_sys::add_int_reloption(
+        RELOPT_KIND_ZDB,
+        "max_result_window".as_pg_cstr(),
+        "The number of docs to page in from Elasticsearch at one time.  Default is 10,000"
+            .as_pg_cstr(),
+        DEFAULT_MAX_RESULT_WINDOW,
+        1,
+        std::i32::MAX,
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
+    );
+    pg_sys::add_int_reloption(
+        RELOPT_KIND_ZDB,
+        "nested_fields_limit".as_pg_cstr(),
+        "The maximum number of distinct nested mappings in an index.  Default is 1000".as_pg_cstr(),
+        DEFAULT_NESTED_FIELDS_LIMIT,
+        1,
+        std::i32::MAX,
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
+    );
+    pg_sys::add_int_reloption(
+        RELOPT_KIND_ZDB,
+        "total_fields_limit".as_pg_cstr(),
+        "The maximum number of fields in an index. Field and object mappings, as well as field aliases count towards this limit. The default value is 1000.".as_pg_cstr(),
+        DEFAULT_TOTAL_FIELDS_LIMIT,
+        1,
+        std::i32::MAX,
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
+    );
+    pg_sys::add_int_reloption(
+        RELOPT_KIND_ZDB,
+        "max_terms_count".as_pg_cstr(),
+        "The maximum number of terms that can be used in Terms Query.  The default value is 65535."
+            .as_pg_cstr(),
+        DEFAULT_MAX_TERMS_COUNT,
+        1,
+        std::i32::MAX,
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
+    );
     pg_sys::add_string_reloption(
         RELOPT_KIND_ZDB,
         "alias".as_pg_cstr(),
@@ -824,6 +1051,47 @@ pub unsafe fn init() {
         "Combine fields into named lists during search".as_pg_cstr(),
         std::ptr::null(),
         Some(validate_field_lists),
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
+    );
+    pg_sys::add_bool_reloption(
+        RELOPT_KIND_ZDB,
+        "shadow".as_pg_cstr(),
+        "Is this index a shadow index, and if so, to which one".as_pg_cstr(),
+        false,
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
+    );
+    pg_sys::add_bool_reloption(
+        RELOPT_KIND_ZDB,
+        "nested_object_date_detection".as_pg_cstr(),
+        "Should ES try to automatically detect dates in nested objects".as_pg_cstr(),
+        false,
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
+    );
+    pg_sys::add_bool_reloption(
+        RELOPT_KIND_ZDB,
+        "nested_object_numeric_detection".as_pg_cstr(),
+        "Should ES try to automatically detect numbers in nested objects".as_pg_cstr(),
+        false,
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
+    );
+    pg_sys::add_string_reloption(
+        RELOPT_KIND_ZDB,
+        "nested_object_text_mapping".as_pg_cstr(),
+        "As a JSON mapping definition, how should dynamic text values in JSON be mapped?".as_pg_cstr(),
+        r#"{ "type": "keyword", "ignore_above": 10922, "normalizer": "lowercase", "copy_to": "zdb_all" }"#.as_pg_cstr(),
+        Some(validate_text_mapping),
         #[cfg(feature = "pg13")]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE

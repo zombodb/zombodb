@@ -1,7 +1,6 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::executor_manager::get_executor_manager;
 use crate::gucs::ZDB_DEFAULT_ROW_ESTIMATE;
-use crate::utils::find_zdb_index;
 use crate::zdbquery::ZDBQuery;
 use pgx::*;
 use std::collections::HashSet;
@@ -16,7 +15,7 @@ fn anyelement_cmpfunc(
         Some((query_desc, query_state)) => (query_desc, query_state),
         None => return false,
     };
-    let heap_oid = match query_state.lookup_heap_oid_for_first_field(*query_desc, fcinfo) {
+    let index_oid = match query_state.lookup_index_for_first_field(*query_desc, fcinfo) {
         Some(oid) => oid,
         None => return false,
     };
@@ -28,39 +27,71 @@ fn anyelement_cmpfunc(
                 .unwrap(),
         ))
     } else {
-        panic!("lhs of anyelement_cmpfunc is not a tid");
+        panic!(
+            "The '==>' operator could not find a \"USING zombodb\" index that matches the left-hand-side of the expression"
+        );
     };
 
     match tid {
-        Some(tid) => {
-            let lookup = pg_func_extra(fcinfo, || {
-                let heap_relation =
-                    PgRelation::with_lock(heap_oid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
-                let index = find_zdb_index(&heap_relation, true).unwrap();
-                let es = Elasticsearch::new(&index);
-                let search = es
-                    .open_search(query.prepare(&index, None).0)
-                    .execute()
-                    .expect("failed to execute search");
-
-                let mut lookup = HashSet::with_capacity(search.len());
-                for (score, ctid, _, highlights) in search.into_iter() {
-                    check_for_interrupts!();
-
-                    // remember the score, globaly
-                    let (_, qstate) = get_executor_manager().peek_query_state().unwrap();
-                    qstate.add_score(heap_oid, ctid, score);
-                    qstate.add_highlight(heap_oid, ctid, highlights);
-
-                    // remember this ctid for this function context
-                    lookup.insert(ctid);
-                }
-                lookup
-            });
-
-            lookup.contains(&tid)
-        }
+        Some(tid) => pg_func_extra(fcinfo, || do_seqscan(query, index_oid)).contains(&tid),
         None => false,
+    }
+}
+
+#[inline]
+fn do_seqscan(query: ZDBQuery, index_oid: u32) -> HashSet<u64> {
+    unsafe {
+        let index = pg_sys::index_open(index_oid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
+        let heap = pg_sys::relation_open(
+            index.as_ref().unwrap().rd_index.as_ref().unwrap().indrelid,
+            pg_sys::AccessShareLock as pg_sys::LOCKMODE,
+        );
+
+        let mut keys = PgBox::<pg_sys::ScanKeyData>::alloc0();
+        keys.sk_argument = query.into_datum().unwrap();
+
+        let scan = pg_sys::index_beginscan(heap, index, pg_sys::GetTransactionSnapshot(), 1, 0);
+        pg_sys::index_rescan(scan, keys.into_pg(), 1, std::ptr::null_mut(), 0);
+
+        let mut lookup = HashSet::new();
+        loop {
+            check_for_interrupts!();
+
+            #[cfg(any(feature = "pg10", feature = "pg11"))]
+            let tid = {
+                let htup = pg_sys::index_getnext(scan, pg_sys::ScanDirection_ForwardScanDirection);
+                if htup.is_null() {
+                    break;
+                }
+                item_pointer_to_u64(htup.as_ref().unwrap().t_self)
+            };
+
+            #[cfg(any(feature = "pg12", feature = "pg13"))]
+            let tid = {
+                let slot = pg_sys::MakeSingleTupleTableSlot(
+                    heap.as_ref().unwrap().rd_att,
+                    &pg_sys::TTSOpsBufferHeapTuple,
+                );
+
+                if !pg_sys::index_getnext_slot(
+                    scan,
+                    pg_sys::ScanDirection_ForwardScanDirection,
+                    slot,
+                ) {
+                    pg_sys::ExecDropSingleTupleTableSlot(slot);
+                    break;
+                }
+
+                let tid = item_pointer_to_u64(slot.as_ref().unwrap().tts_tid);
+                pg_sys::ExecDropSingleTupleTableSlot(slot);
+                tid
+            };
+            lookup.insert(tid);
+        }
+        pg_sys::index_endscan(scan);
+        pg_sys::index_close(index, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
+        pg_sys::relation_close(heap, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
+        lookup
     }
 }
 
@@ -135,11 +166,9 @@ fn restrict(
                         count_estimate = estimate as u64;
                     } else {
                         // ask Elasticsearch to estimate our selectivity
-                        let index_relation = find_zdb_index(&heap_relation, true).unwrap();
-
-                        let elasticsearch = Elasticsearch::new(&index_relation);
-                        count_estimate = elasticsearch
-                            .raw_count(zdbquery.prepare(&index_relation, None).0)
+                        let es = Elasticsearch::new(&heap_relation);
+                        count_estimate = es
+                            .raw_count(zdbquery.prepare(&es.index_relation(), None).0)
                             .execute()
                             .expect("failed to estimate selectivity");
                     }

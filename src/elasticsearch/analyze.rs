@@ -48,14 +48,12 @@ struct Custom<'a> {
 }
 
 impl ElasticsearchAnalyzerRequest {
-    pub fn execute(&self) -> std::result::Result<AnalyzedData, ElasticsearchError> {
-        let body = serde_json::to_string(&self.analyze_json).unwrap();
-        let client = Elasticsearch::client()
-            .post(&self.url)
-            .header("content-type", "application/json")
-            .body(body);
+    pub fn execute(self) -> std::result::Result<AnalyzedData, ElasticsearchError> {
+        let client = Elasticsearch::client().post(&self.url);
 
-        Elasticsearch::execute_request(client, |_, body| Ok(serde_json::from_str(&body).unwrap()))
+        Elasticsearch::execute_json_request(client, Some(self.analyze_json), |body| {
+            Ok(serde_json::from_reader(body).unwrap())
+        })
     }
 
     pub fn new_with_text(

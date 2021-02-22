@@ -1,4 +1,3 @@
-use self::pg_catalog::*;
 use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
 use crate::zdbquery::mvcc::apply_visibility_clause;
 use crate::zdbquery::{ZDBPreparedQuery, ZDBQuery};
@@ -6,16 +5,11 @@ use pgx::*;
 use serde::*;
 use serde_json::*;
 
-mod pg_catalog {
-    use pgx::*;
-    use serde::*;
-
-    #[derive(PostgresType, Serialize, Deserialize)]
-    pub struct SuggestTermsOptions {
-        text: String,
-        score: f64,
-        freq: usize,
-    }
+#[derive(Deserialize)]
+pub struct SuggestTermsOptions {
+    text: String,
+    score: f64,
+    freq: usize,
 }
 
 #[derive(Deserialize)]
@@ -67,12 +61,10 @@ impl ElasticsearchSuggestTermRequest {
 
         let mut url = self.elasticsearch.alias_url();
         url.push_str("/_search?size=0");
-        Elasticsearch::execute_request(
-            Elasticsearch::client()
-                .post(&url)
-                .header("content-type", "application/json")
-                .body(serde_json::to_string(&body).unwrap()),
-            |_, body| {
+        Elasticsearch::execute_json_request(
+            Elasticsearch::client().post(&url),
+            Some(body),
+            |body| {
                 #[derive(Deserialize)]
                 #[serde(rename(deserialize = "suggest"))]
                 struct Suggest {
@@ -84,7 +76,7 @@ impl ElasticsearchSuggestTermRequest {
                     suggest: Suggest,
                 }
 
-                let response: WholeResponse = serde_json::from_str(&body)
+                let response: WholeResponse = serde_json::from_reader(body)
                     .expect("failed to deserialize suggest terms response");
                 Ok(response.suggest.suggestion)
             },
@@ -100,10 +92,12 @@ fn suggest_terms(
     query: ZDBQuery,
 ) -> impl std::iter::Iterator<
     Item = (
-        name!(text, String),
+        name!(term, String),
         name!(offset, i64),
         name!(length, i64),
-        name!(options, Vec<SuggestTermsOptions>),
+        name!(suggestion, String),
+        name!(score, f64),
+        name!(frequency, i64),
     ),
 > {
     let (prepared_query, index) = query.prepare(&index, Some(field_name.clone()));
@@ -114,12 +108,21 @@ fn suggest_terms(
         .execute()
         .expect("failed to suggest terms");
 
-    results.into_iter().map(|terms| {
-        (
-            terms.text,
-            terms.offset as i64,
-            terms.length as i64,
-            terms.options,
-        )
-    })
+    results
+        .iter()
+        .map(|terms| {
+            terms.options.iter().map(move |opts| {
+                (
+                    terms.text.clone(),
+                    terms.offset as i64,
+                    terms.length as i64,
+                    opts.text.clone(),
+                    opts.score,
+                    opts.freq as i64,
+                )
+            })
+        })
+        .flatten()
+        .collect::<Vec<_>>()
+        .into_iter()
 }

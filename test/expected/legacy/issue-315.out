@@ -33,15 +33,15 @@ select * from a where a ==> '#expand<b_group_id=<this.index>b_group_id>(pk_b_id 
 
 set zdb.ignore_visibility to on; /* to avoid transient xact data in query output */
 select json_array_element((zdb.dump_query('idxa', '#expand<b_group_id=<this.index>b_group_id>(pk_b_id = 100)')::json)->'subselect'->'query'->'bool'->'should', 0)->'subselect'->'query';
-              ?column?              
-------------------------------------
- {                                 +
-                 "match": {        +
-                   "pk_b_id": {    +
-                     "boost": 1.0, +
-                     "query": "100"+
-                   }               +
-                 }                 +
+              ?column?               
+-------------------------------------
+ {                                  +
+                 "match": {         +
+                   "pk_b_id": {     +
+                     "query": "100",+
+                     "boost": 1.0   +
+                   }                +
+                 }                  +
                }
 (1 row)
 

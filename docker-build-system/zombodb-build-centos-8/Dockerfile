@@ -1,5 +1,5 @@
 #
-# Copyright 2018-2020 ZomboDB, LLC
+# Copyright 2018-2021 ZomboDB, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ RUN useradd -m ${USER} --uid=${UID}
 
 RUN dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm
 RUN dnf -qy module disable postgresql
+RUN dnf install -y git
 RUN dnf install -y postgresql10-server postgresql10-devel
 RUN dnf install -y postgresql11-server postgresql11-devel
 RUN dnf install -y postgresql12-server postgresql12-devel

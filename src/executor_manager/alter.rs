@@ -66,6 +66,10 @@ pub fn alter_indices(prev_options: Option<Vec<ZDBIndexOptions>>) {
                 warning!("Number of shards changed from {} to {}.  You must issue a REINDEX before this change will take effect", old_options.shards(), new_options.shards());
             }
 
+            if old_options.is_shadow_index() != new_options.is_shadow_index() {
+                panic!("The 'shadow' index property cannot be changed");
+            }
+
             let es = Elasticsearch::new(&index);
 
             // change the index settings

@@ -1,6 +1,6 @@
 #! /bin/bash
 #
-# Copyright 2018-2020 ZomboDB, LLC
+# Copyright 2018-2021 ZomboDB, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ if [ "x${PGVER}" == "x" ] || [ "x${IMAGE}" == "x" ] ; then
 	exit 1
 fi
 
-if [[ ${IMAGE} == *"fedora"* ]] || [[ ${IMAGE} == *"centos"* ]]; then
+if [[ ${IMAGE} == *"amazonlinux"* ]] ||[[ ${IMAGE} == *"fedora"* ]] || [[ ${IMAGE} == *"centos"* ]]; then
 	PKG_FORMAT=rpm
 elif [[ ${IMAGE} == *"alpine"* ]]; then
 	PKG_FORMAT=apk
@@ -54,8 +54,9 @@ cargo pgx package || exit $?
 #
 # cd into the package directory
 #
-BUILDDIR=`pwd`
-cd target/release/zombodb-${PGVER} || exit $?
+ARTIFACTDIR=/artifacts
+BUILDDIR=/build/target/release/zombodb-pg${PGVER}
+cd ${BUILDDIR} || exit $?
 
 # strip the binaries to make them smaller
 find ./ -name "*.so" -exec strip {} \;
@@ -63,6 +64,10 @@ find ./ -name "*.so" -exec strip {} \;
 #
 # then use 'fpm' to build either a .deb, .rpm or .apk
 #
+
+## hack for when we installed ruby via rvm.  if it doesn't work we don't care
+source ~/.rvm/scripts/rvm
+
 if [ "${PKG_FORMAT}" == "deb" ]; then
 	fpm \
 		-s dir \
@@ -70,7 +75,7 @@ if [ "${PKG_FORMAT}" == "deb" ]; then
 		-n zombodb-${PGVER} \
 		-v ${VERSION} \
 		--deb-no-default-config-files \
-		-p ${BUILDDIR}/target/release/zombodb_${OSNAME}_${PGVER}-${VERSION}_amd64.deb \
+		-p ${ARTIFACTDIR}/zombodb_${OSNAME}_${PGVER}-${VERSION}_amd64.deb \
 		-a amd64 \
 		. || exit 1
 
@@ -81,7 +86,7 @@ elif [ "${PKG_FORMAT}" == "rpm" ]; then
 		-n zombodb-${PGVER} \
 		-v ${VERSION} \
 		--rpm-os linux \
-		-p ${BUILDDIR}/target/release/zombodb_${OSNAME}_${PGVER}-${VERSION}_1.x86_64.rpm \
+		-p ${ARTIFACTDIR}/zombodb_${OSNAME}_${PGVER}-${VERSION}_1.x86_64.rpm \
 		-a x86_64 \
 		. || exit 1
 
@@ -91,7 +96,7 @@ elif [ "${PKG_FORMAT}" == "apk" ]; then
 		-t apk \
 		-n zombodb-${PGVER} \
 		-v ${VERSION} \
-		-p ${BUILDDIR}/target/release/zombodb_${OSNAME}_${PGVER}-${VERSION}.$(uname -m).apk \
+		-p ${ARTIFACTDIR}/zombodb_${OSNAME}_${PGVER}-${VERSION}.$(uname -m).apk \
 		-a $(uname -m) \
 		. \
 		|| exit 1

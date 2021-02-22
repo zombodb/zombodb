@@ -3,7 +3,7 @@ mod dsl {
     use pgx::*;
 
     #[pg_extern(immutable, parallel_safe)]
-    pub fn constant_score(query: ZDBQuery, boost: default!(f32, NULL)) -> ZDBQuery {
+    pub fn constant_score(boost: f32, query: ZDBQuery) -> ZDBQuery {
         let clause = query.query_dsl();
         query.set_query_dsl(Some(ZDBQueryClause::constant_score(clause, boost)))
     }
@@ -49,7 +49,7 @@ mod tests {
     #[pg_test]
     fn test_constant_score() {
         let boost = 1.2 as f32;
-        let zdbquery = constant_score(ZDBQuery::new_with_query_string("test"), boost);
+        let zdbquery = constant_score(boost, ZDBQuery::new_with_query_string("test"));
 
         assert_eq!(
             zdbquery.into_value(),

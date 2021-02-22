@@ -1,5 +1,5 @@
 #
-# Copyright 2018-2020 ZomboDB, LLC
+# Copyright 2018-2021 ZomboDB, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,6 +30,8 @@ RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ sid-pgdg main" >> /etc/ap
 RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 RUN apt update
 RUN apt-get update -y --fix-missing
+
+RUN apt-get install -y git
 RUN apt-get install -y curl
 RUN apt-get install -y clang-9 llvm-9 gcc make build-essential libz-dev zlib1g-dev strace libssl-dev pkg-config
 RUN apt-get install -y postgresql-10 postgresql-server-dev-10

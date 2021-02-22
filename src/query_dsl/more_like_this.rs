@@ -17,7 +17,7 @@ mod dsl {
         #[serde(skip_serializing_if = "Option::is_none")]
         analyzer: Option<&'a str>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        minimum_should_match: Option<&'a str>,
+        minimum_should_match: Option<i32>,
         #[serde(skip_serializing_if = "Option::is_none")]
         boost_terms: Option<f32>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -49,7 +49,7 @@ mod dsl {
         #[serde(skip_serializing_if = "Option::is_none")]
         analyzer: Option<&'a str>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        minimum_should_match: Option<&'a str>,
+        minimum_should_match: Option<i32>,
         #[serde(skip_serializing_if = "Option::is_none")]
         boost_terms: Option<f32>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -80,7 +80,7 @@ mod dsl {
         boost: Option<default!(f32, NULL)>,
         unlike: Option<default!(&str, NULL)>,
         analyzer: Option<default!(&str, NULL)>,
-        minimum_should_match: Option<default!(&str, NULL)>,
+        minimum_should_match: Option<default!(i32, NULL)>,
         boost_terms: Option<default!(f32, NULL)>,
         include: Option<default!(bool, NULL)>,
         min_term_freq: Option<default!(i64, NULL)>,
@@ -127,7 +127,7 @@ mod dsl {
         boost: Option<default!(f32, NULL)>,
         unlike: Option<default!(&str, NULL)>,
         analyzer: Option<default!(&str, NULL)>,
-        minimum_should_match: Option<default!(&str, NULL)>,
+        minimum_should_match: Option<default!(i32, NULL)>,
         boost_terms: Option<default!(f32, NULL)>,
         include: Option<default!(bool, NULL)>,
         min_term_freq: Option<default!(i64, NULL)>,
@@ -179,7 +179,7 @@ mod tests {
                 4.5,
                 'unliked string',
                 'analyzer string',
-                'min should string',
+                42,
                 6.7,
                 'true',
                 1,
@@ -204,7 +204,7 @@ mod tests {
                         "boost": 4.5 as f32,
                         "unlike": "unliked string",
                         "analyzer": "analyzer string",
-                        "minimum_should_match": "min should string",
+                        "minimum_should_match": 42,
                         "boost_terms": 6.7 as f32,
                         "include": true,
                         "min_term_freq": 1,
@@ -252,7 +252,7 @@ mod tests {
                 4.5,
                 'unliked string',
                 'analyzer string',
-                'min should string',
+                42,
                 6.7,
                 'true',
                 1,
@@ -277,7 +277,7 @@ mod tests {
                         "boost": 4.5 as f32,
                         "unlike": "unliked string",
                         "analyzer": "analyzer string",
-                        "minimum_should_match": "min should string",
+                        "minimum_should_match": 42,
                         "boost_terms": 6.7 as f32,
                         "include": true,
                         "min_term_freq": 1,

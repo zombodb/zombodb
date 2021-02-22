@@ -7,9 +7,9 @@ SELECT * FROM zdb.dump_query('idx_zdb_foo', '_all:a\!*');
  {                                 +
    "prefix": {                     +
      "zdb_all": {                  +
-       "boost": 1.0,               +
+       "value": "a!",              +
        "rewrite": "constant_score",+
-       "value": "a!"               +
+       "boost": 1.0                +
      }                             +
    }                               +
  }
@@ -32,9 +32,9 @@ SELECT * FROM zdb.dump_query('idx_zdb_foo', 'name:a\!*');
  {                                 +
    "prefix": {                     +
      "name": {                     +
-       "boost": 1.0,               +
+       "value": "a!",              +
        "rewrite": "constant_score",+
-       "value": "a!"               +
+       "boost": 1.0                +
      }                             +
    }                               +
  }

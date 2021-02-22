@@ -1,11 +1,13 @@
 use crate::elasticsearch::Elasticsearch;
-use crate::query_parser::ast::{IndexLink, ProximityPart, QualifiedField};
-use crate::query_parser::ast::{ProximityTerm, Term};
+use crate::zql::ast::{IndexLink, ProximityPart, QualifiedField};
+use crate::zql::ast::{ProximityTerm, Term};
 use levenshtein::*;
 use pgx::PgRelation;
 use pgx::*;
 use regex::Regex;
+use serde_json::Value;
 use std::collections::{HashMap, HashSet};
+use std::fmt::{Debug, Formatter};
 use std::marker::PhantomData;
 use std::ops::Deref;
 use std::str::FromStr;
@@ -13,6 +15,7 @@ use std::str::FromStr;
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct TokenEntry {
     pub type_: String,
+    pub array_index: u32,
     pub position: u32,
     pub start_offset: u64,
     pub end_offset: u64,
@@ -29,8 +32,14 @@ pub struct DocumentHighlighter<'a> {
     lookup: HashMap<String, Vec<TokenEntry>>,
     data_type: Option<DataType>,
     index: &'a PgRelation,
-    field: &'a str,
+    field: String,
     __marker: PhantomData<&'a TokenEntry>,
+}
+
+impl<'a> Debug for DocumentHighlighter<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}::{:?}={:?}", self.field, self.data_type, self.lookup)
+    }
 }
 
 macro_rules! compare_float {
@@ -67,49 +76,93 @@ macro_rules! compare_integer {
 }
 
 impl<'a> DocumentHighlighter<'a> {
-    pub fn new(index: &'a PgRelation, field: &'a str, text: &str) -> Self {
-        let mut result = DocumentHighlighter {
-            lookup: HashMap::with_capacity(150),
-            data_type: None,
-            index,
-            field,
-            __marker: PhantomData,
-        };
-
-        result.analyze_document(text);
-        result
+    pub fn new(index: &'a PgRelation, field: &str, text: &str) -> Self {
+        DocumentHighlighter::from_json(index, field, &Value::String(text.into()))
+            .into_iter()
+            .next()
+            .unwrap()
+            .1
     }
 
-    fn analyze_document(&mut self, text: &str) {
-        let data_type = DocumentHighlighter::categorize_data_type(self.index, self.field);
+    pub fn from_json(index: &'a PgRelation, field: &str, value: &Value) -> HashMap<String, Self> {
+        match value {
+            Value::Object(o) => {
+                // recursively build highlighters for each (k, v) pair
+                // in this JSON Object
+                let mut highlighters = HashMap::new();
 
-        match &data_type {
-            DataType::Float => {
-                self.lookup
-                    .entry(text.to_string())
-                    .or_insert(vec![TokenEntry {
-                        type_: "<FLOAT>".to_string(),
-                        position: 1,
-                        start_offset: 0,
-                        end_offset: text.len() as u64,
-                    }]);
+                o.iter().for_each(|(k, v)| {
+                    highlighters.extend(DocumentHighlighter::from_json(
+                        index,
+                        &format!("{}.{}", field, k),
+                        v,
+                    ))
+                });
+
+                highlighters
             }
 
-            DataType::Integer => {
-                self.lookup
-                    .entry(text.to_string())
-                    .or_insert(vec![TokenEntry {
-                        type_: "<NUM>".to_string(),
-                        position: 1,
-                        start_offset: 0,
-                        end_offset: text.len() as u64,
-                    }]);
+            _ => {
+                let mut result = DocumentHighlighter {
+                    lookup: HashMap::with_capacity(150),
+                    data_type: None,
+                    index,
+                    field: field.into(),
+                    __marker: PhantomData,
+                };
+
+                result.analyze_document(field, value, 0);
+
+                let mut map = HashMap::new();
+                map.insert(field.into(), result);
+                map
+            }
+        }
+    }
+
+    fn analyze_document(&mut self, field: &str, value: &Value, array_index: u32) {
+        match value {
+            Value::Number(number) => {
+                if number.is_f64() {
+                    self.lookup
+                        .entry(number.as_f64().unwrap().to_string())
+                        .or_insert(vec![TokenEntry {
+                            type_: "<FLOAT>".to_string(),
+                            array_index,
+                            position: 1,
+                            start_offset: 0,
+                            end_offset: 0,
+                        }]);
+                    self.data_type = Some(DataType::Float);
+                } else if number.is_u64() {
+                    self.lookup
+                        .entry(number.as_u64().unwrap().to_string())
+                        .or_insert(vec![TokenEntry {
+                            type_: "<UNSIGNED_INT>".to_string(),
+                            array_index,
+                            position: 1,
+                            start_offset: 0,
+                            end_offset: 0,
+                        }]);
+                    self.data_type = Some(DataType::Integer);
+                } else {
+                    self.lookup
+                        .entry(number.as_i64().unwrap().to_string())
+                        .or_insert(vec![TokenEntry {
+                            type_: "<SIGNED_INT>".to_string(),
+                            array_index,
+                            position: 1,
+                            start_offset: 0,
+                            end_offset: 0,
+                        }]);
+                    self.data_type = Some(DataType::Integer);
+                }
             }
 
-            DataType::String => {
+            Value::String(s) => {
                 let es = Elasticsearch::new(self.index);
                 let results = es
-                    .analyze_with_field(self.field, text)
+                    .analyze_with_field(&self.field, &s)
                     .execute()
                     .expect("failed to analyze text for highlighting");
 
@@ -121,34 +174,24 @@ impl<'a> DocumentHighlighter<'a> {
 
                     entry.push(TokenEntry {
                         type_: token.type_,
+                        array_index,
                         position: (token.position + 1) as u32,
                         start_offset: token.start_offset as u64,
                         end_offset: token.end_offset as u64,
                     });
                 }
+                self.data_type = Some(DataType::String);
             }
+
+            Value::Array(values) => values
+                .iter()
+                .enumerate()
+                .for_each(|(idx, v)| self.analyze_document(field, v, array_index + (idx as u32))),
+
+            Value::Null => { /* noop */ }
+
+            _ => unimplemented!("Cannot highlight value: {:#?}", value),
         }
-
-        self.data_type = Some(data_type);
-    }
-
-    fn categorize_data_type(index: &PgRelation, field: &str) -> DataType {
-        for att in index.heap_relation().unwrap().tuple_desc() {
-            if att.name() == field {
-                return match att.type_oid() {
-                    PgOid::BuiltIn(PgBuiltInOids::FLOAT4OID)
-                    | PgOid::BuiltIn(PgBuiltInOids::FLOAT8OID) => DataType::Float,
-
-                    PgOid::BuiltIn(PgBuiltInOids::INT2OID)
-                    | PgOid::BuiltIn(PgBuiltInOids::INT4OID)
-                    | PgOid::BuiltIn(PgBuiltInOids::INT8OID) => DataType::Integer,
-
-                    _ => DataType::String,
-                };
-            }
-        }
-
-        DataType::String
     }
 
     pub fn gt_func(&self) -> fn(&str, &str) -> bool {
@@ -190,7 +233,7 @@ impl<'a> DocumentHighlighter<'a> {
             Term::Prefix(s, _) => self.highlight_wildcard(s),
             Term::PhrasePrefix(_, _) => unimplemented!("prefix phrases cannot be highlighted"),
             Term::Phrase(s, _) | Term::PhraseWithWildcard(s, _) => {
-                self.highlight_phrase(self.index, self.field, s)
+                self.highlight_phrase(self.index, &self.field, s)
             }
             Term::Wildcard(w, _) => self.highlight_wildcard(w),
             Term::Regex(r, _) => self.highlight_regex(r),
@@ -368,6 +411,7 @@ impl<'a> DocumentHighlighter<'a> {
 
             let first_word_entries = first_word_entries.unwrap().into_iter();
             for e in first_word_entries {
+                let array_index = e.1.array_index;
                 let mut start = vec![e.1.position]; // 0
                 let mut possibilities = Vec::new();
                 let mut is_valid = true;
@@ -386,7 +430,7 @@ impl<'a> DocumentHighlighter<'a> {
                     let order = current.distance.as_ref().map_or(false, |v| v.in_order);
                     let words = ProximityTerm::to_terms(&next.words);
 
-                    match self.look_for_match(&words, distance, order, start) {
+                    match self.look_for_match(&words, distance, order, start, array_index) {
                         None => {
                             is_valid = false;
                             break;
@@ -426,6 +470,7 @@ impl<'a> DocumentHighlighter<'a> {
         distance: u32,
         order: bool,
         starting_point: Vec<u32>,
+        array_index: u32,
     ) -> Option<HashSet<(String, &TokenEntry)>> {
         let mut matches = HashSet::new();
         for word in words {
@@ -434,15 +479,18 @@ impl<'a> DocumentHighlighter<'a> {
                 Some(entries) => {
                     for e in entries {
                         for point in &starting_point {
-                            if order {
-                                if *point < e.1.position && e.1.position - point <= distance + 1 {
-                                    matches.insert(e.clone());
-                                }
-                            } else {
-                                if (*point as i32 - e.1.position as i32).abs()
-                                    <= distance as i32 + 1
-                                {
-                                    matches.insert(e.clone());
+                            if e.1.array_index == array_index {
+                                if order {
+                                    if *point < e.1.position && e.1.position - point <= distance + 1
+                                    {
+                                        matches.insert(e.clone());
+                                    }
+                                } else {
+                                    if (*point as i32 - e.1.position as i32).abs()
+                                        <= distance as i32 + 1
+                                    {
+                                        matches.insert(e.clone());
+                                    }
                                 }
                             }
                         }
@@ -698,7 +746,7 @@ fn highlight_proximity(
 #[cfg(any(test, feature = "pg_test"))]
 mod tests {
     use crate::highlighting::document_highlighter::{DocumentHighlighter, TokenEntry};
-    use crate::query_parser::ast::Term;
+    use crate::zql::ast::Term;
     use pgx::*;
     use regex::Regex;
     use serde_json::*;
@@ -716,7 +764,13 @@ mod tests {
         let dh = DocumentHighlighter::new(&index, "test_field", "this is a test");
 
         let matches = dh
-            .look_for_match(&vec![Term::String("test".into(), None)], 1, true, vec![0])
+            .look_for_match(
+                &vec![Term::String("test".into(), None)],
+                1,
+                true,
+                vec![0],
+                0,
+            )
             .expect("no matches found");
         matches.is_empty();
     }
@@ -733,13 +787,14 @@ mod tests {
         let dh = DocumentHighlighter::new(&index, "test_field", "this is a test");
 
         let matches = dh
-            .look_for_match(&vec![Term::String("is".into(), None)], 0, true, vec![1])
+            .look_for_match(&vec![Term::String("is".into(), None)], 0, true, vec![1], 0)
             .expect("no matches found");
         let mut expected = HashSet::new();
         let value = (
             "is".to_string(),
             &TokenEntry {
                 type_: "<ALPHANUM>".to_string(),
+                array_index: 0,
                 position: 2,
                 start_offset: 5,
                 end_offset: 7,
@@ -760,13 +815,20 @@ mod tests {
         let dh = DocumentHighlighter::new(&index, "test_field", "this is a test");
 
         let matches = dh
-            .look_for_match(&vec![Term::String("this".into(), None)], 0, false, vec![2])
+            .look_for_match(
+                &vec![Term::String("this".into(), None)],
+                0,
+                false,
+                vec![2],
+                0,
+            )
             .expect("no matches found");
         let mut expected = HashSet::new();
         let value_one = (
             "this".to_string(),
             &TokenEntry {
                 type_: "<ALPHANUM>".to_string(),
+                array_index: 0,
                 position: 1,
                 start_offset: 0,
                 end_offset: 4,
@@ -792,13 +854,20 @@ mod tests {
         );
 
         let matches = dh
-            .look_for_match(&vec![Term::String("is".into(), None)], 0, false, vec![1, 6])
+            .look_for_match(
+                &vec![Term::String("is".into(), None)],
+                0,
+                false,
+                vec![1, 6],
+                0,
+            )
             .expect("no matches found");
         let mut expect = HashSet::new();
         let value_one = (
             "is".to_string(),
             &TokenEntry {
                 type_: "<ALPHANUM>".to_string(),
+                array_index: 0,
                 position: 2,
                 start_offset: 5,
                 end_offset: 7,
@@ -808,6 +877,7 @@ mod tests {
             "is".to_string(),
             &TokenEntry {
                 type_: "<ALPHANUM>".to_string(),
+                array_index: 0,
                 position: 7,
                 start_offset: 24,
                 end_offset: 26,
@@ -839,6 +909,7 @@ mod tests {
                 0,
                 false,
                 vec![2, 7],
+                0,
             )
             .expect("no matches found");
         let mut expect = HashSet::new();
@@ -846,6 +917,7 @@ mod tests {
             "this".to_string(),
             &TokenEntry {
                 type_: "<ALPHANUM>".to_string(),
+                array_index: 0,
                 position: 1,
                 start_offset: 0,
                 end_offset: 4,
@@ -855,6 +927,7 @@ mod tests {
             "this".to_string(),
             &TokenEntry {
                 type_: "<ALPHANUM>".to_string(),
+                array_index: 0,
                 position: 6,
                 start_offset: 19,
                 end_offset: 23,
@@ -886,6 +959,7 @@ mod tests {
                 3,
                 true,
                 vec![1, 6],
+                0,
             )
             .expect("no matches found");
         let mut expect = HashSet::new();
@@ -893,6 +967,7 @@ mod tests {
             "test".to_string(),
             &TokenEntry {
                 type_: "<ALPHANUM>".to_string(),
+                array_index: 0,
                 position: 4,
                 start_offset: 10,
                 end_offset: 14,
@@ -902,6 +977,7 @@ mod tests {
             "test".to_string(),
             &TokenEntry {
                 type_: "<ALPHANUM>".to_string(),
+                array_index: 0,
                 position: 10,
                 start_offset: 34,
                 end_offset: 38,
@@ -935,6 +1011,7 @@ mod tests {
                 3,
                 false,
                 vec![3, 9],
+                0,
             )
             .expect("no matches found");
         let mut expect = HashSet::new();
@@ -942,6 +1019,7 @@ mod tests {
             "this".to_string(),
             &TokenEntry {
                 type_: "<ALPHANUM>".to_string(),
+                array_index: 0,
                 position: 1,
                 start_offset: 0,
                 end_offset: 4,
@@ -951,6 +1029,7 @@ mod tests {
             "this".to_string(),
             &TokenEntry {
                 type_: "<ALPHANUM>".to_string(),
+                array_index: 0,
                 position: 6,
                 start_offset: 19,
                 end_offset: 23,

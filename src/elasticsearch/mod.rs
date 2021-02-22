@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-mod aggregates;
+pub(crate) mod aggregates;
 mod aliases;
 pub(crate) mod analyze;
 mod bulk;
@@ -40,17 +40,17 @@ use crate::elasticsearch::search::ElasticsearchSearchRequest;
 use crate::elasticsearch::suggest_term::ElasticsearchSuggestTermRequest;
 use crate::elasticsearch::update_settings::ElasticsearchUpdateSettingsRequest;
 use crate::executor_manager::get_executor_manager;
-use crate::utils::{find_zdb_index, is_nested_field};
+use crate::utils::is_nested_field;
 use crate::zdbquery::ZDBPreparedQuery;
 pub use bulk::*;
 pub use create_index::*;
 use lazy_static::*;
 use pgx::*;
-use reqwest::RequestBuilder;
 use serde::de::DeserializeOwned;
 use serde_json::json;
 use serde_json::Value;
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 use std::io::Read;
 
 lazy_static! {
@@ -71,17 +71,34 @@ pub mod pg_catalog {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Elasticsearch {
     options: ZDBIndexOptions,
 }
 
 #[derive(Debug)]
-pub struct ElasticsearchError(Option<reqwest::StatusCode>, String);
+pub struct ElasticsearchError(Option<u16>, String);
+
+impl Display for ElasticsearchError {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(
+            fmt,
+            "{}{}",
+            self.0
+                .as_ref()
+                .map_or(String::new(), |code| format!("HTTP {} ", code)),
+            self.1
+        )
+    }
+}
 
 impl ElasticsearchError {
-    pub fn status(&self) -> Option<reqwest::StatusCode> {
+    pub fn status(&self) -> Option<u16> {
         self.0
+    }
+
+    pub fn is_404(&self) -> bool {
+        self.0 == Some(404)
     }
 
     pub fn message(&self) -> &str {
@@ -92,7 +109,7 @@ impl ElasticsearchError {
 impl Elasticsearch {
     pub fn new(relation: &PgRelation) -> Self {
         Elasticsearch {
-            options: ZDBIndexOptions::from_relation(&find_zdb_index(relation, true).unwrap()),
+            options: ZDBIndexOptions::from_relation(relation),
         }
     }
 
@@ -100,19 +117,36 @@ impl Elasticsearch {
         Elasticsearch { options }
     }
 
-    pub fn client() -> reqwest::Client {
-        reqwest::ClientBuilder::new()
-            .gzip(true)
-            .timeout(std::time::Duration::from_secs(3600))
-            .build()
-            .expect("failed to build reqwest Client")
+    pub fn index_relation(&self) -> PgRelation {
+        self.options.index_relation()
+    }
+
+    pub fn heap_relation(&self) -> PgRelation {
+        self.options.heap_relation()
+    }
+
+    pub fn is_shadow_index(&self) -> bool {
+        self.options.is_shadow_index()
+    }
+
+    pub fn client() -> &'static ureq::Agent {
+        lazy_static::lazy_static! {
+            static ref AGENT: ureq::Agent = {
+                ureq::AgentBuilder::new()
+                .timeout_read(std::time::Duration::from_secs(3600))  // a 1hr timeout waiting on ES to return
+                .max_idle_connections_per_host(num_cpus::get())     // 1 for each CPU -- only really used during _bulk
+                .build()
+            };
+        }
+
+        &AGENT
     }
 
     pub fn arbitrary_request(
         &self,
         method: ArbitraryRequestType,
         mut endpoint: &str,
-        post_data: Option<&'static str>,
+        post_data: Option<serde_json::Value>,
     ) -> Result<String, ElasticsearchError> {
         let mut url = String::new();
 
@@ -128,20 +162,19 @@ impl Elasticsearch {
 
         url.push_str(endpoint);
 
-        let mut builder = match method {
+        let request = match method {
             ArbitraryRequestType::GET => Elasticsearch::client().get(&url),
             ArbitraryRequestType::POST => Elasticsearch::client().post(&url),
             ArbitraryRequestType::PUT => Elasticsearch::client().put(&url),
             ArbitraryRequestType::DELETE => Elasticsearch::client().delete(&url),
         };
 
-        if let Some(post_data) = post_data {
-            builder = builder
-                .header("content-type", "application/json")
-                .body(post_data);
-        }
-
-        Elasticsearch::execute_request(builder, |_, body| Ok(body))
+        Elasticsearch::execute_json_request(request, post_data, |body| {
+            let mut response = Vec::new();
+            body.read_to_end(&mut response)
+                .expect("failed to read response stream");
+            Ok(String::from_utf8(response).expect("arbitrary request response is not valid UTF8"))
+        })
     }
 
     pub fn analyze_text(&self, analyzer: &str, text: &str) -> ElasticsearchAnalyzerRequest {
@@ -380,32 +413,77 @@ impl Elasticsearch {
         self.options.type_name()
     }
 
-    pub fn execute_request<F, R>(
-        builder: RequestBuilder,
+    pub fn execute_request<F, R, Reader: std::io::Read>(
+        request: ureq::Request,
+        post_data: Reader,
         response_parser: F,
     ) -> std::result::Result<R, ElasticsearchError>
     where
-        F: FnOnce(reqwest::StatusCode, String) -> std::result::Result<R, ElasticsearchError>,
+        F: FnOnce(&mut (dyn std::io::Read + Send)) -> std::result::Result<R, ElasticsearchError>,
     {
-        match builder.send() {
-            // the request was processed by ES, but maybe not successfully
-            Ok(mut response) => {
-                let code = response.status();
-                let mut body_string = String::new();
-                response
-                    .read_to_string(&mut body_string)
-                    .expect("unable to convert HTTP response to a string");
+        Elasticsearch::handle_response(response_parser, request.send(post_data))
+    }
 
-                if code.as_u16() != 200 {
-                    // it wasn't a valid response code
-                    Err(ElasticsearchError(Some(code), body_string))
-                } else {
-                    response_parser(code, body_string)
-                }
+    pub fn execute_json_request<F, R>(
+        request: ureq::Request,
+        post_data: Option<serde_json::Value>,
+        response_parser: F,
+    ) -> std::result::Result<R, ElasticsearchError>
+    where
+        F: FnOnce(&mut (dyn std::io::Read + Send)) -> std::result::Result<R, ElasticsearchError>,
+    {
+        let response = if post_data.is_some() {
+            request.send_json(post_data.unwrap())
+        } else {
+            request.call()
+        };
+
+        Elasticsearch::handle_response(response_parser, response)
+    }
+
+    fn handle_response<F, R>(
+        response_parser: F,
+        response: Result<ureq::Response, ureq::Error>,
+    ) -> Result<R, ElasticsearchError>
+    where
+        F: FnOnce(&mut (dyn Read + Send)) -> std::result::Result<R, ElasticsearchError>,
+    {
+        match response {
+            // the request was processed by ES, but maybe not successfully
+            Ok(response) => {
+                let mut reader = std::io::BufReader::new(response.into_reader());
+                response_parser(&mut reader)
+            }
+
+            // it wasn't a valid HTTP response code
+            Err(ureq::Error::Status(code, response)) => {
+                let as_string = match response.content_type() {
+                    "application/json" => {
+                        let value: serde_json::Value =
+                            serde_json::from_reader(response.into_reader()).unwrap();
+                        serde_json::to_string_pretty(&value).unwrap()
+                    }
+
+                    "application/cbor" => {
+                        // this might look a little weird but we're using serde_cbor to decode
+                        // the error response into a serde_json value so that we can convert it
+                        // into a String
+                        let value: serde_json::Value =
+                            serde_cbor::from_reader(response.into_reader()).unwrap();
+                        serde_json::to_string_pretty(&value).unwrap()
+                    }
+
+                    _ => response
+                        .into_string()
+                        .unwrap_or_else(|_| "no response data".into()),
+                };
+
+                // and return it back to the caller
+                Err(ElasticsearchError(Some(code), as_string))
             }
 
             // the request didn't reach ES
-            Err(e) => Err(ElasticsearchError(e.status(), e.to_string())),
+            Err(e) => Err(ElasticsearchError(None, e.to_string())),
         }
     }
 
@@ -452,9 +530,13 @@ fn request(
     index: PgRelation,
     endpoint: &str,
     method: default!(ArbitraryRequestType, "'GET'"),
-    post_data: Option<default!(&'static str, "NULL")>,
-) -> String {
+    post_data: Option<default!(JsonB, "NULL")>,
+    null_on_error: Option<default!(bool, false)>,
+) -> Option<String> {
     let es = Elasticsearch::new(&index);
-    es.arbitrary_request(method, endpoint, post_data)
-        .expect("failed to execute arbitrary request")
+    match es.arbitrary_request(method, endpoint, post_data.map_or(None, |v| Some(v.0))) {
+        Ok(response) => Some(response),
+        Err(_) if null_on_error.unwrap_or(false) => None,
+        Err(e) => panic!("{:?}", e),
+    }
 }
