@@ -387,7 +387,10 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
     } else if is_a(node, pg_sys::NodeTag_T_Var) {
     } else if is_a(node, pg_sys::NodeTag_T_Const) {
     } else if is_a(node, pg_sys::NodeTag_T_Param) {
-    } else if is_a(node, pg_sys::NodeTag_T_CaseTestExpr) {
+    } else if is_a(node, pg_sys::NodeTag_T_ArrayCoerceExpr) {
+        let expr = PgBox::from_pg(node as *mut pg_sys::ArrayCoerceExpr);
+        walk_node(expr.arg as NodePtr, context);
+        walk_node(expr.elemexpr as NodePtr, context);
     } else {
         let mut did_it = false;
         #[cfg(any(feature = "pg12", feature = "pg13"))]
@@ -411,7 +414,7 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
         }
 
         if !did_it {
-            warning!("unrecognized tag: {}", node.as_ref().unwrap().type_);
+            debug1!("unrecognized tag: {}", node.as_ref().unwrap().type_);
         }
     }
 }
