@@ -17,6 +17,7 @@ mod global;
 mod histogram;
 mod ip_range;
 mod metrics;
+mod missing;
 mod range;
 mod sampler;
 mod terms;

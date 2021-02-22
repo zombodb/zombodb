@@ -842,4 +842,18 @@ RETURNS JsonB
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-iprange-aggregation.html
 Just like the dedicated date range aggregation, there is also a dedicated range aggregation for IP typed fields.
 
+---
+## `missing_agg`
+```sql
+FUNCTION zdb.missing_agg (
+    aggregate_name: text,
+    field: text,
+)
+RETURNS JsonB
+``` 
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-missing-aggregation.html
+A field data based single bucket aggregation, that creates a bucket of all documents in the current document set context that are missing a field value (effectively, missing a field or having the configured NULL value set).
+
+
+
 
