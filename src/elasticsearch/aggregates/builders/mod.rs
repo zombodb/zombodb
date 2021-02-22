@@ -21,6 +21,7 @@ mod missing;
 mod nested;
 mod parent;
 mod range;
+mod rare_terms;
 mod sampler;
 mod terms;
 

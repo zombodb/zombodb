@@ -93,3 +93,5 @@ elasticsearch_aggregates_builders_ip_range.generated.sql
 _finalize.sql
 elasticsearch_aggregates_builders_missing.generated.sql
 elasticsearch_aggregates_builders_nested.generated.sql
+elasticsearch_aggregates_builders_parent.generated.sql
+elasticsearch_aggregates_builders_rare_terms.generated.sql

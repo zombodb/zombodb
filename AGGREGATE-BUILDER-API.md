@@ -879,3 +879,20 @@ RETURNS JsonB
 ``` 
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-parent-aggregation.html
 A special single bucket aggregation that selects parent documents that have the specified type, as defined in a join field.
+
+---
+## `rare_terms_agg`
+```sql
+FUNCTION zdb.parent_agg (
+    aggregate_name text, 
+    field text, 
+    max_doc_count bigint DEFAULT NULL::bigint, 
+    "precision" double precision DEFAULT NULL::double precision, 
+    include text[] DEFAULT NULL::text[], 
+    exclude text[] DEFAULT NULL::text[], 
+    missing text DEFAULT NULL::text
+)
+RETURNS JsonB
+``` 
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-rare-terms-aggregation.html
+A multi-bucket value source based aggregation which finds "rare" terms — terms that are at the long-tail of the distribution and are not frequent.
