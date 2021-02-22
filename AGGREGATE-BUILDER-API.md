@@ -821,3 +821,5 @@ RETURNS JsonB
 ``` 
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-iprange-aggregation.html
 Just like the dedicated date range aggregation, there is also a dedicated range aggregation for IP typed fields.
+
+
