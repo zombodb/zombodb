@@ -18,6 +18,7 @@ mod histogram;
 mod ip_range;
 mod metrics;
 mod missing;
+mod nested;
 mod range;
 mod sampler;
 mod terms;

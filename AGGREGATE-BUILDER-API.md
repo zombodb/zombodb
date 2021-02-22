@@ -740,7 +740,7 @@ FUNCTION zdb.diversified_sampler_agg (
     shard_size: bigint,
     max_docs_per_value bigint DEFAULT NULL::bigint,
     execution_hint zdb.executionhint DEFAULT NULL::zdb.executionhint,
-    children: jsonb[] DEFAULT NULL::jsonb[],
+    children: jsonb[] DEFAULT NULL::jsonb[]
 )
 RETURNS JsonB
 ```
@@ -855,5 +855,16 @@ https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-
 A field data based single bucket aggregation, that creates a bucket of all documents in the current document set context that are missing a field value (effectively, missing a field or having the configured NULL value set).
 
 
-
+---
+## `nested_agg`
+```sql
+FUNCTION zdb.nested_agg (
+    aggregate_name: text,
+    field: text,
+    children: jsonb[] DEFAULT NULL::jsonb[]
+)
+RETURNS JsonB
+``` 
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-nested-aggregation.html
+A special single bucket aggregation that enables aggregating nested documents.
 
