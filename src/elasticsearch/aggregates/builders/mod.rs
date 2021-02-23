@@ -24,6 +24,7 @@ mod range;
 mod rare_terms;
 mod reversed_nested;
 mod sampler;
+mod significant_terms;
 mod terms;
 
 pub(crate) fn make_children_map(

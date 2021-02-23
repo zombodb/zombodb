@@ -911,3 +911,18 @@ https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-
 A special single bucket aggregation that enables aggregating on parent docs from nested documents.
 
 
+---
+## `significant_terms_agg`
+```sql
+FUNCTION zdb.significant_terms_agg (
+    aggregate_name text, 
+    field text, 
+    min_doc_count bigint DEFAULT NULL::bigint, 
+    size bigint DEFAULT NULL::bigint,
+    background_filter zdbquery DEFAULT NULL::zdbquery
+)
+RETURNS JsonB
+```
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-significantterms-aggregation.html
+An aggregation that returns interesting or unusual occurrences of terms in a set.
+
