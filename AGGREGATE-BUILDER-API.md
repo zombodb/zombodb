@@ -896,3 +896,18 @@ RETURNS JsonB
 ``` 
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-rare-terms-aggregation.html
 A multi-bucket value source based aggregation which finds "rare" terms — terms that are at the long-tail of the distribution and are not frequent.
+
+---
+## `reverse_nested_agg`
+```sql
+FUNCTION zdb.reverse_nested_agg (
+    aggregate_name text,    
+    path text DEFAULT NULL::text, 
+    children jsonb[] DEFAULT NULL::jsonb[]
+)
+RETURNS JsonB
+```
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-reverse-nested-aggregation.html
+A special single bucket aggregation that enables aggregating on parent docs from nested documents.
+
+

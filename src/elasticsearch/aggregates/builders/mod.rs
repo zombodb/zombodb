@@ -22,6 +22,7 @@ mod nested;
 mod parent;
 mod range;
 mod rare_terms;
+mod reversed_nested;
 mod sampler;
 mod terms;
 
