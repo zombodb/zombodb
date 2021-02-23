@@ -926,3 +926,22 @@ RETURNS JsonB
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-significantterms-aggregation.html
 An aggregation that returns interesting or unusual occurrences of terms in a set.
 
+---
+## `significant_text_agg`
+```sql
+FUNCTION zdb.significant_text_agg (
+    aggregate_name text, 
+    field text, 
+    filter_duplicate_text boolean DEFAULT NULL::boolean,
+    min_doc_count bigint DEFAULT NULL::bigint, 
+    size bigint DEFAULT NULL::bigint,
+    background_filter zdbquery DEFAULT NULL::zdbquery,
+    source_fields text[] DEFAULT NULL::text[]
+)
+RETURNS JsonB
+```
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-significanttext-aggregation.html
+An aggregation that returns interesting or unusual occurrences of free-text terms in a set.
+
+
+
