@@ -27,6 +27,7 @@ mod sampler;
 mod significant_terms;
 mod significant_text;
 mod terms;
+mod variable_width_histogram;
 
 pub(crate) fn make_children_map(
     children: Option<Vec<JsonB>>,

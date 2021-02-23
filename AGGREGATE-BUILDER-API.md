@@ -943,5 +943,20 @@ RETURNS JsonB
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-significanttext-aggregation.html
 An aggregation that returns interesting or unusual occurrences of free-text terms in a set.
 
+---
+## `variable_width_histogram_agg`
+```sql
+FUNCTION zdb.variable_width_histogram_agg (
+    aggregate_name text, 
+    field text, 
+    bucket bigint DEFAULT NULL::bigint, 
+    shard_size bigint DEFAULT NULL::bigint, 
+    initial_buffer bigint DEFAULT NULL::bigint
+)
+RETURNS JsonB
+```
+
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-variablewidthhistogram-aggregation.html
+This is a multi-bucket aggregation similar to Histogram. However, the width of each bucket is not specified.
 
 
