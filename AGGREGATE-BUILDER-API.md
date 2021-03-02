@@ -1014,5 +1014,16 @@ RETURNS JsonB
 A parent pipeline aggregation which sorts the buckets of its parent multi-bucket aggregation.
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-bucket-sort-aggregation.html
 
+---
+## `cumulative_cardinality_pipeline_agg`
+```sql
+FUNCTION zdb.cumulative_cardinality_pipeline_agg (
+        bucket_path text,
+    format bigint DEFAULT NULL::bigint
+)
+RETURNS JsonB
+```
+A parent pipeline aggregation which calculates the Cumulative Cardinality in a parent histogram (or date_histogram) aggregation.
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-cumulative-cardinality-aggregation.html
 
 

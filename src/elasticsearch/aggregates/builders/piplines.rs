@@ -3,6 +3,22 @@
 //! https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-avg-bucket-aggregation.html
 //! https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-bucket-script-aggregation.html
 //! https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-bucket-selector-aggregation.html
+//! https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-bucket-sort-aggregation.html
+//! https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-cumulative-cardinality-aggregation.html
+//! https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-cumulative-sum-aggregation.html
+//! https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-derivative-aggregation.html
+//! https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-extended-stats-bucket-aggregation.html
+//! https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-inference-bucket-aggregation.html
+//! https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-max-bucket-aggregation.html
+//! https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-min-bucket-aggregation.html
+//! https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-movavg-aggregation.html
+//! https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-movfn-aggregation.html
+//! https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-moving-percentiles-aggregation.html
+//! https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-normalize-aggregation.html
+//! https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-percentiles-bucket-aggregation.html
+//! https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-serialdiff-aggregation.html
+//! https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-stats-bucket-aggregation.html
+//! https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-sum-bucket-aggregation.html
 //!
 //! Returns JsonB that is a Filer ES Query
 
@@ -117,33 +133,23 @@ fn bucket_selector_pipeline_agg(
 }
 
 #[pg_extern(immutable, parallel_safe)]
-fn bucket_sort_pipeline_agg(
-    sort: Option<default!(Vec<Json>, NULL)>,
-    from: Option<default!(i64, NULL)>,
-    size: Option<default!(i64, NULL)>,
+fn cumulative_cardinality_pipeline_agg(
+    bucket_path: &str,
     gap_policy: Option<default!(GapPolicy, NULL)>,
 ) -> JsonB {
     #[derive(Serialize)]
-    struct BucketSort {
-        #[serde(skip_serializing_if = "Option::is_none")]
-        sort: Option<Vec<Json>>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        from: Option<i64>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        size: Option<i64>,
+    struct CumulativeCardinality<'a> {
+        bucket_path: &'a str,
         #[serde(skip_serializing_if = "Option::is_none")]
         gap_policy: Option<GapPolicy>,
     }
-    let bucket = BucketSort {
-        sort,
-        from,
-        size,
+    let cumulative_cardinality = CumulativeCardinality {
+        bucket_path,
         gap_policy,
     };
-
     JsonB(json! {
        {
-         "bucket_sort": bucket
+         "cumulative_cardinality": cumulative_cardinality
        }
     })
 }
