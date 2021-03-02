@@ -955,8 +955,33 @@ FUNCTION zdb.variable_width_histogram_agg (
 )
 RETURNS JsonB
 ```
-
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-bucket-variablewidthhistogram-aggregation.html
 This is a multi-bucket aggregation similar to Histogram. However, the width of each bucket is not specified.
 
+---
+## `avg_pipeling_agg`
+```sql
+FUNCTION zdb.avg_pipeline_agg (
+    bucket_path text,
+    gap_policy zdb.gappolicy DEFAULT NULL::zdb.gappolicy, 
+    format bigint DEFAULT NULL::bigint
+)
+RETURNS JsonB
+```
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-avg-bucket-aggregation.html
+A sibling pipeline aggregation which calculates the (mean) average value of a specified metric in a sibling aggregation.
 
+---
+## `bucket_script_pipeline_agg`
+```sql
+FUNCTION zdb.bucket_script_pipeline_agg (
+    script text,
+    bucket_path_var text[],
+    bucket_path_param text[],
+    gap_policy zdb.gappolicy DEFAULT NULL::zdb.gappolicy,
+    format bigint DEFAULT NULL::bigint
+)
+RETURNS JsonB
+```
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-bucket-script-aggregation.html
+A parent pipeline aggregation which executes a script which can perform per bucket computations on specified metrics in the parent multi-bucket aggregation.

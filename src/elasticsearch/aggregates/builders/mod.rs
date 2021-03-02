@@ -20,6 +20,7 @@ mod metrics;
 mod missing;
 mod nested;
 mod parent;
+mod piplines;
 mod range;
 mod rare_terms;
 mod reversed_nested;
