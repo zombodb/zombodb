@@ -985,3 +985,18 @@ RETURNS JsonB
 ```
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-bucket-script-aggregation.html
 A parent pipeline aggregation which executes a script which can perform per bucket computations on specified metrics in the parent multi-bucket aggregation.
+
+---
+## `bucket_selector_pipeline_agg`
+```sql
+FUNCTION zdb.bucket_selector_pipeline_agg (
+    script text,
+    bucket_path_var text[],
+    bucket_path_param text[],
+    gap_policy zdb.gappolicy DEFAULT NULL::zdb.gappolicy
+)
+RETURNS JsonB
+```
+A parent pipeline aggregation which executes a script which determines whether the current bucket will be retained in the parent multi-bucket aggregation.
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-bucket-selector-aggregation.html
+
