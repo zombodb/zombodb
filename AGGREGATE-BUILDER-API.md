@@ -1026,4 +1026,28 @@ RETURNS JsonB
 A parent pipeline aggregation which calculates the Cumulative Cardinality in a parent histogram (or date_histogram) aggregation.
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-cumulative-cardinality-aggregation.html
 
+---
+## `cumulative_sum_pipeline_agg`
+```sql
+FUNCTION zdb.cumulative_sum_pipeline_agg (
+        bucket_path text,
+    format bigint DEFAULT NULL::bigint
+)
+RETURNS JsonB
+```
+A parent pipeline aggregation which calculates the cumulative sum of a specified metric in a parent histogram (or date_histogram) aggregation.
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-cumulative-sum-aggregation.html
+
+---
+## `derivative_pipeline_agg`
+```sql
+FUNCTION zdb.derivative_pipeline_agg (
+    bucket_path text,
+    gap_policy zdb.gappolicy DEFAULT NULL::zdb.gappolicy, 
+    format bigint DEFAULT NULL::bigint
+)
+RETURNS JsonB
+```
+A parent pipeline aggregation which calculates the derivative of a specified metric in a parent histogram (or date_histogram) aggregation.
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-derivative-aggregation.html
 

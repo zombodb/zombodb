@@ -153,3 +153,52 @@ fn cumulative_cardinality_pipeline_agg(
        }
     })
 }
+
+#[pg_extern(immutable, parallel_safe)]
+fn cumulative_sum_pipeline_agg(
+    bucket_path: &str,
+    gap_policy: Option<default!(GapPolicy, NULL)>,
+) -> JsonB {
+    #[derive(Serialize)]
+    struct CumulativeSum<'a> {
+        bucket_path: &'a str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        gap_policy: Option<GapPolicy>,
+    }
+    let cumulative_sum = CumulativeSum {
+        bucket_path,
+        gap_policy,
+    };
+    JsonB(json! {
+       {
+         "cumulative_sum": cumulative_sum
+       }
+    })
+}
+
+#[pg_extern(immutable, parallel_safe)]
+fn derivative_pipeline_agg(
+    bucket_path: &str,
+    gap_policy: Option<default!(GapPolicy, NULL)>,
+    format: Option<default!(i64, NULL)>,
+) -> JsonB {
+    #[derive(Serialize)]
+    struct Derivative<'a> {
+        bucket_path: &'a str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        gap_policy: Option<GapPolicy>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        format: Option<i64>,
+    }
+    let bucket = Derivative {
+        bucket_path,
+        gap_policy,
+        format,
+    };
+
+    JsonB(json! {
+       {
+         "derivative": bucket
+       }
+    })
+}
