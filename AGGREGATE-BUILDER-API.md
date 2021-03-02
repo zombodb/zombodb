@@ -1051,3 +1051,17 @@ RETURNS JsonB
 A parent pipeline aggregation which calculates the derivative of a specified metric in a parent histogram (or date_histogram) aggregation.
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-derivative-aggregation.html
 
+---
+## `extended_stats_bucket_pipeline_agg`
+```sql
+FUNCTION zdb.extended_stats_bucket_pipeline_agg (
+    bucket_path text,
+    gap_policy zdb.gappolicy DEFAULT NULL::zdb.gappolicy, 
+    format bigint DEFAULT NULL::bigint
+    stigma bigint DEFAULT NULL::bigint
+)
+RETURNS JsonB
+```
+A sibling pipeline aggregation which calculates a variety of stats across all bucket of a specified metric in a sibling aggregation.
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-extended-stats-bucket-aggregation.html
+

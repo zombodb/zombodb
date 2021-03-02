@@ -202,3 +202,34 @@ fn derivative_pipeline_agg(
        }
     })
 }
+
+#[pg_extern(immutable, parallel_safe)]
+fn extended_stats_bucket_pipeline_agg(
+    bucket_path: &str,
+    gap_policy: Option<default!(GapPolicy, NULL)>,
+    format: Option<default!(i64, NULL)>,
+    stigma: Option<default!(i64, NULL)>,
+) -> JsonB {
+    #[derive(Serialize)]
+    struct ExtendedStatsBucket<'a> {
+        bucket_path: &'a str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        gap_policy: Option<GapPolicy>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        format: Option<i64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        stigma: Option<i64>,
+    }
+    let bucket = ExtendedStatsBucket {
+        bucket_path,
+        gap_policy,
+        format,
+        stigma,
+    };
+
+    JsonB(json! {
+       {
+         "extended_stats_bucket": bucket
+       }
+    })
+}
