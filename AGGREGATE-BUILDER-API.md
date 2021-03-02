@@ -1000,3 +1000,19 @@ RETURNS JsonB
 A parent pipeline aggregation which executes a script which determines whether the current bucket will be retained in the parent multi-bucket aggregation.
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-bucket-selector-aggregation.html
 
+---
+## `bucket_sort_pipeline_agg`
+```sql
+FUNCTION zdb.bucket_sort_pipeline_agg (
+    sort json[] DEFAULT NULL::json[], 
+    "from" bigint DEFAULT NULL::bigint, 
+    size bigint DEFAULT NULL::bigint,
+    gap_policy zdb.gappolicy DEFAULT NULL::zdb.gappolicy
+)
+RETURNS JsonB
+```
+A parent pipeline aggregation which sorts the buckets of its parent multi-bucket aggregation.
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-bucket-sort-aggregation.html
+
+
+

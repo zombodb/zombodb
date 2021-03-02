@@ -115,3 +115,35 @@ fn bucket_selector_pipeline_agg(
        }
     })
 }
+
+#[pg_extern(immutable, parallel_safe)]
+fn bucket_sort_pipeline_agg(
+    sort: Option<default!(Vec<Json>, NULL)>,
+    from: Option<default!(i64, NULL)>,
+    size: Option<default!(i64, NULL)>,
+    gap_policy: Option<default!(GapPolicy, NULL)>,
+) -> JsonB {
+    #[derive(Serialize)]
+    struct BucketSort {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        sort: Option<Vec<Json>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        from: Option<i64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        size: Option<i64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        gap_policy: Option<GapPolicy>,
+    }
+    let bucket = BucketSort {
+        sort,
+        from,
+        size,
+        gap_policy,
+    };
+
+    JsonB(json! {
+       {
+         "bucket_sort": bucket
+       }
+    })
+}
