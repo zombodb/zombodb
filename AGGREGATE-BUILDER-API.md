@@ -1065,3 +1065,61 @@ RETURNS JsonB
 A sibling pipeline aggregation which calculates a variety of stats across all bucket of a specified metric in a sibling aggregation.
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-extended-stats-bucket-aggregation.html
 
+---
+## `inference_pipeline_agg`
+```sql
+FUNCTION zdb.inference (
+    model_id text, 
+    bucket_path text, 
+    inference_config json DEFAULT NULL::json
+)
+RETURNS JsonB
+```
+A parent pipeline aggregation which loads a pre-trained model and performs inference on the collated result fields from the parent bucket aggregation.
+This functionality is experimental and may be changed or removed completely in a future release.
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-inference-bucket-aggregation.html
+
+---
+## `max_pipeline_agg`
+```sql
+FUNCTION zdb.max_pipeline_agg (
+    bucket_path text,
+    gap_policy zdb.gappolicy DEFAULT NULL::zdb.gappolicy, 
+    format bigint DEFAULT NULL::bigint
+)
+RETURNS JsonB
+```
+A sibling pipeline aggregation which identifies the bucket(s) with the maximum value of a specified metric in a sibling aggregation and outputs both the value and the key(s) of the bucket(s).
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-max-bucket-aggregation.html
+
+---
+## `min_pipeline_agg`
+```sql
+FUNCTION zdb.min_pipeline_agg (
+    bucket_path text,
+    gap_policy zdb.gappolicy DEFAULT NULL::zdb.gappolicy, 
+    format bigint DEFAULT NULL::bigint
+)
+RETURNS JsonB
+```
+A sibling pipeline aggregation which identifies the bucket(s) with the minimum value of a specified metric in a sibling aggregation and outputs both the value and the key(s) of the bucket(s)
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-min-bucket-aggregation.html
+
+---
+## `moving_average_pipeline_agg`
+```sql
+FUNCTION zdb.moving_average_pipeline_agg (
+    bucket_path text, 
+    model zdb.model DEFAULT NULL::zdb.model, 
+    gap_policy zdb.gappolicy DEFAULT NULL::zdb.gappolicy,
+    "window" bigint DEFAULT NULL::bigint, 
+    minimize boolean DEFAULT NULL::boolean, 
+    settings json DEFAULT NULL::json
+)
+RETURNS JsonB
+```
+Given an ordered series of data, the Moving Average aggregation will slide a window across the data and emit the average value of that window
+Deprecated in 6.4.0. The Moving Average aggregation has been deprecated in favor of the more general Moving Function Aggregation. The new Moving Function aggregation provides all the same functionality as the Moving Average aggregation, but also provides more flexibility.
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-movavg-aggregation.html
+
+

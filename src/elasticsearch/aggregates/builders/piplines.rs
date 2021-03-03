@@ -32,6 +32,14 @@ pub enum GapPolicy {
     Skip,
     InsertZeros,
 }
+#[derive(PostgresEnum, Serialize, Deserialize)]
+pub enum Model {
+    Simple,
+    Linear,
+    Ewma,
+    Holt,
+    HoltWinters,
+}
 
 #[pg_extern(immutable, parallel_safe)]
 fn avg_pipeline_agg(
@@ -230,6 +238,125 @@ fn extended_stats_bucket_pipeline_agg(
     JsonB(json! {
        {
          "extended_stats_bucket": bucket
+       }
+    })
+}
+
+#[pg_extern(immutable, parallel_safe)]
+fn inference_pipeline_agg(
+    model_id: &str,
+    bucket_path: &str,
+    inference_config: Option<default!(Json, NULL)>,
+) -> JsonB {
+    #[derive(Serialize)]
+    struct Inference<'a> {
+        model_id: &'a str,
+        bucket_path: &'a str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        inference_config: Option<Json>,
+    }
+    let bucket = Inference {
+        model_id,
+        bucket_path,
+        inference_config,
+    };
+
+    JsonB(json! {
+       {
+         "inference": bucket
+       }
+    })
+}
+
+#[pg_extern(immutable, parallel_safe)]
+fn max_pipeline_agg(
+    bucket_path: &str,
+    gap_policy: Option<default!(GapPolicy, NULL)>,
+    format: Option<default!(i64, NULL)>,
+) -> JsonB {
+    #[derive(Serialize)]
+    struct Max<'a> {
+        bucket_path: &'a str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        gap_policy: Option<GapPolicy>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        format: Option<i64>,
+    }
+    let bucket = Max {
+        bucket_path,
+        gap_policy,
+        format,
+    };
+
+    JsonB(json! {
+       {
+         "max": bucket
+       }
+    })
+}
+
+#[pg_extern(immutable, parallel_safe)]
+fn min_pipeline_agg(
+    bucket_path: &str,
+    gap_policy: Option<default!(GapPolicy, NULL)>,
+    format: Option<default!(i64, NULL)>,
+) -> JsonB {
+    #[derive(Serialize)]
+    struct Min<'a> {
+        bucket_path: &'a str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        gap_policy: Option<GapPolicy>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        format: Option<i64>,
+    }
+    let bucket = Min {
+        bucket_path,
+        gap_policy,
+        format,
+    };
+
+    JsonB(json! {
+       {
+         "min": bucket
+       }
+    })
+}
+
+#[pg_extern(immutable, parallel_safe)]
+fn moving_average_pipeline_agg(
+    bucket_path: &str,
+    model: Option<default!(Model, NULL)>,
+    gap_policy: Option<default!(GapPolicy, NULL)>,
+    window: Option<default!(i64, NULL)>,
+    minimize: Option<default!(bool, NULL)>,
+    settings: Option<default!(Json, NULL)>,
+) -> JsonB {
+    #[derive(Serialize)]
+    struct MovingAverage<'a> {
+        bucket_path: &'a str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        model: Option<Model>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        gap_policy: Option<GapPolicy>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        window: Option<i64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        minimize: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        settings: Option<Json>,
+    }
+    let bucket = MovingAverage {
+        bucket_path,
+        model,
+        gap_policy,
+        window,
+        minimize,
+        settings,
+    };
+
+    JsonB(json! {
+       {
+         "moving_avg": bucket
        }
     })
 }
