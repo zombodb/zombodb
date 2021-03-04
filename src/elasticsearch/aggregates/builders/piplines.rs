@@ -40,6 +40,15 @@ pub enum Model {
     Holt,
     HoltWinters,
 }
+#[derive(PostgresEnum, Serialize, Deserialize)]
+pub enum Method {
+    Rescale01,
+    Rescale0100,
+    PercentOfSum,
+    Mean,
+    Zscore,
+    Softmax,
+}
 
 #[pg_extern(immutable, parallel_safe)]
 fn avg_pipeline_agg(
@@ -390,6 +399,58 @@ fn moving_function_pipeline_agg(
     JsonB(json! {
        {
          "moving_fn": bucket
+       }
+    })
+}
+
+#[pg_extern(immutable, parallel_safe)]
+fn moving_percentiles_pipeline_agg(
+    bucket_path: &str,
+    window: i64,
+    shift: Option<default!(&str, NULL)>,
+) -> JsonB {
+    #[derive(Serialize)]
+    struct MovingPercentiles<'a> {
+        bucket_path: &'a str,
+        window: i64,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        shift: Option<&'a str>,
+    }
+    let bucket = MovingPercentiles {
+        bucket_path,
+        window,
+        shift,
+    };
+
+    JsonB(json! {
+       {
+         "moving_percentiles": bucket
+       }
+    })
+}
+
+#[pg_extern(immutable, parallel_safe)]
+fn normalize_pipeline_agg(
+    bucket_path: &str,
+    method: Method,
+    format: Option<default!(i64, NULL)>,
+) -> JsonB {
+    #[derive(Serialize)]
+    struct Normalize<'a> {
+        bucket_path: &'a str,
+        method: Method,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        format: Option<i64>,
+    }
+    let bucket = Normalize {
+        bucket_path,
+        method,
+        format,
+    };
+
+    JsonB(json! {
+       {
+         "normalize": bucket
        }
     })
 }

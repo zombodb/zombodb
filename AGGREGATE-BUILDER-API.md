@@ -1137,4 +1137,32 @@ RETURNS JsonB
 Given an ordered series of data, the Moving Function aggregation will slide a window across the data and allow the user to specify a custom script that is executed on each window of data.
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-movfn-aggregation.html
 
+---
+## `moving_percentiles_pipeline_agg`
+```sql
+FUNCTION zdb.moving_percentiles_pipeline_agg (
+    bucket_path text, 
+    "window" bigint,  
+    shift text DEFAULT NULL::text
+)
+RETURNS JsonB
+```
+Given an ordered series of percentiles, the Moving Percentile aggregation will slide a window across those percentiles and allow the user to compute the cumulative percentile.
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-moving-percentiles-aggregation.html
+
+---
+## `normalize_pipeline_agg`
+```sql
+FUNCTION zdb.normalize_pipeline_agg (
+    bucket_path text, 
+    method zdb.method, 
+    format bigint DEFAULT NULL::bigint 
+)
+RETURNS JsonB
+```
+A parent pipeline aggregation which calculates the specific normalized/rescaled value for a specific bucket value.
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-normalize-aggregation.html
+
+
+
 
