@@ -1163,6 +1163,20 @@ RETURNS JsonB
 A parent pipeline aggregation which calculates the specific normalized/rescaled value for a specific bucket value.
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-normalize-aggregation.html
 
+---
+## `percentiles_bucket_pipeline_agg`
+```sql
+FUNCTION zdb.percentiles_bucket_pipeline_agg (
+    bucket_path text, 
+    gap_policy zdb.gappolicy DEFAULT NULL::zdb.gappolicy, 
+    format bigint DEFAULT NULL::bigint, 
+    percents bigint[] DEFAULT NULL::bigint[], 
+    keyed boolean DEFAULT NULL::boolean
+)
+RETURNS JsonB
+```
+A sibling pipeline aggregation which calculates percentiles across all bucket of a specified metric in a sibling aggregation.
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-percentiles-bucket-aggregation.html
 
 
 

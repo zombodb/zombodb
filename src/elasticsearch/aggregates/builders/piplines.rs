@@ -454,3 +454,38 @@ fn normalize_pipeline_agg(
        }
     })
 }
+
+#[pg_extern(immutable, parallel_safe)]
+fn percentiles_bucket_pipeline_agg(
+    bucket_path: &str,
+    gap_policy: Option<default!(GapPolicy, NULL)>,
+    format: Option<default!(i64, NULL)>,
+    percents: Option<default!(Vec<i64>, NULL)>,
+    keyed: Option<default!(bool, NULL)>,
+) -> JsonB {
+    #[derive(Serialize)]
+    struct PercentilesBucket<'a> {
+        bucket_path: &'a str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        gap_policy: Option<GapPolicy>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        format: Option<i64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        percents: Option<Vec<i64>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        keyed: Option<bool>,
+    }
+    let bucket = PercentilesBucket {
+        bucket_path,
+        gap_policy,
+        format,
+        percents,
+        keyed,
+    };
+
+    JsonB(json! {
+       {
+         "percentiles_bucket": bucket
+       }
+    })
+}
