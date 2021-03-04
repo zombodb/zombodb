@@ -489,3 +489,88 @@ fn percentiles_bucket_pipeline_agg(
        }
     })
 }
+
+#[pg_extern(immutable, parallel_safe)]
+fn serial_diff_pipeline_agg(
+    bucket_path: &str,
+    lag: Option<default!(i64, NULL)>,
+    gap_policy: Option<default!(GapPolicy, NULL)>,
+    format: Option<default!(i64, NULL)>,
+) -> JsonB {
+    #[derive(Serialize)]
+    struct SerialDiff<'a> {
+        bucket_path: &'a str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        lag: Option<i64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        gap_policy: Option<GapPolicy>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        format: Option<i64>,
+    }
+    let bucket = SerialDiff {
+        bucket_path,
+        lag,
+        gap_policy,
+        format,
+    };
+
+    JsonB(json! {
+       {
+         "serial_diff": bucket
+       }
+    })
+}
+
+#[pg_extern(immutable, parallel_safe)]
+fn stats_pipeline_agg(
+    bucket_path: &str,
+    gap_policy: Option<default!(GapPolicy, NULL)>,
+    format: Option<default!(i64, NULL)>,
+) -> JsonB {
+    #[derive(Serialize)]
+    struct Stats<'a> {
+        bucket_path: &'a str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        gap_policy: Option<GapPolicy>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        format: Option<i64>,
+    }
+    let bucket = Stats {
+        bucket_path,
+        gap_policy,
+        format,
+    };
+
+    JsonB(json! {
+       {
+         "stats_bucket": bucket
+       }
+    })
+}
+
+#[pg_extern(immutable, parallel_safe)]
+fn sum_pipeline_agg(
+    bucket_path: &str,
+    gap_policy: Option<default!(GapPolicy, NULL)>,
+    format: Option<default!(i64, NULL)>,
+) -> JsonB {
+    #[derive(Serialize)]
+    struct Sum<'a> {
+        bucket_path: &'a str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        gap_policy: Option<GapPolicy>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        format: Option<i64>,
+    }
+    let bucket = Sum {
+        bucket_path,
+        gap_policy,
+        format,
+    };
+
+    JsonB(json! {
+       {
+         "sum_bucket": bucket
+       }
+    })
+}

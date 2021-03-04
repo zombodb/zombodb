@@ -1178,5 +1178,44 @@ RETURNS JsonB
 A sibling pipeline aggregation which calculates percentiles across all bucket of a specified metric in a sibling aggregation.
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-percentiles-bucket-aggregation.html
 
+---
+## `serial_diff_pipeline_agg`
+```sql
+FUNCTION zdb.serial_diff_pipeline_agg (
+    bucket_path text, 
+    gap_policy zdb.gappolicy DEFAULT NULL::zdb.gappolicy, 
+    format bigint DEFAULT NULL::bigint, 
+    percents bigint[] DEFAULT NULL::bigint[], 
+    keyed boolean DEFAULT NULL::boolean
+)
+RETURNS JsonB
+```
+Serial differencing is a technique where values in a time series are subtracted from itself at different time lags or periods.
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-serialdiff-aggregation.html
 
+---
+## `stats_pipeline_agg`
+```sql
+FUNCTION zdb.stats_pipeline_agg (
+    bucket_path text, 
+    lag bigint DEFAULT NULL::bigint, 
+    gap_policy zdb.gappolicy DEFAULT NULL::zdb.gappolicy, 
+    format bigint DEFAULT NULL::bigint 
+)
+RETURNS JsonB
+```
+A sibling pipeline aggregation which calculates a variety of stats across all bucket of a specified metric in a sibling aggregation.
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-stats-bucket-aggregation.html
 
+---
+## `sum_pipeline_agg`
+```sql
+FUNCTION zdb.sum_pipeline_agg (
+    bucket_path text, 
+    gap_policy zdb.gappolicy DEFAULT NULL::zdb.gappolicy, 
+    format bigint DEFAULT NULL::bigint
+)
+RETURNS JsonB
+```
+A sibling pipeline aggregation which calculates the sum across all buckets of a specified metric in a sibling aggregation.
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-sum-bucket-aggregation.html
