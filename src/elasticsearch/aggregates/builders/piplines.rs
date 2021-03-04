@@ -360,3 +360,36 @@ fn moving_average_pipeline_agg(
        }
     })
 }
+
+#[pg_extern(immutable, parallel_safe)]
+fn moving_function_pipeline_agg(
+    bucket_path: &str,
+    window: i64,
+    script: &str,
+    gap_policy: Option<default!(GapPolicy, NULL)>,
+    shift: Option<default!(&str, NULL)>,
+) -> JsonB {
+    #[derive(Serialize)]
+    struct MovingFunction<'a> {
+        bucket_path: &'a str,
+        window: i64,
+        script: &'a str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        gap_policy: Option<GapPolicy>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        shift: Option<&'a str>,
+    }
+    let bucket = MovingFunction {
+        bucket_path,
+        window,
+        script,
+        gap_policy,
+        shift,
+    };
+
+    JsonB(json! {
+       {
+         "moving_fn": bucket
+       }
+    })
+}

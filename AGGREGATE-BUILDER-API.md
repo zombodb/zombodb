@@ -1122,4 +1122,19 @@ Given an ordered series of data, the Moving Average aggregation will slide a win
 Deprecated in 6.4.0. The Moving Average aggregation has been deprecated in favor of the more general Moving Function Aggregation. The new Moving Function aggregation provides all the same functionality as the Moving Average aggregation, but also provides more flexibility.
 https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-movavg-aggregation.html
 
+---
+## `moving_function_pipeline_agg`
+```sql
+FUNCTION zdb.moving_function_pipeline_agg (
+    bucket_path text, 
+    "window" bigint, 
+    script text, 
+    gap_policy zdb.gappolicy DEFAULT NULL::zdb.gappolicy, 
+    shift text DEFAULT NULL::text
+)
+RETURNS JsonB
+```
+Given an ordered series of data, the Moving Function aggregation will slide a window across the data and allow the user to specify a custom script that is executed on each window of data.
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-pipeline-movfn-aggregation.html
+
 
