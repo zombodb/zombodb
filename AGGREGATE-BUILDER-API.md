@@ -964,7 +964,7 @@ This is a multi-bucket aggregation similar to Histogram. However, the width of e
 FUNCTION zdb.avg_pipeline_agg (
     bucket_path text,
     gap_policy zdb.gappolicy DEFAULT NULL::zdb.gappolicy, 
-    format bigint DEFAULT NULL::bigint
+    format text DEFAULT NULL::text 
 )
 RETURNS JsonB
 ```
@@ -979,7 +979,7 @@ FUNCTION zdb.bucket_script_pipeline_agg (
     bucket_path_var text[],
     bucket_path_param text[],
     gap_policy zdb.gappolicy DEFAULT NULL::zdb.gappolicy,
-    format bigint DEFAULT NULL::bigint
+    format text DEFAULT NULL::text 
 )
 RETURNS JsonB
 ```
@@ -1019,7 +1019,7 @@ https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-
 ```sql
 FUNCTION zdb.cumulative_cardinality_pipeline_agg (
         bucket_path text,
-    format bigint DEFAULT NULL::bigint
+    format text DEFAULT NULL::text 
 )
 RETURNS JsonB
 ```
@@ -1031,7 +1031,7 @@ https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-
 ```sql
 FUNCTION zdb.cumulative_sum_pipeline_agg (
         bucket_path text,
-    format bigint DEFAULT NULL::bigint
+    format text DEFAULT NULL::text 
 )
 RETURNS JsonB
 ```
@@ -1044,7 +1044,7 @@ https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-
 FUNCTION zdb.derivative_pipeline_agg (
     bucket_path text,
     gap_policy zdb.gappolicy DEFAULT NULL::zdb.gappolicy, 
-    format bigint DEFAULT NULL::bigint
+    format text DEFAULT NULL::text 
 )
 RETURNS JsonB
 ```
@@ -1057,7 +1057,7 @@ https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-
 FUNCTION zdb.extended_stats_bucket_pipeline_agg (
     bucket_path text,
     gap_policy zdb.gappolicy DEFAULT NULL::zdb.gappolicy, 
-    format bigint DEFAULT NULL::bigint
+    format text DEFAULT NULL::text 
     stigma bigint DEFAULT NULL::bigint
 )
 RETURNS JsonB
@@ -1085,7 +1085,7 @@ https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-
 FUNCTION zdb.max_pipeline_agg (
     bucket_path text,
     gap_policy zdb.gappolicy DEFAULT NULL::zdb.gappolicy, 
-    format bigint DEFAULT NULL::bigint
+    format text DEFAULT NULL::text 
 )
 RETURNS JsonB
 ```
@@ -1098,7 +1098,7 @@ https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-
 FUNCTION zdb.min_pipeline_agg (
     bucket_path text,
     gap_policy zdb.gappolicy DEFAULT NULL::zdb.gappolicy, 
-    format bigint DEFAULT NULL::bigint
+    format text DEFAULT NULL::text 
 )
 RETURNS JsonB
 ```
@@ -1156,7 +1156,7 @@ https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-
 FUNCTION zdb.normalize_pipeline_agg (
     bucket_path text, 
     method zdb.method, 
-    format bigint DEFAULT NULL::bigint 
+    format text DEFAULT NULL::text 
 )
 RETURNS JsonB
 ```
@@ -1169,7 +1169,7 @@ https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-
 FUNCTION zdb.percentiles_bucket_pipeline_agg (
     bucket_path text, 
     gap_policy zdb.gappolicy DEFAULT NULL::zdb.gappolicy, 
-    format bigint DEFAULT NULL::bigint, 
+    format text DEFAULT NULL::text , 
     percents bigint[] DEFAULT NULL::bigint[], 
     keyed boolean DEFAULT NULL::boolean
 )
@@ -1184,7 +1184,7 @@ https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-
 FUNCTION zdb.serial_diff_pipeline_agg (
     bucket_path text, 
     gap_policy zdb.gappolicy DEFAULT NULL::zdb.gappolicy, 
-    format bigint DEFAULT NULL::bigint, 
+    format text DEFAULT NULL::text , 
     percents bigint[] DEFAULT NULL::bigint[], 
     keyed boolean DEFAULT NULL::boolean
 )
@@ -1200,7 +1200,7 @@ FUNCTION zdb.stats_pipeline_agg (
     bucket_path text, 
     lag bigint DEFAULT NULL::bigint, 
     gap_policy zdb.gappolicy DEFAULT NULL::zdb.gappolicy, 
-    format bigint DEFAULT NULL::bigint 
+    format text DEFAULT NULL::text 
 )
 RETURNS JsonB
 ```
@@ -1213,7 +1213,7 @@ https://www.elastic.co/guide/en/elasticsearch/reference/7.9/search-aggregations-
 FUNCTION zdb.sum_pipeline_agg (
     bucket_path text, 
     gap_policy zdb.gappolicy DEFAULT NULL::zdb.gappolicy, 
-    format bigint DEFAULT NULL::bigint
+    format text DEFAULT NULL::text 
 )
 RETURNS JsonB
 ```

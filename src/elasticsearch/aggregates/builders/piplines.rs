@@ -54,7 +54,7 @@ pub enum Method {
 fn avg_pipeline_agg(
     bucket_path: &str,
     gap_policy: Option<default!(GapPolicy, NULL)>,
-    format: Option<default!(i64, NULL)>,
+    format: Option<default!(&str, NULL)>,
 ) -> JsonB {
     #[derive(Serialize)]
     struct AvgBucket<'a> {
@@ -62,7 +62,7 @@ fn avg_pipeline_agg(
         #[serde(skip_serializing_if = "Option::is_none")]
         gap_policy: Option<GapPolicy>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        format: Option<i64>,
+        format: Option<&'a str>,
     }
     let bucket = AvgBucket {
         bucket_path,
@@ -83,7 +83,7 @@ fn bucket_script_pipeline_agg(
     bucket_path_var: Vec<&str>,
     bucket_path_param: Vec<&str>,
     gap_policy: Option<default!(GapPolicy, NULL)>,
-    format: Option<default!(i64, NULL)>,
+    format: Option<default!(&str, NULL)>,
 ) -> JsonB {
     #[derive(Serialize)]
     struct BucketScript<'a> {
@@ -92,7 +92,7 @@ fn bucket_script_pipeline_agg(
         #[serde(skip_serializing_if = "Option::is_none")]
         gap_policy: Option<GapPolicy>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        format: Option<i64>,
+        format: Option<&'a str>,
     }
     if bucket_path_var.len() != bucket_path_param.len() {
         panic!("Not the same amount of bucket path parts given.")
@@ -197,7 +197,7 @@ fn cumulative_sum_pipeline_agg(
 fn derivative_pipeline_agg(
     bucket_path: &str,
     gap_policy: Option<default!(GapPolicy, NULL)>,
-    format: Option<default!(i64, NULL)>,
+    format: Option<default!(&str, NULL)>,
 ) -> JsonB {
     #[derive(Serialize)]
     struct Derivative<'a> {
@@ -205,7 +205,7 @@ fn derivative_pipeline_agg(
         #[serde(skip_serializing_if = "Option::is_none")]
         gap_policy: Option<GapPolicy>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        format: Option<i64>,
+        format: Option<&'a str>,
     }
     let bucket = Derivative {
         bucket_path,
@@ -224,7 +224,7 @@ fn derivative_pipeline_agg(
 fn extended_stats_bucket_pipeline_agg(
     bucket_path: &str,
     gap_policy: Option<default!(GapPolicy, NULL)>,
-    format: Option<default!(i64, NULL)>,
+    format: Option<default!(&str, NULL)>,
     stigma: Option<default!(i64, NULL)>,
 ) -> JsonB {
     #[derive(Serialize)]
@@ -233,7 +233,7 @@ fn extended_stats_bucket_pipeline_agg(
         #[serde(skip_serializing_if = "Option::is_none")]
         gap_policy: Option<GapPolicy>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        format: Option<i64>,
+        format: Option<&'a str>,
         #[serde(skip_serializing_if = "Option::is_none")]
         stigma: Option<i64>,
     }
@@ -281,7 +281,7 @@ fn inference_pipeline_agg(
 fn max_pipeline_agg(
     bucket_path: &str,
     gap_policy: Option<default!(GapPolicy, NULL)>,
-    format: Option<default!(i64, NULL)>,
+    format: Option<default!(&str, NULL)>,
 ) -> JsonB {
     #[derive(Serialize)]
     struct Max<'a> {
@@ -289,7 +289,7 @@ fn max_pipeline_agg(
         #[serde(skip_serializing_if = "Option::is_none")]
         gap_policy: Option<GapPolicy>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        format: Option<i64>,
+        format: Option<&'a str>,
     }
     let bucket = Max {
         bucket_path,
@@ -308,7 +308,7 @@ fn max_pipeline_agg(
 fn min_pipeline_agg(
     bucket_path: &str,
     gap_policy: Option<default!(GapPolicy, NULL)>,
-    format: Option<default!(i64, NULL)>,
+    format: Option<default!(&str, NULL)>,
 ) -> JsonB {
     #[derive(Serialize)]
     struct Min<'a> {
@@ -316,7 +316,7 @@ fn min_pipeline_agg(
         #[serde(skip_serializing_if = "Option::is_none")]
         gap_policy: Option<GapPolicy>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        format: Option<i64>,
+        format: Option<&'a str>,
     }
     let bucket = Min {
         bucket_path,
@@ -433,14 +433,14 @@ fn moving_percentiles_pipeline_agg(
 fn normalize_pipeline_agg(
     bucket_path: &str,
     method: Method,
-    format: Option<default!(i64, NULL)>,
+    format: Option<default!(&str, NULL)>,
 ) -> JsonB {
     #[derive(Serialize)]
     struct Normalize<'a> {
         bucket_path: &'a str,
         method: Method,
         #[serde(skip_serializing_if = "Option::is_none")]
-        format: Option<i64>,
+        format: Option<&'a str>,
     }
     let bucket = Normalize {
         bucket_path,
@@ -459,7 +459,7 @@ fn normalize_pipeline_agg(
 fn percentiles_bucket_pipeline_agg(
     bucket_path: &str,
     gap_policy: Option<default!(GapPolicy, NULL)>,
-    format: Option<default!(i64, NULL)>,
+    format: Option<default!(&str, NULL)>,
     percents: Option<default!(Vec<i64>, NULL)>,
     keyed: Option<default!(bool, NULL)>,
 ) -> JsonB {
@@ -469,7 +469,7 @@ fn percentiles_bucket_pipeline_agg(
         #[serde(skip_serializing_if = "Option::is_none")]
         gap_policy: Option<GapPolicy>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        format: Option<i64>,
+        format: Option<&'a str>,
         #[serde(skip_serializing_if = "Option::is_none")]
         percents: Option<Vec<i64>>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -495,7 +495,7 @@ fn serial_diff_pipeline_agg(
     bucket_path: &str,
     lag: Option<default!(i64, NULL)>,
     gap_policy: Option<default!(GapPolicy, NULL)>,
-    format: Option<default!(i64, NULL)>,
+    format: Option<default!(&str, NULL)>,
 ) -> JsonB {
     #[derive(Serialize)]
     struct SerialDiff<'a> {
@@ -505,7 +505,7 @@ fn serial_diff_pipeline_agg(
         #[serde(skip_serializing_if = "Option::is_none")]
         gap_policy: Option<GapPolicy>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        format: Option<i64>,
+        format: Option<&'a str>,
     }
     let bucket = SerialDiff {
         bucket_path,
@@ -525,7 +525,7 @@ fn serial_diff_pipeline_agg(
 fn stats_pipeline_agg(
     bucket_path: &str,
     gap_policy: Option<default!(GapPolicy, NULL)>,
-    format: Option<default!(i64, NULL)>,
+    format: Option<default!(&str, NULL)>,
 ) -> JsonB {
     #[derive(Serialize)]
     struct Stats<'a> {
@@ -533,7 +533,7 @@ fn stats_pipeline_agg(
         #[serde(skip_serializing_if = "Option::is_none")]
         gap_policy: Option<GapPolicy>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        format: Option<i64>,
+        format: Option<&'a str>,
     }
     let bucket = Stats {
         bucket_path,
@@ -552,7 +552,7 @@ fn stats_pipeline_agg(
 fn sum_pipeline_agg(
     bucket_path: &str,
     gap_policy: Option<default!(GapPolicy, NULL)>,
-    format: Option<default!(i64, NULL)>,
+    format: Option<default!(&str, NULL)>,
 ) -> JsonB {
     #[derive(Serialize)]
     struct Sum<'a> {
@@ -560,7 +560,7 @@ fn sum_pipeline_agg(
         #[serde(skip_serializing_if = "Option::is_none")]
         gap_policy: Option<GapPolicy>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        format: Option<i64>,
+        format: Option<&'a str>,
     }
     let bucket = Sum {
         bucket_path,
