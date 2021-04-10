@@ -1,37 +1,37 @@
 #[inline]
 pub fn escape_json(input: &str, target: &mut String) {
     for c in input.chars() {
-        match c as u8 {
-            b'\n' => {
+        match c {
+            '\n' => {
                 target.push('\\');
                 target.push('n');
             }
-            b'\r' => {
+            '\r' => {
                 target.push('\\');
                 target.push('r');
             }
-            b'\t' => {
+            '\t' => {
                 target.push('\\');
                 target.push('t');
             }
-            b'"' => {
+            '"' => {
                 target.push('\\');
                 target.push('"');
             }
-            b'\\' => {
+            '\\' => {
                 target.push('\\');
                 target.push('\\');
             }
-            8 => {
+            '\x08' => {
                 target.push('\\');
                 target.push('b');
             }
-            12 => {
+            '\x0c' => {
                 target.push('\\');
                 target.push('f');
             }
             other if c < ' ' => {
-                target.push_str(&format!("\\u{:04x}", other));
+                target.push_str(&format!("\\u{:04x}", other as u8));
             }
             _ => target.push(c),
         }
@@ -49,7 +49,7 @@ mod tests {
 
         escape_json(input, &mut into);
 
-        assert_eq!(into, "\\r\\n\\t\\\\");
+        assert_eq!(into, r#"\r\n\t\\"#);
     }
 
     #[test]
@@ -57,9 +57,30 @@ mod tests {
         let input = [8u8, 12u8];
         let mut into = String::new();
 
-        let input = &unsafe { String::from_utf8_unchecked(input.to_vec()) };
+        let input = std::str::from_utf8(&input[..]).expect("invalid utf-8");
         escape_json(input, &mut into);
 
-        assert_eq!(into, "\\b\\f");
+        assert_eq!(into, r#"\b\f"#);
+    }
+
+    #[test]
+    fn test_json_escape_control() {
+        let input = &[14u8];
+        let mut into = String::new();
+
+        let input = std::str::from_utf8(&input[..]).expect("invalid utf-8");
+        escape_json(input, &mut into);
+
+        assert_eq!(into, r#"\u000e"#);
+    }
+
+    #[test]
+    fn test_json_escape_unicode() {
+        let input = "레";
+
+        let mut into = String::new();
+        escape_json(input, &mut into);
+
+        assert_eq!(into, input);
     }
 }
