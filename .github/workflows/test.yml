@@ -27,12 +27,16 @@ jobs:
     - name: remove old Postgres
       run: sudo apt-get remove -y postgres*
 
-    # Update apt
+      # Update apt
     - name: update apt
-      run: sudo apt-get update -y -qq --fix-missing
+      run: |
+        sudo apt-get update -y -qq --fix-missing
+        sudo apt-get install -y wget gnupg
+        sudo bash -c 'echo deb http://apt.postgresql.org/pub/repos/apt/ focal-pgdg main >> /etc/apt/sources.list.d/pgdg.list'
+        sudo apt update
 
-    # Install postgres
-    - name: install postgres build dependencies
+      # Install Postgres
+    - name: install postgres
       run: sudo apt-get install -y clang-10 llvm-10 clang gcc make build-essential libz-dev zlib1g-dev strace libssl-dev pkg-config postgresql-${{ matrix.version }} postgresql-server-dev-${{ matrix.version }}
 
     # download Elasticsearch
