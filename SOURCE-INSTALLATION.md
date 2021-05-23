@@ -8,10 +8,10 @@ If you're a [sponsor](https://github.com/sponsors/eeeebbbbrrrr) you might want t
 - A toolchain capable of building Postgres:
 
     For Ubuntu, this is enough:
-    
+
     ```
     apt install bison flex zlib1g zlib1g-dev \
-        pkg-config libssl-dev libreadline-dev
+        pkg-config make libssl-dev libreadline-dev
     ```
 
 - The Rust toolchain
