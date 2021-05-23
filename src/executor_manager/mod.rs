@@ -282,7 +282,7 @@ impl ExecutorManager {
                 let tupdesc = bulk.tupdesc;
 
                 if let Err(e) = bulk.bulk.finish() {
-                    panic!(e)
+                    panic!("{:?}", e)
                 }
 
                 let bulk = elasticsearch.start_bulk();
