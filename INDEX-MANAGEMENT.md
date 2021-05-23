@@ -201,13 +201,13 @@ Sets the HTTP(s) transport (and request body) deflate compression level.  Over s
 
 ### Nested Object Mapping Options
 
-#### `nesed_object_date_detection`
+#### `nested_object_date_detection`
 ```
 Type: bool
 Default: false
 ```
 
-If `nesed_object_date_detection` is enabled (default is false), then new string fields 
+If `nested_object_date_detection` is enabled (default is false), then new string fields 
 in nested objects (fields of type 'json' or 'jsonb') are checked to see whether their 
 contents match any of the date patterns specified in dynamic_date_formats. If a match is 
 found, a new date field is added with the corresponding format.

@@ -34,7 +34,7 @@ ZomboDB allows you to use the power and scalability of Elasticsearch directly fr
  - [Query DSL](QUERY-DSL.md)
  - [Aggregations](AGGREGATIONS.md), [Scoring and Highlighting](SCORING-HIGHLIGHTING.md)
  - [SQL Functions](SQL-FUNCTIONS.md)
- - [Configuration Settings](CONFIGURATION-SETTINGS.md), [Index Managment](INDEX-MANAGEMENT.md)
+ - [Configuration Settings](CONFIGURATION-SETTINGS.md), [Index Management](INDEX-MANAGEMENT.md)
  - [Type Mapping](TYPE-MAPPING.md)
  - [Elasticsearch _cat API](CAT-API.md)
  - [VACUUM Support](VACUUM.md)
