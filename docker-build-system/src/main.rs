@@ -73,7 +73,11 @@ fn main() -> Result<(), std::io::Error> {
         max_cpus
     );
     let pgx_version = determine_pgx_version()?;
-    println!("pgx version is {}", pgx_version);
+    println!(
+        "{} pgx version to {}",
+        "     Setting".bold().green(),
+        pgx_version
+    );
 
     let targetdir = PathBuf::from_str("./target/zdb-build/").unwrap();
     let artifactdir = PathBuf::from_str("./target/zdb-build/artifacts/").unwrap();
