@@ -72,6 +72,9 @@ fn main() -> Result<(), std::io::Error> {
         "     Setting".bold().green(),
         max_cpus
     );
+    let pgx_version = determine_pgx_version()?;
+    println!("pgx version is {}", pgx_version);
+
     let targetdir = PathBuf::from_str("./target/zdb-build/").unwrap();
     let artifactdir = PathBuf::from_str("./target/zdb-build/artifacts/").unwrap();
     let builddir = PathBuf::from_str("./target/zdb-build/build/").unwrap();
@@ -126,7 +129,7 @@ fn main() -> Result<(), std::io::Error> {
                     .for_each(|pgver| {
                         let start = std::time::Instant::now();
                         let image = handle_result!(
-                            docker_build(image, Some(*pgver)),
+                            docker_build(image, Some(*pgver), &pgx_version),
                             "{}-pg{}:  failed to run `docker build`",
                             image.bold().red(),
                             pgver.to_string().bold().red()
@@ -140,7 +143,7 @@ fn main() -> Result<(), std::io::Error> {
 
                         let start = std::time::Instant::now();
                         handle_result!(
-                            docker_run(&image, *pgver, &repodir, &builddir, &artifactdir),
+                            docker_run(&image, *pgver, &repodir, &builddir, &artifactdir,),
                             "Failed to compile {} for {}",
                             image,
                             pgver
@@ -157,7 +160,7 @@ fn main() -> Result<(), std::io::Error> {
                 // can build it just once
                 let start = std::time::Instant::now();
                 let image = handle_result!(
-                    docker_build(image, None),
+                    docker_build(image, None, &pgx_version),
                     "{}:  failed to run `docker build`",
                     image.bold().red()
                 );
@@ -176,7 +179,7 @@ fn main() -> Result<(), std::io::Error> {
                     .for_each(|pgver| {
                         let start = std::time::Instant::now();
                         handle_result!(
-                            docker_run(&image, *pgver, &repodir, &builddir, &artifactdir),
+                            docker_run(&image, *pgver, &repodir, &builddir, &artifactdir,),
                             "Failed to compile {} for {}",
                             image,
                             pgver
@@ -207,7 +210,11 @@ fn remove_dir(dir: &PathBuf) {
     }
 }
 
-fn docker_build(base_image: &str, pgver: Option<u16>) -> Result<String, std::io::Error> {
+fn docker_build(
+    base_image: &str,
+    pgver: Option<u16>,
+    pgx_version: &str,
+) -> Result<String, std::io::Error> {
     let image_name = format!(
         "{}{}",
         base_image,
@@ -230,7 +237,9 @@ fn docker_build(base_image: &str, pgver: Option<u16>) -> Result<String, std::io:
         .arg("--build-arg")
         .arg(&format!("UID={}", users::get_current_uid()))
         .arg("--build-arg")
-        .arg(&format!("GID={}", users::get_current_gid()));
+        .arg(&format!("GID={}", users::get_current_gid()))
+        .arg("--build-arg")
+        .arg(&format!("PGXVERSION={}", pgx_version));
 
     if pgver.is_some() {
         command
@@ -417,4 +426,23 @@ fn parse_dockerfile(filename: &PathBuf) -> Result<Vec<(String, Option<String>)>,
         map.push((key, value));
     }
     Ok(map)
+}
+
+fn determine_pgx_version() -> Result<String, std::io::Error> {
+    let mut command = Command::new("cargo");
+
+    command.current_dir("../").arg("tree").arg("-i").arg("pgx");
+
+    let output = command.output()?;
+    let output = String::from_utf8(output.stdout).expect("invalid UTF8 output from cargo tree");
+    let first_line = output
+        .lines()
+        .next()
+        .expect("no first line from cargo tree");
+    let mut parts = first_line.split(" v");
+    parts.next();
+    Ok(parts
+        .next()
+        .expect("no version number found in cargo tree output")
+        .into())
 }
