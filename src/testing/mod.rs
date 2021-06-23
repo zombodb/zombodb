@@ -30,7 +30,7 @@ pub(crate) fn initialize_tests(options: Vec<&str>) {
 
 fn start_es() {
     let mut data_dir = std::env::current_dir().unwrap();
-    data_dir.push("elasticsearch-7.6.0");
+    data_dir.push("elasticsearch");
     data_dir.push("data");
 
     if data_dir.exists() {
@@ -39,7 +39,7 @@ fn start_es() {
     }
 
     let mut bin_dir = std::env::current_dir().unwrap();
-    bin_dir.push("elasticsearch-7.6.0");
+    bin_dir.push("elasticsearch");
     bin_dir.push("bin");
 
     let mut es = Command::new("elasticsearch");
