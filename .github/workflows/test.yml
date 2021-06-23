@@ -41,7 +41,7 @@ jobs:
 
     # download Elasticsearch
     - name: download Elasticsearch
-      run: curl -s https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.6.0-linux-x86_64.tar.gz | tar xzf -
+      run: curl -s https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.13.2-linux-x86_64.tar.gz | tar xzf -
 
     # update cargo indexes so we're sure we get the latest things from 'git' repo dependencies
     - name: cargo update
