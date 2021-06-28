@@ -24,7 +24,7 @@ chrono = "0.4.19"
 crossbeam-channel = "0.5.1"
 dashmap = "4.0.2"
 indexmap = "1.6.2"
-lalrpop-util = "0.19.5"
+lalrpop-util = "0.19.6"
 lazy_static = "1.4.0"
 levenshtein = "1.0.5"
 memoffset = "0.6.4"
@@ -42,12 +42,12 @@ ureq = { version = "2.1.1", features = [ "json" ] }
 url = "2.2.2"
 
 [build-dependencies]
-lalrpop = { version = "0.19.5", features = [ "lexer" ] }
+lalrpop = { version = "0.19.6", features = [ "lexer" ] }
 built = { version = "0.5.1", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
 pgx-tests = "0.1.21"
-libc = "0.2.95"
+libc = "0.2.97"
 
 [profile.dev]
 panic = "unwind"
