@@ -4,14 +4,6 @@
 [![Twitter Follow](https://img.shields.io/twitter/follow/zombodb.svg?style=flat)](https://twitter.com/zombodb)
 
 
-# 🚨 Note 🚨
-
-This is ZomboDB 3000.0.0-**beta1**.  This represents a year-long rewrite of ZomboDB to Rust.
-
-It is expected that the alpha/beta phase will continue through January 2021.  That said, please
-get started with it today.  Report Issues, provide feedback, and also [sponsors our work](https://github.com/sponsors/eeeebbbbrrrr)!
-
-
 ## Readme
 ZomboDB brings powerful text-search and analytics features to Postgres by using Elasticsearch as an index type.  Its comprehensive query language and SQL functions enable new and creative ways to query your relational data.
 
