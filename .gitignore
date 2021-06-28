@@ -6,7 +6,7 @@
 sql/*.generated.sql
 **/cmake-build*
 foo.*
-/elasticsearch-*
+/elasticsearch
 /results
 /test/expected/load-data.out
 /test/sql/load-data.sql

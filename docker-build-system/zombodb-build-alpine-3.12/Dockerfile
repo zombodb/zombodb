@@ -21,6 +21,8 @@ LABEL maintainer="ZomboDB, LLC (zombodb@gmail.com)"
 ARG USER=docker
 ARG UID=1000
 ARG GID=1000
+ARG PGXVERSION
+
 RUN adduser --uid=${UID} -D ${USER}
 
 ENV RUSTFLAGS="-C target-feature=-crt-static"
@@ -49,7 +51,7 @@ USER ${USER}
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
 ENV PATH="/home/${USER}/.cargo/bin:${PATH}"
 
-RUN cargo install cargo-pgx
+RUN cargo install cargo-pgx --version ${PGXVERSION}
 
 ARG PGVER
 RUN cargo pgx init --pg${PGVER}=$(which pg_config)

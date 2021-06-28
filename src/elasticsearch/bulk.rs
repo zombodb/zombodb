@@ -114,7 +114,7 @@ impl ElasticsearchBulkRequest {
         self.handler.check_for_error();
 
         // do we have any deferred commands we need to process again?
-        let deferred_commands: Vec<BulkRequestCommand> = self.handler.deferred.drain(0..).collect();
+        let deferred_commands = std::mem::take(&mut self.handler.deferred);
         let mut deferred_request = None;
         if !deferred_commands.is_empty() {
             deferred_request = Some(self.clone());

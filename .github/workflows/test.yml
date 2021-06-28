@@ -10,6 +10,8 @@ jobs:
   test:
 
     runs-on: ${{ matrix.os }}
+    env:
+      ES_VERSION: "7.13.2"
     if: "!contains(github.event.head_commit.message, 'nogha')"
 
     strategy:
@@ -27,17 +29,23 @@ jobs:
     - name: remove old Postgres
       run: sudo apt-get remove -y postgres*
 
-    # Update apt
+      # Update apt
     - name: update apt
-      run: sudo apt-get update -y -qq --fix-missing
+      run: |
+        sudo apt-get update -y -qq --fix-missing
+        sudo apt-get install -y wget gnupg
+        sudo bash -c 'echo deb http://apt.postgresql.org/pub/repos/apt/ focal-pgdg main >> /etc/apt/sources.list.d/pgdg.list'
+        sudo apt update
 
-    # Install postgres
-    - name: install postgres build dependencies
+      # Install Postgres
+    - name: install postgres
       run: sudo apt-get install -y clang-10 llvm-10 clang gcc make build-essential libz-dev zlib1g-dev strace libssl-dev pkg-config postgresql-${{ matrix.version }} postgresql-server-dev-${{ matrix.version }}
 
     # download Elasticsearch
     - name: download Elasticsearch
-      run: curl -s https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.6.0-linux-x86_64.tar.gz | tar xzf -
+      run: curl -s https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ES_VERSION}-linux-x86_64.tar.gz | tar xzf -
+    - name: rename Elasticsearch
+      run: mv elasticsearch-${ES_VERSION} elasticsearch
 
     # update cargo indexes so we're sure we get the latest things from 'git' repo dependencies
     - name: cargo update

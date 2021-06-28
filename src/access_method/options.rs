@@ -570,7 +570,7 @@ extern "C" fn validate_url(url: *const std::os::raw::c_char) {
     }
 
     if let Err(e) = url::Url::parse(url) {
-        panic!(e.to_string())
+        panic!("{}", e.to_string())
     }
 }
 

@@ -16,19 +16,14 @@ impl ElasticsearchCreateIndexRequest {
     }
 
     pub fn execute(self) -> std::result::Result<(), ElasticsearchError> {
-        let url = format!("{}", self.elasticsearch.base_url());
-        let create_index_result = Elasticsearch::execute_json_request(
-            Elasticsearch::client().put(&url),
+        Elasticsearch::execute_json_request(
+            Elasticsearch::client().put(&self.elasticsearch.base_url()),
             Some(self.create_request_body()),
             |_| Ok(()),
-        );
-
-        if create_index_result.is_err() {
-            return create_index_result;
-        }
+        )?;
 
         let url = format!(
-            "{}_cluster/health/{}?wait_for_status=yellow&timeout=30s",
+            "{}_cluster/health/{}?wait_for_status=yellow&timeout=5m&master_timeout=5m",
             self.elasticsearch.url(),
             self.elasticsearch.index_name()
         );
@@ -36,7 +31,7 @@ impl ElasticsearchCreateIndexRequest {
         Elasticsearch::execute_json_request(Elasticsearch::client().get(&url), None, |_| Ok(()))
             .expect("failed to wait for yellow status");
 
-        create_index_result
+        Ok(())
     }
 
     fn create_request_body(&self) -> Value {
