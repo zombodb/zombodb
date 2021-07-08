@@ -22,8 +22,8 @@ mod dsl {
     fn nested(
         path: String,
         query: ZDBQuery,
-        score_mode: default!(ScoreMode, "avg"),
-        ignore_unmapped: Option<default!(bool, NULL)>,
+        score_mode: default!(ScoreMode, "'avg'"),
+        ignore_unmapped: Option<default!(bool, "NULL")>,
     ) -> ZDBQuery {
         ZDBQuery::new_with_query_clause(ZDBQueryClause::nested(
             path,

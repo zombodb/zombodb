@@ -92,3 +92,5 @@ mod dsl {
         })
     }
 }
+
+extension_sql_file!("../../sql/_postgis-support.sql");

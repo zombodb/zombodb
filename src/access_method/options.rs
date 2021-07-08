@@ -413,7 +413,7 @@ impl ZDBIndexOptions {
     }
 }
 
-/// ```sql
+/// ```pgxsql
 /// /*
 ///    we don't want any SQL generated for the "shadow" function, but we do want its '_wrapper' symbol
 ///    exported so that shadow indexes can reference it using whatever argument type they want

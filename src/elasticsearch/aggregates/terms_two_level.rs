@@ -28,7 +28,7 @@ fn terms_two_level(
     field_first: &str,
     field_second: &str,
     query: ZDBQuery,
-    order_by: Option<default!(TwoLevelTermsOrderBy, NULL)>,
+    order_by: Option<default!(TwoLevelTermsOrderBy, "NULL")>,
     size_limit: Option<default!(i32, 2147483647)>,
 ) -> impl std::iter::Iterator<
     Item = (

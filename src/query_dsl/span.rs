@@ -93,9 +93,9 @@ mod dsl {
     pub(crate) fn span_not(
         include: ZDBQuery,
         exclude: ZDBQuery,
-        pre_integer: Option<default!(i64, NULL)>,
-        post_integer: Option<default!(i64, NULL)>,
-        dis_integer: Option<default!(i64, NULL)>,
+        pre_integer: Option<default!(i64, "NULL")>,
+        post_integer: Option<default!(i64, "NULL")>,
+        dis_integer: Option<default!(i64, "NULL")>,
     ) -> ZDBQuery {
         let include = include.into_value();
         let exclude = exclude.into_value();
@@ -144,7 +144,7 @@ mod dsl {
     pub(crate) fn span_term(
         field: &str,
         value: &str,
-        boost: Option<default!(f32, NULL)>,
+        boost: Option<default!(f32, "NULL")>,
     ) -> ZDBQuery {
         let span_terms = SpanTerm { value, boost };
         ZDBQuery::new_with_query_dsl(json! {

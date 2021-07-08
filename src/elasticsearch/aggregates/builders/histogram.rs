@@ -25,10 +25,10 @@ fn histogram_agg(
     aggregate_name: &str,
     field: &str,
     interval: i64,
-    min_count: Option<default!(i64, NULL)>,
-    keyed: Option<default!(bool, NULL)>,
-    missing: Option<default!(i64, NULL)>,
-    children: Option<default!(Vec<JsonB>, NULL)>,
+    min_count: Option<default!(i64, "NULL")>,
+    keyed: Option<default!(bool, "NULL")>,
+    missing: Option<default!(i64, "NULL")>,
+    children: Option<default!(Vec<JsonB>, "NULL")>,
 ) -> JsonB {
     let histogram = Histogram {
         field,

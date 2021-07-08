@@ -62,9 +62,9 @@ mod dsl {
     pub(crate) fn regexp(
         field: &str,
         regexp: &str,
-        boost: Option<default!(f32, NULL)>,
-        flags: Option<default!(Array<RegexFlags>, NULL)>,
-        max_determinized_states: Option<default!(i32, NULL)>,
+        boost: Option<default!(f32, "NULL")>,
+        flags: Option<default!(Array<RegexFlags>, "NULL")>,
+        max_determinized_states: Option<default!(i32, "NULL")>,
     ) -> ZDBQuery {
         let regexp = Regexp {
             regexp,
@@ -84,8 +84,8 @@ mod dsl {
     #[pg_extern(immutable, parallel_safe)]
     pub(crate) fn script(
         source: &str,
-        params: Option<default!(Json, NULL)>,
-        lang: default!(&str, "painless"),
+        params: Option<default!(Json, "NULL")>,
+        lang: default!(&str, "'painless'"),
     ) -> ZDBQuery {
         let script = Script {
             source,

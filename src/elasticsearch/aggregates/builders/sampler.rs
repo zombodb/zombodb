@@ -11,7 +11,7 @@ use serde_json::*;
 fn sampler_agg(
     aggregate_name: &str,
     shard_size: i64,
-    children: Option<default!(Vec<JsonB>, NULL)>,
+    children: Option<default!(Vec<JsonB>, "NULL")>,
 ) -> JsonB {
     JsonB(json! {
         {

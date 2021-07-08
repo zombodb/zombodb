@@ -8,7 +8,7 @@ readme = "README.md"
 license = "LICENSE.md"
 
 [lib]
-crate-type = [ "cdylib" ]
+crate-type = [ "cdylib", "rlib" ]
 
 [features]
 default = [ "pg12" ]
@@ -30,8 +30,9 @@ levenshtein = "1.0.5"
 memoffset = "0.6.4"
 num_cpus = "1.13.0"
 pathfinding = "2.1.5"
-pgx = "0.1.21"
-pgx-macros = "0.1.21"
+pgx = { git = "https://github.com/zombodb/pgx", branch = "oh-no-type-resolution"  }
+pgx-utils = { git = "https://github.com/zombodb/pgx", branch = "oh-no-type-resolution"  }
+pgx-macros = { git = "https://github.com/zombodb/pgx", branch = "oh-no-type-resolution"  }
 rayon = "1.5.1"
 regex = "1.5.4"
 serde = { version = "1.0.126", features = [ "derive" ] }

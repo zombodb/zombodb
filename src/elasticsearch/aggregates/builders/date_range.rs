@@ -26,9 +26,9 @@ fn date_range_agg(
     field: &str,
     format: &str,
     range: Vec<Json>,
-    missing: Option<default!(&str, NULL)>,
-    keyed: Option<default!(bool, NULL)>,
-    time_zone: Option<default!(&str, NULL)>,
+    missing: Option<default!(&str, "NULL")>,
+    keyed: Option<default!(bool, "NULL")>,
+    time_zone: Option<default!(&str, "NULL")>,
 ) -> JsonB {
     let date_range = DateRange {
         field,

@@ -31,7 +31,7 @@ fn terms(
     field_name: &str,
     query: ZDBQuery,
     size_limit: Option<default!(i32, 2147483647)>,
-    order_by: Option<default!(TermsOrderBy, NULL)>,
+    order_by: Option<default!(TermsOrderBy, "NULL")>,
 ) -> impl std::iter::Iterator<Item = (name!(term, Option<String>), name!(doc_count, i64))> {
     tally(
         index,
@@ -56,7 +56,7 @@ fn tally_not_nested(
     stem: Option<&str>,
     query: ZDBQuery,
     size_limit: Option<default!(i32, 2147483647)>,
-    order_by: Option<default!(TermsOrderBy, NULL)>,
+    order_by: Option<default!(TermsOrderBy, "NULL")>,
     shard_size: Option<default!(i32, 2147483647)>,
     count_nulls: Option<default!(bool, true)>,
 ) -> impl std::iter::Iterator<Item = (name!(term, Option<String>), name!(count, i64))> {
@@ -81,7 +81,7 @@ fn tally(
     stem: Option<&str>,
     query: ZDBQuery,
     size_limit: Option<default!(i32, 2147483647)>,
-    order_by: Option<default!(TermsOrderBy, NULL)>,
+    order_by: Option<default!(TermsOrderBy, "NULL")>,
     shard_size: Option<default!(i32, 2147483647)>,
     count_nulls: Option<default!(bool, true)>,
 ) -> impl std::iter::Iterator<Item = (name!(term, Option<String>), name!(count, i64))> {
@@ -332,7 +332,7 @@ fn tally(
 
 // need to hand-write the DDL for this b/c naming this function "terms_array"
 // conflicts with the function of the same name in the 'dsl' module
-/// ```sql
+/// ```pgxsql
 /// CREATE OR REPLACE FUNCTION zdb."terms_array"(
 ///     "index" regclass,
 ///     "field_name" text,
@@ -349,7 +349,7 @@ pub(crate) fn terms_array_agg(
     field: &str,
     query: ZDBQuery,
     size_limit: Option<default!(i32, 2147483647)>,
-    order_by: Option<default!(TermsOrderBy, NULL)>,
+    order_by: Option<default!(TermsOrderBy, "NULL")>,
 ) -> Vec<Option<String>> {
     terms(index, field, query, size_limit, order_by)
         .map(|(term, _)| term)

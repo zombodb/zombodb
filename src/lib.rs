@@ -24,6 +24,20 @@ pub mod zql;
 
 pg_module_magic!();
 
+extension_sql_file!("../sql/_bootstrap.sql", bootstrap);
+extension_sql_file!("../sql/_mappings.sql");
+extension_sql_file!("../sql/_support-views.sql",
+    after = [
+        query_dsl::bool::dsl,
+        query_dsl::filter::dsl
+    ],
+    before = ["../sql/_cat-api.sql"],
+);
+extension_sql_file!("../sql/_join-support.sql");
+extension_sql_file!("../sql/_cat-api.sql");
+extension_sql_file!("../sql/_type-conversions.sql", after = ["_mappings.sql"]);
+extension_sql_file!("../sql/_finalize.sql", finalize);
+
 #[allow(non_snake_case)]
 #[pg_guard]
 pub unsafe extern "C" fn _PG_init() {

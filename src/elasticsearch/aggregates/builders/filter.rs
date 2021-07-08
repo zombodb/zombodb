@@ -15,7 +15,7 @@ fn filter_agg(
     index: PgRelation,
     aggregate_name: &str,
     filter: ZDBQuery,
-    children: Option<default!(Vec<JsonB>, NULL)>,
+    children: Option<default!(Vec<JsonB>, "NULL")>,
 ) -> JsonB {
     let elasticsearch = Elasticsearch::new(&index);
 
