@@ -105,8 +105,9 @@ impl PartialEq<Value> for ZDBQueryClause {
     }
 }
 
+#[allow(non_camel_case_types)]
+#[pgx_macros::pg_schema]
 mod pg_catalog {
-    #![allow(non_camel_case_types)]
     use crate::zdbquery::ZDBQueryClause;
     use crate::zql::ast::IndexLink;
     use pgx::*;

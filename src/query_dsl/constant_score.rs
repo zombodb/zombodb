@@ -1,3 +1,4 @@
+#[pgx_macros::pg_schema]
 mod dsl {
     use crate::zdbquery::{ZDBQuery, ZDBQueryClause};
     use pgx::*;

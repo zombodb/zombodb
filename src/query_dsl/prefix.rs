@@ -3,6 +3,7 @@
 //!
 //! Returns documents that contain a specific prefix in a provided field
 
+#[pgx_macros::pg_schema]
 mod dsl {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;

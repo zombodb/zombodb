@@ -1,6 +1,7 @@
 use pgx::*;
 use serde_json::json;
 
+#[pgx_macros::pg_schema]
 mod pg_catalog {
     use pgx::*;
     use serde::Serialize;
@@ -33,6 +34,7 @@ fn point_array_to_json(points: Array<pg_sys::Point>) -> Json {
     )
 }
 
+#[pgx_macros::pg_schema]
 mod dsl {
     use crate::query_dsl::geo::pg_catalog::{GeoBoundingBoxType, GeoShapeRelation};
     use crate::query_dsl::geo::point_array_to_json;

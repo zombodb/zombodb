@@ -1,3 +1,4 @@
+#[pgx_macros::pg_schema]
 pub mod pg_catalog {
     use pgx::*;
     use serde::*;
@@ -13,6 +14,7 @@ pub mod pg_catalog {
     }
 }
 
+#[pgx_macros::pg_schema]
 mod dsl {
     use crate::query_dsl::nested::pg_catalog::ScoreMode;
     use crate::zdbquery::{ZDBQuery, ZDBQueryClause};

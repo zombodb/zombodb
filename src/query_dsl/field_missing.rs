@@ -3,6 +3,7 @@
 //!
 //! The following search returns documents that are missing an indexed value for the user field
 
+#[pgx_macros::pg_schema]
 mod dsl {
     use crate::zdbquery::{ZDBQuery, ZDBQueryClause};
     use pgx::*;

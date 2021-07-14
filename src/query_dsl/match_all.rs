@@ -3,6 +3,7 @@
 //!
 //!The most simple query, which matches all documents, giving them all a _score of 1.0
 
+#[pgx_macros::pg_schema]
 mod dsl {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;

@@ -26,11 +26,9 @@ pg_module_magic!();
 
 extension_sql_file!("../sql/_bootstrap.sql", bootstrap);
 extension_sql_file!("../sql/_mappings.sql");
-extension_sql_file!("../sql/_support-views.sql",
-    after = [
-        query_dsl::bool::dsl,
-        query_dsl::filter::dsl
-    ],
+extension_sql_file!(
+    "../sql/_support-views.sql",
+    after = [query_dsl::bool::dsl, query_dsl::filter::dsl],
     before = ["../sql/_cat-api.sql"],
 );
 extension_sql_file!("../sql/_join-support.sql");

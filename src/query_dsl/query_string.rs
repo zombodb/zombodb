@@ -1,3 +1,4 @@
+#[pgx_macros::pg_schema]
 mod pg_catalog {
     use pgx::*;
     use serde::*;
@@ -9,6 +10,8 @@ mod pg_catalog {
         or,
     }
 }
+
+#[pgx_macros::pg_schema]
 mod dsl {
     use crate::query_dsl::query_string::pg_catalog::*;
     use crate::zdbquery::ZDBQuery;

@@ -39,6 +39,7 @@ impl Default for ProximityDistance {
     }
 }
 
+#[pgx_macros::pg_schema]
 pub mod pg_catalog {
     use pgx::*;
     use serde::{Deserialize, Serialize};

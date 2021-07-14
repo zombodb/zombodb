@@ -1,3 +1,4 @@
+#[pgx_macros::pg_schema]
 mod pg_catalog {
     use pgx::*;
     use serde::*;
@@ -11,6 +12,7 @@ mod pg_catalog {
     }
 }
 
+#[pgx_macros::pg_schema]
 mod dsl {
     use crate::query_dsl::datetime_range::pg_catalog::*;
     use crate::zdbquery::ZDBQuery;

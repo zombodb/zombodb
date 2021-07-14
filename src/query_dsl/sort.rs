@@ -3,6 +3,7 @@
 //!
 //! Allows you to add one or more sorts on specific fields. Each sort can be reversed as well.
 
+#[pgx_macros::pg_schema]
 mod dsl {
     use crate::zdbquery::{
         SortDescriptor, SortDescriptorOptions, SortDirection, SortMode, ZDBQuery,

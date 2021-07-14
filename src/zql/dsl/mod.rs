@@ -366,7 +366,7 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
         Term::ProximityChain(parts) => proximity_chain(field, parts),
     };
 
-    if is_span && !matches!(term,Term::ProximityChain { .. }) {
+    if is_span && !matches!(term, Term::ProximityChain { .. }) {
         json! { { "span_multi": { "match": clause } } }
     } else {
         clause

@@ -30,9 +30,9 @@ levenshtein = "1.0.5"
 memoffset = "0.6.4"
 num_cpus = "1.13.0"
 pathfinding = "2.1.5"
-pgx = { git = "https://github.com/zombodb/pgx", branch = "oh-no-type-resolution"  }
-pgx-utils = { git = "https://github.com/zombodb/pgx", branch = "oh-no-type-resolution"  }
-pgx-macros = { git = "https://github.com/zombodb/pgx", branch = "oh-no-type-resolution"  }
+pgx = { path = "../pgx/pgx" } #, git = "https://github.com/zombodb/pgx", rev = "30b077a8f24485fcd44aa7cef3d2974f1ccd91af"  }
+pgx-utils = { path = "../pgx/pgx-utils" } #, git = "https://github.com/zombodb/pgx", rev = "30b077a8f24485fcd44aa7cef3d2974f1ccd91af"  }
+pgx-macros = { path = "../pgx/pgx-macros" } #, git = "https://github.com/zombodb/pgx", rev = "30b077a8f24485fcd44aa7cef3d2974f1ccd91af"  }
 rayon = "1.5.1"
 regex = "1.5.4"
 serde = { version = "1.0.126", features = [ "derive" ] }

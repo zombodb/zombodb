@@ -1,5 +1,4 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
-use pgx::extension_sql_file;
 
 pub struct ElasticsearchCatRequest {
     elasticsearch: Elasticsearch,

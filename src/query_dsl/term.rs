@@ -3,6 +3,7 @@
 //!
 //! Returns documents that contain an exact term in a provided field
 
+#[pgx_macros::pg_schema]
 mod dsl {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;

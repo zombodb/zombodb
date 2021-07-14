@@ -1,15 +1,1 @@
-.DS_Store
-.idea/
-/target
-*.iml
-**/*.rs.bk
-sql/*.generated.sql
-**/cmake-build*
-foo.*
-/elasticsearch
-/results
-/test/expected/load-data.out
-/test/sql/load-data.sql
-/regression.diffs
-/regression.out
-/src/zql/parser.rs
+.direnv

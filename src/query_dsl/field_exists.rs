@@ -3,6 +3,7 @@
 //!
 //! Returns documents that contain an indexed value for a field.
 
+#[pgx_macros::pg_schema]
 mod dsl {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;

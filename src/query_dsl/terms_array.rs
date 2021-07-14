@@ -1,6 +1,7 @@
 //! This mod is for...
 //! Use postgres json generator to
 
+#[pgx_macros::pg_schema]
 mod dsl {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
