@@ -17,10 +17,7 @@ mod dsl {
         boost: Option<f32>,
     }
 
-    /// ```funcname
-    /// term
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(name = "term", immutable, parallel_safe)]
     pub(super) fn term_str(
         field: &str,
         value: &str,
@@ -30,10 +27,7 @@ mod dsl {
         make_term_dsl(field, term)
     }
 
-    /// ```funcname
-    /// term
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(name = "term", immutable, parallel_safe)]
     pub(super) fn term_bool(
         field: &str,
         value: bool,
@@ -43,10 +37,7 @@ mod dsl {
         make_term_dsl(field, term)
     }
 
-    /// ```funcname
-    /// term
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(name = "term", immutable, parallel_safe)]
     pub(super) fn term_i16(
         field: &str,
         value: i16,
@@ -56,10 +47,7 @@ mod dsl {
         make_term_dsl(field, term)
     }
 
-    /// ```funcname
-    /// term
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(name = "term", immutable, parallel_safe)]
     pub(super) fn term_i32(
         field: &str,
         value: i32,
@@ -69,10 +57,7 @@ mod dsl {
         make_term_dsl(field, term)
     }
 
-    /// ```funcname
-    /// term
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(name = "term", immutable, parallel_safe)]
     pub(super) fn term_i64(
         field: &str,
         value: i64,
@@ -82,10 +67,7 @@ mod dsl {
         make_term_dsl(field, term)
     }
 
-    /// ```funcname
-    /// term
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(name = "term", immutable, parallel_safe)]
     pub(super) fn term_f32(
         field: &str,
         value: f32,
@@ -95,10 +77,7 @@ mod dsl {
         make_term_dsl(field, term)
     }
 
-    /// ```funcname
-    /// term
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(name = "term", immutable, parallel_safe)]
     pub(super) fn term_f64(
         field: &str,
         value: f64,
@@ -108,10 +87,7 @@ mod dsl {
         make_term_dsl(field, term)
     }
 
-    /// ```funcname
-    /// term
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(name = "term", immutable, parallel_safe)]
     pub(super) fn term_time(
         field: &str,
         value: Time,
@@ -121,10 +97,7 @@ mod dsl {
         make_term_dsl(field, term)
     }
 
-    /// ```funcname
-    /// term
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(name = "term", immutable, parallel_safe)]
     pub(super) fn term_date(
         field: &str,
         value: Date,
@@ -134,10 +107,7 @@ mod dsl {
         make_term_dsl(field, term)
     }
 
-    /// ```funcname
-    /// term
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(name = "term", immutable, parallel_safe)]
     pub(super) fn term_time_with_timezone(
         field: &str,
         value: TimeWithTimeZone,
@@ -147,10 +117,7 @@ mod dsl {
         make_term_dsl(field, term)
     }
 
-    /// ```funcname
-    /// term
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(name = "term", immutable, parallel_safe)]
     pub(super) fn term_timestamp(
         field: &str,
         value: Timestamp,
@@ -160,10 +127,7 @@ mod dsl {
         make_term_dsl(field, term)
     }
 
-    /// ```funcname
-    /// term
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(name = "term", immutable, parallel_safe)]
     pub(super) fn term_timestamp_with_timezone(
         field: &str,
         value: TimestampWithTimeZone,

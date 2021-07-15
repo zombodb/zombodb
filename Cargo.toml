@@ -47,7 +47,7 @@ lalrpop = { version = "0.19.6", features = [ "lexer" ] }
 built = { version = "0.5.1", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
-pgx-tests = "0.1.21"
+pgx-tests = { path = "../pgx/pgx-tests" }
 libc = "0.2.97"
 
 [profile.dev]

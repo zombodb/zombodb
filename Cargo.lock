@@ -1367,32 +1367,9 @@ dependencies = [
  "inventory",
  "num-traits",
  "once_cell",
- "pgx-macros 0.1.21",
- "pgx-pg-sys 0.1.21",
- "pgx-utils 0.1.21",
- "seahash",
- "serde",
- "serde_cbor",
- "serde_json",
- "time 0.2.27",
- "uuid",
-]
-
-[[package]]
-name = "pgx"
-version = "0.1.21"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5875871cf31677f841191af932a5cb2ed76364a8c508a785cea3e6fa960ccc91"
-dependencies = [
- "atomic-traits",
- "bitflags",
- "enum-primitive-derive",
- "hash32",
- "heapless",
- "num-traits",
- "once_cell",
- "pgx-macros 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
- "pgx-pg-sys 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pgx-macros",
+ "pgx-pg-sys",
+ "pgx-utils",
  "seahash",
  "serde",
  "serde_cbor",
@@ -1405,7 +1382,7 @@ dependencies = [
 name = "pgx-macros"
 version = "0.1.21"
 dependencies = [
- "pgx-utils 0.1.21",
+ "pgx-utils",
  "proc-macro-crate",
  "proc-macro2",
  "quote",
@@ -1414,19 +1391,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pgx-macros"
-version = "0.1.21"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc750392ca17a64805acff39e3fdd1f78c961086f842e550392cccdc3b2afa55"
-dependencies = [
- "pgx-utils 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
- "proc-macro2",
- "quote",
- "syn",
- "unescape",
-]
-
-[[package]]
 name = "pgx-pg-sys"
 version = "0.1.21"
 dependencies = [
@@ -1436,28 +1400,8 @@ dependencies = [
  "memoffset",
  "num_cpus",
  "once_cell",
- "pgx-macros 0.1.21",
- "pgx-utils 0.1.21",
- "proc-macro2",
- "quote",
- "rayon",
- "syn",
-]
-
-[[package]]
-name = "pgx-pg-sys"
-version = "0.1.21"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0afc0a4a1bf420066f43098dbe18975b299b9658db11e92f704df687a45dfd0c"
-dependencies = [
- "bindgen",
- "build-deps",
- "colored",
- "memoffset",
- "num_cpus",
- "once_cell",
- "pgx-macros 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
- "pgx-utils 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pgx-macros",
+ "pgx-utils",
  "proc-macro2",
  "quote",
  "rayon",
@@ -1467,15 +1411,13 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.1.21"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "124258599dfb7649a0681e6f58248ce2b599cdca5cddc58b27cb4e778fba82bf"
 dependencies = [
  "colored",
  "lazy_static",
  "libc",
- "pgx 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
- "pgx-macros 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
- "pgx-utils 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pgx",
+ "pgx-macros",
+ "pgx-utils",
  "postgres",
  "regex",
  "serde",
@@ -1509,29 +1451,6 @@ dependencies = [
  "tracing",
  "tracing-error",
  "tracing-subscriber",
- "unescape",
- "url",
-]
-
-[[package]]
-name = "pgx-utils"
-version = "0.1.21"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc3b5b91a8c5ce061cbaec7ccbe40dc4efcc540200c52678d154600d5995e4df"
-dependencies = [
- "colored",
- "dirs",
- "env_proxy",
- "proc-macro2",
- "quote",
- "regex",
- "rttp_client",
- "serde",
- "serde-xml-rs",
- "serde_derive",
- "serde_json",
- "syn",
- "toml",
  "unescape",
  "url",
 ]
@@ -2812,10 +2731,10 @@ dependencies = [
  "memoffset",
  "num_cpus",
  "pathfinding",
- "pgx 0.1.21",
- "pgx-macros 0.1.21",
+ "pgx",
+ "pgx-macros",
  "pgx-tests",
- "pgx-utils 0.1.21",
+ "pgx-utils",
  "rayon",
  "regex",
  "serde",

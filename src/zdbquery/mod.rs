@@ -897,6 +897,7 @@ fn to_queries_dsl(queries: Array<ZDBQuery>) -> Vec<Option<Json>> {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
+#[pgx_macros::pg_schema]
 mod tests {
     use crate::zdbquery::*;
     use serde_json::json;
