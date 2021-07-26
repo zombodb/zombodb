@@ -2435,7 +2435,7 @@ checksum = "b07db065a5cf61a7e4ba64f29e67db906fb1787316516c4e6e5ff0fea1efcd8a"
 
 [[package]]
 name = "zombodb"
-version = "3000.0.0"
+version = "3000.0.1"
 dependencies = [
  "built",
  "byteorder",
