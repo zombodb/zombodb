@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 
 # requires: https://github.com/sunng87/cargo-release
 
