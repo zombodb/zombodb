@@ -18,7 +18,7 @@ cargo release --manifest-path ./Cargo.toml --skip-publish --skip-push --skip-tag
 git reset --soft ${HEAD} || exit 1 
 git reset HEAD || exit 1
 pwd
-sed -i '' -e "s/^version = .*$/version = \"${VERSION}\"/" ./Cargo.toml || exit 1
-sed -i '' -e "s/^default_version = .*$/default_version = '${VERSION}'/" ./zombodb.control || exit 1
+sed -i '' -e "s/^version = .*$/version = \"${VERSION}\"/" Cargo.toml || exit 1
+sed -i '' -e "s/^default_version = .*$/default_version = '${VERSION}'/" zombodb.control || exit 1
 
 
