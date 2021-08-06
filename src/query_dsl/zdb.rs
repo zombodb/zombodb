@@ -27,7 +27,7 @@ mod dsl {
         ))
     }
 
-    #[pg_extern(immutable, parallel_stafe)]
+    #[pg_extern(immutable, parallel_safe)]
     fn link_options(options: Vec<Option<String>>, query: ZDBQuery) -> ZDBQuery {
         query.set_link_options(
             options

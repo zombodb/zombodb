@@ -506,7 +506,7 @@ impl<'a> DocumentHighlighter<'a> {
     }
 }
 
-#[pg_extern(imutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe)]
 fn highlight_term(
     index: PgRelation,
     field_name: &str,
@@ -544,7 +544,7 @@ fn highlight_term(
     }
 }
 
-#[pg_extern(imutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe)]
 fn highlight_phrase(
     index: PgRelation,
     field_name: &str,
@@ -582,7 +582,7 @@ fn highlight_phrase(
     }
 }
 
-#[pg_extern(imutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe)]
 fn highlight_wildcard(
     index: PgRelation,
     field_name: &str,
@@ -620,7 +620,7 @@ fn highlight_wildcard(
     }
 }
 
-#[pg_extern(imutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe)]
 fn highlight_regex(
     index: PgRelation,
     field_name: &str,
@@ -658,7 +658,7 @@ fn highlight_regex(
     }
 }
 
-#[pg_extern(imutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe)]
 fn highlight_fuzzy(
     index: PgRelation,
     field_name: &str,

@@ -344,7 +344,7 @@ fn tally(
 /// IMMUTABLE PARALLEL SAFE
 /// LANGUAGE c AS 'MODULE_PATHNAME', 'terms_array_agg_wrapper';
 /// ```
-#[pg_extern(imutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe)]
 pub(crate) fn terms_array_agg(
     index: PgRelation,
     field: &str,
