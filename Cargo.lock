@@ -1358,29 +1358,6 @@ dependencies = [
 [[package]]
 name = "pgx"
 version = "0.1.21"
-dependencies = [
- "atomic-traits",
- "bitflags",
- "enum-primitive-derive",
- "hash32",
- "heapless",
- "inventory",
- "num-traits",
- "once_cell",
- "pgx-macros 0.1.21",
- "pgx-pg-sys 0.1.21",
- "pgx-utils 0.1.21",
- "seahash",
- "serde",
- "serde_cbor",
- "serde_json",
- "time 0.2.27",
- "uuid",
-]
-
-[[package]]
-name = "pgx"
-version = "0.1.21"
 source = "git+https://github.com/zombodb/pgx?rev=a3e8782686aae7d56c19c02f5925d894ff3e77fc#a3e8782686aae7d56c19c02f5925d894ff3e77fc"
 dependencies = [
  "atomic-traits",
@@ -1391,9 +1368,9 @@ dependencies = [
  "inventory",
  "num-traits",
  "once_cell",
- "pgx-macros 0.1.21 (git+https://github.com/zombodb/pgx?rev=a3e8782686aae7d56c19c02f5925d894ff3e77fc)",
- "pgx-pg-sys 0.1.21 (git+https://github.com/zombodb/pgx?rev=a3e8782686aae7d56c19c02f5925d894ff3e77fc)",
- "pgx-utils 0.1.21 (git+https://github.com/zombodb/pgx?rev=a3e8782686aae7d56c19c02f5925d894ff3e77fc)",
+ "pgx-macros",
+ "pgx-pg-sys",
+ "pgx-utils",
  "seahash",
  "serde",
  "serde_cbor",
@@ -1405,44 +1382,14 @@ dependencies = [
 [[package]]
 name = "pgx-macros"
 version = "0.1.21"
-dependencies = [
- "pgx-utils 0.1.21",
- "proc-macro-crate",
- "proc-macro2",
- "quote",
- "syn",
- "unescape",
-]
-
-[[package]]
-name = "pgx-macros"
-version = "0.1.21"
 source = "git+https://github.com/zombodb/pgx?rev=a3e8782686aae7d56c19c02f5925d894ff3e77fc#a3e8782686aae7d56c19c02f5925d894ff3e77fc"
 dependencies = [
- "pgx-utils 0.1.21 (git+https://github.com/zombodb/pgx?rev=a3e8782686aae7d56c19c02f5925d894ff3e77fc)",
+ "pgx-utils",
  "proc-macro-crate",
  "proc-macro2",
  "quote",
  "syn",
  "unescape",
-]
-
-[[package]]
-name = "pgx-pg-sys"
-version = "0.1.21"
-dependencies = [
- "bindgen",
- "build-deps",
- "colored",
- "memoffset",
- "num_cpus",
- "once_cell",
- "pgx-macros 0.1.21",
- "pgx-utils 0.1.21",
- "proc-macro2",
- "quote",
- "rayon",
- "syn",
 ]
 
 [[package]]
@@ -1456,8 +1403,8 @@ dependencies = [
  "memoffset",
  "num_cpus",
  "once_cell",
- "pgx-macros 0.1.21 (git+https://github.com/zombodb/pgx?rev=a3e8782686aae7d56c19c02f5925d894ff3e77fc)",
- "pgx-utils 0.1.21 (git+https://github.com/zombodb/pgx?rev=a3e8782686aae7d56c19c02f5925d894ff3e77fc)",
+ "pgx-macros",
+ "pgx-utils",
  "proc-macro2",
  "quote",
  "rayon",
@@ -1467,48 +1414,20 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.1.21"
+source = "git+https://github.com/zombodb/pgx?rev=a3e8782686aae7d56c19c02f5925d894ff3e77fc#a3e8782686aae7d56c19c02f5925d894ff3e77fc"
 dependencies = [
  "colored",
  "lazy_static",
  "libc",
- "pgx 0.1.21",
- "pgx-macros 0.1.21",
- "pgx-utils 0.1.21",
+ "pgx",
+ "pgx-macros",
+ "pgx-utils",
  "postgres",
  "regex",
  "serde",
  "serde_json",
  "shutdown_hooks",
  "time 0.2.27",
-]
-
-[[package]]
-name = "pgx-utils"
-version = "0.1.21"
-dependencies = [
- "color-eyre",
- "colored",
- "dirs",
- "env_proxy",
- "eyre",
- "inventory",
- "once_cell",
- "petgraph",
- "proc-macro2",
- "quote",
- "regex",
- "rttp_client",
- "serde",
- "serde-xml-rs",
- "serde_derive",
- "serde_json",
- "syn",
- "toml",
- "tracing",
- "tracing-error",
- "tracing-subscriber",
- "unescape",
- "url",
 ]
 
 [[package]]
@@ -2817,10 +2736,10 @@ dependencies = [
  "memoffset",
  "num_cpus",
  "pathfinding",
- "pgx 0.1.21 (git+https://github.com/zombodb/pgx?rev=a3e8782686aae7d56c19c02f5925d894ff3e77fc)",
- "pgx-macros 0.1.21 (git+https://github.com/zombodb/pgx?rev=a3e8782686aae7d56c19c02f5925d894ff3e77fc)",
+ "pgx",
+ "pgx-macros",
  "pgx-tests",
- "pgx-utils 0.1.21 (git+https://github.com/zombodb/pgx?rev=a3e8782686aae7d56c19c02f5925d894ff3e77fc)",
+ "pgx-utils",
  "rayon",
  "regex",
  "serde",

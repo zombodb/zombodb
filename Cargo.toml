@@ -47,7 +47,7 @@ lalrpop = { version = "0.19.6", features = [ "lexer" ] }
 built = { version = "0.5.1", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
-pgx-tests = { path = "../pgx/pgx-tests" }
+pgx-tests = {  git = "https://github.com/zombodb/pgx", rev = "a3e8782686aae7d56c19c02f5925d894ff3e77fc"  }
 libc = "0.2.97"
 
 [profile.dev]
