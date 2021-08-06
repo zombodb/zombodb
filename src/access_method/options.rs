@@ -414,10 +414,8 @@ impl ZDBIndexOptions {
 }
 
 /// ```pgxsql
-/// /*
-///    we don't want any SQL generated for the "shadow" function, but we do want its '_wrapper' symbol
-///    exported so that shadow indexes can reference it using whatever argument type they want
-/// */
+/// -- we don't want any SQL generated for the "shadow" function, but we do want its '_wrapper' symbol
+/// -- exported so that shadow indexes can reference it using whatever argument type they want
 /// ```
 #[pg_extern(immutable, parallel_safe, raw, no_guard)]
 fn shadow(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
