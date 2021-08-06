@@ -1358,7 +1358,7 @@ dependencies = [
 [[package]]
 name = "pgx"
 version = "0.1.21"
-source = "git+https://github.com/zombodb/pgx?rev=a3e8782686aae7d56c19c02f5925d894ff3e77fc#a3e8782686aae7d56c19c02f5925d894ff3e77fc"
+source = "git+https://github.com/zombodb/pgx?rev=33b00f7f7324d6beb8874d646303dc10818f06fa#33b00f7f7324d6beb8874d646303dc10818f06fa"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -1382,7 +1382,7 @@ dependencies = [
 [[package]]
 name = "pgx-macros"
 version = "0.1.21"
-source = "git+https://github.com/zombodb/pgx?rev=a3e8782686aae7d56c19c02f5925d894ff3e77fc#a3e8782686aae7d56c19c02f5925d894ff3e77fc"
+source = "git+https://github.com/zombodb/pgx?rev=33b00f7f7324d6beb8874d646303dc10818f06fa#33b00f7f7324d6beb8874d646303dc10818f06fa"
 dependencies = [
  "pgx-utils",
  "proc-macro-crate",
@@ -1395,7 +1395,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-sys"
 version = "0.1.21"
-source = "git+https://github.com/zombodb/pgx?rev=a3e8782686aae7d56c19c02f5925d894ff3e77fc#a3e8782686aae7d56c19c02f5925d894ff3e77fc"
+source = "git+https://github.com/zombodb/pgx?rev=33b00f7f7324d6beb8874d646303dc10818f06fa#33b00f7f7324d6beb8874d646303dc10818f06fa"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1414,7 +1414,7 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.1.21"
-source = "git+https://github.com/zombodb/pgx?rev=a3e8782686aae7d56c19c02f5925d894ff3e77fc#a3e8782686aae7d56c19c02f5925d894ff3e77fc"
+source = "git+https://github.com/zombodb/pgx?rev=33b00f7f7324d6beb8874d646303dc10818f06fa#33b00f7f7324d6beb8874d646303dc10818f06fa"
 dependencies = [
  "colored",
  "lazy_static",
@@ -1433,7 +1433,7 @@ dependencies = [
 [[package]]
 name = "pgx-utils"
 version = "0.1.21"
-source = "git+https://github.com/zombodb/pgx?rev=a3e8782686aae7d56c19c02f5925d894ff3e77fc#a3e8782686aae7d56c19c02f5925d894ff3e77fc"
+source = "git+https://github.com/zombodb/pgx?rev=33b00f7f7324d6beb8874d646303dc10818f06fa#33b00f7f7324d6beb8874d646303dc10818f06fa"
 dependencies = [
  "color-eyre",
  "colored",
