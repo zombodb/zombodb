@@ -450,9 +450,12 @@ A multi-bucket value source based aggregation that enables the user to define a 
 
 ```sql
 FUNCTION zdb.significant_terms(
-	index regclass,
-	field text,
-	query zdbquery) 
+    index regclass, 
+    field text, 
+    query zdbquery, 
+    include text DEFAULT '.*'::text, 
+    size_limit integer DEFAULT 2147483647, 
+    min_doc_count integer DEFAULT 3)
 RETURNS TABLE (
 	term text,
 	doc_count bigint,
