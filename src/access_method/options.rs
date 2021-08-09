@@ -20,6 +20,7 @@ const DEFAULT_MAX_RESULT_WINDOW: i32 = 10000;
 const DEFAULT_NESTED_FIELDS_LIMIT: i32 = 1000;
 const DEFAULT_TOTAL_FIELDS_LIMIT: i32 = 1000;
 const DEFAULT_MAX_TERMS_COUNT: i32 = 65535;
+const DEFAULT_MAX_ANALYZE_TOKEN_COUNT: i32 = 10000;
 const DEFAULT_URL: &str = "default";
 const DEFAULT_TYPE_NAME: &str = "doc";
 const DEFAULT_REFRESH_INTERVAL: &str = "-1";
@@ -58,6 +59,7 @@ struct ZDBIndexOptionsInternal {
     nested_fields_limit: i32,
     total_fields_limit: i32,
     max_terms_count: i32,
+    max_analyze_token_count: i32,
     alias_offset: i32,
     uuid_offset: i32,
     translog_durability_offset: i32,
@@ -97,6 +99,7 @@ impl ZDBIndexOptionsInternal {
             ops.nested_fields_limit = DEFAULT_NESTED_FIELDS_LIMIT;
             ops.total_fields_limit = DEFAULT_TOTAL_FIELDS_LIMIT;
             ops.max_terms_count = DEFAULT_MAX_TERMS_COUNT;
+            ops.max_analyze_token_count = DEFAULT_MAX_ANALYZE_TOKEN_COUNT;
             ops.nested_object_date_detection = false;
             ops.nested_object_numeric_detection = false;
             ops
@@ -240,6 +243,7 @@ pub struct ZDBIndexOptions {
     nested_fields_limit: i32,
     total_field_limit: i32,
     max_terms_count: i32,
+    max_analyze_token_count: i32,
     alias: String,
     uuid: String,
     translog_durability: String,
@@ -282,6 +286,7 @@ impl ZDBIndexOptions {
             nested_fields_limit: internal.nested_fields_limit,
             total_field_limit: internal.total_fields_limit,
             max_terms_count: internal.max_terms_count,
+            max_analyze_token_count: internal.max_analyze_token_count,
             alias: internal.alias(&heap_relation, &relation),
             uuid: internal.uuid(&heap_relation, &relation),
             links: options.map_or_else(|| internal.links(), |v| Some(v)),
@@ -367,6 +372,10 @@ impl ZDBIndexOptions {
 
     pub fn max_terms_count(&self) -> i32 {
         self.max_terms_count
+    }
+
+    pub fn max_analyze_token_count(&self) -> i32 {
+        self.max_analyze_token_count
     }
 
     pub fn alias(&self) -> &str {
@@ -650,7 +659,7 @@ extern "C" fn validate_text_mapping(value: *const std::os::raw::c_char) {
     .expect("invalid nested_object_text_mapping");
 }
 
-const NUM_REL_OPTS: usize = 23;
+const NUM_REL_OPTS: usize = 24;
 #[allow(clippy::unneeded_field_pattern)] // b/c of offset_of!()
 #[pg_guard]
 pub unsafe extern "C" fn amoptions(
@@ -718,6 +727,11 @@ pub unsafe extern "C" fn amoptions(
             optname: "max_terms_count".as_pg_cstr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
             offset: offset_of!(ZDBIndexOptionsInternal, max_terms_count) as i32,
+        },
+        pg_sys::relopt_parse_elt {
+            optname: "max_analyze_token_count".as_pg_cstr(),
+            opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
+            offset: offset_of!(ZDBIndexOptionsInternal, max_analyze_token_count) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "alias".as_pg_cstr(),
@@ -972,6 +986,19 @@ pub unsafe fn init() {
         "The maximum number of terms that can be used in Terms Query.  The default value is 65535."
             .as_pg_cstr(),
         DEFAULT_MAX_TERMS_COUNT,
+        1,
+        std::i32::MAX,
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
+    );
+    pg_sys::add_int_reloption(
+        RELOPT_KIND_ZDB,
+        "max_analyze_token_count".as_pg_cstr(),
+        "The maximum number of tokens to be generated during text analysis.  Corresponds to the Elasticsearch 'index.analyze.max_token_count' setting.  The default value is 10000."
+            .as_pg_cstr(),
+        DEFAULT_MAX_ANALYZE_TOKEN_COUNT,
         1,
         std::i32::MAX,
         #[cfg(feature = "pg13")]

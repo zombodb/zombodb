@@ -20,7 +20,8 @@ impl ElasticsearchUpdateSettingsRequest {
                         "refresh_interval": self.0.options.refresh_interval().as_str(),
                         "number_of_replicas": self.0.options.replicas(),
                         "translog.durability": self.0.options.translog_durability(),
-                        "max_terms_count": self.0.options.max_terms_count()
+                        "max_terms_count": self.0.options.max_terms_count(),
+                        "analyze.max_token_count": self.0.options.max_analyze_token_count()
                     }
                 }
             }),

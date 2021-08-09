@@ -169,6 +169,18 @@ when the ZomboDB Search Accelerator is not installed.
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules.html#index-max-terms-count
 
+#### `max_analyze_token_count`
+```
+Type: integer
+Default: 10000
+Range: [1, INT_32_MAX]
+```
+
+The maximum number of tokens that the `_analyze` API will generate for a single request.  Typically, this is used to 
+enable custom highlighting of very large documents.
+
+https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-analyze.html#tokens-limit-settings
+
 ### Network Options
 
 #### `bulk_concurrency`
