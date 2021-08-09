@@ -28,8 +28,7 @@ extension_sql_file!("../sql/_bootstrap.sql", bootstrap);
 extension_sql_file!("../sql/_mappings.sql");
 extension_sql_file!(
     "../sql/_support-views.sql",
-    after = [query_dsl::bool::dsl, query_dsl::filter::dsl],
-    before = ["../sql/_cat-api.sql"],
+    after = [query_dsl::bool::dsl, query_dsl::filter::dsl, "../sql/_cat-api.sql"],
 );
 extension_sql_file!("../sql/_join-support.sql");
 extension_sql_file!("../sql/_cat-api.sql");
@@ -37,6 +36,7 @@ extension_sql_file!(
     "../sql/_type-conversions.sql",
     after = [
         "_mappings.sql",
+        "../sql/_cat-api.sql",
         query_dsl::point_to_json,
         query_dsl::point_array_to_json
     ]
