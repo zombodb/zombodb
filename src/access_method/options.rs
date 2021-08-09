@@ -18,6 +18,7 @@ const DEFAULT_SHARDS: i32 = 5;
 const DEFAULT_OPTIMIZE_AFTER: i32 = 0;
 const DEFAULT_MAX_RESULT_WINDOW: i32 = 10000;
 const DEFAULT_NESTED_FIELDS_LIMIT: i32 = 1000;
+const DEFAULT_NESTED_OBJECTS_LIMIT: i32 = 10000;
 const DEFAULT_TOTAL_FIELDS_LIMIT: i32 = 1000;
 const DEFAULT_MAX_TERMS_COUNT: i32 = 65535;
 const DEFAULT_MAX_ANALYZE_TOKEN_COUNT: i32 = 10000;
@@ -57,6 +58,7 @@ struct ZDBIndexOptionsInternal {
     type_name_offset: i32,
     refresh_interval_offset: i32,
     nested_fields_limit: i32,
+    nested_objects_limit: i32,
     total_fields_limit: i32,
     max_terms_count: i32,
     max_analyze_token_count: i32,
@@ -97,6 +99,7 @@ impl ZDBIndexOptionsInternal {
             ops.optimize_after = DEFAULT_OPTIMIZE_AFTER;
             ops.max_result_window = DEFAULT_MAX_RESULT_WINDOW;
             ops.nested_fields_limit = DEFAULT_NESTED_FIELDS_LIMIT;
+            ops.nested_objects_limit = DEFAULT_NESTED_OBJECTS_LIMIT;
             ops.total_fields_limit = DEFAULT_TOTAL_FIELDS_LIMIT;
             ops.max_terms_count = DEFAULT_MAX_TERMS_COUNT;
             ops.max_analyze_token_count = DEFAULT_MAX_ANALYZE_TOKEN_COUNT;
@@ -241,6 +244,7 @@ pub struct ZDBIndexOptions {
     refresh_interval: RefreshInterval,
     max_result_window: i32,
     nested_fields_limit: i32,
+    nested_objects_limit: i32,
     total_field_limit: i32,
     max_terms_count: i32,
     max_analyze_token_count: i32,
@@ -284,6 +288,7 @@ impl ZDBIndexOptions {
             refresh_interval: internal.refresh_interval(),
             max_result_window: internal.max_result_window,
             nested_fields_limit: internal.nested_fields_limit,
+            nested_objects_limit: internal.nested_objects_limit,
             total_field_limit: internal.total_fields_limit,
             max_terms_count: internal.max_terms_count,
             max_analyze_token_count: internal.max_analyze_token_count,
@@ -364,6 +369,10 @@ impl ZDBIndexOptions {
 
     pub fn nested_fields_limit(&self) -> i32 {
         self.nested_fields_limit
+    }
+
+    pub fn nested_objects_limit(&self) -> i32 {
+        self.nested_objects_limit
     }
 
     pub fn total_fields_limit(&self) -> i32 {
@@ -659,7 +668,7 @@ extern "C" fn validate_text_mapping(value: *const std::os::raw::c_char) {
     .expect("invalid nested_object_text_mapping");
 }
 
-const NUM_REL_OPTS: usize = 24;
+const NUM_REL_OPTS: usize = 25;
 #[allow(clippy::unneeded_field_pattern)] // b/c of offset_of!()
 #[pg_guard]
 pub unsafe extern "C" fn amoptions(
@@ -717,6 +726,11 @@ pub unsafe extern "C" fn amoptions(
             optname: "nested_fields_limit".as_pg_cstr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
             offset: offset_of!(ZDBIndexOptionsInternal, nested_fields_limit) as i32,
+        },
+        pg_sys::relopt_parse_elt {
+            optname: "nested_objects_limit".as_pg_cstr(),
+            opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
+            offset: offset_of!(ZDBIndexOptionsInternal, nested_objects_limit) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "total_fields_limit".as_pg_cstr(),
@@ -961,6 +975,18 @@ pub unsafe fn init() {
         "nested_fields_limit".as_pg_cstr(),
         "The maximum number of distinct nested mappings in an index.  Default is 1000".as_pg_cstr(),
         DEFAULT_NESTED_FIELDS_LIMIT,
+        1,
+        std::i32::MAX,
+        #[cfg(feature = "pg13")]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
+    );
+    pg_sys::add_int_reloption(
+        RELOPT_KIND_ZDB,
+        "nested_objects_limit".as_pg_cstr(),
+        "The maximum number of nested JSON objects that a single document can contain across all nested types.  Default is 1000".as_pg_cstr(),
+        DEFAULT_NESTED_OBJECTS_LIMIT,
         1,
         std::i32::MAX,
         #[cfg(feature = "pg13")]
