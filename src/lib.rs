@@ -33,7 +33,14 @@ extension_sql_file!(
 );
 extension_sql_file!("../sql/_join-support.sql");
 extension_sql_file!("../sql/_cat-api.sql");
-extension_sql_file!("../sql/_type-conversions.sql", after = ["_mappings.sql"]);
+extension_sql_file!(
+    "../sql/_type-conversions.sql",
+    after = [
+        "_mappings.sql",
+        query_dsl::point_to_json,
+        query_dsl::point_array_to_json
+    ]
+);
 extension_sql_file!("../sql/_finalize.sql", finalize);
 
 #[allow(non_snake_case)]
