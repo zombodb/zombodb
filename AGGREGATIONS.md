@@ -561,26 +561,29 @@ A multi-value metrics aggregation that computes stats over numeric values extrac
 
 ---
 
-```FUNCTION zdb_tally(
-    index_name regclass, 
-    fieldname text 
-    [, is_nested boolean], 
+```sql
+FUNCTION zdb.tally(
+    index regclass, 
+    field_name text,
+    [ is_nested bool],
     stem text, 
-    query zdbquery, 
-    max_terms bigint, 
-    sort_order zdb_tally_order 
-    [, shard_size int DEFAULT 0]) 
-RETURNS SET OF zdb_tally_response
+    query ZDBQuery, 
+    size_limit integer DEFAULT '2147483647', 
+    order_by TermsOrderBy DEFAULT NULL, 
+    shard_size integer DEFAULT '2147483647', 
+    count_nulls bool DEFAULT 'true'
+) RETURNS TABLE (term text, count bigint)
 ```
 
-`index_name`:  The name of the a ZomboDB index to query  
-`fieldname`: The name of a field from which to derive terms  
+`index`:  The name of the a ZomboDB index to query  
+`field)_name`: The name of a field from which to derive terms  
 `is_nested`: Optional argument to indicate that the terms should only come from matching nested object sub-elements.  Default is `false`    
 `stem`:  a Regular expression by which to filter returned terms, or a date interval if the specified `fieldname` is a date or timestamp    
 `query`: a ZomboDB query  
-`max_terms`: maximum number of terms to return.  A value of zero means "all terms".
-`sort_order`: how to sort the terms.  one of `'count'`, `'term'`, `'reverse_count'`, `'reverse_term'`  
+`size_limit`: maximum number of terms to return.  A NULL value means "all terms".
+`order_by`: how to sort the terms.  one of `'count'`, `'term'`, `'reverse_count'`, `'reverse_term'`  
 `shard_size`: optional parameter that tells Elasticsearch how many terms to return from each shard.  Default is zero, which means all terms  
+`count_nulls`: should a row containing the count of NULL (ie, missing) values be included in the results?
 
 This function provides direct access to Elasticsearch's [terms aggregate](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-terms-aggregation.html) and cannot
 be used with fields of type `fulltext`.  The results are MVCC-safe.  Returned terms are forced to upper-case.
@@ -589,7 +592,7 @@ If a stem is not specified, no results will be returned.
 
 To match all terms: `^.*`
 
-If the specifield `fieldname` is a date/timestamp, then one of the following values are allowed for aggregating values 
+If the specified `fieldname` is a date/timestamp, then one of the following values are allowed for aggregating values 
 into histogram buckets of the specified interval: `year, quarter, month, week, day, hour, minute, second`.  In all cases, 
 an optional offset value can be specified.  For example:  `week:-1d` will offset the dates by one day so that the first 
 day of the week will be considered to be Sunday (instead of the default of Monday).
@@ -597,7 +600,7 @@ day of the week will be considered to be Sunday (instead of the default of Monda
 Example:
 
 ```sql
-SELECT * FROM zdb_tally('products', 'keywords', '^.*', 'base* or distance', 5000, 'term');
+SELECT * FROM zdb.tally('products', 'keywords', '^.*', 'base* or distance', 5000, 'term');
 
     term      | count 
 >---------------+-------
