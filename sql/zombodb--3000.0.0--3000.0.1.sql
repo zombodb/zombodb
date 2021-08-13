@@ -1,0 +1,5 @@
+DROP FUNCTION IF EXISTS zdb.schema_version() CASCADE;
+CREATE FUNCTION zdb.schema_version() RETURNS text LANGUAGE sql AS $$
+SELECT '3000.0.1 (8573638e96d98024a0e64e350d30bcbdac568385)'
+$$;
+

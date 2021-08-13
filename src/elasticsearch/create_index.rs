@@ -49,9 +49,11 @@ impl ElasticsearchCreateIndexRequest {
               "query.default_field": "zdb_all",
               "translog.durability": "async",
               "mapping.nested_fields.limit": self.elasticsearch.options.nested_fields_limit(),
+              "mapping.nested_objects.limit": self.elasticsearch.options.nested_objects_limit(),
               "mapping.total_fields.limit": self.elasticsearch.options.total_fields_limit(),
               "max_result_window": self.elasticsearch.options.max_result_window(),
-              "max_terms_count": self.elasticsearch.options.max_terms_count()
+              "max_terms_count": self.elasticsearch.options.max_terms_count(),
+              "analyze.max_token_count": self.elasticsearch.options.max_analyze_token_count()
             } }
         } else {
             // we can do an index-level sort on zdb_ctid:asc
@@ -62,9 +64,11 @@ impl ElasticsearchCreateIndexRequest {
               "query.default_field": "zdb_all",
               "translog.durability": "async",
               "mapping.nested_fields.limit": self.elasticsearch.options.nested_fields_limit(),
+              "mapping.nested_objects.limit": self.elasticsearch.options.nested_objects_limit(),
               "mapping.total_fields.limit": self.elasticsearch.options.total_fields_limit(),
               "max_result_window": self.elasticsearch.options.max_result_window(),
               "max_terms_count": self.elasticsearch.options.max_terms_count(),
+              "analyze.max_token_count": self.elasticsearch.options.max_analyze_token_count(),
               "sort.field": "zdb_ctid",
               "sort.order": "asc"
             } }

@@ -129,20 +129,6 @@ The maximum number of docs ZomboDB will retrieve from Elasticsearch in a single 
 
 See: https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules.html#index-max-result-window
 
-#### `nested_fields_limit`
-```
-Type: integer
-Default: 1000
-Range: [1, INT_32_MAX]
-```
-
-The maximum number of distinct nested mappings in an index. The nested type should only be used 
-in special cases, when arrays of objects need to be queried independently of each other. To 
-safeguard against poorly designed mappings, this setting limits the number of unique nested 
-types per index.
-
-See: https://www.elastic.co/guide/en/elasticsearch/reference/master/mapping-settings-limit.html
-
 #### `total_fields_limit`
 ```
 Type: integer
@@ -168,6 +154,18 @@ Increasing this limit might be necessary for performing large [cross-index joins
 when the ZomboDB Search Accelerator is not installed.
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules.html#index-max-terms-count
+
+#### `max_analyze_token_count`
+```
+Type: integer
+Default: 10000
+Range: [1, INT_32_MAX]
+```
+
+The maximum number of tokens that the `_analyze` API will generate for a single request.  Typically, this is used to 
+enable custom highlighting of very large documents.
+
+https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-analyze.html#tokens-limit-settings
 
 ### Network Options
 
@@ -200,6 +198,33 @@ Sets the HTTP(s) transport (and request body) deflate compression level.  Over s
 
 
 ### Nested Object Mapping Options
+
+#### `nested_fields_limit`
+```
+Type: integer
+Default: 1000
+Range: [1, INT_32_MAX]
+```
+
+The maximum number of distinct nested mappings in an index. The nested type should only be used
+in special cases, when arrays of objects need to be queried independently of each other. To
+safeguard against poorly designed mappings, this setting limits the number of unique nested
+types per index.
+
+See: https://www.elastic.co/guide/en/elasticsearch/reference/master/mapping-settings-limit.html
+
+#### `nested_objects_limit`
+```
+Type: integer
+Default: 10000
+Range: [1, INT_32_MAX]
+```
+
+The maximum number of nested JSON objects that a single document can contain across all nested types. This limit helps 
+to prevent out of memory errors when a document contains too many nested objects.
+
+See: https://www.elastic.co/guide/en/elasticsearch/reference/master/mapping-settings-limit.html#mapping-settings-limit
+
 
 #### `nested_object_date_detection`
 ```

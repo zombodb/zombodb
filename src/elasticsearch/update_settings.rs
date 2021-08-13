@@ -16,11 +16,13 @@ impl ElasticsearchUpdateSettingsRequest {
                     "index": {
                         "max_result_window": self.0.options.max_result_window(),
                         "mapping.nested_fields.limit": self.0.options.nested_fields_limit(),
+                        "mapping.nested_objects.limit": self.0.options.nested_objects_limit(),
                         "mapping.total_fields.limit": self.0.options.total_fields_limit(),
                         "refresh_interval": self.0.options.refresh_interval().as_str(),
                         "number_of_replicas": self.0.options.replicas(),
                         "translog.durability": self.0.options.translog_durability(),
-                        "max_terms_count": self.0.options.max_terms_count()
+                        "max_terms_count": self.0.options.max_terms_count(),
+                        "analyze.max_token_count": self.0.options.max_analyze_token_count()
                     }
                 }
             }),
