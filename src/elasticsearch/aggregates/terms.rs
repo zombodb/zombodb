@@ -68,11 +68,7 @@ fn tally_not_nested(
     stem: Option<&str>,
     query: ZDBQuery,
     size_limit: Option<default!(i32, 2147483647)>,
-<<<<<<< HEAD
-    order_by: Option<default!(TermsOrderBy, "NULL")>,
-=======
     order_by: Option<default!(TermsOrderBy, "'count'")>,
->>>>>>> develop
     shard_size: Option<default!(i32, 2147483647)>,
     count_nulls: Option<default!(bool, true)>,
 ) -> impl std::iter::Iterator<Item = (name!(term, Option<String>), name!(count, i64))> {
@@ -97,11 +93,7 @@ fn tally(
     stem: Option<&str>,
     query: ZDBQuery,
     size_limit: Option<default!(i32, 2147483647)>,
-<<<<<<< HEAD
-    order_by: Option<default!(TermsOrderBy, "NULL")>,
-=======
     order_by: Option<default!(TermsOrderBy, "'count'")>,
->>>>>>> develop
     shard_size: Option<default!(i32, 2147483647)>,
     count_nulls: Option<default!(bool, true)>,
 ) -> impl std::iter::Iterator<Item = (name!(term, Option<String>), name!(count, i64))> {
@@ -365,11 +357,7 @@ pub(crate) fn terms_array_agg(
     field: &str,
     query: ZDBQuery,
     size_limit: Option<default!(i32, 2147483647)>,
-<<<<<<< HEAD
-    order_by: Option<default!(TermsOrderBy, "NULL")>,
-=======
     order_by: Option<default!(TermsOrderBy, "'count'")>,
->>>>>>> develop
 ) -> Vec<Option<String>> {
     terms(index, field, query, size_limit, order_by)
         .map(|(term, _)| term)
