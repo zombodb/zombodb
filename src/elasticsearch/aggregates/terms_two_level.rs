@@ -2,6 +2,7 @@ use crate::elasticsearch::aggregates::terms_two_level::pg_catalog::TwoLevelTerms
 use crate::elasticsearch::Elasticsearch;
 use crate::utils::json_to_string;
 use crate::zdbquery::ZDBQuery;
+use pgx::pg_sys::TerminateBackgroundWorker;
 use pgx::*;
 use serde::*;
 use serde_json::*;
@@ -28,7 +29,7 @@ fn terms_two_level(
     field_first: &str,
     field_second: &str,
     query: ZDBQuery,
-    order_by: Option<default!(TwoLevelTermsOrderBy, NULL)>,
+    order_by: Option<default!(TwoLevelTermsOrderBy, "'count'")>,
     size_limit: Option<default!(i32, 2147483647)>,
 ) -> impl std::iter::Iterator<
     Item = (
@@ -54,17 +55,12 @@ fn terms_two_level(
         buckets: Vec<BucketEntry>,
     }
 
-    let order = match order_by {
-        Some(order_by) => match order_by {
-            TwoLevelTermsOrderBy::count => json! {{ "_count": "asc" }},
-            TwoLevelTermsOrderBy::term | TwoLevelTermsOrderBy::key => json! {{ "_key": "asc" }},
-            TwoLevelTermsOrderBy::reverse_count => json! {{ "_count": "desc" }},
-            TwoLevelTermsOrderBy::reverse_term | TwoLevelTermsOrderBy::reverse_key => {
-                json! {{ "_key": "desc" }}
-            }
-        },
-        None => {
-            json! {{ "_count": "desc" }}
+    let order = match order_by.unwrap_or(TwoLevelTermsOrderBy::count) {
+        TwoLevelTermsOrderBy::count => json! {{ "_count": "asc" }},
+        TwoLevelTermsOrderBy::term | TwoLevelTermsOrderBy::key => json! {{ "_key": "asc" }},
+        TwoLevelTermsOrderBy::reverse_count => json! {{ "_count": "desc" }},
+        TwoLevelTermsOrderBy::reverse_term | TwoLevelTermsOrderBy::reverse_key => {
+            json! {{ "_key": "desc" }}
         }
     };
 

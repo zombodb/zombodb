@@ -31,8 +31,19 @@ fn terms(
     field_name: &str,
     query: ZDBQuery,
     size_limit: Option<default!(i32, 2147483647)>,
-    order_by: Option<default!(TermsOrderBy, NULL)>,
+    order_by: Option<default!(TermsOrderBy, "'count'")>,
 ) -> impl std::iter::Iterator<Item = (name!(term, Option<String>), name!(doc_count, i64))> {
+    let order_by = match order_by.as_ref().unwrap_or(&TermsOrderBy::count) {
+        // we flip the meaning of 'count' and 'reverse_count' here
+        // as externally to Postgres we want 'count' to mean ascending and 'reverse_count' to mean descending
+        TermsOrderBy::count => TermsOrderBy::reverse_count,
+        TermsOrderBy::reverse_count => TermsOrderBy::count,
+
+        // 'term' and 'reverse_term' stay the same
+        TermsOrderBy::term | TermsOrderBy::key => TermsOrderBy::key,
+        TermsOrderBy::reverse_term | TermsOrderBy::reverse_key => TermsOrderBy::reverse_key,
+    };
+
     tally(
         index,
         field_name,
@@ -40,7 +51,7 @@ fn terms(
         None,
         query,
         size_limit,
-        order_by,
+        Some(order_by),
         Some(std::i32::MAX),
         Some(false),
     )
@@ -56,7 +67,7 @@ fn tally_not_nested(
     stem: Option<&str>,
     query: ZDBQuery,
     size_limit: Option<default!(i32, 2147483647)>,
-    order_by: Option<default!(TermsOrderBy, NULL)>,
+    order_by: Option<default!(TermsOrderBy, "'count'")>,
     shard_size: Option<default!(i32, 2147483647)>,
     count_nulls: Option<default!(bool, true)>,
 ) -> impl std::iter::Iterator<Item = (name!(term, Option<String>), name!(count, i64))> {
@@ -81,7 +92,7 @@ fn tally(
     stem: Option<&str>,
     query: ZDBQuery,
     size_limit: Option<default!(i32, 2147483647)>,
-    order_by: Option<default!(TermsOrderBy, NULL)>,
+    order_by: Option<default!(TermsOrderBy, "'count'")>,
     shard_size: Option<default!(i32, 2147483647)>,
     count_nulls: Option<default!(bool, true)>,
 ) -> impl std::iter::Iterator<Item = (name!(term, Option<String>), name!(count, i64))> {
@@ -183,16 +194,12 @@ fn tally(
     let is_date_field = date_stem.is_some();
 
     let count_nulls = count_nulls.unwrap_or_default();
-    let order = match order_by {
-        Some(order_by) => match order_by {
-            TermsOrderBy::count => json! {{ "_count": "asc" }},
-            TermsOrderBy::term | TermsOrderBy::key => json! {{ "_key": "asc" }},
-            TermsOrderBy::reverse_count => json! {{ "_count": "desc" }},
-            TermsOrderBy::reverse_term | TermsOrderBy::reverse_key => json! {{ "_key": "desc" }},
-        },
-        None => {
-            json! {{ "_count": "desc" }}
-        }
+    let order = match order_by.unwrap_or(TermsOrderBy::count) {
+        // `count` sorts largest to smallest and `reverse_count` sorts smallest to largest
+        TermsOrderBy::count => json! {{ "_count": "desc" }},
+        TermsOrderBy::reverse_count => json! {{ "_count": "asc" }},
+        TermsOrderBy::term | TermsOrderBy::key => json! {{ "_key": "asc" }},
+        TermsOrderBy::reverse_term | TermsOrderBy::reverse_key => json! {{ "_key": "desc" }},
     };
 
     let field_name = if is_date_subfield {
@@ -338,7 +345,7 @@ fn tally(
 ///     "field_name" text,
 ///     "query" ZDBQuery,
 ///     "size_limit" integer DEFAULT '2147483647',
-///     "order_by" TermsOrderBy DEFAULT NULL)
+///     "order_by" TermsOrderBy DEFAULT 'count')
 /// RETURNS text[]
 /// IMMUTABLE PARALLEL SAFE
 /// LANGUAGE c AS 'MODULE_PATHNAME', 'terms_array_agg_wrapper';
@@ -349,7 +356,7 @@ pub(crate) fn terms_array_agg(
     field: &str,
     query: ZDBQuery,
     size_limit: Option<default!(i32, 2147483647)>,
-    order_by: Option<default!(TermsOrderBy, NULL)>,
+    order_by: Option<default!(TermsOrderBy, "'count'")>,
 ) -> Vec<Option<String>> {
     terms(index, field, query, size_limit, order_by)
         .map(|(term, _)| term)
