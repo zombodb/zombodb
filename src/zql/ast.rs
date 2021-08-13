@@ -305,32 +305,23 @@ impl ProximityTerm {
 
         let analyzed_tokens = match index {
             // if we have an index we'll ask Elasticsearch to tokenize the input for us
-            Some(index) => {
-                let index = index
-                    .open_index()
-                    .expect(&format!("failed to open index for {}", field));
-                let analyzer = get_search_analyzer(&index, &field.field);
-                Elasticsearch::new(&index)
-                    .analyze_text(&analyzer, &replaced_input)
-                    .execute()
-                    .expect("failed to analyze phrase")
-                    .tokens
-            }
+            Some(index) => match index.open_index() {
+                Ok(index) => {
+                    let analyzer = get_search_analyzer(&index, &field.field);
+                    Elasticsearch::new(&index)
+                        .analyze_text(&analyzer, &replaced_input)
+                        .execute()
+                        .expect("failed to analyze phrase")
+                        .tokens
+                }
+                // if we couldn't open the index we'll just tokenize on whitespace, ignoring the
+                // reason why we couldn't open the index
+                Err(_) => ProximityTerm::tokenize_on_whitespace(input),
+            },
 
             // if we don't then we'll just tokenize on whitespace.  This is only going to happen
             // during disconnected tests
-            None => input
-                .split_whitespace()
-                .into_iter()
-                .enumerate()
-                .map(|(idx, word)| crate::elasticsearch::analyze::Token {
-                    type_: "".to_string(),
-                    token: word.to_string(),
-                    position: idx as i32,
-                    start_offset: 0,
-                    end_offset: 0,
-                })
-                .collect(),
+            None => ProximityTerm::tokenize_on_whitespace(input),
         };
 
         // first, group tokens by end_offset
@@ -409,6 +400,21 @@ impl ProximityTerm {
 
             ProximityTerm::ProximityChain(filtered_parts)
         }
+    }
+
+    fn tokenize_on_whitespace(input: &str) -> Vec<crate::elasticsearch::analyze::Token> {
+        input
+            .split_whitespace()
+            .into_iter()
+            .enumerate()
+            .map(|(idx, word)| crate::elasticsearch::analyze::Token {
+                type_: "".to_string(),
+                token: word.to_string(),
+                position: idx as i32,
+                start_offset: 0,
+                end_offset: 0,
+            })
+            .collect()
     }
 
     fn replace_substitutions(token: &crate::elasticsearch::analyze::Token) -> String {
