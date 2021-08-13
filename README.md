@@ -24,6 +24,7 @@ ZomboDB allows you to use the power and scalability of Elasticsearch directly fr
  - [Important Things to Know](THINGS-TO-KNOW.md)
  - [Creating Indexes](CREATE-INDEX.md)
  - [ZQL (ZomboDB Query Language)](ZQL.md)
+ - [Cross-Index Joins](CROSS-INDEX-JOINS.md)
  - [Aggregations](AGGREGATIONS.md)
  - [Scoring and Highlighting](SCORING-HIGHLIGHTING.md)
  - [SQL Functions](SQL-FUNCTIONS.md)
