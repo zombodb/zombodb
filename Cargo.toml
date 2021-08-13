@@ -53,6 +53,7 @@ libc = "0.2.99"
 panic = "unwind"
 debug = true
 opt-level = 0
+codegen-units = 1
 
 [profile.release]
 panic = "unwind"
