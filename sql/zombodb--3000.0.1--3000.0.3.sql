@@ -1,6 +1,6 @@
 DROP FUNCTION IF EXISTS zdb.schema_version() CASCADE;
 CREATE FUNCTION zdb.schema_version() RETURNS text LANGUAGE sql AS $$
-SELECT '3000.0.3 (6d3907ed9daabed6417a12fee2e5865bbadc0261)'
+SELECT '3000.0.3 (c3b67d88486221dc77481176a50b91b43ecc09aa)'
 $$;
 DROP FUNCTION IF EXISTS zdb.terms(index regclass, field_name text, query zdbquery, size_limit pg_catalog.int4, order_by termsorderby) CASCADE;
 CREATE OR REPLACE FUNCTION zdb.terms(index regclass, field_name text, query zdbquery, size_limit pg_catalog.int4 DEFAULT '2147483647', order_by termsorderby DEFAULT 'count') RETURNS TABLE(term text, doc_count pg_catalog.int8) immutable PARALLEL safe LANGUAGE c AS 'MODULE_PATHNAME', 'terms_wrapper';

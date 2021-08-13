@@ -91,7 +91,3 @@ elasticsearch_aggregates_builders_geotile_grid.generated.sql
 elasticsearch_aggregates_builders_global.generated.sql
 elasticsearch_aggregates_builders_ip_range.generated.sql
 _finalize.sql
-elasticsearch_search.generated.sql
-gucs_mod.generated.sql
-mapping_mod.generated.sql
-zql_mod.generated.sql
