@@ -1,0 +1,24 @@
+select count(*) from so_posts where so_posts ==> 'body:(the w/3 JAVA)';
+ count 
+-------
+  4023
+(1 row)
+
+select count(*) from so_posts where so_posts ==> 'body:(the w/3 JAVA*)';
+ count 
+-------
+  6084
+(1 row)
+
+select count(*) from so_posts where so_posts ==> 'body:(the w/3 JA?A)';
+ count 
+-------
+  4023
+(1 row)
+
+select count(*) from so_posts where so_posts ==> 'body:(the w/3 JAVA~22)';
+ count 
+-------
+  4023
+(1 row)
+

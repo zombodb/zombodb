@@ -51,6 +51,18 @@ fn rewrite_term(field: &QualifiedField, term: &mut Term) {
 
 fn rewrite_prox_term(field: &QualifiedField, prox_term: &mut ProximityTerm) {
     match prox_term {
+        ProximityTerm::String(s, b) => {
+            *prox_term = ProximityTerm::make_proximity_chain(field, &s, *b)
+        }
+        ProximityTerm::Wildcard(s, b) => {
+            *prox_term = ProximityTerm::make_proximity_chain(field, &s, *b)
+        }
+        ProximityTerm::Fuzzy(s, fuzz, b) => {
+            *prox_term = match ProximityTerm::make_proximity_chain(field, &s, *b) {
+                ProximityTerm::String(s, b) => ProximityTerm::Fuzzy(s, *fuzz, b),
+                _ => panic!("Fuzzy proximity value didn't parse correctly"),
+            }
+        }
         ProximityTerm::Phrase(s, b) => {
             *prox_term = ProximityTerm::make_proximity_chain(field, &s, *b)
         }
