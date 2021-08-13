@@ -39,10 +39,10 @@ CREATE INDEX idxsubxact_test ON subxact_test USING zombodb ((subxact_test));
 SELECT * FROM zdb.terms('idxsubxact_test', 'end_date_text', match_all());
     term    | doc_count 
 ------------+-----------
- 12/31/1999 |         2
  12/31/2016 |         1
  2/3/1999   |         1
  unknown    |         1
+ 12/31/1999 |         2
 (4 rows)
 
 UPDATE subxact_test
@@ -52,10 +52,10 @@ SET duration = CASE WHEN isdate(end_date_text) = 1 AND isdate(start_date_text) =
 SELECT * FROM zdb.terms('idxsubxact_test', 'end_date_text', match_all());
     term    | doc_count 
 ------------+-----------
- 12/31/1999 |         2
  12/31/2016 |         1
  2/3/1999   |         1
  unknown    |         1
+ 12/31/1999 |         2
 (4 rows)
 
 BEGIN;
@@ -68,10 +68,10 @@ COMMIT;
 SELECT * FROM zdb.terms('idxsubxact_test', 'end_date_text', match_all());
     term    | doc_count 
 ------------+-----------
- 12/31/1999 |         2
  12/31/2016 |         1
  2/3/1999   |         1
  unknown    |         1
+ 12/31/1999 |         2
 (4 rows)
 
 DROP TABLE subxact_test CASCADE;

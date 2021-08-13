@@ -1,20 +1,20 @@
 SELECT * FROM zdb.terms('idxevents', 'event_type', dsl.match_all());
              term              | doc_count 
 -------------------------------+-----------
- pushevent                     |     62414
- createevent                   |     18370
- watchevent                    |     14397
- issuecommentevent             |      8024
- pullrequestevent              |      6318
- forkevent                     |      5304
- issuesevent                   |      4280
- deleteevent                   |      3320
- pullrequestreviewcommentevent |      1661
- gollumevent                   |       836
- memberevent                   |       569
- releaseevent                  |       352
- commitcommentevent            |       270
  publicevent                   |       130
+ commitcommentevent            |       270
+ releaseevent                  |       352
+ memberevent                   |       569
+ gollumevent                   |       836
+ pullrequestreviewcommentevent |      1661
+ deleteevent                   |      3320
+ issuesevent                   |      4280
+ forkevent                     |      5304
+ pullrequestevent              |      6318
+ issuecommentevent             |      8024
+ watchevent                    |     14397
+ createevent                   |     18370
+ pushevent                     |     62414
 (14 rows)
 
 SELECT * FROM zdb.count('idxevents', dsl.match_all());
