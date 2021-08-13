@@ -138,7 +138,7 @@ fn highlight(
 fn highlight_field(
     ctid: pg_sys::ItemPointerData,
     field: &str,
-    _highlight_definition: default!(Json, zdb.highlight()),
+    _highlight_definition: default!(Json, "zdb.highlight()"),
     fcinfo: pg_sys::FunctionCallInfo,
 ) -> Option<Vec<Option<&'static String>>> {
     let highlights = match get_executor_manager().peek_query_state() {
@@ -167,7 +167,7 @@ fn highlight_field(
 fn want_highlight(
     mut query: ZDBQuery,
     field: String,
-    highlight_definition: default!(Json, zdb.highlight()),
+    highlight_definition: default!(Json, "zdb.highlight()"),
 ) -> ZDBQuery {
     let highlights = query.highlights();
     highlights.insert(field, highlight_definition.0);
