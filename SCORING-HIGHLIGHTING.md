@@ -1,8 +1,10 @@
 ## Scoring
 
-ZomboDB provides a function named `zdb.score(tid) RETURNS real` that returns the score for the current matching row.  You can use it in the target list of your query and can also sort by it.
+ZomboDB provides a function named `zdb.score(tid) RETURNS real` that returns the score for the current matching row. You
+can use it in the target list of your query and can also sort by it.
 
-Without an `ORDER BY` clause, SQL doesn't guarantee any kind of ordering, so it's always important to also order by the score if you want the top-ranked documents first in your results.
+Without an `ORDER BY` clause, SQL doesn't guarantee any kind of ordering, so it's always important to also order by the
+score if you want the top-ranked documents first in your results.
 
 Using the [tutorial](TUTORIAL.md) database, an example of using scores is:
 
@@ -19,11 +21,14 @@ tutorial=#
 (2 rows)
 ```
 
-Note that the argument provided to `zdb.score()` is the hidden Postgres system column called `ctid`.  Internally, ZomboDB uses ctids to identify matching rows, and this is how you tell `zdb.score()` the row you want.
+Note that the argument provided to `zdb.score()` is the hidden Postgres system column called `ctid`. Internally, ZomboDB
+uses ctids to identify matching rows, and this is how you tell `zdb.score()` the row you want.
 
-Also, `zdb.score()` is **not** allowed in the `WHERE` clause of queries.  It is only allowed in `ORDER BY` clauses and what Postgres calls the "target list" -- the list of columns the query should return.
+Also, `zdb.score()` is **not** allowed in the `WHERE` clause of queries. It is only allowed in `ORDER BY` clauses and
+what Postgres calls the "target list" -- the list of columns the query should return.
 
-If you need to limit the results of a query by score you can use ZomboDB's [`dsl.min_score()`](QUERY-BUILDER-API.md) function, or you can use a subselect of some kind, such as:
+If you need to limit the results of a query by score you can use ZomboDB's [`dsl.min_score()`](QUERY-BUILDER-API.md)
+function, or you can use a subselect of some kind, such as:
 
 ```sql
 SELECT * FROM (SELECT zdb.score(ctid), * FROM products WHERE products ==> 'sports box') x WHERE x.score > 1.0;
@@ -36,10 +41,11 @@ But, this won't work:
 ERROR:  zdb.score() can only be used as a target entry or as a sort
 ```
 
-
 ## Highlighting
 
-Similar to scoring support, ZomboDB can returning highlighted fragments from fields that support it (typically text fields that use an analyzer).  The function is called `zdb.highlight(tid, fieldname [, json_highlight_descriptor]) RETURNS text[]`.
+Similar to scoring support, ZomboDB can returning highlighted fragments from fields that support it (typically text
+fields that use an analyzer). The function is called
+`zdb.highlight(tid, fieldname [, json_highlight_descriptor]) RETURNS text[]`.
 
 Using the [tutorial](TUTORIAL.md) database, an example of highlighting is:
 
@@ -56,13 +62,18 @@ tutorial=#
 (2 rows)
 ```
 
-Similarly to `zdb.score()`, the first argument to `zdb.highlight()` is the Postgres hidden system column `ctid` that identifies the row for which you want highlights.
+Similarly to `zdb.score()`, the first argument to `zdb.highlight()` is the Postgres hidden system column `ctid` that
+identifies the row for which you want highlights.
 
-As Elasticsearch can return multiple highlight fragments for any given field, `zdb.highlight()` returns a `text[]` which allows you to address each fragment individually.
+As Elasticsearch can return multiple highlight fragments for any given field, `zdb.highlight()` returns a `text[]` which
+allows you to address each fragment individually.
 
-ZomboDB uses Elasticsearch's defaults for highlighting, but if these are not sufficient for your needs, the third argument to `zdb.highlight()` allows you to set a per-field highlight definition as decribed in [Elasticsearch's highlighting documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-highlighting.html).
+ZomboDB uses Elasticsearch's defaults for highlighting, but if these are not sufficient for your needs, the third
+argument to `zdb.highlight()` allows you to set a per-field highlight definition as decribed in
+[Elasticsearch's highlighting documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-highlighting.html).
 
-ZomboDB provides a type-checked helper function (also named `zdb.highlight()`) that allows you to build up a highlight definition using SQL.
+ZomboDB provides a type-checked helper function (also named `zdb.highlight()`) that allows you to build up a highlight
+definition using SQL.
 
 ```sql
 CREATE TYPE esqdsl_highlight_type AS ENUM ('unified', 'plain', 'fvh');
@@ -118,4 +129,3 @@ Which results in:
  0.224636 | {"A <b>wooden</b> container that will eventually rot away.  Put stuff it in (but not a cat)."} | A wooden container that will eventually rot away.  Put stuff it in (but not a cat).
 (2 rows)
 ```
-

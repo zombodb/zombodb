@@ -1,32 +1,37 @@
 # Query DSL
 
-ZomboDB supports a few different ways to generate Elasticsearch-compatible queries.  You can use ZomboDB's [Query Language](ZQL.md), 
-directly generate Elasticsearch QueryDSL in JSON form, or use ZomboDB's SQL builder API which closely mirrors 
-Elasticsearch's QueryDSL.
+ZomboDB supports a few different ways to generate Elasticsearch-compatible queries. You can use ZomboDB's
+[Query Language](ZQL.md), directly generate Elasticsearch QueryDSL in JSON form, or use ZomboDB's SQL builder API which
+closely mirrors Elasticsearch's QueryDSL.
 
-Wherever ZomboDB wants to you specify a query, which is typically `SELECT` statements and aggregate functions, you can interchangeably use any of the below query forms.
+Wherever ZomboDB wants to you specify a query, which is typically `SELECT` statements and aggregate functions, you can
+interchangeably use any of the below query forms.
 
-To use a `SELECT` statement as an example, lets suppose we want to select all the rows that contain the terms "cats and dogs" regardless of field.  The basic query template looks like:
+To use a `SELECT` statement as an example, lets suppose we want to select all the rows that contain the terms "cats and
+dogs" regardless of field. The basic query template looks like:
 
 ```sql
 SELECT * FROM table WHERE table ==> <cats and dogs query here>
 ```
 
-Note that regardless of the way you query, know that essentially you're generating [Elasticsearch QueryDSL](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl.html) in JSON.
+Note that regardless of the way you query, know that essentially you're generating
+[Elasticsearch QueryDSL](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl.html) in JSON.
 
-ZomboDB tries to abstract this fact away by using a custom Postgres type called `zdbquery` that can be cast to/from `text`, `json`, and `jsonb`.  As such, the right-hand-side of ZomboDB's `==>` operator is of type `zdbquery`.
+ZomboDB tries to abstract this fact away by using a custom Postgres type called `zdbquery` that can be cast to/from
+`text`, `json`, and `jsonb`. As such, the right-hand-side of ZomboDB's `==>` operator is of type `zdbquery`.
 
-The goal of this document is not to teach the ins-and-outs of Elasticsearch's query capabilities.  It is recommented you reference its documentation when the information here is not sufficient.  Where approrpiate, links to specific Elasticsearch Query DSL clauses are provided below.
+The goal of this document is not to teach the ins-and-outs of Elasticsearch's query capabilities. It is recommented you
+reference its documentation when the information here is not sufficient. Where approrpiate, links to specific
+Elasticsearch Query DSL clauses are provided below.
 
 That said, lets discuss how to write our example query using ZomboDB's supported query forms.
 
-
 ### ZQL:  ZomboDB Query Language
 
-[ZQL](ZQL.md) is a plain-text query language specific to ZomboDB and some of it's advanced features. 
-You can simply specify free-form, unqualified words and "quoted phrases" and ZomboDB figures out the matching documents.  
-Additionally, it supports a fairly sophisticated boolean syntax that includes field qualification, proximity, ranges, 
-wildcards, etc.
+[ZQL](ZQL.md) is a plain-text query language specific to ZomboDB and some of it's advanced features. You can simply
+specify free-form, unqualified words and "quoted phrases" and ZomboDB figures out the matching documents.\
+Additionally,
+it supports a fairly sophisticated boolean syntax that includes field qualification, proximity, ranges, wildcards, etc.
 
 Using zql, searching for "cats and dogs" could be any of the following:
 
@@ -35,8 +40,8 @@ SELECT * FROM table WHERE table ==> 'cats dogs';
 SELECT * FROM table WHERE table ==> 'cats AND dogs';
 ```
 
-To show what's happening behind the scenes, ZomboDB is actually generating Elasticsearch QueryDSL JSON for the above queries, but
-against a specific field:
+To show what's happening behind the scenes, ZomboDB is actually generating Elasticsearch QueryDSL JSON for the above
+queries, but against a specific field:
 
 ```sql
 select zdb.dump_query('main_ft', 'fulltext:(cats dogs)');
@@ -68,26 +73,37 @@ select zdb.dump_query('main_ft', 'fulltext:(cats dogs)');
 
 ### Direct JSON
 
-While the above ZQL is easy for humans to read and type, it doesn't expose every feature of Elasticsearch's QueryDSL.  
+While the above ZQL is easy for humans to read and type, it doesn't expose every feature of Elasticsearch's
+QueryDSL.\
 Enter direct json.
 
 ```sql
 SELECT * FROM table WHERE table ==> '{"bool":{"must":[{"term":{"zdb_all":{"value":"cats"}}},{"term":{"zdb_all":{"value":"dogs"}}}]}}';
 ```
 
-You have the full gamut of the Elasticsearch QueryDSL available to you with this form.  This is likely best used when you're programatically generating queries.
+You have the full gamut of the Elasticsearch QueryDSL available to you with this form. This is likely best used when
+you're programatically generating queries.
 
-> Note that the field `zdb_all` is ZomboDB's version of Elasticsearch's "_all" field, except `zdb_all` is enabled for all versions of Elasticsearch.  It is also configured as the default search field for every ZomboDB index, which is why it wasn't specified in the Query String Syntax examples, but is here.
+> Note that the field `zdb_all` is ZomboDB's version of Elasticsearch's "\_all" field, except `zdb_all` is enabled for
+> all versions of Elasticsearch. It is also configured as the default search field for every ZomboDB index, which is why
+> it wasn't specified in the Query String Syntax examples, but is here.
 
 ### SQL Builder API
 
-ZomboDB also exposes nearly all of Elasticsearch's QueryDSL queries as SQL functions, located in a schema named `dsl`.  These functions all return a `zdbquery`, and can be composed together to build complex queries.  The primary advantages of this API are that these functions are syntax- and type-checked by Postgres, so you'll catch malformed queries sooner.
+ZomboDB also exposes nearly all of Elasticsearch's QueryDSL queries as SQL functions, located in a schema named `dsl`.
+These functions all return a `zdbquery`, and can be composed together to build complex queries. The primary advantages
+of this API are that these functions are syntax- and type-checked by Postgres, so you'll catch malformed queries sooner.
 
-In general, each function models its corresponding Elasticsearch query exactly.  Default values are used for arguments in all places where Elasticsearch provides defaults for properties, and arguments are required where Elasticsearch requires the corresponding property.  Postgres VARIADIC function arguments are used in most cases where Elasticsearch expects an array of queries or values.
+In general, each function models its corresponding Elasticsearch query exactly. Default values are used for arguments in
+all places where Elasticsearch provides defaults for properties, and arguments are required where Elasticsearch requires
+the corresponding property. Postgres VARIADIC function arguments are used in most cases where Elasticsearch expects an
+array of queries or values.
 
-They're designed to be used with defaults in the common cases, and then otherwise should be used using Postgres' "named arguments" function call syntax to improve readability.
+They're designed to be used with defaults in the common cases, and then otherwise should be used using Postgres' "named
+arguments" function call syntax to improve readability.
 
-All of the functions are briefly described below, but here's some examples for our "cats and dogs" queries, plus a few more examples.
+All of the functions are briefly described below, but here's some examples for our "cats and dogs" queries, plus a few
+more examples.
 
 ```sql
 SELECT * FROM table WHERE table ==> dsl.and('cats', 'dogs');
@@ -108,7 +124,10 @@ SELECT dsl.and(dsl.term('zdb_all', 'cats'), dsl.term('zdb_all', 'dogs'))::json;
  {"bool":{"must":[{"term":{"zdb_all":{"value":"cats"}}},{"term":{"zdb_all":{"value":"dogs"}}}]}}
 ```
 
-Lets say you want to find all rows that contain cats with an age greater than 3 years.  This example shows, with the `range()` function, using Postgres "named arugments" function call syntax so that you can specifiy only the bounds of the range you need.  We're also mix-and-matching between the plain text Query String Syntax (`'cats'`) and the builder API (`must()` and `range()`):
+Lets say you want to find all rows that contain cats with an age greater than 3 years. This example shows, with the
+`range()` function, using Postgres "named arugments" function call syntax so that you can specifiy only the bounds of
+the range you need. We're also mix-and-matching between the plain text Query String Syntax (`'cats'`) and the builder
+API (`must()` and `range()`):
 
 ```sql
 SELECT * FROM table WHERE table ==> dsl.and('cats', dsl.range(field=>'age', gt=>3));
@@ -123,7 +142,8 @@ SELECT dsl.and('cats', dsl.range(field=>'age', gt=>3))::json;
  {"bool":{"must":[{"query_string":{"query":"cats"}},{"range":{"age":{"gt":"3"}}}]}}
 ```
 
-One of the more powerful benefits of the Builder API is that it allows you to generate Postgres prepared statements for your text-search queries.  For example:
+One of the more powerful benefits of the Builder API is that it allows you to generate Postgres prepared statements for
+your text-search queries. For example:
 
 ```sql
 PREPARE example AS SELECT * FROM table WHERE table ==> dsl.and($1, dsl.range(field=>'age', gt=>$2));
@@ -137,14 +157,18 @@ EXECUTE exampe('dogs', 7);
 EXECUTE exampe('elephants', 23);
 ```
 
-Using prepared statements is extremely important to avoid SQL-injection attacks.  ZomboDB makes this possible for your Elasticsearch QueryDSL query clauses too.  Any argument to any of the functions can become a prepared statement arugment that you can change at EXECUTE time.
-
+Using prepared statements is extremely important to avoid SQL-injection attacks. ZomboDB makes this possible for your
+Elasticsearch QueryDSL query clauses too. Any argument to any of the functions can become a prepared statement arugment
+that you can change at EXECUTE time.
 
 ### Sorting and Limiting Results
 
-ZomboDB allows you to limit the number of rows returned, and their sort order, similar to the SQL `LIMIT` and `ORDER BY` clauses, except they're specified as part of the Elasticsearch query, and the sorting/limiting happens within Elasticsearch.  In general, this is significantly faster than having Postgres do it.
+ZomboDB allows you to limit the number of rows returned, and their sort order, similar to the SQL `LIMIT` and `ORDER BY`
+clauses, except they're specified as part of the Elasticsearch query, and the sorting/limiting happens within
+Elasticsearch. In general, this is significantly faster than having Postgres do it.
 
-The following functions are designed to wrap the query you want to execute, on the outer levels.  For example, to return only 10 rows:
+The following functions are designed to wrap the query you want to execute, on the outer levels. For example, to return
+only 10 rows:
 
 ```sql
 SELECT * FROM table WHERE table ==> dsl.limit(10, dsl.term('title', 'cat'));
@@ -167,9 +191,11 @@ FUNCTION dsl.limit(
 ) RETURNS zdbquery
 ```
 
-Limits the number of rows returned to the specified `limit` limit.  If the query doesn't otherwise contain a `dsl.sort()` (see below), then the results returned are first sorted by `_score` in `desc`ending order.  This ensures that ZomboDB returns the top scoring documents. 
+Limits the number of rows returned to the specified `limit` limit. If the query doesn't otherwise contain a `dsl.sort()`
+(see below), then the results returned are first sorted by `_score` in `desc`ending order. This ensures that ZomboDB
+returns the top scoring documents.
 
----
+______________________________________________________________________
 
 #### `dsl.offset()`
 
@@ -182,7 +208,7 @@ FUNCTION dsl.offset(
 
 Similar to the SQL `OFFSET` clause, allows you to start returning results from a point other than the start.
 
----
+______________________________________________________________________
 
 #### `dsl.sort()`
 
@@ -196,7 +222,8 @@ FUNCTION dsl.sort(
 
 Sort the results returned from Elasticsearch by an arbitrary field.
 
-Because the SQL standard doesn't guarantee result ordering unless the query contains an `ORDER BY` clause, you should use `ORDER BY` in conjunction with this function.  For example:
+Because the SQL standard doesn't guarantee result ordering unless the query contains an `ORDER BY` clause, you should
+use `ORDER BY` in conjunction with this function. For example:
 
 ```sql
 SELECT * FROM table WHERE table ==> dsl.sort('id', 'asc', 'cats AND dogs') ORDER BY id asc;
@@ -206,7 +233,7 @@ In practice, using `dsl.sort()` only makes sense when combined with `dsl.limit()
 
 There's an overloaded version of `dsl.sort()` (described below) that allows for more complex sorting descriptors.
 
----
+______________________________________________________________________
 
 #### `dsl.sd()`
 
@@ -218,9 +245,11 @@ FUNCTION dsl.sd(
 ) RETURNS dsl.es_sort_descriptor
 ```
 
-`dsl.sd()` (which is short for "sort descriptor") allows you to contruct an object that represents sorting.  It is designed to be used as the arguments to `dsl.sort_many(zdbquery, VARIADIC dsl.es_sort_descriptor[])` (defined below).
+`dsl.sd()` (which is short for "sort descriptor") allows you to contruct an object that represents sorting. It is
+designed to be used as the arguments to `dsl.sort_many(zdbquery, VARIADIC dsl.es_sort_descriptor[])` (defined below).
 
-The possible values for the `mode` argument are `min`, `max`, `sum`, `avg`,  and `median`.  These are documented here:  https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-sort.html#_sort_mode_option
+The possible values for the `mode` argument are `min`, `max`, `sum`, `avg`, and `median`. These are documented here:
+https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-sort.html#\_sort_mode_option
 
 Example:
 
@@ -228,7 +257,7 @@ Example:
 SELECT * FROM table WHERE table ==> dsl.sort_many(dsl.match_all(), dsl.sd('field', 'asc'), dsl.sd('price', 'desc', 'avg'));
 ```
 
----
+______________________________________________________________________
 
 #### `dsl.sd_nested()`
 
@@ -242,9 +271,12 @@ FUNCTION dsl.sd_nested(
 ) RETURNS dsl.es_sort_descriptor
 ```
 
-`dsl.sd_nested()` (which is short for "nested field sort descriptor") allows you to contruct an object that represents sorting for a nested field.  It is designed to be used as an argument to `dsl.sort_many(zdbquery, VARIADIC dsl.es_sort_descriptor[])` (defined below).
+`dsl.sd_nested()` (which is short for "nested field sort descriptor") allows you to contruct an object that represents
+sorting for a nested field. It is designed to be used as an argument to
+`dsl.sort_many(zdbquery, VARIADIC dsl.es_sort_descriptor[])` (defined below).
 
-The possible values for the `mode` argument are `min`, `max`, `sum`, `avg`,  and `median`.  These are documented here:  https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-sort.html#_sort_mode_option
+The possible values for the `mode` argument are `min`, `max`, `sum`, `avg`, and `median`. These are documented here:
+https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-sort.html#\_sort_mode_option
 
 Example:
 
@@ -252,9 +284,10 @@ Example:
 SELECT * FROM table WHERE table ==> dsl.sort_many(dsl.match_all(), dsl.sd_nested('offer.price', 'asc', 'offer', dsl.match_all(), 'avg'), dsl.sd('id', 'desc', 'avg'));
 ```
 
-The above would first sort the results by the average value from the nested field `offer.price` in ascending order, and then by `id` in descending order.
+The above would first sort the results by the average value from the nested field `offer.price` in ascending order, and
+then by `id` in descending order.
 
----
+______________________________________________________________________
 
 #### `dsl.sort_many()`
 
@@ -265,7 +298,9 @@ FUNCTION dsl.sort_many(
 ) RETURNS zdbquery
 ```
 
-This is similar to the `dsl.sort()` function described above, however it requires the query be the first argument and allows for a variable list of sort descriptors, that should be generated using the `dsl.sd()` or `dsl.sd_nested()` functions.
+This is similar to the `dsl.sort()` function described above, however it requires the query be the first argument and
+allows for a variable list of sort descriptors, that should be generated using the `dsl.sd()` or `dsl.sd_nested()`
+functions.
 
 Example:
 
@@ -273,7 +308,7 @@ Example:
 SELECT * FROM table WHERE table ==> dsl.sort_many(dsl.match_all(), dsl.sd('field', 'asc'), dsl.sd('price', 'desc', 'avg'));
 ```
 
----
+______________________________________________________________________
 
 #### `dsl.sort_direct()`
 
@@ -286,7 +321,8 @@ FUNCTION dsl.sort_direct(
 
 This function allows you to specify direct json to describe how Elasticsearch should sort the results.
 
-In the Elasticearch `_search` request body, this is the top-level `"sort"` property (https://www.elastic.co/guide/en/elasticsearch/reference/5.6/search-request-sort.html#nested-sorting).
+In the Elasticearch `_search` request body, this is the top-level `"sort"` property
+(https://www.elastic.co/guide/en/elasticsearch/reference/5.6/search-request-sort.html#nested-sorting).
 
 Example:
 
@@ -306,19 +342,20 @@ SELECT * FROM table WHERE table ==> dsl.sort_direct('{
     }', dsl.match_all());
 ```
 
----
+______________________________________________________________________
 
 #### `dsl.min_score()`
 
-```sql 
+```sql
 FUNCTION dsl.min_score(
 	min_score real, 
 	query zdbquery
 ) RETURNS zdbquery
 ```
 
-This allows you to specify Elastisearch's [`min_score`](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-min-score.html) search property to ensure documents with a score less than the specified value are excluded from the results.
-
+This allows you to specify Elastisearch's
+[`min_score`](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-min-score.html) search
+property to ensure documents with a score less than the specified value are excluded from the results.
 
 ## SQL Builder API Functions
 
@@ -334,7 +371,7 @@ FUNCTION dsl.and(
 
 Generates an Elasticsearch `bool` query where all the arguments are part of the `must` clause.
 
---- 
+______________________________________________________________________
 
 #### `dsl.or()`
 
@@ -346,7 +383,7 @@ FUNCTION dsl.or(
 
 Generates an Elasticsearch `bool` query where all the arguments are part of the `should` clause.
 
---- 
+______________________________________________________________________
 
 #### `dsl.not()`
 
@@ -357,7 +394,6 @@ FUNCTION dsl.not(
 ```
 
 Generates an Elasticsearch `bool` query where all the arguments are part of the `must_not` clause.
-
 
 ### Elasticsearch "bool" Query Support
 
@@ -371,7 +407,8 @@ FUNCTION dsl.bool(
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html
 
-This function represents the Elasticsearch `bool` query.  It takes one or more "boolean part" queries, which are generated using the SQL functions named `dsl.must()`, `dsl.must_not()`, `dsl.should()`, and `dsl.filter()`.
+This function represents the Elasticsearch `bool` query. It takes one or more "boolean part" queries, which are
+generated using the SQL functions named `dsl.must()`, `dsl.must_not()`, `dsl.should()`, and `dsl.filter()`.
 
 Multiple usages of the same boolean part will be merged together automatically.
 
@@ -479,8 +516,7 @@ Which ultimately generates the following Elasticsearch QueryDSL:
 }
 ```
 
-
----
+______________________________________________________________________
 
 #### `dsl.must()`
 
@@ -492,11 +528,13 @@ RETURNS dsl.esqdsl_must
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html
 
-This is the `must` clause of the Elasticsearch QueryDSL `bool` query.  The queries must appear in matching documents and will contribute to the score.
+This is the `must` clause of the Elasticsearch QueryDSL `bool` query. The queries must appear in matching documents and
+will contribute to the score.
 
-This function is designed to be used with the `must` argument of `dsl.bool()`.  Its arguments can be or or more of any of ZomboDB's `dsl` functions that return a type of `zdbquery`.
+This function is designed to be used with the `must` argument of `dsl.bool()`. Its arguments can be or or more of any of
+ZomboDB's `dsl` functions that return a type of `zdbquery`.
 
----
+______________________________________________________________________
 
 #### `dsl.must_not()`
 
@@ -508,11 +546,14 @@ RETURNS dsl.esqdsl_must_not
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html
 
-This is the `must_not` clause of the Elasticsearch QueryDSL `bool` query.  The queries must not appear in the matching documents. Clauses are executed in filter context meaning that scoring is ignored and clauses are considered for caching. Because scoring is ignored, a score of 0 for all documents is returned.
+This is the `must_not` clause of the Elasticsearch QueryDSL `bool` query. The queries must not appear in the matching
+documents. Clauses are executed in filter context meaning that scoring is ignored and clauses are considered for
+caching. Because scoring is ignored, a score of 0 for all documents is returned.
 
-This function is designed to be used with the `must_not` argument of `dsl.bool()`.  Its arguments can be or or more of any of ZomboDB's `dsl` functions that return a type of `zdbquery`.
+This function is designed to be used with the `must_not` argument of `dsl.bool()`. Its arguments can be or or more of
+any of ZomboDB's `dsl` functions that return a type of `zdbquery`.
 
----
+______________________________________________________________________
 
 #### `dsl.should()`
 
@@ -524,11 +565,13 @@ RETURNS dsl.esqdsl_should
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html
 
-This is the `should` clause of the Elasticsearch QueryDSL `bool` query.  The queries should appear in matching documents and will contribute to the score.
+This is the `should` clause of the Elasticsearch QueryDSL `bool` query. The queries should appear in matching documents
+and will contribute to the score.
 
-This function is designed to be used with the `should` argument of `dsl.bool()`.  Its arguments can be or or more of any of ZomboDB's `dsl` functions that return a type of `zdbquery`.
+This function is designed to be used with the `should` argument of `dsl.bool()`. Its arguments can be or or more of any
+of ZomboDB's `dsl` functions that return a type of `zdbquery`.
 
----
+______________________________________________________________________
 
 #### `dsl.filter()`
 
@@ -542,14 +585,16 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-q
 
 This is the `filter` object of an Elasticsearch QueryDSL `bool`.
 
-The clause (query) must appear in matching documents. However unlike must the score of the query will be ignored. Filter clauses are executed in filter context, meaning that scoring is ignored and clauses are considered for caching.
- 
-This function is designed to be used with the `filter` argument of `dsl.bool()`.  Its arguments can be or or more of any of ZomboDB's `dsl` functions that return a type of `zdbquery`.
+The clause (query) must appear in matching documents. However unlike must the score of the query will be ignored. Filter
+clauses are executed in filter context, meaning that scoring is ignored and clauses are considered for caching.
+
+This function is designed to be used with the `filter` argument of `dsl.bool()`. Its arguments can be or or more of any
+of ZomboDB's `dsl` functions that return a type of `zdbquery`.
 
 ### Elasticsearch Query DSL Support
-   
+
 #### `dsl.boosting()`
-    
+
 ```sql
 FUNCTION dsl.boosting (
 	positive zdbquery,
@@ -560,9 +605,10 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-boosting-query.html
 
-The boosting query can be used to effectively demote results that match a given query. Unlike the "NOT" clause in bool query, this still selects documents that contain undesirable terms, but reduces their overall score.
- 
----
+The boosting query can be used to effectively demote results that match a given query. Unlike the "NOT" clause in bool
+query, this still selects documents that contain undesirable terms, but reduces their overall score.
+
+______________________________________________________________________
 
 #### `dsl.common()`
 
@@ -579,9 +625,10 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-common-terms-query.html
 
-The common terms query is a modern alternative to stopwords which improves the precision and recall of search results (by taking stopwords into account), without sacrificing performance.
- 
----
+The common terms query is a modern alternative to stopwords which improves the precision and recall of search results
+(by taking stopwords into account), without sacrificing performance.
+
+______________________________________________________________________
 
 #### `dsl.constant_score()`
 
@@ -594,9 +641,10 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-constant-score-query.html
 
-A query that wraps another query and simply returns a constant score equal to the query boost for every document in the filter. Maps to Lucene ConstantScoreQuery.
- 
----
+A query that wraps another query and simply returns a constant score equal to the query boost for every document in the
+filter. Maps to Lucene ConstantScoreQuery.
+
+______________________________________________________________________
 
 #### `dsl.datetime_range()`
 
@@ -613,14 +661,14 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-range-query.html
 
-Matches documents with fields that have terms within a certain range.  This form is for timestamp values.
+Matches documents with fields that have terms within a certain range. This form is for timestamp values.
 
-ZomboDB will automatically convert the specified time to `UTC` (to be compatible with Elasticsearch) however, if
-you don't specify the time zone the timestamp represents then Postgres will first assume it belongs to whatever
-time zone the server is running in (via the `TimeZone` GUC).  Read here for more about how Postgres handles time zones:
+ZomboDB will automatically convert the specified time to `UTC` (to be compatible with Elasticsearch) however, if you
+don't specify the time zone the timestamp represents then Postgres will first assume it belongs to whatever time zone
+the server is running in (via the `TimeZone` GUC). Read here for more about how Postgres handles time zones:
 https://www.postgresql.org/docs/11/datatype-datetime.html#DATATYPE-TIMEZONES
 
----
+______________________________________________________________________
 
 #### `dsl.dis_max()`
 
@@ -634,9 +682,11 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-dis-max-query.html
 
-A query that generates the union of documents produced by its subqueries, and that scores each document with the maximum score for that document as produced by any subquery, plus a tie breaking increment for any additional matching subqueries.
- 
----
+A query that generates the union of documents produced by its subqueries, and that scores each document with the maximum
+score for that document as produced by any subquery, plus a tie breaking increment for any additional matching
+subqueries.
+
+______________________________________________________________________
 
 #### `dsl.field_exists()`
 
@@ -648,10 +698,9 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-exists-query.html
 
-
 Returns documents that have at least one non-null value in the specified field
- 
----
+
+______________________________________________________________________
 
 #### `dsl.field_missing()`
 
@@ -661,9 +710,9 @@ FUNCTION dsl.field_missing (
 RETURNS zdbquery
 ```
 
-The inverse of `dsl.field_exists()`.  Returns documents that have no value in the specified field
- 
----
+The inverse of `dsl.field_exists()`. Returns documents that have no value in the specified field
+
+______________________________________________________________________
 
 #### `dsl.fuzzy()`
 
@@ -682,8 +731,8 @@ RETURNS zdbquery
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-fuzzy-query.html
 
 The fuzzy query uses similarity based on Levenshtein edit distance.
- 
----
+
+______________________________________________________________________
 
 #### `dsl.match()`
 
@@ -708,9 +757,9 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-match-query.html
 
-`match` queries accept text/numerics/dates, analyzes them, and constructs a query. 
- 
----
+`match` queries accept text/numerics/dates, analyzes them, and constructs a query.
+
+______________________________________________________________________
 
 #### `dsl.match_all()`
 
@@ -722,9 +771,9 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-match-all-query.html
 
-The most simple query, which matches all documents, giving them all a _score of 1.0.
- 
----
+The most simple query, which matches all documents, giving them all a \_score of 1.0.
+
+______________________________________________________________________
 
 #### `dsl.match_none()`
 
@@ -733,9 +782,9 @@ FUNCTION dsl.match_none ()
 RETURNS zdbquery
 ```
 
-The inverse of `dsl.match_all()`.  Matches no documents.
- 
----
+The inverse of `dsl.match_all()`. Matches no documents.
+
+______________________________________________________________________
 
 #### `dsl.match_phrase()`
 
@@ -751,9 +800,9 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-match-query-phrase.html
 
-The `match_phrase` query analyzes the text and creates a phrase query out of the analyzed text. 
- 
----
+The `match_phrase` query analyzes the text and creates a phrase query out of the analyzed text.
+
+______________________________________________________________________
 
 #### `dsl.match_phrase_prefix()`
 
@@ -770,9 +819,10 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-match-query-phrase-prefix.html
 
-`ds.match_phrase_prefix()` is the same as `dsl.match_phrase()`, except that it allows for prefix matches on the last term in the text.
- 
----
+`ds.match_phrase_prefix()` is the same as `dsl.match_phrase()`, except that it allows for prefix matches on the last
+term in the text.
+
+______________________________________________________________________
 
 #### `dsl.more_like_this()`
 
@@ -798,11 +848,13 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-mlt-query.html
 
-The More Like This Query finds documents that are "like" a given set of documents. In order to do so, MLT selects a set of representative terms of these input documents, forms a query using these terms, executes the query and returns the results.
+The More Like This Query finds documents that are "like" a given set of documents. In order to do so, MLT selects a set
+of representative terms of these input documents, forms a query using these terms, executes the query and returns the
+results.
 
-This form takes a single blob of text as the source document. 
- 
----
+This form takes a single blob of text as the source document.
+
+______________________________________________________________________
 
 #### `dsl.more_like_this()`
 
@@ -828,12 +880,13 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-mlt-query.html
 
-The More Like This Query finds documents that are "like" a given set of documents. In order to do so, MLT selects a set of representative terms of these input documents, forms a query using these terms, executes the query and returns the results.
+The More Like This Query finds documents that are "like" a given set of documents. In order to do so, MLT selects a set
+of representative terms of these input documents, forms a query using these terms, executes the query and returns the
+results.
 
-This form takes multiple snippets of text as the source documents. 
+This form takes multiple snippets of text as the source documents.
 
- 
----
+______________________________________________________________________
 
 #### `dsl.multi_match()`
 
@@ -860,8 +913,8 @@ RETURNS zdbquery
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-multi-match-query.html
 
 The `multi_match` query builds on the match query to allow multi-field queries.
- 
----
+
+______________________________________________________________________
 
 #### `dsl.query_string()`
 
@@ -894,9 +947,10 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html
 
-A query that uses a query parser in order to parse its content.  The query_string query parses the input and splits text around operators. Each textual part is analyzed independently of each other.
- 
----
+A query that uses a query parser in order to parse its content. The query_string query parses the input and splits text
+around operators. Each textual part is analyzed independently of each other.
+
+______________________________________________________________________
 
 #### `dsl.nested()`
 
@@ -910,9 +964,11 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-nested-query.html
 
-Nested query allows to query nested objects / docs (see nested mapping). The query is executed against the nested objects / docs as if they were indexed as separate docs (they are, internally) and resulting in the root parent doc (or parent nested mapping).
- 
----
+Nested query allows to query nested objects / docs (see nested mapping). The query is executed against the nested
+objects / docs as if they were indexed as separate docs (they are, internally) and resulting in the root parent doc (or
+parent nested mapping).
+
+______________________________________________________________________
 
 #### `dsl.noteq()`
 
@@ -923,8 +979,8 @@ RETURNS zdbquery
 ```
 
 Generates a `bool` query where the argument is the only member of the `bool` query's `must_not` clause.
- 
----
+
+______________________________________________________________________
 
 #### `dsl.phrase()`
 
@@ -939,8 +995,8 @@ RETURNS zdbquery
 ```
 
 Short-hand form of `dsl.match_phrase()`.
- 
----
+
+______________________________________________________________________
 
 #### `dsl.prefix()`
 
@@ -955,8 +1011,8 @@ RETURNS zdbquery
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-prefix-query.html
 
 Matches documents that have fields containing terms with a specified prefix (not analyzed).
- 
----
+
+______________________________________________________________________
 
 #### `dsl.range()`
 
@@ -973,9 +1029,9 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-range-query.html
 
-Matches documents with fields that have terms within a certain range.  This form is for numeric values.
- 
----
+Matches documents with fields that have terms within a certain range. This form is for numeric values.
+
+______________________________________________________________________
 
 #### `dsl.range()`
 
@@ -992,10 +1048,9 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-range-query.html
 
-Matches documents with fields that have terms within a certain range.  This form is for text values.
+Matches documents with fields that have terms within a certain range. This form is for text values.
 
- 
----
+______________________________________________________________________
 
 #### `dsl.regexp()`
 
@@ -1012,8 +1067,8 @@ RETURNS zdbquery
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-regexp-query.html
 
 The regexp query allows you to use regular expression term queries.
- 
----
+
+______________________________________________________________________
 
 #### `dsl.script()`
 
@@ -1028,8 +1083,8 @@ RETURNS zdbquery
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-script-query.html
 
 A query allowing to define scripts as queries. They are typically used in a filter context.
- 
----
+
+______________________________________________________________________
 
 #### `dsl.span_containing()`
 
@@ -1043,8 +1098,8 @@ RETURNS zdbquery
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-span-containing-query.html
 
 Returns matches which enclose another span query.
- 
----
+
+______________________________________________________________________
 
 #### `dsl.span_first()`
 
@@ -1058,8 +1113,8 @@ RETURNS zdbquery
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-span-first-query.html
 
 Matches spans near the beginning of a field.
- 
----
+
+______________________________________________________________________
 
 #### `dsl.span_masking()`
 
@@ -1073,8 +1128,8 @@ RETURNS zdbquery
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-span-field-masking-query.html
 
 Wrapper to allow span queries to participate in composite single-field span queries by lying about their search field.
- 
----
+
+______________________________________________________________________
 
 #### `dsl.span_multi()`
 
@@ -1086,9 +1141,10 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-span-multi-term-query.html
 
-Allows you to wrap a multi term query (one of `dsl.wildcard()`, `dsl.fuzzy()`, `dsl.prefix()`, `dsl.range()` or `dsl.regexp()` query) as a span query, so it can be nested. 
- 
----
+Allows you to wrap a multi term query (one of `dsl.wildcard()`, `dsl.fuzzy()`, `dsl.prefix()`, `dsl.range()` or
+`dsl.regexp()` query) as a span query, so it can be nested.
+
+______________________________________________________________________
 
 #### `dsl.span_near()`
 
@@ -1102,9 +1158,10 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-span-near-query.html
 
-Matches spans which are near one another. One can specify slop, the maximum number of intervening unmatched positions, as well as whether matches are required to be in-order.
- 
----
+Matches spans which are near one another. One can specify slop, the maximum number of intervening unmatched positions,
+as well as whether matches are required to be in-order.
+
+______________________________________________________________________
 
 #### `dsl.span_not()`
 
@@ -1120,9 +1177,10 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-span-not-query.html
 
-Removes matches which overlap with another span query or which are within x tokens before (controlled by the parameter pre) or y tokens after (controled by the parameter post) another SpanQuery.
- 
----
+Removes matches which overlap with another span query or which are within x tokens before (controlled by the parameter
+pre) or y tokens after (controled by the parameter post) another SpanQuery.
+
+______________________________________________________________________
 
 #### `dsl.span_or()`
 
@@ -1135,8 +1193,8 @@ RETURNS zdbquery
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-span-or-query.html
 
 Matches the union of its span clauses.
- 
----
+
+______________________________________________________________________
 
 #### `dsl.span_term()`
 
@@ -1150,9 +1208,9 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-span-term-query.html
 
-Matches spans containing a term. 
- 
----
+Matches spans containing a term.
+
+______________________________________________________________________
 
 #### `dsl.span_within()`
 
@@ -1166,8 +1224,8 @@ RETURNS zdbquery
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-span-within-query.html
 
 Returns matches which are enclosed inside another span query.
- 
----
+
+______________________________________________________________________
 
 #### `dsl.term()`
 
@@ -1181,9 +1239,10 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-term-query.html
 
-The term query finds documents that contain the **exact** term specified in the inverted index.  This form is for numeric terms. 
- 
----
+The term query finds documents that contain the **exact** term specified in the inverted index. This form is for numeric
+terms.
+
+______________________________________________________________________
 
 #### `dsl.term()`
 
@@ -1197,10 +1256,10 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-term-query.html
 
-The term query finds documents that contain the **exact** term specified in the inverted index.  This form is for text terms. 
+The term query finds documents that contain the **exact** term specified in the inverted index. This form is for text
+terms.
 
- 
----
+______________________________________________________________________
 
 #### `dsl.terms()`
 
@@ -1213,9 +1272,9 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-terms-query.html
 
-Filters documents that have fields that match any of the provided terms (not analyzed).  This form is for numeric terms.
- 
----
+Filters documents that have fields that match any of the provided terms (not analyzed). This form is for numeric terms.
+
+______________________________________________________________________
 
 #### `dsl.terms()`
 
@@ -1228,9 +1287,9 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-terms-query.html
 
-Filters documents that have fields that match any of the provided terms (not analyzed).  This form is for text terms.
- 
----
+Filters documents that have fields that match any of the provided terms (not analyzed). This form is for text terms.
+
+______________________________________________________________________
 
 #### `dsl.terms_array()`
 
@@ -1243,9 +1302,10 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-terms-query.html
 
-Filters documents that have fields that match any of the provided terms (not analyzed).  This form is for an array of any kind of Postgres datatype.
- 
----
+Filters documents that have fields that match any of the provided terms (not analyzed). This form is for an array of any
+kind of Postgres datatype.
+
+______________________________________________________________________
 
 #### `dsl.terms_lookup()`
 
@@ -1261,9 +1321,10 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-terms-query.html#query-dsl-terms-lookup
 
-When it’s needed to specify a terms filter with a lot of terms it can be beneficial to fetch those term values from a document in an index.
+When it’s needed to specify a terms filter with a lot of terms it can be beneficial to fetch those term values from a
+document in an index.
 
----
+______________________________________________________________________
 
 #### `dsl.wildcard()`
 
@@ -1277,16 +1338,19 @@ RETURNS zdbquery
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-wildcard-query.html
 
-Matches documents that have fields matching a wildcard expression (not analyzed). Supported wildcards are *, which matches any character sequence (including the empty one), and ?, which matches any single character. Note that this query can be slow, as it needs to iterate over many terms. In order to prevent extremely slow wildcard queries, a wildcard term should not start with one of the wildcards * or ?.
+Matches documents that have fields matching a wildcard expression (not analyzed). Supported wildcards are \*, which
+matches any character sequence (including the empty one), and ?, which matches any single character. Note that this
+query can be slow, as it needs to iterate over many terms. In order to prevent extremely slow wildcard queries, a
+wildcard term should not start with one of the wildcards * or ?.
 
 ## Postgis Support
 
-ZomboDB provides basic support for Postgis.  It automatically maps columns of type `geometry` and `geography` to
+ZomboDB provides basic support for Postgis. It automatically maps columns of type `geometry` and `geography` to
 Elasticsearch's `geo_shape` type, and `geometry(Point, 2276)` is instead indexed as an Elasticsearch `geo_point`.
 
 Additionally, it exposes a few functions for querying `geo_shape`s and polygons and bounding boxes.
 
----
+______________________________________________________________________
 
 #### `dsl.geo_shape()`
 
@@ -1300,11 +1364,13 @@ FUNCTION dsl.geo_shape(
 
 https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-geo-shape-query.html
 
-The geo_shape query uses the same grid square representation as the geo_shape mapping to find documents that have a shape that intersects with the query shape. It will also use the same PrefixTree configuration as defined for the field mapping.
+The geo_shape query uses the same grid square representation as the geo_shape mapping to find documents that have a
+shape that intersects with the query shape. It will also use the same PrefixTree configuration as defined for the field
+mapping.
 
-The query supports one way of defining the query shape:  by providing a whole shape definition.
+The query supports one way of defining the query shape: by providing a whole shape definition.
 
----
+______________________________________________________________________
 
 #### `dsl.geo_polygon()`
 
@@ -1319,7 +1385,7 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-geo-po
 
 Given an array of Postgres `point` objects, generates an Elasticsearch `geo_polygon()` query
 
----
+______________________________________________________________________
 
 #### `dsl.geo_bounding_box()`
 

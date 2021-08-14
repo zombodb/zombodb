@@ -10,7 +10,7 @@ Returns the version of the currently-installed ZomboDB shared library.
 
 If this doesn't match `SELECT zdb.schema_version()` there will be problems.
 
----
+______________________________________________________________________
 
 ```sql
 FUNCTION zdb.schema_version() RETURNS text
@@ -20,7 +20,7 @@ Returns the schema version of the ZomboDB extension installed in the current dat
 
 If this doesn't match `SELECT zdb.internal_version()` there will be problems.
 
----
+______________________________________________________________________
 
 ```sql
 FUNCTION zdb.request(
@@ -33,7 +33,8 @@ RETURNS text
 
 Make an arbitrary REST request to the Elasticsearch cluster hosting the specified index.
 
-If the `endpoint` argument begins with a forward slash (`/`) the request is executed at the root of the Elasticsearch cluster.  Otherwise, the request is executed relative to the specified index.
+If the `endpoint` argument begins with a forward slash (`/`) the request is executed at the root of the Elasticsearch
+cluster. Otherwise, the request is executed relative to the specified index.
 
 For example, this returns the Elasticsearch cluster information:
 
@@ -84,26 +85,27 @@ Whereas this returns the settings for the specified index:
 ...
 ```
 
----
+______________________________________________________________________
 
 ```sql
 FUNCTION profile_query(index regclass, query zdbquery) RETURNS json
 ```
 
-Uses Elasticsearch's [Profile API](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-profile.html) to provide detailed timing and execution information about a query.
+Uses Elasticsearch's [Profile API](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-profile.html)
+to provide detailed timing and execution information about a query.
 
----
+______________________________________________________________________
 
 ```sql
 FUNCTION zdb.determine_index(relation regclass) RETURNS regclass
 ```
 
-Given a relation oid (either an actual index, a table, or a view) return the `USING zombodb` index that will be used when
-querying that relation.
+Given a relation oid (either an actual index, a table, or a view) return the `USING zombodb` index that will be used
+when querying that relation.
 
 If no index can be determined, `NULL` is returned.
 
----
+______________________________________________________________________
 
 ```sql
 FUNCTION zdb.index_name(index regclass) RETURNS text
@@ -121,7 +123,7 @@ SELECT zdb.index_name('idxproducts');
 (1 row)
 ```
 
----
+______________________________________________________________________
 
 ```sql
 FUNCTION zdb.index_url(index regclass) RETURNS text
@@ -138,13 +140,14 @@ SELECT zdb.index_url('idxproducts');
  http://localhost:9200/
 ```
 
----
+______________________________________________________________________
 
 ```sql
 FUNCTION zdb.index_type_name(index regclass) RETURNS text
 ```
 
-Returns the Elasticsearch index type name being used.  Unless explicitly set during `CREATE INDEX` this will always return the string `doc`.
+Returns the Elasticsearch index type name being used. Unless explicitly set during `CREATE INDEX` this will always
+return the string `doc`.
 
 Example:
 
@@ -156,11 +159,12 @@ SELECT zdb.index_type_name('idxproducts');
 (1 row)
 ```
 
----
+______________________________________________________________________
 
 ```sql
 FUNCTION zdb.index_field_lists(index_relation regclass) RETURNS TABLE ("fieldname" text, "fields" text[])
 ```
+
 Returns a resultset describing all the field lists that are defined for the specified index.
 
 Example:
@@ -174,14 +178,14 @@ SELECT * FROM zdb_get_index_field_lists('idxsome_index');
 (2 rows)
 ```
 
----
-
+______________________________________________________________________
 
 ```sql
 FUNCTION zdb.index_mapping(index regclass) RETURNS jsonb
 ```
 
-Returns the full Elasticsearch mapping that ZomboDB generated for the specified Postgres index.  This can be useful for ensuring your custom analyzers and field mappings are properly defined.
+Returns the full Elasticsearch mapping that ZomboDB generated for the specified Postgres index. This can be useful for
+ensuring your custom analyzers and field mappings are properly defined.
 
 Example:
 
@@ -297,15 +301,14 @@ SELECT * FROM zdb.index_mapping('idxproducts');
 (1 row)
 ```
 
----
-
+______________________________________________________________________
 
 ```sql
 FUNCTION zdb.field_mapping(index_relation regclass, field_name text) RETURNS json
 ```
 
-Returns the Elasticsearch field mapping definition for the specified field.  In the event the specified index has
-index links defined this will traverse those links to find the specified field.
+Returns the Elasticsearch field mapping definition for the specified field. In the event the specified index has index
+links defined this will traverse those links to find the specified field.
 
 Example:
 
