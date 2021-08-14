@@ -24,6 +24,7 @@ ZomboDB allows you to use the power and scalability of Elasticsearch directly fr
  - [Important Things to Know](THINGS-TO-KNOW.md)
  - [Creating Indexes](CREATE-INDEX.md)
  - [ZQL (ZomboDB Query Language)](ZQL.md)
+ - [Query Builder API](QUERY-BUILDER-API.md)
  - [Cross-Index Joins](CROSS-INDEX-JOINS.md)
  - [Aggregations](AGGREGATIONS.md)
  - [Scoring and Highlighting](SCORING-HIGHLIGHTING.md)
@@ -44,7 +45,7 @@ ZomboDB allows you to use the power and scalability of Elasticsearch directly fr
     - Elasticsearch's [Query String Syntax](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-syntax) via `dsl.query_string()`
     - ZQL -- [ZomboDB's custom query language](ZQL.md)
     - Raw Elasticsearch QueryDSL JSON
-    - ZomboDB's type-safe [query builder SQL syntax](QUERY-DSL.md)
+    - ZomboDB's type-safe [query builder SQL syntax](QUERY-BUILDER-API.md)
     - Any combination of the above, even in combination with standard SQL
  - [Scoring and Highlighting Support](SCORING-HIGHLIGHTING.md)
  - [Support for all Elasticsearch aggregations](AGGREGATIONS.md)

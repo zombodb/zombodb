@@ -40,9 +40,9 @@ CREATE EXTENSION
 tutorial=#
 ```
 
-ZomboDB installs itself into a new schema named `zdb`.  It also creates a schema called `dsl` which we'll cover in the [query syntax](QUERY-DSL.md) documentation.
+ZomboDB installs itself into a new schema named `zdb`.  It also creates a schema called `dsl` which we'll cover in the [ZomboDB Query Lanuage](ZQL.md) and [Query Builder API](QUERY-BUILDER-API.md) documentation.
 
-The idea here is that you would never add the `zdb` schema to your `SEARCH_PATH`, but you might want to add the `dsl` schema for convienence while querying.  This is discussed further in [QUERY-DSL.md](QUERY-DSL.md).
+The idea here is that you would never add the `zdb` schema to your `SEARCH_PATH`, but you might want to add the `dsl` schema for convienence while querying.  This is discussed further in [QUERY-BUILDER-API.md](QUERY-BUILDER-API.md).
 
 To prove to yourself that the extension is really installed, you can double-check the `pg_extension` system catalog:
 
@@ -146,9 +146,9 @@ In order to ensure the ZomboDB index is used, we'll be making use of a custom op
 
 `::zdbquery` is a custom data type that ZomboDB installs which represents an Elasticsearch query in its QueryDSL JSON form.
 
-If the query isn't valid json (as shown below), then it is automatically considered to be an Elasticsearch [Query String Syntax](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-syntax) query.
+If the query isn't valid json (as shown below), then it is automatically considered to be a [ZQL](ZQL.md) query.
 
-Building Elasticsearch QueryDSL can be complicated, but ZomboDB provides an entire set of [SQL-based builder functions](QUERY-DSL.md) to make this process simple and type-safe.
+Building Elasticsearch QueryDSL can be complicated, but ZomboDB provides an entire set of [SQL-based builder functions](QUERY-BUILDER-API.md) to make this process simple and type-safe.
 
 A typical query might be:
 
@@ -178,7 +178,7 @@ tutorial=#
 tutorial=# 
 ```
 
-From here, it's just a matter of coming up with a full-text query to answer your question.  See the [Query Syntax documentation](ZQL.md) or the [DSL Query Builder documenation](QUERY-DSL.md) for details on what the full-text query syntax can do.
+From here, it's just a matter of coming up with a full-text query to answer your question.  See the [Query Syntax documentation](ZQL.md) or the [DSL Query Builder documenation](QUERY-BUILDER-API.md) for details on what the full-text query syntax can do.
 
 
 ## Summary

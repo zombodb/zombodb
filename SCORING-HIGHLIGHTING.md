@@ -23,7 +23,7 @@ Note that the argument provided to `zdb.score()` is the hidden Postgres system c
 
 Also, `zdb.score()` is **not** allowed in the `WHERE` clause of queries.  It is only allowed in `ORDER BY` clauses and what Postgres calls the "target list" -- the list of columns the query should return.
 
-If you need to limit the results of a query by score you can use ZomboDB's [`dsl.min_score()`](QUERY-DSL.md) function, or you can use a subselect of some kind, such as:
+If you need to limit the results of a query by score you can use ZomboDB's [`dsl.min_score()`](QUERY-BUILDER-API.md) function, or you can use a subselect of some kind, such as:
 
 ```sql
 SELECT * FROM (SELECT zdb.score(ctid), * FROM products WHERE products ==> 'sports box') x WHERE x.score > 1.0;
