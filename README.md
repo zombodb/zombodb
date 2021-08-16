@@ -75,7 +75,6 @@ multiple data-access code paths -- ZomboDB does it all for you.
 - ZomboDB indexes with predicates (ie, [partial indexes](https://www.postgresql.org/docs/10/indexes-partial.html)) are
   not supported
 - `CREATE INDEX CONCURRENTLY` is not supported
-- Partitioned Tables are not properly supported. This will be resolved in a near-future version (Issue #630)
 
 These limitations may be addressed in future versions of ZomboDB.
 
@@ -147,21 +146,6 @@ SELECT *
 - Twitter: [@zombodb](https://twitter.com/zombodb/)
 - via Github Issues and Pull Requests
 - https://www.zombodb.com/services/ or info@zombodb.com for commercial support
-
-## Older Versions
-
-ZomboDB 3000 supports Postgres 10, 11, 12, 13 and doesn't require an Elasticsearch plugin.
-
-Previous versions that support Postgres various versions of Postgres are are still available in source form, from these
-branches:
-
-- [Support for Elasticsearch 6.x](https://github.com/zombodb/zombodb/tree/v10-1.0.3) (unsupported)
-- [Support for Elasticsearch 5.6](https://github.com/zombodb/zombodb/tree/master-es5.6) (unsupported)
-- [Support for Elasticsearch 2.4](https://github.com/zombodb/zombodb/tree/master-es2.4) (unsupported)
-- [Support for Elasticsearch 1.7](https://github.com/zombodb/zombodb/tree/master-es1.7) (unsupported)
-
-Commercial support for all versions of ZomboDB is available by
-[contacting ZomboDB, LLC](https://www.zombodb.com/services/).
 
 ## History
 
