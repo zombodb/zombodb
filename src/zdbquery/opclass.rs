@@ -184,7 +184,7 @@ fn restrict(
     count_estimate as f64 / reltuples
 }
 
-extension_sql! {r#"
+extension_sql!(r#"
 CREATE OPERATOR pg_catalog.==> (
     PROCEDURE = anyelement_cmpfunc,
     RESTRICT = restrict,
@@ -199,4 +199,4 @@ CREATE OPERATOR CLASS anyelement_zdb_ops DEFAULT FOR TYPE anyelement USING zombo
 --    OPERATOR 4 pg_catalog.==!(anyelement, zdbquery[]),
     STORAGE anyelement;
 
-"#}
+"#, name = "zdb_ops_anyelement_operator");

@@ -25,18 +25,20 @@ pub mod zql;
 pg_module_magic!();
 
 extension_sql_file!("../sql/_bootstrap.sql", bootstrap);
-extension_sql_file!("../sql/_mappings.sql");
+extension_sql_file!("../sql/_mappings.sql", name = "mappings");
 extension_sql_file!(
     "../sql/_support-views.sql",
-    after = [query_dsl::bool::dsl, query_dsl::filter::dsl, "../sql/_cat-api.sql"],
+    name = "support_views",
+    after = [query_dsl::bool::dsl, query_dsl::filter::dsl, "cat_api"],
 );
-extension_sql_file!("../sql/_join-support.sql");
-extension_sql_file!("../sql/_cat-api.sql");
+extension_sql_file!("../sql/_join-support.sql", name = "join_support");
+extension_sql_file!("../sql/_cat-api.sql", name = "cat_api");
 extension_sql_file!(
     "../sql/_type-conversions.sql",
+    name = "type_conversions",
     after = [
-        "_mappings.sql",
-        "../sql/_cat-api.sql",
+        "mappings",
+        "cat_api",
         query_dsl::point_to_json,
         query_dsl::point_array_to_json
     ]

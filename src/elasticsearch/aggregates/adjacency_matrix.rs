@@ -169,5 +169,6 @@ SELECT labels[5],
 $$;
 
 
-"#
+"#,
+    name = "adj_matrix",
 );

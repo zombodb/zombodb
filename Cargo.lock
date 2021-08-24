@@ -1359,16 +1359,17 @@ dependencies = [
 [[package]]
 name = "pgx"
 version = "0.1.21"
-source = "git+https://github.com/zombodb/pgx?rev=5cbb4f85376bb01b4fb30ec1744ee9acf3f3940e#5cbb4f85376bb01b4fb30ec1744ee9acf3f3940e"
+source = "git+https://github.com/zombodb/pgx?rev=4ed73385569a8285ef1c1e6423110d91ff6b6f22#4ed73385569a8285ef1c1e6423110d91ff6b6f22"
 dependencies = [
  "atomic-traits",
  "bitflags",
  "enum-primitive-derive",
+ "eyre",
  "hash32",
  "heapless",
- "inventory",
  "num-traits",
  "once_cell",
+ "petgraph",
  "pgx-macros",
  "pgx-pg-sys",
  "pgx-utils",
@@ -1377,13 +1378,15 @@ dependencies = [
  "serde_cbor",
  "serde_json",
  "time 0.2.27",
+ "tracing",
+ "tracing-error",
  "uuid",
 ]
 
 [[package]]
 name = "pgx-macros"
 version = "0.1.21"
-source = "git+https://github.com/zombodb/pgx?rev=5cbb4f85376bb01b4fb30ec1744ee9acf3f3940e#5cbb4f85376bb01b4fb30ec1744ee9acf3f3940e"
+source = "git+https://github.com/zombodb/pgx?rev=4ed73385569a8285ef1c1e6423110d91ff6b6f22#4ed73385569a8285ef1c1e6423110d91ff6b6f22"
 dependencies = [
  "pgx-utils",
  "proc-macro-crate",
@@ -1396,7 +1399,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-sys"
 version = "0.1.21"
-source = "git+https://github.com/zombodb/pgx?rev=5cbb4f85376bb01b4fb30ec1744ee9acf3f3940e#5cbb4f85376bb01b4fb30ec1744ee9acf3f3940e"
+source = "git+https://github.com/zombodb/pgx?rev=4ed73385569a8285ef1c1e6423110d91ff6b6f22#4ed73385569a8285ef1c1e6423110d91ff6b6f22"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1415,7 +1418,7 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.1.21"
-source = "git+https://github.com/zombodb/pgx?rev=5cbb4f85376bb01b4fb30ec1744ee9acf3f3940e#5cbb4f85376bb01b4fb30ec1744ee9acf3f3940e"
+source = "git+https://github.com/zombodb/pgx?rev=4ed73385569a8285ef1c1e6423110d91ff6b6f22#4ed73385569a8285ef1c1e6423110d91ff6b6f22"
 dependencies = [
  "colored",
  "lazy_static",
@@ -1434,16 +1437,17 @@ dependencies = [
 [[package]]
 name = "pgx-utils"
 version = "0.1.21"
-source = "git+https://github.com/zombodb/pgx?rev=5cbb4f85376bb01b4fb30ec1744ee9acf3f3940e#5cbb4f85376bb01b4fb30ec1744ee9acf3f3940e"
+source = "git+https://github.com/zombodb/pgx?rev=4ed73385569a8285ef1c1e6423110d91ff6b6f22#4ed73385569a8285ef1c1e6423110d91ff6b6f22"
 dependencies = [
+ "clap",
  "color-eyre",
  "colored",
  "dirs",
  "env_proxy",
  "eyre",
  "inventory",
+ "libloading",
  "once_cell",
- "petgraph",
  "proc-macro2",
  "quote",
  "regex",
