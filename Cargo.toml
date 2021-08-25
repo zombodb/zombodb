@@ -30,8 +30,8 @@ levenshtein = "1.0.5"
 memoffset = "0.6.4"
 num_cpus = "1.13.0"
 pathfinding = "2.2.1"
-pgx = { git = "https://github.com/zombodb/pgx", rev = "e91da13533395708f4dfbcb64b0dba5f06bcf841" }
-pgx-macros = { git = "https://github.com/zombodb/pgx", rev = "e91da13533395708f4dfbcb64b0dba5f06bcf841" }
+pgx = { git = "https://github.com/zombodb/pgx", rev = "cffcf069224f375aaaffff3f9c8c3833328a6541" }
+pgx-macros = { git = "https://github.com/zombodb/pgx", rev = "cffcf069224f375aaaffff3f9c8c3833328a6541" }
 rayon = "1.5.1"
 regex = "1.5.4"
 serde = { version = "1.0.127", features = [ "derive" ] }
@@ -46,7 +46,7 @@ lalrpop = { version = "0.19.6", features = [ "lexer" ] }
 built = { version = "0.5.1", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
-pgx-tests = { git = "https://github.com/zombodb/pgx", rev = "e91da13533395708f4dfbcb64b0dba5f06bcf841" }
+pgx-tests = { git = "https://github.com/zombodb/pgx", rev = "cffcf069224f375aaaffff3f9c8c3833328a6541" }
 libc = "0.2.99"
 
 [profile.dev]
