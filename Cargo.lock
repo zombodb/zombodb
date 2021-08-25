@@ -1359,7 +1359,7 @@ dependencies = [
 [[package]]
 name = "pgx"
 version = "0.1.21"
-source = "git+https://github.com/zombodb/pgx?rev=41181775c5c54abb872c93251e9d3cfbf7cc8c50#41181775c5c54abb872c93251e9d3cfbf7cc8c50"
+source = "git+https://github.com/zombodb/pgx?rev=e91da13533395708f4dfbcb64b0dba5f06bcf841#e91da13533395708f4dfbcb64b0dba5f06bcf841"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -1386,7 +1386,7 @@ dependencies = [
 [[package]]
 name = "pgx-macros"
 version = "0.1.21"
-source = "git+https://github.com/zombodb/pgx?rev=41181775c5c54abb872c93251e9d3cfbf7cc8c50#41181775c5c54abb872c93251e9d3cfbf7cc8c50"
+source = "git+https://github.com/zombodb/pgx?rev=e91da13533395708f4dfbcb64b0dba5f06bcf841#e91da13533395708f4dfbcb64b0dba5f06bcf841"
 dependencies = [
  "pgx-utils",
  "proc-macro-crate",
@@ -1399,7 +1399,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-sys"
 version = "0.1.21"
-source = "git+https://github.com/zombodb/pgx?rev=41181775c5c54abb872c93251e9d3cfbf7cc8c50#41181775c5c54abb872c93251e9d3cfbf7cc8c50"
+source = "git+https://github.com/zombodb/pgx?rev=e91da13533395708f4dfbcb64b0dba5f06bcf841#e91da13533395708f4dfbcb64b0dba5f06bcf841"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1418,7 +1418,7 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.1.21"
-source = "git+https://github.com/zombodb/pgx?rev=41181775c5c54abb872c93251e9d3cfbf7cc8c50#41181775c5c54abb872c93251e9d3cfbf7cc8c50"
+source = "git+https://github.com/zombodb/pgx?rev=e91da13533395708f4dfbcb64b0dba5f06bcf841#e91da13533395708f4dfbcb64b0dba5f06bcf841"
 dependencies = [
  "colored",
  "lazy_static",
@@ -1437,7 +1437,7 @@ dependencies = [
 [[package]]
 name = "pgx-utils"
 version = "0.1.21"
-source = "git+https://github.com/zombodb/pgx?rev=41181775c5c54abb872c93251e9d3cfbf7cc8c50#41181775c5c54abb872c93251e9d3cfbf7cc8c50"
+source = "git+https://github.com/zombodb/pgx?rev=e91da13533395708f4dfbcb64b0dba5f06bcf841#e91da13533395708f4dfbcb64b0dba5f06bcf841"
 dependencies = [
  "clap",
  "color-eyre",
@@ -2414,9 +2414,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-subscriber"
-version = "0.2.19"
+version = "0.2.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab69019741fca4d98be3c62d2b75254528b5432233fd8a4d2739fec20278de48"
+checksum = "b9cbe87a2fa7e35900ce5de20220a582a9483a7063811defce79d7cbd59d4cfe"
 dependencies = [
  "ansi_term 0.12.1",
  "chrono",
