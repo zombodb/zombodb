@@ -91,6 +91,7 @@ pub mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
+#[pgx_macros::pg_schema]
 mod tests {
     use crate::query_dsl::range::dsl::{range_numeric, range_str};
     use pgx::*;

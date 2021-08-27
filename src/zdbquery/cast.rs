@@ -36,6 +36,7 @@ CREATE CAST (zdbquery AS jsonb) WITH FUNCTION zdbquery_to_jsonb(zdbquery) AS IMP
 "#, name = "zdb_query_casts");
 
 #[cfg(any(test, feature = "pg_test"))]
+#[pgx_macros::pg_schema]
 mod tests {
     use crate::zdbquery::cast::zdbquery_from_text;
     use pgx::*;

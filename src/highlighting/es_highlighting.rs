@@ -131,10 +131,7 @@ fn highlight(
     Json(json!(highlight))
 }
 
-/// ```funcname
-/// highlight
-/// ```
-#[pg_extern(parallel_safe, immutable)]
+#[pg_extern(parallel_safe, immutable, requires = [ highlighting::es_highlighting::highlight, ])]
 fn highlight_field(
     ctid: pg_sys::ItemPointerData,
     field: &str,
@@ -163,7 +160,7 @@ fn highlight_field(
     }
 }
 
-#[pg_extern(parallel_safe, immutable)]
+#[pg_extern(parallel_safe, immutable, requires = [ highlighting::es_highlighting::highlight, ])]
 fn want_highlight(
     mut query: ZDBQuery,
     field: String,

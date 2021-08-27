@@ -211,6 +211,7 @@ fn elasticsearch_request_return(
 }
 
 #[cfg(any(test, feature = "pg_test"))]
+#[pgx_macros::pg_schema]
 mod tests {
     use pgx::*;
 

@@ -126,10 +126,7 @@ mod dsl {
         zero_terms_query: Option<ZeroTermsQuery>,
     }
 
-    /// ```funcname
-    /// match
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(immutable, parallel_safe, name = "match")]
     fn match_wrapper(
         field: &str,
         query: &str,
@@ -278,6 +275,7 @@ mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
+#[pgx_macros::pg_schema]
 mod tests {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;

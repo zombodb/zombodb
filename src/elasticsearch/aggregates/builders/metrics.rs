@@ -982,6 +982,7 @@ fn t_test_fields_queries_agg(
 }
 
 #[cfg(test)]
+#[pgx_macros::pg_schema]
 mod tests {
     use crate::elasticsearch::aggregates::builders::metrics::*;
 

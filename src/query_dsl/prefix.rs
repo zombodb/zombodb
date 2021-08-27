@@ -25,6 +25,7 @@ mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
+#[pgx_macros::pg_schema]
 mod tests {
     use crate::query_dsl::prefix::dsl::*;
     use pgx::*;

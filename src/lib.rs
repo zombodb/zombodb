@@ -29,14 +29,14 @@ extension_sql_file!("../sql/_mappings.sql", name = "mappings");
 extension_sql_file!(
     "../sql/_support-views.sql",
     name = "support_views",
-    after = [query_dsl::bool::dsl, query_dsl::filter::dsl, "cat_api"],
+    requires = [query_dsl::bool::dsl, query_dsl::filter::dsl, "cat_api"],
 );
 extension_sql_file!("../sql/_join-support.sql", name = "join_support");
 extension_sql_file!("../sql/_cat-api.sql", name = "cat_api");
 extension_sql_file!(
     "../sql/_type-conversions.sql",
     name = "type_conversions",
-    after = [
+    requires = [
         "mappings",
         "cat_api",
         query_dsl::point_to_json,

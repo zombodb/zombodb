@@ -35,10 +35,7 @@ mod dsl {
         relation: Option<Relation>,
     }
 
-    /// ```funcname
-    /// datetime_range
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(immutable, parallel_safe, name = "datetime_range")]
     fn datetime_range_date(
         field: &str,
         lt: Option<default!(Date, "NULL")>,
@@ -59,10 +56,7 @@ mod dsl {
         make_datetime_range_dsl(field, datetime_range)
     }
 
-    /// ```funcname
-    /// datetime_range
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(immutable, parallel_safe, name = "datetime_range")]
     fn datetime_range_time(
         field: &str,
         lt: Option<default!(Time, "NULL")>,
@@ -83,10 +77,7 @@ mod dsl {
         make_datetime_range_dsl(field, datetime_range)
     }
 
-    /// ```funcname
-    /// datetime_range
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(immutable, parallel_safe, name = "datetime_range")]
     fn datetime_range_time_stamp(
         field: &str,
         lt: Option<default!(Timestamp, "NULL")>,
@@ -107,10 +98,7 @@ mod dsl {
         make_datetime_range_dsl(field, datetime_range)
     }
 
-    /// ```funcname
-    /// datetime_range
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(immutable, parallel_safe, name = "datetime_range")]
     fn datetime_range_timestamp_with_timezone(
         field: &str,
         lt: Option<default!(TimestampWithTimeZone, "NULL")>,
@@ -131,10 +119,7 @@ mod dsl {
         make_datetime_range_dsl(field, datetime_range)
     }
 
-    /// ```funcname
-    /// datetime_range
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(immutable, parallel_safe, name = "datetime_range")]
     fn datetime_range_time_with_timezone(
         field: &str,
         lt: Option<default!(TimeWithTimeZone, "NULL")>,
@@ -171,6 +156,7 @@ mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
+#[pgx_macros::pg_schema]
 mod tests {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;

@@ -69,10 +69,7 @@ mod dsl {
         max_word_length: Option<i64>,
     }
 
-    /// ```funcname
-    /// more_like_this
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(immutable, parallel_safe, name = "more_like_this")]
     fn more_like_this_with_array(
         like: Array<&str>,
         stop_words:
@@ -116,10 +113,7 @@ mod dsl {
         })
     }
 
-    /// ```funcname
-    /// more_like_this
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(immutable, parallel_safe, name = "more_like_this")]
     fn more_like_this_without_array(
         like: &str,
         fields: Option<default!(Array<&str>, "NULL")>,
@@ -165,6 +159,7 @@ mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
+#[pgx_macros::pg_schema]
 mod tests {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
