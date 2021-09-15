@@ -1,8 +1,0 @@
-_bootstrap.sql
-_mappings.sql
-_postgis-support.sql
-_type-conversions.sql
-_cat-api.sql
-_support-views.sql
-_join-support.sql
-_finalize.sql
