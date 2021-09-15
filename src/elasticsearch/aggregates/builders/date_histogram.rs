@@ -13,11 +13,11 @@ use serde_json::*;
 fn date_histogram_agg(
     aggregate_name: &str,
     field: &str,
-    calendar_interval: Option<default!(CalendarInterval, "NULL")>,
-    fixed_interval: Option<default!(&str, "NULL")>,
+    calendar_interval: Option<default!(CalendarInterval, NULL)>,
+    fixed_interval: Option<default!(&str, NULL)>,
     time_zone: default!(&str, "'+00:00'"),
     format: default!(&str, "'yyyy-MM-dd'"),
-    children: Option<default!(Vec<JsonB>, "NULL")>,
+    children: Option<default!(Vec<JsonB>, NULL)>,
 ) -> JsonB {
     #[derive(Serialize)]
     struct DateHistogram<'a> {

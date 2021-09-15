@@ -26,7 +26,7 @@ pub mod dsl {
         index: &str,
         id: &str,
         path: &str,
-        routing: Option<default!(&str, "NULL")>,
+        routing: Option<default!(&str, NULL)>,
     ) -> ZDBQuery {
         let terms_lookup_object = TermsLookup {
             index,

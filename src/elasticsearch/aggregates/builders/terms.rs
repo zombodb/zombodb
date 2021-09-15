@@ -14,7 +14,7 @@ fn terms_agg(
     field: &str,
     size_limit: i32,
     order_by: TermsOrderBy,
-    children: Option<default!(Vec<JsonB>, "NULL")>,
+    children: Option<default!(Vec<JsonB>, NULL)>,
 ) -> JsonB {
     let order = match order_by {
         TermsOrderBy::count => json! {{ "_count": "asc" }},

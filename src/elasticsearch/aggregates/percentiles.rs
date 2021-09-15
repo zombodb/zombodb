@@ -9,7 +9,7 @@ fn percentiles(
     index: PgRelation,
     field: &str,
     query: ZDBQuery,
-    percents: Option<default!(Json, "NULL")>,
+    percents: Option<default!(Json, NULL)>,
 ) -> impl std::iter::Iterator<Item = (name!(key, f64), name!(value, Numeric))> {
     #[derive(Deserialize, Serialize)]
     struct Entry {

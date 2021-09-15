@@ -188,12 +188,12 @@ impl Elasticsearch {
 
     pub fn analyze_custom(
         &self,
-        field: Option<default!(&str, "NULL")>,
-        text: Option<default!(&str, "NULL")>,
-        tokenizer: Option<default!(&str, "NULL")>,
-        normalizer: Option<default!(&str, "NULL")>,
-        filter: Option<default!(Array<&str>, "NULL")>,
-        char_filter: Option<default!(Array<&str>, "NULL")>,
+        field: Option<default!(&str, NULL)>,
+        text: Option<default!(&str, NULL)>,
+        tokenizer: Option<default!(&str, NULL)>,
+        normalizer: Option<default!(&str, NULL)>,
+        filter: Option<default!(Array<&str>, NULL)>,
+        char_filter: Option<default!(Array<&str>, NULL)>,
     ) -> ElasticsearchAnalyzerRequest {
         ElasticsearchAnalyzerRequest::new_custom(
             self,
@@ -531,7 +531,7 @@ fn request(
     index: PgRelation,
     endpoint: &str,
     method: default!(ArbitraryRequestType, "'GET'"),
-    post_data: Option<default!(JsonB, "NULL")>,
+    post_data: Option<default!(JsonB, NULL)>,
     null_on_error: Option<default!(bool, false)>,
 ) -> Option<String> {
     let es = Elasticsearch::new(&index);

@@ -21,7 +21,7 @@ mod dsl {
     pub(super) fn term_str(
         field: &str,
         value: &str,
-        boost: Option<default!(f32, "NULL")>,
+        boost: Option<default!(f32, NULL)>,
     ) -> ZDBQuery {
         let term = Term { value, boost };
         make_term_dsl(field, term)
@@ -31,7 +31,7 @@ mod dsl {
     pub(super) fn term_bool(
         field: &str,
         value: bool,
-        boost: Option<default!(f32, "NULL")>,
+        boost: Option<default!(f32, NULL)>,
     ) -> ZDBQuery {
         let term: Term<bool> = Term { value, boost };
         make_term_dsl(field, term)
@@ -41,7 +41,7 @@ mod dsl {
     pub(super) fn term_i16(
         field: &str,
         value: i16,
-        boost: Option<default!(f32, "NULL")>,
+        boost: Option<default!(f32, NULL)>,
     ) -> ZDBQuery {
         let term: Term<i16> = Term { value, boost };
         make_term_dsl(field, term)
@@ -51,7 +51,7 @@ mod dsl {
     pub(super) fn term_i32(
         field: &str,
         value: i32,
-        boost: Option<default!(f32, "NULL")>,
+        boost: Option<default!(f32, NULL)>,
     ) -> ZDBQuery {
         let term: Term<i32> = Term { value, boost };
         make_term_dsl(field, term)
@@ -61,7 +61,7 @@ mod dsl {
     pub(super) fn term_i64(
         field: &str,
         value: i64,
-        boost: Option<default!(f32, "NULL")>,
+        boost: Option<default!(f32, NULL)>,
     ) -> ZDBQuery {
         let term: Term<i64> = Term { value, boost };
         make_term_dsl(field, term)
@@ -71,7 +71,7 @@ mod dsl {
     pub(super) fn term_f32(
         field: &str,
         value: f32,
-        boost: Option<default!(f32, "NULL")>,
+        boost: Option<default!(f32, NULL)>,
     ) -> ZDBQuery {
         let term: Term<f32> = Term { value, boost };
         make_term_dsl(field, term)
@@ -81,7 +81,7 @@ mod dsl {
     pub(super) fn term_f64(
         field: &str,
         value: f64,
-        boost: Option<default!(f32, "NULL")>,
+        boost: Option<default!(f32, NULL)>,
     ) -> ZDBQuery {
         let term: Term<f64> = Term { value, boost };
         make_term_dsl(field, term)
@@ -91,7 +91,7 @@ mod dsl {
     pub(super) fn term_time(
         field: &str,
         value: Time,
-        boost: Option<default!(f32, "NULL")>,
+        boost: Option<default!(f32, NULL)>,
     ) -> ZDBQuery {
         let term: Term<Time> = Term { value, boost };
         make_term_dsl(field, term)
@@ -101,7 +101,7 @@ mod dsl {
     pub(super) fn term_date(
         field: &str,
         value: Date,
-        boost: Option<default!(f32, "NULL")>,
+        boost: Option<default!(f32, NULL)>,
     ) -> ZDBQuery {
         let term: Term<Date> = Term { value, boost };
         make_term_dsl(field, term)
@@ -111,7 +111,7 @@ mod dsl {
     pub(super) fn term_time_with_timezone(
         field: &str,
         value: TimeWithTimeZone,
-        boost: Option<default!(f32, "NULL")>,
+        boost: Option<default!(f32, NULL)>,
     ) -> ZDBQuery {
         let term: Term<TimeWithTimeZone> = Term { value, boost };
         make_term_dsl(field, term)
@@ -121,7 +121,7 @@ mod dsl {
     pub(super) fn term_timestamp(
         field: &str,
         value: Timestamp,
-        boost: Option<default!(f32, "NULL")>,
+        boost: Option<default!(f32, NULL)>,
     ) -> ZDBQuery {
         let term: Term<Timestamp> = Term { value, boost };
         make_term_dsl(field, term)
@@ -131,7 +131,7 @@ mod dsl {
     pub(super) fn term_timestamp_with_timezone(
         field: &str,
         value: TimestampWithTimeZone,
-        boost: Option<default!(f32, "NULL")>,
+        boost: Option<default!(f32, NULL)>,
     ) -> ZDBQuery {
         let term: Term<TimestampWithTimeZone> = Term { value, boost };
         make_term_dsl(field, term)

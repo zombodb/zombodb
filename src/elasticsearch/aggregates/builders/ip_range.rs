@@ -20,7 +20,7 @@ fn ip_range_agg(
     aggregate_name: &str,
     field: &str,
     range: Vec<Json>,
-    keyed: Option<default!(bool, "NULL")>,
+    keyed: Option<default!(bool, NULL)>,
 ) -> JsonB {
     let ip_range = IPRange {
         field,

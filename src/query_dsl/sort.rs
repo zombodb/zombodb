@@ -14,7 +14,7 @@ mod dsl {
     fn sd(
         field: &str,
         order: SortDirection,
-        mode: Option<default!(SortMode, "NULL")>,
+        mode: Option<default!(SortMode, NULL)>,
     ) -> SortDescriptor {
         SortDescriptor {
             field: field.to_string(),
@@ -32,8 +32,8 @@ mod dsl {
         field: &str,
         order: SortDirection,
         nested_path: &str,
-        nested_filter: Option<default!(ZDBQuery, "NULL")>,
-        mode: Option<default!(SortMode, "NULL")>,
+        nested_filter: Option<default!(ZDBQuery, NULL)>,
+        mode: Option<default!(SortMode, NULL)>,
     ) -> SortDescriptor {
         let nested_filter = match nested_filter {
             Some(query) => Some(query.query_dsl()),

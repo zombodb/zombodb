@@ -156,12 +156,12 @@ pub(crate) fn analyze_with_field(
 #[pg_extern(immutable, parallel_safe)]
 fn analyze_custom(
     index: PgRelation,
-    field: Option<default!(&str, "NULL")>,
-    text: Option<default!(&str, "NULL")>,
-    tokenizer: Option<default!(&str, "NULL")>,
-    normalizer: Option<default!(&str, "NULL")>,
-    filter: Option<default!(Array<&str>, "NULL")>,
-    char_filter: Option<default!(Array<&str>, "NULL")>,
+    field: Option<default!(&str, NULL)>,
+    text: Option<default!(&str, NULL)>,
+    tokenizer: Option<default!(&str, NULL)>,
+    normalizer: Option<default!(&str, NULL)>,
+    filter: Option<default!(Array<&str>, NULL)>,
+    char_filter: Option<default!(Array<&str>, NULL)>,
 ) -> impl std::iter::Iterator<
     Item = (
         name!(type, String),

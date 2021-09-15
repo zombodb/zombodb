@@ -24,10 +24,10 @@ struct GeohashGrid<'a> {
 fn geohash_grid_agg(
     aggregate_name: &str,
     field: &str,
-    precision: Option<default!(i16, "NULL")>,
-    bounds: Option<default!(&str, "NULL")>,
-    size: Option<default!(i64, "NULL")>,
-    shard_size: Option<default!(i64, "NULL")>,
+    precision: Option<default!(i16, NULL)>,
+    bounds: Option<default!(&str, NULL)>,
+    size: Option<default!(i64, NULL)>,
+    shard_size: Option<default!(i64, NULL)>,
 ) -> JsonB {
     let geohash_grid = GeohashGrid {
         field,
