@@ -1,133 +1,133 @@
-use crate::json::utils::escape_json;
 use pgx::{Date, FromDatum, Json, JsonB, Time, TimeWithTimeZone, Timestamp, TimestampWithTimeZone};
+use serde_json::json;
 
 pub trait JsonString: Send + Sync {
-    fn push_json(&self, string: &mut String);
+    fn push_json(&self, target: &mut Vec<u8>);
 }
 
 impl JsonString for i16 {
     #[inline]
-    fn push_json(&self, string: &mut String) {
-        string.push_str(&*self.to_string());
+    fn push_json(&self, target: &mut Vec<u8>) {
+        target.extend_from_slice(self.to_string().as_bytes());
     }
 }
 
 impl JsonString for i32 {
     #[inline]
-    fn push_json(&self, string: &mut String) {
-        string.push_str(&*self.to_string());
+    fn push_json(&self, target: &mut Vec<u8>) {
+        target.extend_from_slice(self.to_string().as_bytes());
     }
 }
 
 impl JsonString for i64 {
     #[inline]
-    fn push_json(&self, string: &mut String) {
-        string.push_str(&*self.to_string());
+    fn push_json(&self, target: &mut Vec<u8>) {
+        target.extend_from_slice(self.to_string().as_bytes());
     }
 }
 
 impl JsonString for f32 {
     #[inline]
-    fn push_json(&self, string: &mut String) {
-        string.push_str(&*self.to_string());
+    fn push_json(&self, target: &mut Vec<u8>) {
+        target.extend_from_slice(self.to_string().as_bytes());
     }
 }
 
 impl JsonString for f64 {
     #[inline]
-    fn push_json(&self, string: &mut String) {
-        string.push_str(&*self.to_string());
+    fn push_json(&self, target: &mut Vec<u8>) {
+        target.extend_from_slice(self.to_string().as_bytes());
     }
 }
 
 impl JsonString for u32 {
     #[inline]
-    fn push_json(&self, string: &mut String) {
-        string.push_str(&*self.to_string());
+    fn push_json(&self, target: &mut Vec<u8>) {
+        target.extend_from_slice(self.to_string().as_bytes());
     }
 }
 
 impl JsonString for u64 {
     #[inline]
-    fn push_json(&self, string: &mut String) {
-        string.push_str(&*self.to_string());
+    fn push_json(&self, target: &mut Vec<u8>) {
+        target.extend_from_slice(self.to_string().as_bytes());
     }
 }
 
 impl JsonString for bool {
     #[inline]
-    fn push_json(&self, string: &mut String) {
-        string.push_str(&*self.to_string());
+    fn push_json(&self, target: &mut Vec<u8>) {
+        target.extend_from_slice(self.to_string().as_bytes());
     }
 }
 
 impl JsonString for Time {
     #[inline]
-    fn push_json(&self, string: &mut String) {
-        string.push_str(&serde_json::to_string(self).unwrap())
+    fn push_json(&self, target: &mut Vec<u8>) {
+        serde_json::to_writer(target, self).ok();
     }
 }
 
 impl JsonString for TimeWithTimeZone {
     #[inline]
-    fn push_json(&self, string: &mut String) {
-        string.push_str(&serde_json::to_string(self).unwrap())
+    fn push_json(&self, target: &mut Vec<u8>) {
+        serde_json::to_writer(target, self).ok();
     }
 }
 
 impl JsonString for Timestamp {
     #[inline]
-    fn push_json(&self, string: &mut String) {
-        string.push_str(&serde_json::to_string(self).unwrap())
+    fn push_json(&self, target: &mut Vec<u8>) {
+        serde_json::to_writer(target, self).ok();
     }
 }
 
 impl JsonString for TimestampWithTimeZone {
     #[inline]
-    fn push_json(&self, string: &mut String) {
-        string.push_str(&serde_json::to_string(self).unwrap())
+    fn push_json(&self, target: &mut Vec<u8>) {
+        serde_json::to_writer(target, self).ok();
     }
 }
 
 impl JsonString for Date {
     #[inline]
-    fn push_json(&self, string: &mut String) {
-        string.push_str(&serde_json::to_string(self).unwrap())
+    fn push_json(&self, target: &mut Vec<u8>) {
+        serde_json::to_writer(target, self).ok();
     }
 }
 
 impl JsonString for () {
     #[inline]
-    fn push_json(&self, string: &mut String) {
-        string.push_str("null");
+    fn push_json(&self, target: &mut Vec<u8>) {
+        target.extend_from_slice(b"null");
     }
 }
 
 impl JsonString for &str {
     #[inline]
-    fn push_json(&self, string: &mut String) {
-        string.push('"');
-        escape_json(*self, string);
-        string.push('"');
+    fn push_json(&self, target: &mut Vec<u8>) {
+        serde_json::to_writer(target, &json!(self)).ok();
     }
 }
 
 impl JsonString for String {
     #[inline]
-    fn push_json(&self, string: &mut String) {
-        string.push('"');
-        escape_json(&*self, string);
-        string.push('"');
+    fn push_json(&self, target: &mut Vec<u8>) {
+        serde_json::to_writer(target, &json!(self)).ok();
     }
 }
 
 impl JsonString for pgx::JsonString {
     #[inline]
-    fn push_json(&self, string: &mut String) {
-        // replace \r\n's to ensure it's all on one line.  It's otherwise supposed to be valid JSON
-        // so we shouldn't be mistakenly replacing any \r\n's in actual values -- those should already
-        // be properly escaped
-        string.push_str(&*self.0.replace('\r', " ").replace('\n', " "));
+    fn push_json(&self, target: &mut Vec<u8>) {
+        if self.0.contains('\r') || self.0.contains('\n') {
+            // replace \r\n's to ensure it's all on one line.  It's otherwise supposed to be valid JSON
+            // so we shouldn't be mistakenly replacing any \r\n's in actual values -- those should already
+            // be properly escaped
+            target.extend_from_slice(self.0.replace('\r', " ").replace('\n', " ").as_bytes());
+        } else {
+            target.extend_from_slice(self.0.as_bytes())
+        }
     }
 }
 
@@ -136,46 +136,46 @@ where
     T: FromDatum + JsonString,
 {
     #[inline]
-    fn push_json(&self, string: &mut String) {
-        string.push('[');
+    fn push_json(&self, target: &mut Vec<u8>) {
+        target.push(b'[');
         for (i, datum) in self.iter().enumerate() {
             if i > 0 {
-                string.push(',');
+                target.push(b',');
             }
             match datum {
-                Some(datum) => datum.push_json(string),
-                None => string.push_str("null"),
+                Some(datum) => datum.push_json(target),
+                None => target.extend_from_slice(b"null"),
             }
         }
-        string.push(']');
+        target.push(b']');
     }
 }
 
 impl JsonString for Json {
     #[inline]
-    fn push_json(&self, string: &mut String) {
-        string.push_str(&serde_json::to_string(&(*self).0).unwrap());
+    fn push_json(&self, target: &mut Vec<u8>) {
+        serde_json::to_writer(target, &self.0).ok();
     }
 }
 
 impl JsonString for JsonB {
     #[inline]
-    fn push_json(&self, string: &mut String) {
-        string.push_str(&serde_json::to_string(&(*self).0).unwrap());
+    fn push_json(&self, target: &mut Vec<u8>) {
+        serde_json::to_writer(target, &self.0).ok();
     }
 }
 
 impl JsonString for serde_json::Value {
     #[inline]
-    fn push_json(&self, string: &mut String) {
-        string.push_str(serde_json::to_string(self).unwrap().as_str())
+    fn push_json(&self, target: &mut Vec<u8>) {
+        serde_json::to_writer(target, self).ok();
     }
 }
 
 impl std::fmt::Debug for Box<dyn JsonString> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        let mut s = String::new();
+        let mut s = Vec::new();
         self.push_json(&mut s);
-        f.write_str(s.as_str())
+        f.write_str(&unsafe { String::from_utf8_unchecked(s) })
     }
 }

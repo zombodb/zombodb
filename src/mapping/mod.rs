@@ -1,5 +1,4 @@
 use crate::json::builder::JsonBuilder;
-use crate::json::utils::escape_json;
 use crate::utils::type_is_domain;
 use pgx::*;
 use serde_json::*;
@@ -55,311 +54,332 @@ pub fn categorize_tupdesc<'a>(
         } else {
             // use one of our built-in converters, downcasting arrays to their element type
             // as Elasticsearch doesn't require special mapping notations for arrays
-            let array_type = unsafe { pg_sys::get_element_type(attribute.type_oid().value()) };
+            let mut attribute_type_oid = attribute.type_oid();
 
-            let (base_oid, is_array) = if array_type != pg_sys::InvalidOid {
-                (PgOid::from(array_type), true)
-            } else {
-                (attribute.type_oid(), false)
-            };
+            loop {
+                let array_type = unsafe { pg_sys::get_element_type(attribute_type_oid.value()) };
 
-            typoid = base_oid;
-            match &typoid {
-                PgOid::BuiltIn(builtin) => match builtin {
-                    PgBuiltInOids::BOOLOID => {
-                        if is_array {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_bool_array(
-                                    name,
-                                    unsafe { Vec::<Option<bool>>::from_datum(datum, false, oid) }
+                let (base_oid, is_array) = if array_type != pg_sys::InvalidOid {
+                    (PgOid::from(array_type), true)
+                } else {
+                    (attribute_type_oid, false)
+                };
+
+                typoid = base_oid;
+                break match &typoid {
+                    PgOid::BuiltIn(builtin) => match builtin {
+                        PgBuiltInOids::BOOLOID => {
+                            if is_array {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_bool_array(
+                                        name,
+                                        unsafe {
+                                            Vec::<Option<bool>>::from_datum(datum, false, oid)
+                                        }
                                         .unwrap(),
-                                )
-                            })
-                        } else {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_bool(
-                                    name,
-                                    unsafe { bool::from_datum(datum, false, oid) }.unwrap(),
-                                )
-                            })
+                                    )
+                                })
+                            } else {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_bool(
+                                        name,
+                                        unsafe { bool::from_datum(datum, false, oid) }.unwrap(),
+                                    )
+                                })
+                            }
                         }
-                    }
-                    PgBuiltInOids::INT2OID => {
-                        if is_array {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_i16_array(
-                                    name,
-                                    unsafe { Vec::<Option<i16>>::from_datum(datum, false, oid) }
+                        PgBuiltInOids::INT2OID => {
+                            if is_array {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_i16_array(
+                                        name,
+                                        unsafe {
+                                            Vec::<Option<i16>>::from_datum(datum, false, oid)
+                                        }
                                         .unwrap(),
-                                )
-                            })
-                        } else {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_i16(
-                                    name,
-                                    unsafe { i16::from_datum(datum, false, oid) }.unwrap(),
-                                )
-                            })
+                                    )
+                                })
+                            } else {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_i16(
+                                        name,
+                                        unsafe { i16::from_datum(datum, false, oid) }.unwrap(),
+                                    )
+                                })
+                            }
                         }
-                    }
-                    PgBuiltInOids::INT4OID => {
-                        if is_array {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_i32_array(
-                                    name,
-                                    unsafe { Vec::<Option<i32>>::from_datum(datum, false, oid) }
+                        PgBuiltInOids::INT4OID => {
+                            if is_array {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_i32_array(
+                                        name,
+                                        unsafe {
+                                            Vec::<Option<i32>>::from_datum(datum, false, oid)
+                                        }
                                         .unwrap(),
-                                )
-                            })
-                        } else {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_i32(
-                                    name,
-                                    unsafe { i32::from_datum(datum, false, oid) }.unwrap(),
-                                )
-                            })
+                                    )
+                                })
+                            } else {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_i32(
+                                        name,
+                                        unsafe { i32::from_datum(datum, false, oid) }.unwrap(),
+                                    )
+                                })
+                            }
                         }
-                    }
-                    PgBuiltInOids::INT8OID => {
-                        if is_array {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_i64_array(
-                                    name,
-                                    unsafe { Vec::<Option<i64>>::from_datum(datum, false, oid) }
+                        PgBuiltInOids::INT8OID => {
+                            if is_array {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_i64_array(
+                                        name,
+                                        unsafe {
+                                            Vec::<Option<i64>>::from_datum(datum, false, oid)
+                                        }
                                         .unwrap(),
-                                )
-                            })
-                        } else {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_i64(
-                                    name,
-                                    unsafe { i64::from_datum(datum, false, oid) }.unwrap(),
-                                )
-                            })
+                                    )
+                                })
+                            } else {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_i64(
+                                        name,
+                                        unsafe { i64::from_datum(datum, false, oid) }.unwrap(),
+                                    )
+                                })
+                            }
                         }
-                    }
-                    PgBuiltInOids::OIDOID | PgBuiltInOids::XIDOID => {
-                        if is_array {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_u32_array(
-                                    name,
-                                    unsafe { Vec::<Option<u32>>::from_datum(datum, false, oid) }
+                        PgBuiltInOids::OIDOID | PgBuiltInOids::XIDOID => {
+                            if is_array {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_u32_array(
+                                        name,
+                                        unsafe {
+                                            Vec::<Option<u32>>::from_datum(datum, false, oid)
+                                        }
                                         .unwrap(),
-                                )
-                            })
-                        } else {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_u32(
-                                    name,
-                                    unsafe { u32::from_datum(datum, false, oid) }.unwrap(),
-                                )
-                            })
+                                    )
+                                })
+                            } else {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_u32(
+                                        name,
+                                        unsafe { u32::from_datum(datum, false, oid) }.unwrap(),
+                                    )
+                                })
+                            }
                         }
-                    }
-                    PgBuiltInOids::FLOAT4OID => {
-                        if is_array {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_f32_array(
-                                    name,
-                                    unsafe { Vec::<Option<f32>>::from_datum(datum, false, oid) }
+                        PgBuiltInOids::FLOAT4OID => {
+                            if is_array {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_f32_array(
+                                        name,
+                                        unsafe {
+                                            Vec::<Option<f32>>::from_datum(datum, false, oid)
+                                        }
                                         .unwrap(),
-                                )
-                            })
-                        } else {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_f32(
-                                    name,
-                                    unsafe { f32::from_datum(datum, false, oid) }.unwrap(),
-                                )
-                            })
+                                    )
+                                })
+                            } else {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_f32(
+                                        name,
+                                        unsafe { f32::from_datum(datum, false, oid) }.unwrap(),
+                                    )
+                                })
+                            }
                         }
-                    }
-                    PgBuiltInOids::FLOAT8OID => {
-                        if is_array {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_f64_array(
-                                    name,
-                                    unsafe { Vec::<Option<f64>>::from_datum(datum, false, oid) }
+                        PgBuiltInOids::FLOAT8OID => {
+                            if is_array {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_f64_array(
+                                        name,
+                                        unsafe {
+                                            Vec::<Option<f64>>::from_datum(datum, false, oid)
+                                        }
                                         .unwrap(),
-                                )
-                            })
-                        } else {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_f64(
-                                    name,
-                                    unsafe { f64::from_datum(datum, false, oid) }.unwrap(),
-                                )
-                            })
+                                    )
+                                })
+                            } else {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_f64(
+                                        name,
+                                        unsafe { f64::from_datum(datum, false, oid) }.unwrap(),
+                                    )
+                                })
+                            }
                         }
-                    }
-                    PgBuiltInOids::TIMEOID => {
-                        if is_array {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_time_array(
-                                    name,
-                                    unsafe { Vec::<Option<Time>>::from_datum(datum, false, oid) }
+                        PgBuiltInOids::TIMEOID => {
+                            if is_array {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_time_array(
+                                        name,
+                                        unsafe {
+                                            Vec::<Option<Time>>::from_datum(datum, false, oid)
+                                        }
                                         .unwrap(),
-                                )
-                            })
-                        } else {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_time(
-                                    name,
-                                    unsafe { Time::from_datum(datum, false, oid) }.unwrap(),
-                                )
-                            })
+                                    )
+                                })
+                            } else {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_time(
+                                        name,
+                                        unsafe { Time::from_datum(datum, false, oid) }.unwrap(),
+                                    )
+                                })
+                            }
                         }
-                    }
-                    PgBuiltInOids::TIMETZOID => {
-                        if is_array {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_time_with_time_zone_array(
-                                    name,
-                                    unsafe {
-                                        Vec::<Option<TimeWithTimeZone>>::from_datum(
-                                            datum, false, oid,
-                                        )
-                                    }
-                                    .unwrap(),
-                                )
-                            })
-                        } else {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_time_with_time_zone(
-                                    name,
-                                    unsafe { TimeWithTimeZone::from_datum(datum, false, oid) }
+                        PgBuiltInOids::TIMETZOID => {
+                            if is_array {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_time_with_time_zone_array(
+                                        name,
+                                        unsafe {
+                                            Vec::<Option<TimeWithTimeZone>>::from_datum(
+                                                datum, false, oid,
+                                            )
+                                        }
                                         .unwrap(),
-                                )
-                            })
+                                    )
+                                })
+                            } else {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_time_with_time_zone(
+                                        name,
+                                        unsafe { TimeWithTimeZone::from_datum(datum, false, oid) }
+                                            .unwrap(),
+                                    )
+                                })
+                            }
                         }
-                    }
-                    PgBuiltInOids::TIMESTAMPOID => {
-                        if is_array {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_timestamp_array(
-                                    name,
-                                    unsafe {
-                                        Vec::<Option<Timestamp>>::from_datum(datum, false, oid)
-                                    }
-                                    .unwrap(),
-                                )
-                            })
-                        } else {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_timestamp(
-                                    name,
-                                    unsafe { Timestamp::from_datum(datum, false, oid) }.unwrap(),
-                                )
-                            })
-                        }
-                    }
-                    PgBuiltInOids::TIMESTAMPTZOID => {
-                        if is_array {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_timestamp_with_time_zone_array(
-                                    name,
-                                    unsafe {
-                                        Vec::<Option<TimestampWithTimeZone>>::from_datum(
-                                            datum, false, oid,
-                                        )
-                                    }
-                                    .unwrap(),
-                                )
-                            })
-                        } else {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_timestamp_with_time_zone(
-                                    name,
-                                    unsafe { TimestampWithTimeZone::from_datum(datum, false, oid) }
+                        PgBuiltInOids::TIMESTAMPOID => {
+                            if is_array {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_timestamp_array(
+                                        name,
+                                        unsafe {
+                                            Vec::<Option<Timestamp>>::from_datum(datum, false, oid)
+                                        }
                                         .unwrap(),
-                                )
-                            })
+                                    )
+                                })
+                            } else {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_timestamp(
+                                        name,
+                                        unsafe { Timestamp::from_datum(datum, false, oid) }
+                                            .unwrap(),
+                                    )
+                                })
+                            }
                         }
-                    }
-                    PgBuiltInOids::DATEOID => {
-                        if is_array {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_date_array(
-                                    name,
-                                    unsafe { Vec::<Option<Date>>::from_datum(datum, false, oid) }
+                        PgBuiltInOids::TIMESTAMPTZOID => {
+                            if is_array {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_timestamp_with_time_zone_array(
+                                        name,
+                                        unsafe {
+                                            Vec::<Option<TimestampWithTimeZone>>::from_datum(
+                                                datum, false, oid,
+                                            )
+                                        }
                                         .unwrap(),
-                                )
-                            })
-                        } else {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_date(
-                                    name,
-                                    unsafe { Date::from_datum(datum, false, oid) }.unwrap(),
-                                )
-                            })
+                                    )
+                                })
+                            } else {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_timestamp_with_time_zone(
+                                        name,
+                                        unsafe {
+                                            TimestampWithTimeZone::from_datum(datum, false, oid)
+                                        }
+                                        .unwrap(),
+                                    )
+                                })
+                            }
                         }
-                    }
-                    PgBuiltInOids::TEXTOID | PgBuiltInOids::VARCHAROID => {
-                        if is_array {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_string_array(
-                                    name,
-                                    unsafe { Vec::<Option<String>>::from_datum(datum, false, oid) }
+                        PgBuiltInOids::DATEOID => {
+                            if is_array {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_date_array(
+                                        name,
+                                        unsafe {
+                                            Vec::<Option<Date>>::from_datum(datum, false, oid)
+                                        }
                                         .unwrap(),
-                                )
-                            })
-                        } else {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_string(
-                                    name,
-                                    unsafe { String::from_datum(datum, false, oid) }.unwrap(),
-                                )
-                            })
+                                    )
+                                })
+                            } else {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_date(
+                                        name,
+                                        unsafe { Date::from_datum(datum, false, oid) }.unwrap(),
+                                    )
+                                })
+                            }
                         }
-                    }
-                    PgBuiltInOids::JSONOID => {
-                        if is_array {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_json_string_array(
-                                    name,
-                                    unsafe {
-                                        Vec::<Option<pgx::JsonString>>::from_datum(
-                                            datum, false, oid,
-                                        )
-                                    }
-                                    .unwrap(),
-                                )
-                            })
-                        } else {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_json_string(
-                                    name,
-                                    unsafe { pgx::JsonString::from_datum(datum, false, oid) }
-                                        .unwrap(),
-                                )
-                            })
+                        PgBuiltInOids::TEXTOID | PgBuiltInOids::VARCHAROID => {
+                            handle_as_generic_string(is_array, typoid.value())
                         }
-                    }
-                    PgBuiltInOids::JSONBOID => {
-                        if is_array {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_jsonb_array(
-                                    name,
-                                    unsafe { Vec::<Option<JsonB>>::from_datum(datum, false, oid) }
+                        PgBuiltInOids::JSONOID => {
+                            if is_array {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_json_string_array(
+                                        name,
+                                        unsafe {
+                                            Vec::<Option<pgx::JsonString>>::from_datum(
+                                                datum, false, oid,
+                                            )
+                                        }
                                         .unwrap(),
-                                )
-                            })
+                                    )
+                                })
+                            } else {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_json_string(
+                                        name,
+                                        unsafe { pgx::JsonString::from_datum(datum, false, oid) }
+                                            .unwrap(),
+                                    )
+                                })
+                            }
+                        }
+                        PgBuiltInOids::JSONBOID => {
+                            if is_array {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_jsonb_array(
+                                        name,
+                                        unsafe {
+                                            Vec::<Option<JsonB>>::from_datum(datum, false, oid)
+                                        }
+                                        .unwrap(),
+                                    )
+                                })
+                            } else {
+                                Box::new(|builder, name, datum, oid| {
+                                    builder.add_jsonb(
+                                        name,
+                                        unsafe { JsonB::from_datum(datum, false, oid) }.unwrap(),
+                                    )
+                                })
+                            }
+                        }
+
+                        unknown => handle_as_generic_string(is_array, unknown.value()),
+                    },
+
+                    PgOid::Custom(custom) => {
+                        if let Some((oid, _)) = type_is_domain(*custom) {
+                            attribute_type_oid = PgOid::from(oid);
+                            continue;
                         } else {
-                            Box::new(|builder, name, datum, oid| {
-                                builder.add_jsonb(
-                                    name,
-                                    unsafe { JsonB::from_datum(datum, false, oid) }.unwrap(),
-                                )
-                            })
+                            handle_as_generic_string(is_array, *custom)
                         }
                     }
 
-                    unknown => handle_unsupported_type(is_array, unknown.value()),
-                },
-
-                PgOid::Custom(custom) => handle_unsupported_type(is_array, *custom),
-
-                PgOid::InvalidOid => panic!("{} has a type oid of InvalidOid", attribute.name()),
+                    PgOid::InvalidOid => {
+                        panic!("{} has a type oid of InvalidOid", attribute.name())
+                    }
+                };
             }
         };
 
@@ -423,9 +443,9 @@ pub fn categorize_tupdesc<'a>(
                 .insert(attname.to_owned(), definition);
         }
 
-        let mut json_attname = String::with_capacity(attname.len());
-        escape_json(attname, &mut json_attname);
-        let attname = PgMemoryContexts::TopTransactionContext.leak_and_drop_on_delete(json_attname);
+        let attname = serde_json::to_string(&json! {attname})
+            .expect("failed to convert attribute name to json");
+        let attname = PgMemoryContexts::TopTransactionContext.leak_and_drop_on_delete(attname);
         categorized_attributes.push(CategorizedAttribute {
             attname: unsafe { attname.as_ref().unwrap() },
             typoid: typoid.value(),
@@ -437,7 +457,7 @@ pub fn categorize_tupdesc<'a>(
     categorized_attributes
 }
 
-fn handle_unsupported_type<'a>(
+fn handle_as_generic_string<'a>(
     is_array: bool,
     base_type_oid: pg_sys::Oid,
 ) -> Box<ConversionFunc<'a>> {
@@ -454,46 +474,36 @@ fn handle_unsupported_type<'a>(
                 unsafe { Array::from_datum(datum, false, base_type_oid).unwrap() };
 
             // build up a vec of each element as a string
-            let mut values = Vec::new();
+            let mut values = Vec::with_capacity(array.len());
             for e in array.iter() {
                 // only serialize to json non-null array values
                 if let Some(element_datum) = e {
-                    let result = unsafe {
-                        std::ffi::CStr::from_ptr(pg_sys::OidOutputFunctionCall(
-                            output_func,
-                            element_datum,
-                        ))
-                    };
-                    let result_str = result
-                        .to_str()
-                        .expect("failed to convert unsupported type to a string");
-                    values.push(result_str.to_string());
-
-                    unsafe {
-                        pg_sys::pfree(result.as_ptr() as void_mut_ptr);
+                    if base_type_oid == pg_sys::TEXTOID || base_type_oid == pg_sys::VARCHAROID {
+                        values.push(Some(
+                            unsafe { String::from_datum(element_datum, false, base_type_oid) }
+                                .unwrap(),
+                        ));
+                    } else {
+                        let result = unsafe {
+                            std::ffi::CStr::from_ptr(pg_sys::OidOutputFunctionCall(
+                                output_func,
+                                element_datum,
+                            ))
+                        };
+                        values.push(Some(result.to_str().unwrap().to_string()));
                     }
                 }
             }
 
             // then add that vec to our builder as a json blob
-            builder.add_json_value(name, json!(values))
+            builder.add_string_array(name, values)
         })
     } else {
-        Box::new(move |builder, name, datum, _oid| {
-            // call the output function to convert the datum into a string
-            let result = unsafe {
-                std::ffi::CStr::from_ptr(pg_sys::OidOutputFunctionCall(output_func, datum))
-            };
-            let result_str = result
-                .to_str()
-                .expect("failed to convert unsupported type to a string");
-
-            // then we add it to our builder as a json value
-            builder.add_json_value(name, json!(result_str));
-
-            unsafe {
-                pg_sys::pfree(result.as_ptr() as void_mut_ptr);
-            }
+        Box::new(move |builder, name, datum, oid| {
+            builder.add_string(
+                name,
+                unsafe { String::from_datum(datum, false, oid) }.unwrap(),
+            )
         })
     }
 }
@@ -673,7 +683,6 @@ mod tests {
                 "analyzer": "zdb_standard",
                 "copy_to": "zdb_all",
                 "fielddata": true,
-                "index_prefixes": {},
                 "type": "text"
               },
               "zdb_aborted_xids": {
