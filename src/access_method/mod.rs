@@ -8,7 +8,7 @@ mod scan;
 mod triggers;
 mod vacuum;
 
-/// ```sql
+/// ```pgxsql
 /// CREATE OR REPLACE FUNCTION amhandler(internal) RETURNS index_am_handler PARALLEL SAFE IMMUTABLE STRICT COST 0.0001 LANGUAGE c AS 'MODULE_PATHNAME', '@FUNCTION_NAME@';
 /// CREATE ACCESS METHOD zombodb TYPE INDEX HANDLER amhandler;
 /// ```

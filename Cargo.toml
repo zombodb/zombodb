@@ -8,7 +8,7 @@ readme = "README.md"
 license = "LICENSE.md"
 
 [lib]
-crate-type = [ "cdylib" ]
+crate-type = [ "cdylib", "rlib" ]
 
 [features]
 default = [ "pg12" ]
@@ -30,11 +30,11 @@ levenshtein = "1.0.5"
 memoffset = "0.6.4"
 num_cpus = "1.13.0"
 pathfinding = "2.2.1"
-pgx = "0.1.21"
-pgx-macros = "0.1.21"
+pgx = { git = "https://github.com/zombodb/pgx", rev = "fa8ece3232df3fb75562a376d04a060488a17176" }
+pgx-macros = { git = "https://github.com/zombodb/pgx", rev = "fa8ece3232df3fb75562a376d04a060488a17176" }
 rayon = "1.5.1"
 regex = "1.5.4"
-serde = { version = "1.0.127", features = [ "derive" ] }
+serde = { version = "1.0.130", features = [ "derive" ] }
 serde_json = { version = "1.0.66", features = [ "preserve_order" ] }
 serde_cbor = "0.11.1"
 sqlformat = "0.1.6"
@@ -46,7 +46,7 @@ lalrpop = { version = "0.19.6", features = [ "lexer" ] }
 built = { version = "0.5.1", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
-pgx-tests = "0.1.21"
+pgx-tests = { git = "https://github.com/zombodb/pgx", rev = "fa8ece3232df3fb75562a376d04a060488a17176" }
 libc = "0.2.99"
 
 [profile.dev]

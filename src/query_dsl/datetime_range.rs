@@ -1,3 +1,4 @@
+#[pgx_macros::pg_schema]
 mod pg_catalog {
     use pgx::*;
     use serde::*;
@@ -11,6 +12,7 @@ mod pg_catalog {
     }
 }
 
+#[pgx_macros::pg_schema]
 mod dsl {
     use crate::query_dsl::datetime_range::pg_catalog::*;
     use crate::zdbquery::ZDBQuery;
@@ -33,10 +35,7 @@ mod dsl {
         relation: Option<Relation>,
     }
 
-    /// ```funcname
-    /// datetime_range
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(immutable, parallel_safe, name = "datetime_range")]
     fn datetime_range_date(
         field: &str,
         lt: Option<default!(Date, NULL)>,
@@ -44,7 +43,7 @@ mod dsl {
         lte: Option<default!(Date, NULL)>,
         gte: Option<default!(Date, NULL)>,
         boost: Option<default!(f32, NULL)>,
-        relation: Option<default!(Relation, "intersects")>,
+        relation: Option<default!(Relation, "'intersects'")>,
     ) -> ZDBQuery {
         let datetime_range = DateTimeRange {
             lt,
@@ -57,10 +56,7 @@ mod dsl {
         make_datetime_range_dsl(field, datetime_range)
     }
 
-    /// ```funcname
-    /// datetime_range
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(immutable, parallel_safe, name = "datetime_range")]
     fn datetime_range_time(
         field: &str,
         lt: Option<default!(Time, NULL)>,
@@ -68,7 +64,7 @@ mod dsl {
         lte: Option<default!(Time, NULL)>,
         gte: Option<default!(Time, NULL)>,
         boost: Option<default!(f32, NULL)>,
-        relation: Option<default!(Relation, "intersects")>,
+        relation: Option<default!(Relation, "'intersects'")>,
     ) -> ZDBQuery {
         let datetime_range: DateTimeRange<Time> = DateTimeRange {
             lt,
@@ -81,10 +77,7 @@ mod dsl {
         make_datetime_range_dsl(field, datetime_range)
     }
 
-    /// ```funcname
-    /// datetime_range
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(immutable, parallel_safe, name = "datetime_range")]
     fn datetime_range_time_stamp(
         field: &str,
         lt: Option<default!(Timestamp, NULL)>,
@@ -92,7 +85,7 @@ mod dsl {
         lte: Option<default!(Timestamp, NULL)>,
         gte: Option<default!(Timestamp, NULL)>,
         boost: Option<default!(f32, NULL)>,
-        relation: Option<default!(Relation, "intersects")>,
+        relation: Option<default!(Relation, "'intersects'")>,
     ) -> ZDBQuery {
         let datetime_range: DateTimeRange<Timestamp> = DateTimeRange {
             lt,
@@ -105,10 +98,7 @@ mod dsl {
         make_datetime_range_dsl(field, datetime_range)
     }
 
-    /// ```funcname
-    /// datetime_range
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(immutable, parallel_safe, name = "datetime_range")]
     fn datetime_range_timestamp_with_timezone(
         field: &str,
         lt: Option<default!(TimestampWithTimeZone, NULL)>,
@@ -116,7 +106,7 @@ mod dsl {
         lte: Option<default!(TimestampWithTimeZone, NULL)>,
         gte: Option<default!(TimestampWithTimeZone, NULL)>,
         boost: Option<default!(f32, NULL)>,
-        relation: Option<default!(Relation, "intersects")>,
+        relation: Option<default!(Relation, "'intersects'")>,
     ) -> ZDBQuery {
         let datetime_range: DateTimeRange<TimestampWithTimeZone> = DateTimeRange {
             lt,
@@ -129,10 +119,7 @@ mod dsl {
         make_datetime_range_dsl(field, datetime_range)
     }
 
-    /// ```funcname
-    /// datetime_range
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(immutable, parallel_safe, name = "datetime_range")]
     fn datetime_range_time_with_timezone(
         field: &str,
         lt: Option<default!(TimeWithTimeZone, NULL)>,
@@ -140,7 +127,7 @@ mod dsl {
         lte: Option<default!(TimeWithTimeZone, NULL)>,
         gte: Option<default!(TimeWithTimeZone, NULL)>,
         boost: Option<default!(f32, NULL)>,
-        relation: Option<default!(Relation, "intersects")>,
+        relation: Option<default!(Relation, "'intersects'")>,
     ) -> ZDBQuery {
         let datetime_range: DateTimeRange<TimeWithTimeZone> = DateTimeRange {
             lt,
@@ -169,6 +156,7 @@ mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
+#[pgx_macros::pg_schema]
 mod tests {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;

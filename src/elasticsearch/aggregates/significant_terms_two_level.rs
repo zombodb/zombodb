@@ -11,7 +11,7 @@ fn significant_terms_two_level(
     field_first: &str,
     field_second: &str,
     query: ZDBQuery,
-    size_limit: Option<default!(i32, 2147483647)>,
+    size_limit: Option<default!(i32, "2147483647")>,
 ) -> impl std::iter::Iterator<
     Item = (
         name!(term_one, Option<String>),

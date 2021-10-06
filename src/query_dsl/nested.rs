@@ -1,3 +1,4 @@
+#[pgx_macros::pg_schema]
 pub mod pg_catalog {
     use pgx::*;
     use serde::*;
@@ -13,6 +14,7 @@ pub mod pg_catalog {
     }
 }
 
+#[pgx_macros::pg_schema]
 mod dsl {
     use crate::query_dsl::nested::pg_catalog::ScoreMode;
     use crate::zdbquery::{ZDBQuery, ZDBQueryClause};
@@ -22,7 +24,7 @@ mod dsl {
     fn nested(
         path: String,
         query: ZDBQuery,
-        score_mode: default!(ScoreMode, "avg"),
+        score_mode: default!(ScoreMode, "'avg'"),
         ignore_unmapped: Option<default!(bool, NULL)>,
     ) -> ZDBQuery {
         ZDBQuery::new_with_query_clause(ZDBQueryClause::nested(
@@ -35,6 +37,7 @@ mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
+#[pgx_macros::pg_schema]
 mod tests {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;

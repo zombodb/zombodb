@@ -5,6 +5,7 @@ use pgx::*;
 use serde::Serialize;
 use serde_json::*;
 
+#[pgx_macros::pg_schema]
 mod pg_catalog {
     use pgx::*;
     use serde::*;
@@ -130,14 +131,11 @@ fn highlight(
     Json(json!(highlight))
 }
 
-/// ```funcname
-/// highlight
-/// ```
-#[pg_extern(parallel_safe, immutable)]
+#[pg_extern(parallel_safe, immutable, requires = [ highlighting::es_highlighting::highlight, ])]
 fn highlight_field(
     ctid: pg_sys::ItemPointerData,
     field: &str,
-    _highlight_definition: default!(Json, zdb.highlight()),
+    _highlight_definition: default!(Json, "zdb.highlight()"),
     fcinfo: pg_sys::FunctionCallInfo,
 ) -> Option<Vec<Option<&'static String>>> {
     let highlights = match get_executor_manager().peek_query_state() {
@@ -162,11 +160,11 @@ fn highlight_field(
     }
 }
 
-#[pg_extern(parallel_safe, immutable)]
+#[pg_extern(parallel_safe, immutable, requires = [ highlighting::es_highlighting::highlight, ])]
 fn want_highlight(
     mut query: ZDBQuery,
     field: String,
-    highlight_definition: default!(Json, zdb.highlight()),
+    highlight_definition: default!(Json, "zdb.highlight()"),
 ) -> ZDBQuery {
     let highlights = query.highlights();
     highlights.insert(field, highlight_definition.0);

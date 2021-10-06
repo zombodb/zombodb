@@ -633,6 +633,7 @@ fn lookup_type_conversions() -> HashMap<pg_sys::Oid, pg_sys::Oid> {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
+#[pgx_macros::pg_schema]
 mod tests {
     use crate::mapping::{categorize_tupdesc, generate_default_mapping};
     use crate::utils::lookup_zdb_index_tupdesc;

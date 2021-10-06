@@ -39,6 +39,7 @@ pub fn escape_json(input: &str, target: &mut String) {
 }
 
 #[cfg(test)]
+#[pgx_macros::pg_schema]
 mod tests {
     use crate::json::utils::escape_json;
 

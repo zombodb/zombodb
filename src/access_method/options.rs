@@ -431,11 +431,9 @@ impl ZDBIndexOptions {
     }
 }
 
-/// ```sql
-/// /*
-///    we don't want any SQL generated for the "shadow" function, but we do want its '_wrapper' symbol
-///    exported so that shadow indexes can reference it using whatever argument type they want
-/// */
+/// ```pgxsql
+/// -- we don't want any SQL generated for the "shadow" function, but we do want its '_wrapper' symbol
+/// -- exported so that shadow indexes can reference it using whatever argument type they want
 /// ```
 #[pg_extern(immutable, parallel_safe, raw, no_guard)]
 fn shadow(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
@@ -1153,6 +1151,7 @@ pub unsafe fn init() {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
+#[pgx_macros::pg_schema]
 mod tests {
     use crate::access_method::options::{
         validate_translog_durability, validate_url, RefreshInterval, ZDBIndexOptions,

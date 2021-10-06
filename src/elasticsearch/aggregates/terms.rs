@@ -9,6 +9,7 @@ use serde_json::*;
 use std::collections::HashMap;
 use std::str::FromStr;
 
+#[pgx_macros::pg_schema]
 pub(crate) mod pg_catalog {
     use pgx::*;
     use serde::Serialize;
@@ -339,7 +340,7 @@ fn tally(
 
 // need to hand-write the DDL for this b/c naming this function "terms_array"
 // conflicts with the function of the same name in the 'dsl' module
-/// ```sql
+/// ```pgxsql
 /// CREATE OR REPLACE FUNCTION zdb."terms_array"(
 ///     "index" regclass,
 ///     "field_name" text,
@@ -350,7 +351,7 @@ fn tally(
 /// IMMUTABLE PARALLEL SAFE
 /// LANGUAGE c AS 'MODULE_PATHNAME', 'terms_array_agg_wrapper';
 /// ```
-#[pg_extern(imutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe)]
 pub(crate) fn terms_array_agg(
     index: PgRelation,
     field: &str,

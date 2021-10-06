@@ -3,63 +3,43 @@
 //!
 //! Returns documents that contain one or more exact terms in a provided field
 
+#[pgx_macros::pg_schema]
 mod dsl {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
     use serde_json::*;
 
-    /// ```funcname
-    /// terms
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(name = "terms", immutable, parallel_safe)]
     pub(super) fn terms_str(field: &str, values: VariadicArray<&str>) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
 
-    /// ```funcname
-    /// terms
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(name = "terms", immutable, parallel_safe)]
     pub(super) fn terms_bool(field: &str, values: VariadicArray<bool>) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
 
-    /// ```funcname
-    /// terms
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(name = "terms", immutable, parallel_safe)]
     pub(super) fn terms_i16(field: &str, values: VariadicArray<i16>) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
 
-    /// ```funcname
-    /// terms
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(name = "terms", immutable, parallel_safe)]
     pub(super) fn terms_i32(field: &str, values: VariadicArray<i32>) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
 
-    /// ```funcname
-    /// terms
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(name = "terms", immutable, parallel_safe)]
     pub(super) fn terms_i64(field: &str, values: VariadicArray<i64>) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
 
-    /// ```funcname
-    /// terms
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(name = "terms", immutable, parallel_safe)]
     pub(super) fn terms_f32(field: &str, values: VariadicArray<f32>) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
 
-    /// ```funcname
-    /// terms
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(name = "terms", immutable, parallel_safe)]
     pub(super) fn terms_f64(field: &str, values: VariadicArray<f64>) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
@@ -77,6 +57,7 @@ mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
+#[pgx_macros::pg_schema]
 mod tests {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
