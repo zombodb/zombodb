@@ -11,11 +11,12 @@ license = "LICENSE.md"
 crate-type = [ "cdylib", "rlib" ]
 
 [features]
-default = [ "pg12" ]
+default = [ "pg14" ]
 pg10 = [ "pgx/pg10", "pgx-tests/pg10" ]
 pg11 = [ "pgx/pg11", "pgx-tests/pg11" ]
 pg12 = [ "pgx/pg12", "pgx-tests/pg12" ]
 pg13 = [ "pgx/pg13", "pgx-tests/pg13" ]
+pg14 = [ "pgx/pg14", "pgx-tests/pg14" ]
 pg_test = [ ]
 
 [dependencies]
@@ -30,12 +31,12 @@ levenshtein = "1.0.5"
 memoffset = "0.6.4"
 num_cpus = "1.13.0"
 pathfinding = "2.2.1"
-pgx = { git = "https://github.com/zombodb/pgx", rev = "fa8ece3232df3fb75562a376d04a060488a17176" }
-pgx-macros = { git = "https://github.com/zombodb/pgx", rev = "fa8ece3232df3fb75562a376d04a060488a17176" }
+pgx = { git = "https://github.com/zombodb/pgx", branch = "develop" }
+pgx-macros = { git = "https://github.com/zombodb/pgx", branch = "develop" }
 rayon = "1.5.1"
 regex = "1.5.4"
 serde = { version = "1.0.130", features = [ "derive" ] }
-serde_json = { version = "1.0.66", features = [ "preserve_order" ] }
+serde_json = { version = "1.0.68", features = [ "preserve_order" ] }
 serde_cbor = "0.11.1"
 sqlformat = "0.1.6"
 ureq = { version = "2.1.1", features = [ "json" ] }
@@ -46,7 +47,7 @@ lalrpop = { version = "0.19.6", features = [ "lexer" ] }
 built = { version = "0.5.1", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
-pgx-tests = { git = "https://github.com/zombodb/pgx", rev = "fa8ece3232df3fb75562a376d04a060488a17176" }
+pgx-tests = { git = "https://github.com/zombodb/pgx", branch = "develop" }
 libc = "0.2.99"
 
 [profile.dev]

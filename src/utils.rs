@@ -20,15 +20,15 @@ fn get_heap_relation_for_func_expr(
     func_expr: &PgBox<pg_sys::FuncExpr>,
     view_def: &PgBox<pg_sys::Query>,
 ) -> PgRelation {
-    let args = PgList::<pg_sys::Node>::from_pg(func_expr.args);
+    let args = unsafe { PgList::<pg_sys::Node>::from_pg(func_expr.args) };
 
     if args.len() != 1 {
         panic!("Incorrect number of arguments to the 'zdb' column function");
     }
 
     let a1 = args.get_ptr(0).unwrap();
-    if is_a(a1, pg_sys::NodeTag_T_Var) {
-        let var = PgBox::from_pg(a1 as *mut pg_sys::Var);
+    if unsafe { is_a(a1, pg_sys::NodeTag_T_Var) } {
+        let var = unsafe { PgBox::from_pg(a1 as *mut pg_sys::Var) };
         return get_heap_relation_from_var(relation, view_def, &var);
     }
 
@@ -47,61 +47,64 @@ fn get_heap_relation_from_var(
         )
     }
 
-    let rte = PgBox::from_pg(unsafe { pg_sys::rt_fetch(var.varno, view_def.rtable) });
+    let rte = unsafe { PgBox::from_pg(unsafe { pg_sys::rt_fetch(var.varno, view_def.rtable) }) };
     return PgRelation::with_lock(rte.relid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
 }
 
 pub fn find_zdb_index(
     any_relation: &PgRelation,
 ) -> std::result::Result<(PgRelation, Option<Vec<String>>), String> {
-    if is_non_shadow_zdb_index(any_relation) {
-        return Ok((any_relation.clone(), None));
-    } else if is_zdb_index(any_relation) {
-        // it's a shadow ZDB index, so lets pluck out the options
-        let options = ZDBIndexOptions::from_relation_no_lookup(any_relation, None);
-        for index in any_relation
-            .heap_relation()
-            .expect("not an index")
-            .indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE)
-        {
-            if is_non_shadow_zdb_index(&index) {
-                return Ok((index, options.links().clone()));
-            }
-        }
-    } else if is_view(any_relation) {
-        static ZDB_RESNAME: &[u8; 4] = b"zdb\0";
-
-        let view_def = PgBox::from_pg(unsafe { pg_sys::get_view_query(any_relation.as_ptr()) });
-        let target_list = PgList::<pg_sys::TargetEntry>::from_pg(view_def.targetList);
-
-        for te in target_list.iter_ptr() {
-            let te = PgBox::from_pg(te);
-
-            let resname = unsafe { std::ffi::CStr::from_ptr(te.resname) };
-            if resname.eq(unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(ZDB_RESNAME) }) {
-                if is_a(te.expr as *mut pg_sys::Node, pg_sys::NodeTag_T_Var) {
-                    let var = PgBox::from_pg(te.expr as *mut pg_sys::Var);
-
-                    // the 'zdb' column is not a functional expression, so it just points to the table
-                    // from which it is derived
-                    let heap = get_heap_relation_from_var(any_relation, &view_def, &var);
-                    return find_zdb_index(&heap);
-                } else if is_a(te.expr as *mut pg_sys::Node, pg_sys::NodeTag_T_FuncExpr) {
-                    let func_expr = PgBox::from_pg(te.expr as *mut pg_sys::FuncExpr);
-                    let heap =
-                        get_heap_relation_for_func_expr(&any_relation, &func_expr, &view_def);
-
-                    let shadow_index = find_zdb_shadow_index(&heap, func_expr.funcid);
-                    let options = ZDBIndexOptions::from_relation(&shadow_index);
-                    let links = options.links().clone();
-                    return Ok((shadow_index, links));
+    unsafe {
+        if is_non_shadow_zdb_index(any_relation) {
+            return Ok((any_relation.clone(), None));
+        } else if is_zdb_index(any_relation) {
+            // it's a shadow ZDB index, so lets pluck out the options
+            let options = ZDBIndexOptions::from_relation_no_lookup(any_relation, None);
+            for index in any_relation
+                .heap_relation()
+                .expect("not an index")
+                .indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE)
+            {
+                if is_non_shadow_zdb_index(&index) {
+                    return Ok((index, options.links().clone()));
                 }
             }
-        }
-    } else {
-        for index in any_relation.indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
-            if is_non_shadow_zdb_index(&index) {
-                return Ok((index.to_owned(), None));
+        } else if is_view(any_relation) {
+            static ZDB_RESNAME: &[u8; 4] = b"zdb\0";
+
+            let view_def = PgBox::from_pg(unsafe { pg_sys::get_view_query(any_relation.as_ptr()) });
+            let target_list = PgList::<pg_sys::TargetEntry>::from_pg(view_def.targetList);
+
+            for te in target_list.iter_ptr() {
+                let te = PgBox::from_pg(te);
+
+                let resname = unsafe { std::ffi::CStr::from_ptr(te.resname) };
+                if resname.eq(unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(ZDB_RESNAME) })
+                {
+                    if is_a(te.expr as *mut pg_sys::Node, pg_sys::NodeTag_T_Var) {
+                        let var = PgBox::from_pg(te.expr as *mut pg_sys::Var);
+
+                        // the 'zdb' column is not a functional expression, so it just points to the table
+                        // from which it is derived
+                        let heap = get_heap_relation_from_var(any_relation, &view_def, &var);
+                        return find_zdb_index(&heap);
+                    } else if is_a(te.expr as *mut pg_sys::Node, pg_sys::NodeTag_T_FuncExpr) {
+                        let func_expr = PgBox::from_pg(te.expr as *mut pg_sys::FuncExpr);
+                        let heap =
+                            get_heap_relation_for_func_expr(&any_relation, &func_expr, &view_def);
+
+                        let shadow_index = find_zdb_shadow_index(&heap, func_expr.funcid);
+                        let options = ZDBIndexOptions::from_relation(&shadow_index);
+                        let links = options.links().clone();
+                        return Ok((shadow_index, links));
+                    }
+                }
+            }
+        } else {
+            for index in any_relation.indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
+                if is_non_shadow_zdb_index(&index) {
+                    return Ok((index.to_owned(), None));
+                }
             }
         }
     }
@@ -113,19 +116,21 @@ pub fn find_zdb_index(
 }
 
 fn find_zdb_shadow_index(table: &PgRelation, funcid: pg_sys::Oid) -> PgRelation {
-    for index in table.indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
-        if is_zdb_index(&index) {
-            let options = ZDBIndexOptions::from_relation_no_lookup(&index, None);
-            if options.is_shadow_index() {
-                let exprs = PgList::<pg_sys::Expr>::from_pg(unsafe {
-                    pg_sys::RelationGetIndexExpressions(index.as_ptr())
-                });
+    unsafe {
+        for index in table.indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
+            if is_zdb_index(&index) {
+                let options = ZDBIndexOptions::from_relation_no_lookup(&index, None);
+                if options.is_shadow_index() {
+                    let exprs = PgList::<pg_sys::Expr>::from_pg(unsafe {
+                        pg_sys::RelationGetIndexExpressions(index.as_ptr())
+                    });
 
-                if let Some(expr) = exprs.get_ptr(0) {
-                    if is_a(expr as *mut pg_sys::Node, pg_sys::NodeTag_T_FuncExpr) {
-                        let func_expr = PgBox::from_pg(expr as *mut pg_sys::FuncExpr);
-                        if func_expr.funcid == funcid {
-                            return index;
+                    if let Some(expr) = exprs.get_ptr(0) {
+                        if is_a(expr as *mut pg_sys::Node, pg_sys::NodeTag_T_FuncExpr) {
+                            let func_expr = PgBox::from_pg(expr as *mut pg_sys::FuncExpr);
+                            if func_expr.funcid == funcid {
+                                return index;
+                            }
                         }
                     }
                 }
@@ -144,13 +149,13 @@ fn find_zdb_shadow_index(table: &PgRelation, funcid: pg_sys::Oid) -> PgRelation 
 pub fn is_zdb_index(index: &PgRelation) -> bool {
     #[cfg(any(feature = "pg10", feature = "pg11"))]
     let routine = index.rd_amroutine;
-    #[cfg(any(feature = "pg12", feature = "pg13"))]
+    #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14"))]
     let routine = index.rd_indam;
 
     if routine.is_null() {
         false
     } else {
-        let indam = PgBox::from_pg(routine);
+        let indam = unsafe { PgBox::from_pg(routine) };
         indam.amvalidate == Some(crate::access_method::amvalidate)
     }
 }
@@ -159,13 +164,13 @@ pub fn is_zdb_index(index: &PgRelation) -> bool {
 pub fn is_non_shadow_zdb_index(index: &PgRelation) -> bool {
     #[cfg(any(feature = "pg10", feature = "pg11"))]
     let routine = index.rd_amroutine;
-    #[cfg(any(feature = "pg12", feature = "pg13"))]
+    #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14"))]
     let routine = index.rd_indam;
 
     if routine.is_null() {
         false
     } else {
-        let indam = PgBox::from_pg(routine);
+        let indam = unsafe { PgBox::from_pg(routine) };
         if indam.amvalidate == Some(crate::access_method::amvalidate) {
             let options = ZDBIndexOptions::from_relation_no_lookup(index, None);
 
@@ -178,7 +183,7 @@ pub fn is_non_shadow_zdb_index(index: &PgRelation) -> bool {
 
 #[inline]
 pub fn is_view(relation: &PgRelation) -> bool {
-    let rel = PgBox::from_pg(relation.rd_rel);
+    let rel = unsafe { PgBox::from_pg(relation.rd_rel) };
     rel.relkind == pg_sys::RELKIND_VIEW as i8
 }
 

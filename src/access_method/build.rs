@@ -167,6 +167,7 @@ fn do_heap_scan<'a>(
 #[pg_guard]
 pub extern "C" fn ambuildempty(_index_relation: pg_sys::Relation) {}
 
+#[cfg(any(feature = "pg10", feature = "pg11", feature = "pg12", feature = "pg13"))]
 #[pg_guard]
 pub unsafe extern "C" fn aminsert(
     index_relation: pg_sys::Relation,
@@ -176,6 +177,30 @@ pub unsafe extern "C" fn aminsert(
     _heap_relation: pg_sys::Relation,
     _check_unique: pg_sys::IndexUniqueCheck,
     _index_info: *mut pg_sys::IndexInfo,
+) -> bool {
+    aminsert_internal(index_relation, values, heap_tid)
+}
+
+#[cfg(any(feature = "pg14"))]
+#[pg_guard]
+pub unsafe extern "C" fn aminsert(
+    index_relation: pg_sys::Relation,
+    values: *mut pg_sys::Datum,
+    _isnull: *mut bool,
+    heap_tid: pg_sys::ItemPointer,
+    _heap_relation: pg_sys::Relation,
+    _check_unique: pg_sys::IndexUniqueCheck,
+    _index_unchanged: bool,
+    _index_info: *mut pg_sys::IndexInfo,
+) -> bool {
+    aminsert_internal(index_relation, values, heap_tid)
+}
+
+#[inline(always)]
+unsafe fn aminsert_internal(
+    index_relation: pg_sys::Relation,
+    values: *mut pg_sys::Datum,
+    heap_tid: pg_sys::ItemPointer,
 ) -> bool {
     let index_relation = PgRelation::from_pg(index_relation);
     let bulk = get_executor_manager().checkout_bulk_context(index_relation.oid());
@@ -198,7 +223,7 @@ pub unsafe extern "C" fn aminsert(
     true
 }
 
-#[cfg(not(feature = "pg13"))]
+#[cfg(any(feature = "pg10", feature = "pg11", feature = "pg12"))]
 #[pg_guard]
 unsafe extern "C" fn build_callback(
     _index: pg_sys::Relation,
@@ -213,7 +238,7 @@ unsafe extern "C" fn build_callback(
     build_callback_internal(htup.t_self, values, state);
 }
 
-#[cfg(feature = "pg13")]
+#[cfg(any(feature = "pg13", feature = "pg14"))]
 #[pg_guard]
 unsafe extern "C" fn build_callback(
     _index: pg_sys::Relation,

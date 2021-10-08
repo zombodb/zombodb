@@ -16,7 +16,7 @@ pub extern "C" fn ambulkdelete(
     _callback_state: *mut ::std::os::raw::c_void,
 ) -> *mut pg_sys::IndexBulkDeleteResult {
     let result = PgBox::<pg_sys::IndexBulkDeleteResult>::alloc0();
-    let info = PgBox::from_pg(info);
+    let info = unsafe { PgBox::from_pg(info) };
     let index_relation = unsafe { PgRelation::from_pg(info.index) };
 
     if ZDBIndexOptions::from_relation(&index_relation).is_shadow_index() {
@@ -27,11 +27,28 @@ pub extern "C" fn ambulkdelete(
     let elasticsearch = Elasticsearch::new(&index_relation);
     let options = ZDBIndexOptions::from_relation(&index_relation);
     let es_index_name = options.index_name();
-    let oldest_xmin = unsafe {
-        pg_sys::TransactionIdLimitedForOldSnapshots(
-            pg_sys::GetOldestXmin(info.index, pg_sys::PROCARRAY_FLAGS_VACUUM as i32),
-            info.index,
-        )
+    let oldest_xmin = {
+        #[cfg(any(feature = "pg10", feature = "pg11", feature = "pg12", feature = "pg13"))]
+        unsafe {
+            pg_sys::TransactionIdLimitedForOldSnapshots(
+                pg_sys::GetOldestXmin(info.index, pg_sys::PROCARRAY_FLAGS_VACUUM as i32),
+                info.index,
+            )
+        }
+
+        #[cfg(any(feature = "pg14"))]
+        unsafe {
+            pg_sys::GetOldestNonRemovableTransactionId(std::ptr::null_mut())
+            // let mut limit_xid = 0;
+            // let mut limit_ts = 0;
+            // pg_sys::TransactionIdLimitedForOldSnapshots(
+            //     pg_sys::GetOldestNonRemovableTransactionId(std::ptr::null_mut()),
+            //     info.index,
+            //     &mut limit_xid,
+            //     &mut limit_ts,
+            // );
+            // limit_xid
+        }
     };
 
     // first things first, VACUUM requires that the index be fully refreshed
@@ -98,7 +115,7 @@ pub extern "C" fn amvacuumcleanup(
     stats: *mut pg_sys::IndexBulkDeleteResult,
 ) -> *mut pg_sys::IndexBulkDeleteResult {
     let result = PgBox::<pg_sys::IndexBulkDeleteResult>::alloc0();
-    let info = PgBox::from_pg(info);
+    let info = unsafe { PgBox::from_pg(info) };
     let index_relation = unsafe { PgRelation::from_pg(info.index) };
 
     if ZDBIndexOptions::from_relation(&index_relation).is_shadow_index() {

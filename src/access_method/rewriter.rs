@@ -115,7 +115,14 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
     } else if is_a(node, pg_sys::NodeTag_T_ModifyTable) {
         let mut modifytable = PgBox::from_pg(node as *mut pg_sys::ModifyTable);
         walk_plan(&mut modifytable.plan, context);
-        walk_node(modifytable.plans as NodePtr, context);
+        #[cfg(any(feature = "pg10", feature = "pg11", feature = "pg12", feature = "pg13"))]
+        {
+            walk_node(modifytable.plans as NodePtr, context);
+        }
+        #[cfg(any(feature = "pg14"))]
+        {
+            walk_node(modifytable.updateColnosLists as NodePtr, context);
+        }
         walk_node(modifytable.returningLists as NodePtr, context);
     } else if is_a(node, pg_sys::NodeTag_T_LockRows) {
         let mut lockrows = PgBox::from_pg(node as *mut pg_sys::LockRows);
@@ -270,7 +277,7 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
         let mut join = PgBox::from_pg(node as *mut pg_sys::HashJoin);
         walk_node(join.hashclauses as NodePtr, context);
 
-        #[cfg(any(feature = "pg12", feature = "pg13"))]
+        #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14"))]
         {
             walk_node(join.hashcollations as NodePtr, context);
             walk_node(join.hashkeys as NodePtr, context);
@@ -283,7 +290,7 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
     } else if is_a(node, pg_sys::NodeTag_T_Hash) {
         let mut hash = PgBox::from_pg(node as *mut pg_sys::Hash);
         walk_plan(&mut hash.plan, context);
-        #[cfg(any(feature = "pg12", feature = "pg13"))]
+        #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14"))]
         walk_node(hash.hashkeys as NodePtr, context);
     } else if is_a(node, pg_sys::NodeTag_T_WindowFunc) {
         let windowfunc = PgBox::from_pg(node as *mut pg_sys::WindowFunc);
@@ -394,7 +401,7 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
         walk_node(expr.elemexpr as NodePtr, context);
     } else {
         let mut did_it = false;
-        #[cfg(any(feature = "pg12", feature = "pg13"))]
+        #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14"))]
         if is_a(node, pg_sys::NodeTag_T_SubscriptingRef) {
             let subscript = PgBox::from_pg(node as *mut pg_sys::SubscriptingRef);
             walk_node(subscript.refupperindexpr as NodePtr, context);

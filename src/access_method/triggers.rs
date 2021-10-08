@@ -8,13 +8,13 @@ use std::ffi::CStr;
 /// ```
 #[pg_extern]
 fn zdb_update_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
-    let trigdata: PgBox<pg_sys::TriggerData> = PgBox::from_pg(
-        unsafe { fcinfo.as_ref() }.expect("fcinfo is NULL").context as *mut pg_sys::TriggerData,
-    );
-    let tg_trigger = PgBox::from_pg(trigdata.tg_trigger);
+    let trigdata: PgBox<pg_sys::TriggerData> = unsafe {
+        PgBox::from_pg(fcinfo.as_ref().expect("fcinfo is NULL").context as *mut pg_sys::TriggerData)
+    };
+    let tg_trigger = unsafe { PgBox::from_pg(trigdata.tg_trigger) };
 
     /* make sure it's called as a trigger at all */
-    if !called_as_trigger(fcinfo) {
+    if unsafe { !called_as_trigger(fcinfo) } {
         error!("zdb_update_trigger: not called by trigger manager");
     }
 
@@ -58,13 +58,13 @@ fn zdb_update_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
 /// ```
 #[pg_extern]
 fn zdb_delete_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
-    let trigdata: PgBox<pg_sys::TriggerData> = PgBox::from_pg(
-        unsafe { fcinfo.as_ref() }.expect("fcinfo is NULL").context as *mut pg_sys::TriggerData,
-    );
-    let tg_trigger = PgBox::from_pg(trigdata.tg_trigger);
+    let trigdata: PgBox<pg_sys::TriggerData> = unsafe {
+        PgBox::from_pg(fcinfo.as_ref().expect("fcinfo is NULL").context as *mut pg_sys::TriggerData)
+    };
+    let tg_trigger = unsafe { PgBox::from_pg(trigdata.tg_trigger) };
 
     /* make sure it's called as a trigger at all */
-    if !called_as_trigger(fcinfo) {
+    if unsafe { !called_as_trigger(fcinfo) } {
         error!("zdb_delete_trigger: not called by trigger manager");
     }
 
@@ -120,7 +120,7 @@ unsafe fn maybe_find_hot_root(
             std::ptr::null_mut(),
         );
 
-        #[cfg(any(feature = "pg12", feature = "pg13"))]
+        #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14"))]
         let found_tuple = pg_sys::heap_fetch(
             (*trigdata).tg_relation,
             pg_sys::GetTransactionSnapshot(),

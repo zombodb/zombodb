@@ -33,7 +33,9 @@ fn anyelement_cmpfunc(
     };
 
     match tid {
-        Some(tid) => pg_func_extra(fcinfo, || do_seqscan(query, index_oid)).contains(&tid),
+        Some(tid) => unsafe {
+            pg_func_extra(fcinfo, || do_seqscan(query, index_oid)).contains(&tid)
+        },
         None => false,
     }
 }
@@ -66,7 +68,7 @@ fn do_seqscan(query: ZDBQuery, index_oid: u32) -> HashSet<u64> {
                 item_pointer_to_u64(htup.as_ref().unwrap().t_self)
             };
 
-            #[cfg(any(feature = "pg12", feature = "pg13"))]
+            #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14"))]
             let tid = {
                 let slot = pg_sys::MakeSingleTupleTableSlot(
                     heap.as_ref().unwrap().rd_att,
@@ -102,7 +104,7 @@ fn restrict(
     args: Internal<pg_sys::List>,
     var_relid: i32,
 ) -> f64 {
-    let args = PgList::<pg_sys::Node>::from_pg(args.0.as_ptr());
+    let args = unsafe { PgList::<pg_sys::Node>::from_pg(args.0.as_ptr()) };
     let left = args.get_ptr(0);
     let right = args.get_ptr(1);
 
@@ -118,7 +120,7 @@ fn restrict(
     let right = right.unwrap();
     let mut heap_relation = None;
 
-    if is_a(left, pg_sys::NodeTag_T_Var) {
+    if unsafe { is_a(left, pg_sys::NodeTag_T_Var) } {
         let mut ldata = pg_sys::VariableStatData::default();
 
         unsafe {
@@ -143,8 +145,8 @@ fn restrict(
     }
 
     if let Some(heap_relation) = heap_relation {
-        if is_a(right, pg_sys::NodeTag_T_Const) {
-            let rconst = PgBox::from_pg(right as *mut pg_sys::Const);
+        if unsafe { is_a(right, pg_sys::NodeTag_T_Const) } {
+            let rconst = unsafe { PgBox::from_pg(right as *mut pg_sys::Const) };
 
             unsafe {
                 if pg_sys::type_is_array(rconst.consttype) {
@@ -184,7 +186,8 @@ fn restrict(
     count_estimate as f64 / reltuples
 }
 
-extension_sql!(r#"
+extension_sql!(
+    r#"
 CREATE OPERATOR pg_catalog.==> (
     PROCEDURE = anyelement_cmpfunc,
     RESTRICT = restrict,
@@ -199,4 +202,6 @@ CREATE OPERATOR CLASS anyelement_zdb_ops DEFAULT FOR TYPE anyelement USING zombo
 --    OPERATOR 4 pg_catalog.==!(anyelement, zdbquery[]),
     STORAGE anyelement;
 
-"#, name = "zdb_ops_anyelement_operator");
+"#,
+    name = "zdb_ops_anyelement_operator"
+);
