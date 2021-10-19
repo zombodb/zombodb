@@ -47,7 +47,7 @@ fn get_heap_relation_from_var(
         )
     }
 
-    let rte = unsafe { PgBox::from_pg(unsafe { pg_sys::rt_fetch(var.varno, view_def.rtable) }) };
+    let rte = unsafe { PgBox::from_pg(pg_sys::rt_fetch(var.varno, view_def.rtable)) };
     return PgRelation::with_lock(rte.relid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
 }
 
@@ -72,15 +72,14 @@ pub fn find_zdb_index(
         } else if is_view(any_relation) {
             static ZDB_RESNAME: &[u8; 4] = b"zdb\0";
 
-            let view_def = PgBox::from_pg(unsafe { pg_sys::get_view_query(any_relation.as_ptr()) });
+            let view_def = PgBox::from_pg(pg_sys::get_view_query(any_relation.as_ptr()));
             let target_list = PgList::<pg_sys::TargetEntry>::from_pg(view_def.targetList);
 
             for te in target_list.iter_ptr() {
                 let te = PgBox::from_pg(te);
 
-                let resname = unsafe { std::ffi::CStr::from_ptr(te.resname) };
-                if resname.eq(unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(ZDB_RESNAME) })
-                {
+                let resname = std::ffi::CStr::from_ptr(te.resname);
+                if resname.eq(std::ffi::CStr::from_bytes_with_nul_unchecked(ZDB_RESNAME)) {
                     if is_a(te.expr as *mut pg_sys::Node, pg_sys::NodeTag_T_Var) {
                         let var = PgBox::from_pg(te.expr as *mut pg_sys::Var);
 
@@ -121,9 +120,9 @@ fn find_zdb_shadow_index(table: &PgRelation, funcid: pg_sys::Oid) -> PgRelation 
             if is_zdb_index(&index) {
                 let options = ZDBIndexOptions::from_relation_no_lookup(&index, None);
                 if options.is_shadow_index() {
-                    let exprs = PgList::<pg_sys::Expr>::from_pg(unsafe {
-                        pg_sys::RelationGetIndexExpressions(index.as_ptr())
-                    });
+                    let exprs = PgList::<pg_sys::Expr>::from_pg(
+                        pg_sys::RelationGetIndexExpressions(index.as_ptr()),
+                    );
 
                     if let Some(expr) = exprs.get_ptr(0) {
                         if is_a(expr as *mut pg_sys::Node, pg_sys::NodeTag_T_FuncExpr) {

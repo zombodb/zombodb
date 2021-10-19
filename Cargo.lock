@@ -242,9 +242,9 @@ dependencies = [
 
 [[package]]
 name = "bumpalo"
-version = "3.7.1"
+version = "3.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9df67f7bf9ef8498769f994239c45613ef0c5899415fb58e9add412d2c1a538"
+checksum = "8f1e260c3a9040a7c19a12468758f4c16f31a81a1fe087482be9570ec864bb6c"
 
 [[package]]
 name = "byteorder"
@@ -813,9 +813,9 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 
 [[package]]
 name = "half"
-version = "1.7.1"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62aca2aba2d62b4a7f5b33f3712cb1b0692779a56fb510499d5c0aa594daeaf3"
+checksum = "ac5956d4e63858efaec57e0d6c1c2f6a41e1487f830314a324ccd7e2223a7ca0"
 
 [[package]]
 name = "hash32"
@@ -904,9 +904,9 @@ dependencies = [
 
 [[package]]
 name = "instant"
-version = "0.1.11"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "716d3d89f35ac6a34fd0eed635395f4c3b76fa889338a4632e5231a8684216bd"
+checksum = "7a5bbe824c507c5da5956355e86a746d82e0e1464f65d862cc5e71da70e94b2c"
 dependencies = [
  "cfg-if",
 ]
@@ -1005,9 +1005,9 @@ checksum = "db13adb97ab515a3691f56e4dbab09283d0b86cb45abd991d8634a9d6f501760"
 
 [[package]]
 name = "libc"
-version = "0.2.103"
+version = "0.2.104"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd8f7255a17a627354f321ef0055d63b898c6fb27eff628af4d1b66b7331edf6"
+checksum = "7b2f96d100e1cf1929e7719b7edb3b90ab5298072638fccd77be9ce942ecdfce"
 
 [[package]]
 name = "libgit2-sys"
@@ -1023,9 +1023,9 @@ dependencies = [
 
 [[package]]
 name = "libloading"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f84d96438c15fcd6c3f244c8fce01d1e2b9c6b5623e9c711dc9286d8fc92d6a"
+checksum = "c0cf036d15402bea3c5d4de17b3fce76b3e4a56ebc1f577be0e7a72f7c607cf0"
 dependencies = [
  "cfg-if",
  "winapi 0.3.9",
@@ -1136,9 +1136,9 @@ dependencies = [
 
 [[package]]
 name = "mio"
-version = "0.7.13"
+version = "0.7.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c2bdb6314ec10835cd3293dd268473a835c02b7b352e788be788b3c6ca6bb16"
+checksum = "8067b404fe97c70829f082dec8bcf4f71225d7eaea1d8645349cb76fa06205cc"
 dependencies = [
  "libc",
  "log",
@@ -1292,9 +1292,9 @@ dependencies = [
 
 [[package]]
 name = "pathfinding"
-version = "2.2.1"
+version = "2.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74da2788ee6afe58991eea9a387a45d3174103db4e26029609378f441a3fbb02"
+checksum = "277bd6900ba1e7e578f320b4f78b9443925cc4a5492c9e1327774df044ec4607"
 dependencies = [
  "fixedbitset 0.4.0",
  "indexmap",
@@ -1348,7 +1348,7 @@ dependencies = [
 [[package]]
 name = "pgx"
 version = "0.2.0-beta.1"
-source = "git+https://github.com/zombodb/pgx?branch=develop#8f04136949bbebf4f968833704c4a3e4b3a84014"
+source = "git+https://github.com/zombodb/pgx?branch=develop#dc8b5a1847224d07be6afa03d25081bb8852d968"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -1375,7 +1375,7 @@ dependencies = [
 [[package]]
 name = "pgx-macros"
 version = "0.2.0-beta.1"
-source = "git+https://github.com/zombodb/pgx?branch=develop#8f04136949bbebf4f968833704c4a3e4b3a84014"
+source = "git+https://github.com/zombodb/pgx?branch=develop#dc8b5a1847224d07be6afa03d25081bb8852d968"
 dependencies = [
  "pgx-utils",
  "proc-macro-crate",
@@ -1388,7 +1388,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-sys"
 version = "0.2.0-beta.1"
-source = "git+https://github.com/zombodb/pgx?branch=develop#8f04136949bbebf4f968833704c4a3e4b3a84014"
+source = "git+https://github.com/zombodb/pgx?branch=develop#dc8b5a1847224d07be6afa03d25081bb8852d968"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1407,7 +1407,7 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.2.0-beta.1"
-source = "git+https://github.com/zombodb/pgx?branch=develop#8f04136949bbebf4f968833704c4a3e4b3a84014"
+source = "git+https://github.com/zombodb/pgx?branch=develop#dc8b5a1847224d07be6afa03d25081bb8852d968"
 dependencies = [
  "colored",
  "lazy_static",
@@ -1426,7 +1426,7 @@ dependencies = [
 [[package]]
 name = "pgx-utils"
 version = "0.2.0-beta.1"
-source = "git+https://github.com/zombodb/pgx?branch=develop#8f04136949bbebf4f968833704c4a3e4b3a84014"
+source = "git+https://github.com/zombodb/pgx?branch=develop#dc8b5a1847224d07be6afa03d25081bb8852d968"
 dependencies = [
  "clap",
  "color-eyre",
@@ -1548,9 +1548,9 @@ dependencies = [
 
 [[package]]
 name = "ppv-lite86"
-version = "0.2.10"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac74c624d6b2d21f425f752262f42188365d7b8ff1aff74c82e45136510a4857"
+checksum = "c3ca011bd0129ff4ae15cd04c4eef202cadf6c51c21e47aba319b4e0501db741"
 
 [[package]]
 name = "precomputed-hash"
@@ -1582,9 +1582,9 @@ checksum = "bc881b2c22681370c6a780e47af9840ef841837bc98118431d4e1868bd0c1086"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.29"
+version = "1.0.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9f5105d4fdaab20335ca9565e106a5d9b82b6219b5ba735731124ac6711d23d"
+checksum = "edc3358ebc67bc8b7fa0c007f945b0b18226f78437d61bec735a9eb96b61ee70"
 dependencies = [
  "unicode-xid",
 ]
@@ -1996,9 +1996,9 @@ dependencies = [
 
 [[package]]
 name = "sharded-slab"
-version = "0.1.3"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "740223c51853f3145fe7c90360d2d4232f2b62e3449489c207eccde818979982"
+checksum = "900fba806f70c630b0a382d0d825e17a0f19fcd059a2ade1ff237bcddf446b31"
 dependencies = [
  "lazy_static",
 ]
@@ -2023,9 +2023,9 @@ checksum = "533494a8f9b724d33625ab53c6c4800f7cc445895924a8ef649222dcb76e938b"
 
 [[package]]
 name = "slab"
-version = "0.4.4"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c307a32c1c5c437f38c7fd45d753050587732ba8628319fbdf12a7e289ccc590"
+checksum = "9def91fd1e018fe007022791f865d0ccc9b3a0d5001e01aabb8b40e46000afb5"
 
 [[package]]
 name = "smallvec"
@@ -2089,12 +2089,13 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
 name = "string_cache"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ddb1139b5353f96e429e1a5e19fbaf663bddedaa06d1dbd49f82e352601209a"
+checksum = "923f0f39b6267d37d23ce71ae7235602134b250ace715dd2c90421998ddac0c6"
 dependencies = [
  "lazy_static",
  "new_debug_unreachable",
+ "parking_lot",
  "phf_shared 0.8.0",
  "precomputed-hash",
 ]
@@ -2169,18 +2170,18 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.29"
+version = "1.0.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "602eca064b2d83369e2b2f34b09c70b605402801927c65c11071ac911d299b88"
+checksum = "854babe52e4df1653706b98fcfc05843010039b406875930a70e4d9644e5c417"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.29"
+version = "1.0.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bad553cc2c78e8de258400763a647e80e6d1b31ee237275d756f6836d204494c"
+checksum = "aa32fd3f627f367fe16f893e2597ae3c05020f8bba2666a4e6ea73d377e5714b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2423,9 +2424,9 @@ dependencies = [
 
 [[package]]
 name = "unicode-bidi"
-version = "0.3.6"
+version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "246f4c42e67e7a4e3c6106ff716a5d067d4132a642840b242e357e468a2a0085"
+checksum = "1a01404663e3db436ed2746d9fefef640d868edae3cceb81c3b8d5732fda678f"
 
 [[package]]
 name = "unicode-normalization"

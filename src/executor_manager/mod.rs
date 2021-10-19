@@ -125,21 +125,19 @@ impl QueryState {
         unsafe {
             if is_a(first_arg, pg_sys::NodeTag_T_Var) {
                 // lookup the table from which the 'ctid' value comes, so we can get its oid
-                let rtable = unsafe {
-                    query_desc
-                        .as_ref()
-                        .unwrap()
-                        .plannedstmt
-                        .as_ref()
-                        .unwrap()
-                        .rtable
-                };
+                let rtable = query_desc
+                    .as_ref()
+                    .unwrap()
+                    .plannedstmt
+                    .as_ref()
+                    .unwrap()
+                    .rtable;
                 let var = PgBox::from_pg(first_arg as *mut pg_sys::Var);
                 #[cfg(any(feature = "pg10", feature = "pg11", feature = "pg12"))]
-                let rentry = unsafe { pg_sys::rt_fetch(var.varnoold, rtable) };
+                let rentry = pg_sys::rt_fetch(var.varnoold, rtable);
                 #[cfg(any(feature = "pg13", feature = "pg14"))]
-                let rentry = unsafe { pg_sys::rt_fetch(var.varnosyn, rtable) };
-                let heap_oid = unsafe { rentry.as_ref().unwrap().relid };
+                let rentry = pg_sys::rt_fetch(var.varnosyn, rtable);
+                let heap_oid = rentry.as_ref().unwrap().relid;
 
                 match find_zdb_index(&PgRelation::with_lock(
                     heap_oid,
@@ -158,9 +156,9 @@ impl QueryState {
                                 oid,
                                 pg_sys::AccessShareLock as pg_sys::LOCKMODE,
                             );
-                            let exprs = PgList::<pg_sys::Expr>::from_pg(unsafe {
-                                pg_sys::RelationGetIndexExpressions(index.as_ptr())
-                            });
+                            let exprs = PgList::<pg_sys::Expr>::from_pg(
+                                pg_sys::RelationGetIndexExpressions(index.as_ptr()),
+                            );
 
                             if let Some(expr) = exprs.get_ptr(0) {
                                 if is_a(expr as *mut pg_sys::Node, pg_sys::NodeTag_T_FuncExpr) {

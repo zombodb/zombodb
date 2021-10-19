@@ -33,10 +33,7 @@ pub mod dsl {
         boost: Option<f32>,
     }
 
-    /// ```funcname
-    /// range
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(immutable, parallel_safe, name = "range")]
     pub fn range_str(
         field: &str,
         lt: Option<default!(&str, NULL)>,
@@ -61,10 +58,7 @@ pub mod dsl {
         })
     }
 
-    /// ```funcname
-    /// range
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(immutable, parallel_safe, name = "range")]
     pub fn range_numeric(
         field: &str,
         lt: Option<default!(i64, NULL)>,

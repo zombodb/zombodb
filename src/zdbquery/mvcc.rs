@@ -46,7 +46,7 @@ pub fn apply_visibility_clause(
 
 pub fn build_visibility_clause(index_name: &str) -> serde_json::Value {
     let snapshot: PgBox<pg_sys::SnapshotData> =
-        unsafe { PgBox::from_pg(unsafe { pg_sys::GetTransactionSnapshot() }) };
+        unsafe { PgBox::from_pg(pg_sys::GetTransactionSnapshot()) };
 
     let command_id = unsafe { pg_sys::GetCurrentCommandId(false) };
     let xmax = xid_to_64bit(snapshot.xmax);

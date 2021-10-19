@@ -58,10 +58,7 @@ fn terms(
     )
 }
 
-/// ```funcname
-/// tally
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe, name = "tally")]
 fn tally_not_nested(
     index: PgRelation,
     field_name: &str,

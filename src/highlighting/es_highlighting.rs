@@ -131,7 +131,7 @@ fn highlight(
     Json(json!(highlight))
 }
 
-#[pg_extern(parallel_safe, immutable, requires = [ highlighting::es_highlighting::highlight, ])]
+#[pg_extern(parallel_safe, immutable, name = "highlight", requires = [ highlighting::es_highlighting::highlight, ])]
 fn highlight_field(
     ctid: pg_sys::ItemPointerData,
     field: &str,
