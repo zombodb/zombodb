@@ -410,7 +410,7 @@ mod tests {
                 name: None,
                 left_field: None,
                 qualified_index: QualifiedIndex {
-                    schema: None,
+                    schema: Some("zdb_tests".to_string()),
                     table: "table".to_string(),
                     index: "index".to_string(),
                 },

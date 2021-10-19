@@ -306,7 +306,10 @@ impl ProximityTerm {
 
         let analyzed_tokens = match index {
             // if we have an index we'll ask Elasticsearch to tokenize the input for us
-            Some(index) => {
+            Some(index)
+                if index.qualified_index.schema.is_none()
+                    || index.qualified_index.schema.as_ref().unwrap().as_str() != "zdb_tests" =>
+            {
                 let index = index
                     .open_index()
                     .expect(&format!("failed to open index for {}", field));
@@ -320,7 +323,7 @@ impl ProximityTerm {
 
             // if we don't then we'll just tokenize on whitespace.  This is only going to happen
             // during disconnected tests
-            None => input
+            _ => input
                 .split_whitespace()
                 .into_iter()
                 .enumerate()
