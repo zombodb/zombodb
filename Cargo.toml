@@ -23,6 +23,7 @@ byteorder = "1.4.3"
 chrono = "0.4.19"
 crossbeam-channel = "0.5.1"
 dashmap = "4.0.2"
+humantime = "2.1.0"
 indexmap = "1.7.0"
 lalrpop-util = "0.19.6"
 lazy_static = "1.4.0"
@@ -34,6 +35,7 @@ pgx = "0.1.21"
 pgx-macros = "0.1.21"
 rayon = "1.5.1"
 regex = "1.5.4"
+rustc-hash = "1.1.0"
 serde = { version = "1.0.127", features = [ "derive" ] }
 serde_json = { version = "1.0.66", features = [ "preserve_order" ] }
 serde_cbor = "0.11.1"
@@ -57,6 +59,6 @@ opt-level = 0
 [profile.release]
 panic = "unwind"
 opt-level = 3
-lto = "fat"
-codegen-units = 1
+lto = "thin"
+#codegen-units = 1
 

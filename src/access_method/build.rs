@@ -4,14 +4,14 @@ use crate::elasticsearch::{Elasticsearch, ElasticsearchBulkRequest};
 use crate::executor_manager::get_executor_manager;
 use crate::gucs::ZDB_LOG_LEVEL;
 use crate::json::builder::JsonBuilder;
-use crate::mapping::{categorize_tupdesc, generate_default_mapping, CategorizedAttribute};
+use crate::mapping::{generate_default_mapping, CategorizedAttribute};
 use crate::utils::{has_zdb_index, lookup_zdb_index_tupdesc};
 use pgx::*;
 
 struct BuildState<'a> {
     bulk: &'a mut ElasticsearchBulkRequest,
     tupdesc: &'a PgTupleDesc<'a>,
-    attributes: Vec<CategorizedAttribute<'a>>,
+    attributes: &'static Vec<CategorizedAttribute<'static>>,
     memcxt: PgMemoryContexts,
 }
 
@@ -19,7 +19,7 @@ impl<'a> BuildState<'a> {
     fn new(
         bulk: &'a mut ElasticsearchBulkRequest,
         tupdesc: &'a PgTupleDesc,
-        attributes: Vec<CategorizedAttribute<'a>>,
+        attributes: &'static Vec<CategorizedAttribute<'static>>,
     ) -> Self {
         BuildState {
             bulk,
@@ -65,9 +65,7 @@ pub extern "C" fn ambuild(
 
     let elasticsearch = Elasticsearch::new(&index_relation);
     let tupdesc = lookup_zdb_index_tupdesc(&index_relation);
-
-    let mut mapping = generate_default_mapping(&heap_relation);
-    let attributes = categorize_tupdesc(&tupdesc, &heap_relation, Some(&mut mapping));
+    let mapping = generate_default_mapping(&heap_relation);
 
     // delete any existing Elasticsearch index with the same name as this one we're about to create
     elasticsearch
@@ -98,7 +96,6 @@ pub extern "C" fn ambuild(
         &heap_relation,
         &index_relation,
         &tupdesc,
-        attributes,
         &elasticsearch,
     );
 
@@ -128,18 +125,16 @@ pub extern "C" fn ambuild(
 
 fn do_heap_scan<'a>(
     index_info: *mut pg_sys::IndexInfo,
-    heap_relation: &'a PgRelation,
-    index_relation: &'a PgRelation,
+    heap_relation: &PgRelation,
+    index_relation: &PgRelation,
     tupdesc: &'a PgTupleDesc,
-    attributes: Vec<CategorizedAttribute<'a>>,
     elasticsearch: &Elasticsearch,
 ) -> usize {
+    let executor_manager = get_executor_manager().checkout_bulk_context(index_relation.oid());
     let mut state = BuildState::new(
-        &mut get_executor_manager()
-            .checkout_bulk_context(index_relation.oid())
-            .bulk,
-        &tupdesc,
-        attributes,
+        &mut executor_manager.bulk,
+        tupdesc,
+        &executor_manager.attributes,
     );
 
     unsafe {
