@@ -103,9 +103,9 @@ checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
 name = "backtrace"
-version = "0.3.61"
+version = "0.3.62"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7a905d892734eea339e896738c14b9afce22b5318f64b951e70bf3844419b01"
+checksum = "091bcdf2da9950f96aa522681ce805e6857f6ca8df73833d35736ab2dc78e152"
 dependencies = [
  "addr2line",
  "cc",
@@ -1240,9 +1240,9 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.26.2"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39f37e50073ccad23b6d09bcb5b263f4e76d3bb6038e4a3c08e52162ffa8abc2"
+checksum = "c821014c18301591b89b843809ef953af9e3df0496c232d5c0611b0a52aac363"
 dependencies = [
  "memchr",
 ]
@@ -1348,7 +1348,7 @@ dependencies = [
 [[package]]
 name = "pgx"
 version = "0.2.0-beta.1"
-source = "git+https://github.com/zombodb/pgx?branch=toposort-debug#51f7e39f3598b6416cc7c1c64b41bc775b9edd58"
+source = "git+https://github.com/zombodb/pgx?branch=develop#527fab95982516baffa113b5d7645a1003ccd938"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -1375,7 +1375,7 @@ dependencies = [
 [[package]]
 name = "pgx-macros"
 version = "0.2.0-beta.1"
-source = "git+https://github.com/zombodb/pgx?branch=toposort-debug#51f7e39f3598b6416cc7c1c64b41bc775b9edd58"
+source = "git+https://github.com/zombodb/pgx?branch=develop#527fab95982516baffa113b5d7645a1003ccd938"
 dependencies = [
  "pgx-utils",
  "proc-macro-crate",
@@ -1388,7 +1388,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-sys"
 version = "0.2.0-beta.1"
-source = "git+https://github.com/zombodb/pgx?branch=toposort-debug#51f7e39f3598b6416cc7c1c64b41bc775b9edd58"
+source = "git+https://github.com/zombodb/pgx?branch=develop#527fab95982516baffa113b5d7645a1003ccd938"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1407,7 +1407,7 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.2.0-beta.1"
-source = "git+https://github.com/zombodb/pgx?branch=toposort-debug#51f7e39f3598b6416cc7c1c64b41bc775b9edd58"
+source = "git+https://github.com/zombodb/pgx?branch=develop#527fab95982516baffa113b5d7645a1003ccd938"
 dependencies = [
  "colored",
  "lazy_static",
@@ -1426,7 +1426,7 @@ dependencies = [
 [[package]]
 name = "pgx-utils"
 version = "0.2.0-beta.1"
-source = "git+https://github.com/zombodb/pgx?branch=toposort-debug#51f7e39f3598b6416cc7c1c64b41bc775b9edd58"
+source = "git+https://github.com/zombodb/pgx?branch=develop#527fab95982516baffa113b5d7645a1003ccd938"
 dependencies = [
  "clap",
  "color-eyre",
@@ -2266,9 +2266,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-postgres"
-version = "0.7.3"
+version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f916ee7e52c8a74dfe4162dd73a073d0d7d4b387ea7b97a774c0c10b0776531"
+checksum = "b5c07a6ceeeb8515d53998ac4487788a21884e79d5651490bc31a7289f20a7d7"
 dependencies = [
  "async-trait",
  "byteorder",
