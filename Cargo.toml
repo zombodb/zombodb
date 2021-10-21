@@ -32,8 +32,8 @@ levenshtein = "1.0.5"
 memoffset = "0.6.4"
 num_cpus = "1.13.0"
 pathfinding = "2.2.1"
-pgx = { git = "https://github.com/zombodb/pgx", branch = "toposort-debug" }
-pgx-macros = { git = "https://github.com/zombodb/pgx", branch = "toposort-debug" }
+pgx = { git = "https://github.com/zombodb/pgx", branch = "develop" }
+pgx-macros = { git = "https://github.com/zombodb/pgx", branch = "develop" }
 rayon = "1.5.1"
 regex = "1.5.4"
 rustc-hash = "1.1.0"
@@ -49,7 +49,7 @@ lalrpop = { version = "0.19.6", features = [ "lexer" ] }
 built = { version = "0.5.1", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
-pgx-tests = { git = "https://github.com/zombodb/pgx", branch = "toposort-debug" }
+pgx-tests = { git = "https://github.com/zombodb/pgx", branch = "develop" }
 libc = "0.2.99"
 
 [profile.dev]
