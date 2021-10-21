@@ -20,9 +20,9 @@ ALTER INDEX idxevents SET (uuid = 'foo');
 ERROR:  The 'uuid' index property cannot be changed
 ALTER TABLE events ADD COLUMN foo2 text;
 SELECT (zdb.index_mapping('idxevents')->zdb.index_name('idxevents')->'mappings'->'properties'->'foo2')::jsonb;
-                                                                    jsonb                                                                    
----------------------------------------------------------------------------------------------------------------------------------------------
- {"type": "text", "copy_to": ["zdb_all"], "analyzer": "zdb_standard", "fielddata": true, "index_prefixes": {"max_chars": 5, "min_chars": 2}}
+                                          jsonb                                          
+-----------------------------------------------------------------------------------------
+ {"type": "text", "copy_to": ["zdb_all"], "analyzer": "zdb_standard", "fielddata": true}
 (1 row)
 
 ALTER TABLE events DROP COLUMN foo2;

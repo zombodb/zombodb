@@ -47,7 +47,7 @@ pub struct JsonBuilder<'a> {
 impl<'a> JsonBuilder<'a> {
     pub fn new(num_fields: usize) -> Self {
         JsonBuilder {
-            values: Vec::with_capacity(num_fields),
+            values: Vec::with_capacity(num_fields + 5),
         }
     }
 
@@ -241,57 +241,52 @@ impl<'a> JsonBuilder<'a> {
             .push((attname, JsonBuilderValue::jsonb_array(value)));
     }
 
-    pub fn build(self) -> String {
-        let mut json = String::with_capacity(16 * 1024);
-
-        json.push('{');
-        for (idx, (key, value)) in self.values.into_iter().enumerate() {
+    pub fn build(&self, json: &mut Vec<u8>) {
+        json.push(b'{');
+        for (idx, (key, value)) in self.values.iter().enumerate() {
             if idx > 0 {
-                json.push(',');
+                json.push(b',');
             }
 
-            json.push('"');
-            json.push_str(key);
-            json.push('"');
-            json.push(':');
+            // key was pre-quoted during categorize_tupdesc
+            json.extend_from_slice(key.as_bytes());
+            json.push(b':');
 
             match value {
-                JsonBuilderValue::bool(v) => v.push_json(&mut json),
-                JsonBuilderValue::i16(v) => v.push_json(&mut json),
-                JsonBuilderValue::i32(v) => v.push_json(&mut json),
-                JsonBuilderValue::i64(v) => v.push_json(&mut json),
-                JsonBuilderValue::u32(v) => v.push_json(&mut json),
-                JsonBuilderValue::u64(v) => v.push_json(&mut json),
-                JsonBuilderValue::f32(v) => v.push_json(&mut json),
-                JsonBuilderValue::f64(v) => v.push_json(&mut json),
-                JsonBuilderValue::time(v) => v.push_json(&mut json),
-                JsonBuilderValue::time_with_time_zone(v) => v.push_json(&mut json),
-                JsonBuilderValue::timestamp(v) => v.push_json(&mut json),
-                JsonBuilderValue::timestamp_with_time_zone(v) => v.push_json(&mut json),
-                JsonBuilderValue::date(v) => v.push_json(&mut json),
-                JsonBuilderValue::string(v) => v.push_json(&mut json),
-                JsonBuilderValue::json_string(v) => v.push_json(&mut json),
-                JsonBuilderValue::jsonb(v) => v.push_json(&mut json),
-                JsonBuilderValue::json_value(v) => v.push_json(&mut json),
-                JsonBuilderValue::bool_array(v) => v.push_json(&mut json),
-                JsonBuilderValue::i16_array(v) => v.push_json(&mut json),
-                JsonBuilderValue::i32_array(v) => v.push_json(&mut json),
-                JsonBuilderValue::i64_array(v) => v.push_json(&mut json),
-                JsonBuilderValue::u32_array(v) => v.push_json(&mut json),
-                JsonBuilderValue::f32_array(v) => v.push_json(&mut json),
-                JsonBuilderValue::f64_array(v) => v.push_json(&mut json),
-                JsonBuilderValue::time_array(v) => v.push_json(&mut json),
-                JsonBuilderValue::time_with_time_zone_array(v) => v.push_json(&mut json),
-                JsonBuilderValue::timestamp_array(v) => v.push_json(&mut json),
-                JsonBuilderValue::timestamp_with_time_zone_array(v) => v.push_json(&mut json),
-                JsonBuilderValue::date_array(v) => v.push_json(&mut json),
-                JsonBuilderValue::string_array(v) => v.push_json(&mut json),
-                JsonBuilderValue::json_string_array(v) => v.push_json(&mut json),
-                JsonBuilderValue::jsonb_array(v) => v.push_json(&mut json),
+                JsonBuilderValue::bool(v) => v.push_json(json),
+                JsonBuilderValue::i16(v) => v.push_json(json),
+                JsonBuilderValue::i32(v) => v.push_json(json),
+                JsonBuilderValue::i64(v) => v.push_json(json),
+                JsonBuilderValue::u32(v) => v.push_json(json),
+                JsonBuilderValue::u64(v) => v.push_json(json),
+                JsonBuilderValue::f32(v) => v.push_json(json),
+                JsonBuilderValue::f64(v) => v.push_json(json),
+                JsonBuilderValue::time(v) => v.push_json(json),
+                JsonBuilderValue::time_with_time_zone(v) => v.push_json(json),
+                JsonBuilderValue::timestamp(v) => v.push_json(json),
+                JsonBuilderValue::timestamp_with_time_zone(v) => v.push_json(json),
+                JsonBuilderValue::date(v) => v.push_json(json),
+                JsonBuilderValue::string(v) => v.push_json(json),
+                JsonBuilderValue::json_string(v) => v.push_json(json),
+                JsonBuilderValue::jsonb(v) => v.push_json(json),
+                JsonBuilderValue::json_value(v) => v.push_json(json),
+                JsonBuilderValue::bool_array(v) => v.push_json(json),
+                JsonBuilderValue::i16_array(v) => v.push_json(json),
+                JsonBuilderValue::i32_array(v) => v.push_json(json),
+                JsonBuilderValue::i64_array(v) => v.push_json(json),
+                JsonBuilderValue::u32_array(v) => v.push_json(json),
+                JsonBuilderValue::f32_array(v) => v.push_json(json),
+                JsonBuilderValue::f64_array(v) => v.push_json(json),
+                JsonBuilderValue::time_array(v) => v.push_json(json),
+                JsonBuilderValue::time_with_time_zone_array(v) => v.push_json(json),
+                JsonBuilderValue::timestamp_array(v) => v.push_json(json),
+                JsonBuilderValue::timestamp_with_time_zone_array(v) => v.push_json(json),
+                JsonBuilderValue::date_array(v) => v.push_json(json),
+                JsonBuilderValue::string_array(v) => v.push_json(json),
+                JsonBuilderValue::json_string_array(v) => v.push_json(json),
+                JsonBuilderValue::jsonb_array(v) => v.push_json(json),
             }
         }
-        json.push('}');
-
-        json
+        json.push(b'}');
     }
 }

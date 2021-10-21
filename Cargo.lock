@@ -1348,7 +1348,7 @@ dependencies = [
 [[package]]
 name = "pgx"
 version = "0.2.0-beta.1"
-source = "git+https://github.com/zombodb/pgx?branch=develop#dc8b5a1847224d07be6afa03d25081bb8852d968"
+source = "git+https://github.com/zombodb/pgx?branch=toposort-debug#51f7e39f3598b6416cc7c1c64b41bc775b9edd58"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -1375,7 +1375,7 @@ dependencies = [
 [[package]]
 name = "pgx-macros"
 version = "0.2.0-beta.1"
-source = "git+https://github.com/zombodb/pgx?branch=develop#dc8b5a1847224d07be6afa03d25081bb8852d968"
+source = "git+https://github.com/zombodb/pgx?branch=toposort-debug#51f7e39f3598b6416cc7c1c64b41bc775b9edd58"
 dependencies = [
  "pgx-utils",
  "proc-macro-crate",
@@ -1388,7 +1388,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-sys"
 version = "0.2.0-beta.1"
-source = "git+https://github.com/zombodb/pgx?branch=develop#dc8b5a1847224d07be6afa03d25081bb8852d968"
+source = "git+https://github.com/zombodb/pgx?branch=toposort-debug#51f7e39f3598b6416cc7c1c64b41bc775b9edd58"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1407,7 +1407,7 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.2.0-beta.1"
-source = "git+https://github.com/zombodb/pgx?branch=develop#dc8b5a1847224d07be6afa03d25081bb8852d968"
+source = "git+https://github.com/zombodb/pgx?branch=toposort-debug#51f7e39f3598b6416cc7c1c64b41bc775b9edd58"
 dependencies = [
  "colored",
  "lazy_static",
@@ -1426,7 +1426,7 @@ dependencies = [
 [[package]]
 name = "pgx-utils"
 version = "0.2.0-beta.1"
-source = "git+https://github.com/zombodb/pgx?branch=develop#dc8b5a1847224d07be6afa03d25081bb8852d968"
+source = "git+https://github.com/zombodb/pgx?branch=toposort-debug#51f7e39f3598b6416cc7c1c64b41bc775b9edd58"
 dependencies = [
  "clap",
  "color-eyre",
@@ -2717,6 +2717,7 @@ dependencies = [
  "chrono",
  "crossbeam-channel",
  "dashmap",
+ "humantime",
  "indexmap",
  "lalrpop",
  "lalrpop-util",
@@ -2731,6 +2732,7 @@ dependencies = [
  "pgx-tests",
  "rayon",
  "regex",
+ "rustc-hash",
  "serde",
  "serde_cbor",
  "serde_json",

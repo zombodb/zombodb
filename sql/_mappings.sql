@@ -361,7 +361,6 @@ VALUES ('text', '{
   "type": "text",
   "copy_to": "zdb_all",
   "fielddata": true,
-  "index_prefixes": { },
   "analyzer": "zdb_standard"
 }', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 
@@ -498,7 +497,6 @@ VALUES ('tsvector', '{
   "type": "text",
   "copy_to": "zdb_all",
   "fielddata": true,
-  "index_prefixes": { },
   "analyzer": "zdb_standard"
 }', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
 

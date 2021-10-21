@@ -6,15 +6,17 @@ use crate::json::builder::JsonBuilder;
 use crossbeam_channel::{RecvTimeoutError, SendTimeoutError};
 use dashmap::DashSet;
 use pgx::*;
+use rustc_hash::FxHasher;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::any::Any;
 use std::collections::HashSet;
+use std::hash::BuildHasherDefault;
 use std::io::{Error, ErrorKind, Write};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 #[derive(Debug)]
 pub enum BulkRequestCommand<'a> {
@@ -341,10 +343,11 @@ impl ElasticsearchBulkRequest {
 const BULK_FILTER_PATH: &str = "errors,items.*.error";
 
 pub(crate) struct Handler {
+    when_started: Instant,
     terminated: Arc<AtomicBool>,
     threads: Vec<Option<JoinHandle<usize>>>,
     prior_update: Option<BulkRequestCommand<'static>>,
-    in_flight: Arc<DashSet<u64>>,
+    in_flight: Arc<DashSet<u64, BuildHasherDefault<FxHasher>>>,
     deferred: Vec<BulkRequestCommand<'static>>,
     total_docs: usize,
     active_threads: Arc<AtomicUsize>,
@@ -367,6 +370,7 @@ struct BulkReceiver<'a> {
     bytes_out: usize,
     docs_out: usize,
     buffer: Vec<u8>,
+    buffer_offset: usize,
     batch_size: usize,
 }
 
@@ -376,6 +380,20 @@ impl<'a> std::io::Read for BulkReceiver<'a> {
         if self.terminated.load(Ordering::SeqCst) {
             // indicate that our reader "pipe" has been broken and there's nothing else we can do
             return Err(Error::new(ErrorKind::BrokenPipe, "terminated"));
+        }
+
+        // write out whatever might be remaining in our internal buffer
+        if self.buffer_offset < self.buffer.len() {
+            let amt = buf.write(&self.buffer[self.buffer_offset..])?;
+            self.buffer_offset += amt;
+            self.bytes_out += amt;
+
+            // and we'll keep doing that before we take something else off the queue
+            return Ok(amt);
+        } else {
+            // we've written the entirety of our buffer so clear it out and reset our offset
+            self.buffer_offset = 0;
+            self.buffer.clear();
         }
 
         let command = match self.first.take() {
@@ -394,19 +412,28 @@ impl<'a> std::io::Read for BulkReceiver<'a> {
             None => None,
         };
 
-        if let Some(command) = command {
-            self.serialize_command(command);
-        }
+        match command {
+            Some(command) => {
+                // serialize this comment (into `self.buffer`)
+                self.serialize_command(command);
 
-        let amt = buf.write(&self.buffer)?;
-        if amt > 0 {
-            // move our bytes forward the amount we wrote above
-            let (_, right) = self.buffer.split_at(amt);
-            self.buffer = Vec::from(right);
-            self.bytes_out += amt;
-        }
+                // and start to write out what we can
+                // our buffer_offset should be zero here as the prior contents
+                // of the buffer should have been written above
+                assert_eq!(self.buffer_offset, 0);
+                let amt = buf.write(&self.buffer)?;
+                if amt > 0 {
+                    self.buffer_offset += amt;
+                    self.bytes_out += amt;
+                } else {
+                    self.buffer.clear();
+                    self.buffer_offset = 0;
+                }
 
-        Ok(amt)
+                Ok(amt)
+            }
+            None => Ok(0),
+        }
     }
 }
 
@@ -443,18 +470,17 @@ impl<'a> BulkReceiver<'a> {
                 .expect("failed to serialize index line");
                 self.buffer.push(b'\n');
 
-                doc.add_u64("zdb_ctid", ctid);
-                doc.add_u32("zdb_cmin", cmin);
+                doc.add_u64("\"zdb_ctid\"", ctid);
+                doc.add_u32("\"zdb_cmin\"", cmin);
                 if cmax as pg_sys::CommandId != pg_sys::InvalidCommandId {
-                    doc.add_u32("zdb_cmax", cmax);
+                    doc.add_u32("\"zdb_cmax\"", cmax);
                 }
-                doc.add_u64("zdb_xmin", xmin);
+                doc.add_u64("\"zdb_xmin\"", xmin);
                 if xmax as pg_sys::TransactionId != pg_sys::InvalidTransactionId {
-                    doc.add_u64("zdb_xmax", xmax);
+                    doc.add_u64("\"zdb_xmax\"", xmax);
                 }
 
-                let doc_as_json = doc.build();
-                self.buffer.append(&mut doc_as_json.into_bytes());
+                doc.build(&mut self.buffer);
                 self.buffer.push(b'\n');
             }
             BulkRequestCommand::Update { ctid, cmax, xmax } => {
@@ -665,13 +691,14 @@ impl Handler {
         error_sender: crossbeam_channel::Sender<BulkRequestError>,
         error_receiver: &crossbeam_channel::Receiver<BulkRequestError>,
     ) -> Self {
-        let (tx, rx) = crossbeam_channel::bounded(10 * concurrency);
+        let (tx, rx) = crossbeam_channel::bounded(1000 * concurrency);
 
         Handler {
+            when_started: Instant::now(),
             terminated: Arc::new(AtomicBool::new(false)),
             threads: Vec::new(),
             prior_update: None,
-            in_flight: Arc::new(DashSet::new()),
+            in_flight: Arc::new(DashSet::default()),
             deferred: Default::default(),
             total_docs: 0,
             active_threads: Arc::new(AtomicUsize::new(0)),
@@ -709,7 +736,7 @@ impl Handler {
         } = &command
         {
             // record that this insert is now "in flight"
-            // so that future updates do it will get deferred
+            // so that future updates to it will get deferred
             // instead of queued
             self.in_flight.insert(*ctid);
 
@@ -772,12 +799,13 @@ impl Handler {
         let nthreads = self.active_threads.load(Ordering::SeqCst);
         if self.total_docs > 0 && self.total_docs % 10_000 == 0 {
             ZDB_LOG_LEVEL.get().log(&format!(
-                "[zombodb] total={}, in_flight={}, queued={}, active_threads={}, index={}",
+                "[zombodb] total={}, in_flight={}, queued={}, active_threads={}, index={}, elapsed={}",
                 self.total_docs,
                 self.in_flight.len(),
                 self.bulk_receiver.len(),
                 nthreads,
-                self.elasticsearch.base_url()
+                self.elasticsearch.base_url(),
+                humantime::Duration::from(self.when_started.elapsed())
             ));
         }
         if nthreads == 0
@@ -837,7 +865,8 @@ impl Handler {
                         batch_size,
                         bytes_out: 0,
                         docs_out: 0,
-                        buffer: Vec::new(),
+                        buffer: Vec::with_capacity(16384),
+                        buffer_offset: 0,
                     };
 
                     let url = format!(

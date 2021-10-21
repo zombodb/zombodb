@@ -10,15 +10,15 @@ pub mod hooks;
 
 static mut EXECUTOR_MANAGER: ExecutorManager = ExecutorManager::new();
 
-pub fn get_executor_manager() -> &'static mut ExecutorManager {
+pub fn get_executor_manager() -> &'static mut ExecutorManager<'static> {
     unsafe { &mut EXECUTOR_MANAGER }
 }
 
-pub struct BulkContext {
+pub struct BulkContext<'a> {
     pub elasticsearch: Elasticsearch,
     pub bulk: ElasticsearchBulkRequest,
-    pub attributes: Vec<CategorizedAttribute<'static>>,
-    pub tupdesc: &'static PgTupleDesc<'static>,
+    pub attributes: Vec<CategorizedAttribute<'a>>,
+    pub tupdesc: &'a PgTupleDesc<'a>,
     pub is_shadow: bool,
 }
 
@@ -181,15 +181,15 @@ impl QueryState {
     }
 }
 
-pub struct ExecutorManager {
+pub struct ExecutorManager<'a> {
     tuple_descriptors: Option<HashMap<pg_sys::Oid, PgTupleDesc<'static>>>,
-    bulk_requests: Option<HashMap<pg_sys::Oid, BulkContext>>,
+    bulk_requests: Option<HashMap<pg_sys::Oid, BulkContext<'a>>>,
     xids: Option<HashSet<pg_sys::TransactionId>>,
     query_stack: Option<Vec<(*mut pg_sys::QueryDesc, QueryState)>>,
     hooks_registered: bool,
 }
 
-impl ExecutorManager {
+impl<'a> ExecutorManager<'a> {
     pub const fn new() -> Self {
         ExecutorManager {
             tuple_descriptors: None,
