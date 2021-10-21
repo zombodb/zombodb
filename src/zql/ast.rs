@@ -10,8 +10,7 @@ pub use pg_catalog::ProximityPart;
 pub use pg_catalog::ProximityTerm;
 
 use crate::access_method::options::ZDBIndexOptions;
-use crate::elasticsearch::Elasticsearch;
-use crate::utils::{find_zdb_index, get_null_copy_to_fields, get_search_analyzer};
+use crate::utils::{find_zdb_index, get_null_copy_to_fields};
 use crate::zql::parser::Token;
 use crate::zql::relationship_manager::RelationshipManager;
 use crate::zql::transformations::expand::expand;
@@ -304,17 +303,15 @@ impl ProximityTerm {
 
         let index = field.index.as_ref();
 
-        let analyzed_tokens = match index {
+        let analyzed_tokens: Vec<_> = match index {
             // if we have an index we'll ask Elasticsearch to tokenize the input for us
-            Some(index)
-                if index.qualified_index.schema.is_none()
-                    || index.qualified_index.schema.as_ref().unwrap().as_str() != "zdb_tests" =>
-            {
+            #[cfg(not(feature = "pg_test"))]
+            Some(index) => {
                 let index = index
                     .open_index()
                     .expect(&format!("failed to open index for {}", field));
-                let analyzer = get_search_analyzer(&index, &field.field);
-                Elasticsearch::new(&index)
+                let analyzer = crate::utils::get_search_analyzer(&index, &field.field);
+                crate::elasticsearch::Elasticsearch::new(&index)
                     .analyze_text(&analyzer, &replaced_input)
                     .execute()
                     .expect("failed to analyze phrase")
@@ -322,19 +319,30 @@ impl ProximityTerm {
             }
 
             // if we don't then we'll just tokenize on whitespace.  This is only going to happen
-            // during disconnected tests
-            _ => input
-                .split_whitespace()
-                .into_iter()
-                .enumerate()
-                .map(|(idx, word)| crate::elasticsearch::analyze::Token {
-                    type_: "".to_string(),
-                    token: word.to_string(),
-                    position: idx as i32,
-                    start_offset: 0,
-                    end_offset: 0,
-                })
-                .collect(),
+            // during disconnected tests.  Generally, this means only during tests
+            _ => {
+                fn split_whitespace_indices(s: &str) -> impl Iterator<Item = (usize, &str)> {
+                    #[inline(always)]
+                    fn addr_of(s: &str) -> usize {
+                        s.as_ptr() as usize
+                    }
+
+                    s.split_whitespace()
+                        .map(move |sub| (addr_of(sub) - addr_of(s), sub))
+                }
+                split_whitespace_indices(&replaced_input)
+                    .enumerate()
+                    .map(
+                        |(idx, (start_offset, word))| crate::elasticsearch::analyze::Token {
+                            type_: "".to_string(),
+                            token: word.to_string(),
+                            position: idx as i32,
+                            start_offset: start_offset as i64,
+                            end_offset: (start_offset + word.len()) as i64,
+                        },
+                    )
+                    .collect()
+            }
         };
 
         // first, group tokens by end_offset

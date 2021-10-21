@@ -251,6 +251,8 @@ pub fn lookup_function(
     }
 }
 
+// this is only used when **not** running tests
+#[cfg(not(feature = "pg_test"))]
 pub fn get_search_analyzer(index: &PgRelation, field: &str) -> String {
     Spi::get_one_with_args(
         "select zdb.get_search_analyzer($1, $2);",

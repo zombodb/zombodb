@@ -23,9 +23,10 @@ impl ElasticsearchCreateIndexRequest {
         )?;
 
         let url = format!(
-            "{}_cluster/health/{}?wait_for_status=yellow&timeout=5m&master_timeout=5m",
+            "{}_cluster/health/{}?wait_for_active_shards={}&timeout=5m&master_timeout=5m",
             self.elasticsearch.url(),
-            self.elasticsearch.index_name()
+            self.elasticsearch.index_name(),
+            self.elasticsearch.options.shards()
         );
 
         Elasticsearch::execute_json_request(Elasticsearch::client().get(&url), None, |_| Ok(()))
