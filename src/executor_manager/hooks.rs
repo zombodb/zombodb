@@ -68,6 +68,18 @@ impl PgHooks for ZDBHooks {
                     pg_sys::AccessShareLock as pg_sys::LOCKMODE,
                 )
             };
+            if relid == pg_sys::InvalidOid {
+                return prev_hook(
+                    pstmt,
+                    query_string,
+                    read_only_tree,
+                    context,
+                    params,
+                    query_env,
+                    dest,
+                    completion_tag,
+                );
+            }
             let rel = unsafe { PgRelation::open(relid) };
             let prev_options = get_index_options_for_relation(&rel);
             drop(rel);
