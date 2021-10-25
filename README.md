@@ -80,18 +80,19 @@ These limitations may be addressed in future versions of ZomboDB.
 
 ## System Requirements
 
-Product | Version --- | ---\
-Postgres | 10.x, 11.x, 12.x, 13.x Elasticsearch | 7.x
+PostgreSQL | 10.x, 11.x, 12.x, 13.x
+
+Elasticsearch | 7.x
 
 ## Sponsorship and Downloads
 
-Please see https://github.com/sponsors/eeeebbbbrrrr for sponsorship details. Your sponsorship at any tier is greatly
+Please [see](https://github.com/sponsors/eeeebbbbrrrr) for sponsorship details. Your sponsorship at any tier is greatly
 appreciated and helps keep ZomboDB moving forward.
 
 Note that ZomboDB is only available in binary form for certain sponsor tiers.
 
 When you become a sponsor at a tier that provides binary downloads, please request a download key from
-https://www.zombodb.com/services/. Please do the same if you sponsor a tier that provides access to ZomboDB's private
+[Professional Services](https://www.zombodb.com/services/). Please do the same if you sponsor a tier that provides access to ZomboDB's private
 Discord server.
 
 ## Quick Overview
