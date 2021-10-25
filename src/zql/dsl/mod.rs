@@ -293,9 +293,9 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
             if s.contains('\\') {
                 let s = unescape(s);
 
-                json! { { "prefix": { field.field_name(): { "value": s[..s.len()-1], "rewrite": "constant_score", "boost": b.unwrap_or(1.0) } } } }
+                json! { { "prefix": { field.field_name(): { "value": s[..s.len()-1], "case_insensitive": true, "rewrite": "constant_score", "boost": b.unwrap_or(1.0) } } } }
             } else {
-                json! { { "prefix": { field.field_name(): { "value": s[..s.len()-1], "rewrite": "constant_score", "boost": b.unwrap_or(1.0) } } } }
+                json! { { "prefix": { field.field_name(): { "value": s[..s.len()-1], "case_insensitive": true, "rewrite": "constant_score", "boost": b.unwrap_or(1.0) } } } }
             }
         }
         Term::PhrasePrefix(s, b) => {
@@ -307,9 +307,9 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
                 if s.contains('\\') {
                     let s = unescape(s);
 
-                    json! { { "prefix": { field.field_name(): { "value": s[..s.len()-1], "rewrite": "constant_score", "boost": b.unwrap_or(1.0) } } } }
+                    json! { { "prefix": { field.field_name(): { "value": s[..s.len()-1], "case_insensitive": true, "rewrite": "constant_score", "boost": b.unwrap_or(1.0) } } } }
                 } else {
-                    json! { { "prefix": { field.field_name(): { "value": s[..s.len()-1], "rewrite": "constant_score", "boost": b.unwrap_or(1.0) } } } }
+                    json! { { "prefix": { field.field_name(): { "value": s[..s.len()-1], "case_insensitive": true, "rewrite": "constant_score", "boost": b.unwrap_or(1.0) } } } }
                 }
             } else {
                 if s.contains('\\') {
@@ -321,7 +321,7 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
             }
         }
         Term::Wildcard(w, b) => {
-            json! { { "wildcard": { field.field_name(): { "value": w, "boost": b.unwrap_or(1.0) } } } }
+            json! { { "wildcard": { field.field_name(): { "value": w, "boost": b.unwrap_or(1.0), "case_insensitive": true } } } }
         }
         Term::Fuzzy(f, d, b) => {
             json! { { "fuzzy": { field.field_name(): { "value": f, "prefix_length": d, "boost": b.unwrap_or(1.0) } } } }

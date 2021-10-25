@@ -1,0 +1,18 @@
+SELECT * FROM products WHERE products ==> 'Box';
+ id | name |               keywords               |         short_summary          |                                  long_description                                   | price | inventory_count | discontinued | availability_date 
+----+------+--------------------------------------+--------------------------------+-------------------------------------------------------------------------------------+-------+-----------------+--------------+-------------------
+  4 | Box  | {wooden,box,"negative space",square} | Just an empty box made of wood | A wooden container that will eventually rot away.  Put stuff it in (but not a cat). | 17000 |               0 | t            | 07-01-2015
+(1 row)
+
+SELECT * FROM products WHERE products ==> 'Bo?';
+ id | name |               keywords               |         short_summary          |                                  long_description                                   | price | inventory_count | discontinued | availability_date 
+----+------+--------------------------------------+--------------------------------+-------------------------------------------------------------------------------------+-------+-----------------+--------------+-------------------
+  4 | Box  | {wooden,box,"negative space",square} | Just an empty box made of wood | A wooden container that will eventually rot away.  Put stuff it in (but not a cat). | 17000 |               0 | t            | 07-01-2015
+(1 row)
+
+SELECT * FROM products WHERE products ==> 'Bo*';
+ id | name |               keywords               |         short_summary          |                                  long_description                                   | price | inventory_count | discontinued | availability_date 
+----+------+--------------------------------------+--------------------------------+-------------------------------------------------------------------------------------+-------+-----------------+--------------+-------------------
+  4 | Box  | {wooden,box,"negative space",square} | Just an empty box made of wood | A wooden container that will eventually rot away.  Put stuff it in (but not a cat). | 17000 |               0 | t            | 07-01-2015
+(1 row)
+
