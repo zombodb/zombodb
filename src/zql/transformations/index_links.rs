@@ -5,9 +5,18 @@ pub fn assign_links<'a>(root_index: &IndexLink, expr: &mut Expr<'a>, indexes: &V
     match determine_link(root_index, expr, indexes) {
         // everything belongs to the same link (that isn't the root_index), and whatever that is we wrapped it in an Expr::Linked
         Some(target_link) if &target_link.qualified_index != &root_index.qualified_index => {
-            let dummy = Expr::Null;
-            let swapped = std::mem::replace(expr, dummy);
-            *expr = Expr::Linked(target_link.clone(), Box::new(swapped));
+            match expr {
+                Expr::Not(inner) => {
+                    let dummy = Box::new(Expr::Null);
+                    let swapped = std::mem::replace(inner, dummy);
+                    *expr = Expr::Not(Box::new(Expr::Linked(target_link.clone(), swapped)))
+                }
+                _ => {
+                    let dummy = Expr::Null;
+                    let swapped = std::mem::replace(expr, dummy);
+                    *expr = Expr::Linked(target_link.clone(), Box::new(swapped));
+                }
+            }
         }
 
         // there's more than one link or it's the root_index and they've already been linked
