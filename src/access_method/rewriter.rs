@@ -85,6 +85,17 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
         return;
     }
 
+    let is_incremental_sort_node = {
+        #[cfg(any(feature = "pg10", feature = "pg11", feature = "pg12"))]
+        {
+            false
+        }
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
+        {
+            is_a(node, pg_sys::NodeTag_T_IncrementalSort)
+        }
+    };
+
     if is_a(node, pg_sys::NodeTag_T_PlannedStmt) {
         let stmt = PgBox::from_pg(node as *mut pg_sys::PlannedStmt);
         walk_node(stmt.planTree as NodePtr, context);
@@ -238,6 +249,13 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
     } else if is_a(node, pg_sys::NodeTag_T_Sort) {
         let mut sort: PgBox<pg_sys::Sort> = PgBox::from_pg(node as *mut pg_sys::Sort);
         walk_plan(&mut sort.plan, context);
+    } else if is_incremental_sort_node {
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
+        {
+            let mut incremental_sort: PgBox<pg_sys::IncrementalSort> =
+                PgBox::from_pg(node as *mut pg_sys::IncrementalSort);
+            walk_plan(&mut incremental_sort.sort.plan, context);
+        }
     } else if is_a(node, pg_sys::NodeTag_T_SortGroupClause) {
         // nothing to walk
     } else if is_a(node, pg_sys::NodeTag_T_Limit) {
