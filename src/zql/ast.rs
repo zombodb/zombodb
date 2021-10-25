@@ -581,10 +581,12 @@ impl<'input> Expr<'input> {
     pub(in crate::zql) fn range_from_opcode(
         field: &'input str,
         opcode: ComparisonOpcode,
-        start: &'input str,
-        end: &'input str,
+        start: (&'input str, bool),
+        end: (&'input str, bool),
         boost: Option<f32>,
     ) -> Expr<'input> {
+        let start = start.0;
+        let end = end.0;
         let field_name = QualifiedField {
             index: None,
             field: field.to_string(),
