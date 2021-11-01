@@ -105,7 +105,7 @@ impl ZDBIndexOptionsInternal {
             ops.max_analyze_token_count = DEFAULT_MAX_ANALYZE_TOKEN_COUNT;
             ops.nested_object_date_detection = false;
             ops.nested_object_numeric_detection = false;
-            ops
+            ops.into_pg_boxed()
         } else {
             unsafe { PgBox::from_pg(relation.rd_options as *mut ZDBIndexOptionsInternal) }
         }

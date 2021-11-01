@@ -147,7 +147,7 @@ impl ElasticsearchSearchRequest {
         url.push_str("/_search");
         url.push_str("?search_type=query_then_fetch");
         url.push_str("&_source=false");
-        url.push_str("&scroll=10m");
+        url.push_str("&scroll=5s");
         url.push_str("&stored_fields=_none_");
 
         // we always want the zdb_ctid field
@@ -332,7 +332,7 @@ impl ElasticsearchSearchRequest {
             should_sort_hits,
             json! {
                 {
-                    "scroll": "10m",
+                    "scroll": "5s",
                     "scroll_id": scroll_id
                 }
             },
