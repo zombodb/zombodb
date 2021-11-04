@@ -1159,6 +1159,7 @@ mod tests {
         DEFAULT_OPTIMIZE_AFTER, DEFAULT_SHARDS, DEFAULT_TYPE_NAME,
     };
     use crate::gucs::ZDB_DEFAULT_REPLICAS;
+    use crate::zql::ast::IndexLink;
     use pgx::pg_sys::AsPgCStr;
     use pgx::*;
 
@@ -1344,5 +1345,26 @@ mod tests {
             options.links(),
             &Some(vec!["id=<schema.table.index>other_id".to_string()])
         );
+    }
+
+    #[pg_test]
+    #[initialize(es = true)]
+    unsafe fn test_quoted_index_link_options_issue688() {
+        Spi::run(
+            "CREATE TABLE test_link_options();  
+        CREATE INDEX idxtest_link_options
+                  ON test_link_options
+               USING zombodb ((test_link_options.*)) WITH (options='id=<`schema.table.index`>other_id');",
+        );
+
+        let index_relation =
+            PgRelation::open_with_name("idxtest_link_options").expect("no such relation");
+        let options = ZDBIndexOptions::from_relation(&index_relation);
+        let links = options.links().as_ref().unwrap();
+
+        assert_eq!(1, links.len());
+        let link_definition = links.first().unwrap();
+        let link = IndexLink::parse(&link_definition);
+        assert_eq!(link, IndexLink::parse("id=<schema.table.index>other_id"));
     }
 }

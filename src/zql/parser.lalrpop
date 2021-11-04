@@ -340,7 +340,7 @@ String: (&'input str, bool) = {
 };
 
 TableIndexName: QualifiedIndex = {
-    <DOTTED_IDENTIFIER> => {
+    FieldName => {
         let mut parts = <>.split_terminator('.');
         let mut schema = parts.next();
         let mut table = parts.next();
