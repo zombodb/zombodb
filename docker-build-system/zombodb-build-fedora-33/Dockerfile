@@ -31,6 +31,7 @@ RUN dnf install -y postgresql10-server postgresql10-devel
 RUN dnf install -y postgresql11-server postgresql11-devel
 RUN dnf install -y postgresql12-server postgresql12-devel
 RUN dnf install -y postgresql13-server postgresql13-devel
+RUN dnf install -y postgresql14-server postgresql14-devel
 RUN dnf group install -y "Development Tools"
 RUN dnf install -y openssl-devel
 RUN dnf install -y redhat-rpm-config
@@ -49,4 +50,5 @@ RUN cargo pgx init \
 	--pg10=/usr/pgsql-10/bin/pg_config \
 	--pg11=/usr/pgsql-11/bin/pg_config \
 	--pg12=/usr/pgsql-12/bin/pg_config \
-	--pg13=/usr/pgsql-13/bin/pg_config
+	--pg13=/usr/pgsql-13/bin/pg_config \
+	--pg14=/usr/pgsql-14/bin/pg_config
