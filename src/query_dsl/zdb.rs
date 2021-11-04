@@ -1,3 +1,4 @@
+#[pgx_macros::pg_schema]
 mod dsl {
     use crate::zdbquery::ZDBQuery;
     use crate::zql::ast::IndexLink;
@@ -26,7 +27,7 @@ mod dsl {
         ))
     }
 
-    #[pg_extern(immutable, parallel_stafe)]
+    #[pg_extern(immutable, parallel_safe)]
     fn link_options(options: Vec<Option<String>>, query: ZDBQuery) -> ZDBQuery {
         query.set_link_options(
             options

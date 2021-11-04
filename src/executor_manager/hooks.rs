@@ -6,6 +6,7 @@ use crate::executor_manager::drop::{drop_extension, drop_index, drop_schema, dro
 use crate::executor_manager::get_executor_manager;
 use crate::walker::PlanWalker;
 use pgx::*;
+use std::ffi::CStr;
 
 struct ZDBHooks;
 impl PgHooks for ZDBHooks {
@@ -33,6 +34,7 @@ impl PgHooks for ZDBHooks {
         &mut self,
         pstmt: PgBox<pg_sys::PlannedStmt>,
         query_string: &std::ffi::CStr,
+        read_only_tree: Option<bool>,
         context: u32,
         params: PgBox<pg_sys::ParamListInfoData>,
         query_env: PgBox<pg_sys::QueryEnvironment>,
@@ -40,28 +42,44 @@ impl PgHooks for ZDBHooks {
         completion_tag: *mut pg_sys::QueryCompletion,
         prev_hook: fn(
             PgBox<pg_sys::PlannedStmt>,
-            &std::ffi::CStr,
-            u32,
+            &CStr,
+            Option<bool>,
+            pg_sys::ProcessUtilityContext,
             PgBox<pg_sys::ParamListInfoData>,
             PgBox<pg_sys::QueryEnvironment>,
             PgBox<pg_sys::DestReceiver>,
             *mut pg_sys::QueryCompletion,
         ) -> HookResult<()>,
     ) -> HookResult<()> {
-        let utility_statement = PgBox::from_pg(pstmt.utilityStmt);
+        let utility_statement = unsafe { PgBox::from_pg(pstmt.utilityStmt) };
 
-        let is_alter = is_a(utility_statement.as_ptr(), pg_sys::NodeTag_T_AlterTableStmt);
-        let is_rename = is_a(utility_statement.as_ptr(), pg_sys::NodeTag_T_RenameStmt);
-        let is_drop = is_a(utility_statement.as_ptr(), pg_sys::NodeTag_T_DropStmt);
+        let is_alter =
+            unsafe { is_a(utility_statement.as_ptr(), pg_sys::NodeTag_T_AlterTableStmt) };
+        let is_rename = unsafe { is_a(utility_statement.as_ptr(), pg_sys::NodeTag_T_RenameStmt) };
+        let is_drop = unsafe { is_a(utility_statement.as_ptr(), pg_sys::NodeTag_T_DropStmt) };
 
         if is_alter {
-            let alter = PgBox::from_pg(utility_statement.as_ptr() as *mut pg_sys::AlterTableStmt);
+            let alter = unsafe {
+                PgBox::from_pg(utility_statement.as_ptr() as *mut pg_sys::AlterTableStmt)
+            };
             let relid = unsafe {
                 pg_sys::AlterTableLookupRelation(
                     alter.as_ptr(),
                     pg_sys::AccessShareLock as pg_sys::LOCKMODE,
                 )
             };
+            if relid == pg_sys::InvalidOid {
+                return prev_hook(
+                    pstmt,
+                    query_string,
+                    read_only_tree,
+                    context,
+                    params,
+                    query_env,
+                    dest,
+                    completion_tag,
+                );
+            }
             let rel = unsafe { PgRelation::open(relid) };
             let prev_options = get_index_options_for_relation(&rel);
             drop(rel);
@@ -70,6 +88,7 @@ impl PgHooks for ZDBHooks {
             let result = prev_hook(
                 pstmt,
                 query_string,
+                read_only_tree,
                 context,
                 params,
                 query_env,
@@ -80,7 +99,8 @@ impl PgHooks for ZDBHooks {
             alter_indices(Some(prev_options));
             return result;
         } else if is_rename {
-            let rename = PgBox::from_pg(utility_statement.as_ptr() as *mut pg_sys::RenameStmt);
+            let rename =
+                unsafe { PgBox::from_pg(utility_statement.as_ptr() as *mut pg_sys::RenameStmt) };
 
             let prev_options = match rename.renameType {
                 pg_sys::ObjectType_OBJECT_SCHEMA => {
@@ -102,7 +122,12 @@ impl PgHooks for ZDBHooks {
                         std::ptr::null_mut(),
                     );
 
-                    #[cfg(any(feature = "pg11", feature = "pg12", feature = "pg13"))]
+                    #[cfg(any(
+                        feature = "pg11",
+                        feature = "pg12",
+                        feature = "pg13",
+                        feature = "pg14"
+                    ))]
                     let relid = pg_sys::RangeVarGetRelidExtended(
                         rename.relation,
                         pg_sys::AccessShareLock as pg_sys::LOCKMODE,
@@ -125,6 +150,7 @@ impl PgHooks for ZDBHooks {
             let result = prev_hook(
                 pstmt,
                 query_string,
+                read_only_tree,
                 context,
                 params,
                 query_env,
@@ -135,7 +161,8 @@ impl PgHooks for ZDBHooks {
             alter_indices(prev_options);
             return result;
         } else if is_drop {
-            let drop = PgBox::from_pg(utility_statement.as_ptr() as *mut pg_sys::DropStmt);
+            let drop =
+                unsafe { PgBox::from_pg(utility_statement.as_ptr() as *mut pg_sys::DropStmt) };
 
             match drop.removeType {
                 pg_sys::ObjectType_OBJECT_TABLE
@@ -143,7 +170,7 @@ impl PgHooks for ZDBHooks {
                 | pg_sys::ObjectType_OBJECT_INDEX
                 | pg_sys::ObjectType_OBJECT_SCHEMA
                 | pg_sys::ObjectType_OBJECT_EXTENSION => {
-                    let objects = PgList::<pg_sys::Node>::from_pg(drop.objects);
+                    let objects = unsafe { PgList::<pg_sys::Node>::from_pg(drop.objects) };
                     for object in objects.iter_ptr() {
                         let mut rel = std::ptr::null_mut();
                         let address = unsafe {
@@ -163,11 +190,11 @@ impl PgHooks for ZDBHooks {
 
                         match drop.removeType {
                             pg_sys::ObjectType_OBJECT_TABLE | pg_sys::ObjectType_OBJECT_MATVIEW => {
-                                let rel = PgRelation::from_pg_owned(rel);
+                                let rel = unsafe { PgRelation::from_pg_owned(rel) };
                                 drop_table(&rel);
                             }
                             pg_sys::ObjectType_OBJECT_INDEX => {
-                                let rel = PgRelation::from_pg_owned(rel);
+                                let rel = unsafe { PgRelation::from_pg_owned(rel) };
                                 drop_index(&rel)
                             }
                             pg_sys::ObjectType_OBJECT_SCHEMA => drop_schema(address.objectId),
@@ -184,6 +211,7 @@ impl PgHooks for ZDBHooks {
         prev_hook(
             pstmt,
             query_string,
+            read_only_tree,
             context,
             params,
             query_env,

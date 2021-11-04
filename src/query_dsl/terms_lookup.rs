@@ -4,6 +4,7 @@
 //!Terms lookup fetches the field values of an existing document.
 //! Elasticsearch then uses those values as search terms. This can be helpful when searching for a large set of terms.
 
+#[pgx_macros::pg_schema]
 pub mod dsl {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
@@ -45,6 +46,7 @@ pub mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
+#[pgx_macros::pg_schema]
 mod tests {
     use crate::query_dsl::terms_lookup::dsl::*;
     use crate::zdbquery::ZDBQuery;

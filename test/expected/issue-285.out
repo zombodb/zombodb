@@ -4,6 +4,6 @@
 order by id limit 10;
                highlight               
 ---------------------------------------
- <em>Adjusting show view for beer</em>
+ <em>adjusting show view for beer</em>
 (1 row)
 

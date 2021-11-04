@@ -64,7 +64,9 @@ impl PlanWalker {
             // nothing to do b/c one or both of our functions couldn't be found
             return;
         }
-        self.rtable = PgList::from_pg(query.rtable);
+        unsafe {
+            self.rtable = PgList::from_pg(query.rtable);
+        }
 
         if self.detect(query) {
             self.rewrite(query);

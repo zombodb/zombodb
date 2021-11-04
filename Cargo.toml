@@ -1,21 +1,22 @@
 [package]
 name = "zombodb"
 description = "Making Postgres and Elasticsearch work together like it's 2021"
-version = "3000.0.3"
+version = "3000.0.4"
 edition = "2018"
 build = "build.rs"
 readme = "README.md"
 license = "LICENSE.md"
 
 [lib]
-crate-type = [ "cdylib" ]
+crate-type = [ "cdylib", "rlib" ]
 
 [features]
-default = [ "pg12" ]
+default = [ "pg14" ]
 pg10 = [ "pgx/pg10", "pgx-tests/pg10" ]
 pg11 = [ "pgx/pg11", "pgx-tests/pg11" ]
 pg12 = [ "pgx/pg12", "pgx-tests/pg12" ]
 pg13 = [ "pgx/pg13", "pgx-tests/pg13" ]
+pg14 = [ "pgx/pg14", "pgx-tests/pg14" ]
 pg_test = [ ]
 
 [dependencies]
@@ -23,22 +24,24 @@ byteorder = "1.4.3"
 chrono = "0.4.19"
 crossbeam-channel = "0.5.1"
 dashmap = "4.0.2"
+humantime = "2.1.0"
 indexmap = "1.7.0"
 lalrpop-util = "0.19.6"
 lazy_static = "1.4.0"
 levenshtein = "1.0.5"
 memoffset = "0.6.4"
 num_cpus = "1.13.0"
-pathfinding = "2.2.1"
-pgx = "0.1.21"
-pgx-macros = "0.1.21"
+pathfinding = "2.2.2"
+pgx = "0.2.0"
+pgx-macros = "0.2.0"
 rayon = "1.5.1"
 regex = "1.5.4"
-serde = { version = "1.0.127", features = [ "derive" ] }
-serde_json = { version = "1.0.66", features = [ "preserve_order" ] }
-serde_cbor = "0.11.1"
-sqlformat = "0.1.6"
-ureq = { version = "2.1.1", features = [ "json" ] }
+rustc-hash = "1.1.0"
+serde = { version = "1.0.130", features = [ "derive" ] }
+serde_json = { version = "1.0.68", features = [ "preserve_order" ] }
+serde_cbor = "0.11.2"
+sqlformat = "0.1.8"
+ureq = { version = "2.3.0", features = [ "json" ] }
 url = "2.2.2"
 
 [build-dependencies]
@@ -46,8 +49,8 @@ lalrpop = { version = "0.19.6", features = [ "lexer" ] }
 built = { version = "0.5.1", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
-pgx-tests = "0.1.21"
-libc = "0.2.99"
+pgx-tests = "0.2.0"
+libc = "0.2.106"
 
 [profile.dev]
 panic = "unwind"

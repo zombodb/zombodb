@@ -1,3 +1,4 @@
+#[pgx_macros::pg_schema]
 mod dsl {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
@@ -68,10 +69,7 @@ mod dsl {
         max_word_length: Option<i64>,
     }
 
-    /// ```funcname
-    /// more_like_this
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(immutable, parallel_safe, name = "more_like_this")]
     fn more_like_this_with_array(
         like: Array<&str>,
         stop_words:
@@ -115,13 +113,10 @@ mod dsl {
         })
     }
 
-    /// ```funcname
-    /// more_like_this
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(immutable, parallel_safe, name = "more_like_this")]
     fn more_like_this_without_array(
         like: &str,
-        fields: Option<default!(Array<&str>, null)>,
+        fields: Option<default!(Array<&str>, NULL)>,
         stop_words:
             default!(Array<&str>, "ARRAY['http', 'span', 'class', 'flashtext', 'let', 'its', 'may', 'well', 'got', 'too', 'them', 'really', 'new', 'set', 'please', 'how', 'our', 'from', 'sent', 'subject', 'sincerely', 'thank', 'thanks', 'just', 'get', 'going', 'were', 'much', 'can', 'also', 'she', 'her', 'him', 'his', 'has', 'been', 'ok', 'still', 'okay', 'does', 'did', 'about', 'yes', 'you', 'your', 'when', 'know', 'have', 'who', 'what', 'where', 'sir', 'page', 'a', 'an', 'and', 'are', 'as', 'at', 'be', 'but', 'by', 'for', 'if', 'in', 'into', 'is', 'it', 'no', 'not', 'of', 'on', 'or', 'such', 'that', 'the', 'their', 'than', 'then', 'there', 'these', 'they', 'this', 'to', 'was', 'will', 'with']"),
         boost: Option<default!(f32, NULL)>,
@@ -164,6 +159,7 @@ mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
+#[pgx_macros::pg_schema]
 mod tests {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;

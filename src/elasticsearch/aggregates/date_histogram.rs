@@ -29,8 +29,8 @@ fn date_histogram(
     query: ZDBQuery,
     calendar_interval: Option<default!(CalendarInterval, NULL)>,
     fixed_interval: Option<default!(&str, NULL)>,
-    time_zone: default!(&str, "+00:00"),
-    format: default!(&str, "yyyy-MM-dd"),
+    time_zone: default!(&str, "'+00:00'"),
+    format: default!(&str, "'yyyy-MM-dd'"),
 ) -> impl std::iter::Iterator<
     Item = (
         name!(key_as_string, String),

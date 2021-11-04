@@ -16,8 +16,13 @@ pub extern "C" fn ambeginscan(
     nkeys: ::std::os::raw::c_int,
     norderbys: ::std::os::raw::c_int,
 ) -> pg_sys::IndexScanDesc {
-    let mut scandesc: PgBox<pg_sys::IndexScanDescData> =
-        PgBox::from_pg(unsafe { pg_sys::RelationGetIndexScan(index_relation, nkeys, norderbys) });
+    let mut scandesc: PgBox<pg_sys::IndexScanDescData> = unsafe {
+        PgBox::from_pg(pg_sys::RelationGetIndexScan(
+            index_relation,
+            nkeys,
+            norderbys,
+        ))
+    };
     let state = ZDBScanState {
         zdbregtype: unsafe {
             direct_function_call::<pg_sys::Oid>(
@@ -47,7 +52,7 @@ pub extern "C" fn amrescan(
     if nkeys == 0 {
         panic!("No ScanKeys provided");
     }
-    let scan: PgBox<pg_sys::IndexScanDescData> = PgBox::from_pg(scan);
+    let scan: PgBox<pg_sys::IndexScanDescData> = unsafe { PgBox::from_pg(scan) };
     let indexrel = unsafe { PgRelation::from_pg(scan.indexRelation) };
 
     let mut state =
@@ -80,7 +85,7 @@ pub extern "C" fn amgettuple(
     scan: pg_sys::IndexScanDesc,
     _direction: pg_sys::ScanDirection,
 ) -> bool {
-    let mut scan: PgBox<pg_sys::IndexScanDescData> = PgBox::from_pg(scan);
+    let mut scan: PgBox<pg_sys::IndexScanDescData> = unsafe { PgBox::from_pg(scan) };
     let state = unsafe { (scan.opaque as *mut ZDBScanState).as_mut() }.expect("no scandesc state");
 
     // no need to recheck the returned tuples as ZomboDB indices are not lossy
@@ -91,11 +96,11 @@ pub extern "C" fn amgettuple(
         Some((score, ctid, _, highlights)) => {
             #[cfg(any(feature = "pg10", feature = "pg11"))]
             let tid = &mut scan.xs_ctup.t_self;
-            #[cfg(any(feature = "pg12", feature = "pg13"))]
+            #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14"))]
             let tid = &mut scan.xs_heaptid;
 
             u64_to_item_pointer(ctid, tid);
-            if !item_pointer_is_valid(tid) {
+            if unsafe { !item_pointer_is_valid(tid) } {
                 panic!("invalid item pointer: {:?}", item_pointer_get_both(*tid));
             }
 
@@ -121,7 +126,7 @@ pub extern "C" fn amendscan(_scan: pg_sys::IndexScanDesc) {
 
 #[pg_guard]
 pub extern "C" fn ambitmapscan(scan: pg_sys::IndexScanDesc, tbm: *mut pg_sys::TIDBitmap) -> i64 {
-    let scan = PgBox::from_pg(scan);
+    let scan = unsafe { PgBox::from_pg(scan) };
     let index_relation = unsafe { PgRelation::from_pg(scan.indexRelation) };
     let state = unsafe { (scan.opaque as *mut ZDBScanState).as_mut() }.expect("no scandesc state");
     let (_query, qstate) = get_executor_manager().peek_query_state().unwrap();

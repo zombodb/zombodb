@@ -1,13 +1,14 @@
 select zdb.dump_query('events', 'title:*****');
-     dump_query      
----------------------
- {                  +
-   "wildcard": {    +
-     "title": {     +
-       "value": "*",+
-       "boost": 1.0 +
-     }              +
-   }                +
+           dump_query           
+--------------------------------
+ {                             +
+   "wildcard": {               +
+     "title": {                +
+       "value": "*",           +
+       "boost": 1.0,           +
+       "case_insensitive": true+
+     }                         +
+   }                           +
  }
 (1 row)
 

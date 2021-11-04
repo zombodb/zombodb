@@ -10,15 +10,15 @@ pub mod hooks;
 
 static mut EXECUTOR_MANAGER: ExecutorManager = ExecutorManager::new();
 
-pub fn get_executor_manager() -> &'static mut ExecutorManager {
+pub fn get_executor_manager() -> &'static mut ExecutorManager<'static> {
     unsafe { &mut EXECUTOR_MANAGER }
 }
 
-pub struct BulkContext {
+pub struct BulkContext<'a> {
     pub elasticsearch: Elasticsearch,
     pub bulk: ElasticsearchBulkRequest,
-    pub attributes: Vec<CategorizedAttribute<'static>>,
-    pub tupdesc: &'static PgTupleDesc<'static>,
+    pub attributes: Vec<CategorizedAttribute<'a>>,
+    pub tupdesc: &'a PgTupleDesc<'a>,
     pub is_shadow: bool,
 }
 
@@ -114,80 +114,82 @@ impl QueryState {
         query_desc: *mut pg_sys::QueryDesc,
         fcinfo: pg_sys::FunctionCallInfo,
     ) -> Option<pg_sys::Oid> {
-        let fcinfo = PgBox::from_pg(fcinfo);
-        let flinfo = PgBox::from_pg(fcinfo.flinfo);
-        let func_expr = PgBox::from_pg(flinfo.fn_expr as *mut pg_sys::FuncExpr);
-        let arg_list = PgList::<pg_sys::Node>::from_pg(func_expr.args);
+        let fcinfo = unsafe { PgBox::from_pg(fcinfo) };
+        let flinfo = unsafe { PgBox::from_pg(fcinfo.flinfo) };
+        let func_expr = unsafe { PgBox::from_pg(flinfo.fn_expr as *mut pg_sys::FuncExpr) };
+        let arg_list = unsafe { PgList::<pg_sys::Node>::from_pg(func_expr.args) };
         let first_arg = arg_list
             .get_ptr(0)
             .expect("no arguments provided to zdb.score()");
 
-        if is_a(first_arg, pg_sys::NodeTag_T_Var) {
-            // lookup the table from which the 'ctid' value comes, so we can get its oid
-            let rtable = unsafe {
-                query_desc
+        unsafe {
+            if is_a(first_arg, pg_sys::NodeTag_T_Var) {
+                // lookup the table from which the 'ctid' value comes, so we can get its oid
+                let rtable = query_desc
                     .as_ref()
                     .unwrap()
                     .plannedstmt
                     .as_ref()
                     .unwrap()
-                    .rtable
-            };
-            let var = PgBox::from_pg(first_arg as *mut pg_sys::Var);
-            #[cfg(feature = "pg13")]
-            let rentry = unsafe { pg_sys::rt_fetch(var.varnosyn, rtable) };
-            #[cfg(not(feature = "pg13"))]
-            let rentry = unsafe { pg_sys::rt_fetch(var.varnoold, rtable) };
-            let heap_oid = unsafe { rentry.as_ref().unwrap().relid };
+                    .rtable;
+                let var = PgBox::from_pg(first_arg as *mut pg_sys::Var);
+                #[cfg(any(feature = "pg10", feature = "pg11", feature = "pg12"))]
+                let rentry = pg_sys::rt_fetch(var.varnoold, rtable);
+                #[cfg(any(feature = "pg13", feature = "pg14"))]
+                let rentry = pg_sys::rt_fetch(var.varnosyn, rtable);
+                let heap_oid = rentry.as_ref().unwrap().relid;
 
-            match find_zdb_index(&PgRelation::with_lock(
-                heap_oid,
-                pg_sys::AccessShareLock as pg_sys::LOCKMODE,
-            )) {
-                Ok((index, _)) => Some(index.oid()),
-                Err(_) => None,
-            }
-        } else if is_a(first_arg, pg_sys::NodeTag_T_FuncExpr) {
-            let func_expr = PgBox::from_pg(first_arg as *mut pg_sys::FuncExpr);
-            match lookup_all_zdb_index_oids() {
-                Some(oids) => {
-                    let funcoid = func_expr.funcid;
-                    for oid in oids {
-                        let index =
-                            PgRelation::with_lock(oid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
-                        let exprs = PgList::<pg_sys::Expr>::from_pg(unsafe {
-                            pg_sys::RelationGetIndexExpressions(index.as_ptr())
-                        });
+                match find_zdb_index(&PgRelation::with_lock(
+                    heap_oid,
+                    pg_sys::AccessShareLock as pg_sys::LOCKMODE,
+                )) {
+                    Ok((index, _)) => Some(index.oid()),
+                    Err(_) => None,
+                }
+            } else if is_a(first_arg, pg_sys::NodeTag_T_FuncExpr) {
+                let func_expr = PgBox::from_pg(first_arg as *mut pg_sys::FuncExpr);
+                match lookup_all_zdb_index_oids() {
+                    Some(oids) => {
+                        let funcoid = func_expr.funcid;
+                        for oid in oids {
+                            let index = PgRelation::with_lock(
+                                oid,
+                                pg_sys::AccessShareLock as pg_sys::LOCKMODE,
+                            );
+                            let exprs = PgList::<pg_sys::Expr>::from_pg(
+                                pg_sys::RelationGetIndexExpressions(index.as_ptr()),
+                            );
 
-                        if let Some(expr) = exprs.get_ptr(0) {
-                            if is_a(expr as *mut pg_sys::Node, pg_sys::NodeTag_T_FuncExpr) {
-                                let func_expr = PgBox::from_pg(expr as *mut pg_sys::FuncExpr);
-                                if func_expr.funcid == funcoid {
-                                    return Some(index.oid());
+                            if let Some(expr) = exprs.get_ptr(0) {
+                                if is_a(expr as *mut pg_sys::Node, pg_sys::NodeTag_T_FuncExpr) {
+                                    let func_expr = PgBox::from_pg(expr as *mut pg_sys::FuncExpr);
+                                    if func_expr.funcid == funcoid {
+                                        return Some(index.oid());
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    None
+                        None
+                    }
+                    None => None,
                 }
-                None => None,
+            } else {
+                None
             }
-        } else {
-            None
         }
     }
 }
 
-pub struct ExecutorManager {
+pub struct ExecutorManager<'a> {
     tuple_descriptors: Option<HashMap<pg_sys::Oid, PgTupleDesc<'static>>>,
-    bulk_requests: Option<HashMap<pg_sys::Oid, BulkContext>>,
+    bulk_requests: Option<HashMap<pg_sys::Oid, BulkContext<'a>>>,
     xids: Option<HashSet<pg_sys::TransactionId>>,
     query_stack: Option<Vec<(*mut pg_sys::QueryDesc, QueryState)>>,
     hooks_registered: bool,
 }
 
-impl ExecutorManager {
+impl<'a> ExecutorManager<'a> {
     pub const fn new() -> Self {
         ExecutorManager {
             tuple_descriptors: None,
