@@ -1,3 +1,4 @@
+#[pgx_macros::pg_schema]
 pub mod dsl {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
@@ -32,10 +33,7 @@ pub mod dsl {
         boost: Option<f32>,
     }
 
-    /// ```funcname
-    /// range
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(immutable, parallel_safe, name = "range")]
     pub fn range_str(
         field: &str,
         lt: Option<default!(&str, NULL)>,
@@ -60,10 +58,7 @@ pub mod dsl {
         })
     }
 
-    /// ```funcname
-    /// range
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(immutable, parallel_safe, name = "range")]
     pub fn range_numeric(
         field: &str,
         lt: Option<default!(i64, NULL)>,
@@ -90,6 +85,7 @@ pub mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
+#[pgx_macros::pg_schema]
 mod tests {
     use crate::query_dsl::range::dsl::{range_numeric, range_str};
     use pgx::*;

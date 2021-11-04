@@ -105,9 +105,9 @@ impl ZDBIndexOptionsInternal {
             ops.max_analyze_token_count = DEFAULT_MAX_ANALYZE_TOKEN_COUNT;
             ops.nested_object_date_detection = false;
             ops.nested_object_numeric_detection = false;
-            ops
+            ops.into_pg_boxed()
         } else {
-            PgBox::from_pg(relation.rd_options as *mut ZDBIndexOptionsInternal)
+            unsafe { PgBox::from_pg(relation.rd_options as *mut ZDBIndexOptionsInternal) }
         }
     }
 
@@ -431,11 +431,9 @@ impl ZDBIndexOptions {
     }
 }
 
-/// ```sql
-/// /*
-///    we don't want any SQL generated for the "shadow" function, but we do want its '_wrapper' symbol
-///    exported so that shadow indexes can reference it using whatever argument type they want
-/// */
+/// ```pgxsql
+/// -- we don't want any SQL generated for the "shadow" function, but we do want its '_wrapper' symbol
+/// -- exported so that shadow indexes can reference it using whatever argument type they want
 /// ```
 #[pg_extern(immutable, parallel_safe, raw, no_guard)]
 fn shadow(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
@@ -807,7 +805,7 @@ pub unsafe extern "C" fn amoptions(
     build_relopts(reloptions, validate, tab)
 }
 
-#[cfg(feature = "pg13")]
+#[cfg(any(feature = "pg13", feature = "pg14"))]
 unsafe fn build_relopts(
     reloptions: pg_sys::Datum,
     validate: bool,
@@ -828,7 +826,7 @@ unsafe fn build_relopts(
     rdopts as *mut pg_sys::bytea
 }
 
-#[cfg(not(feature = "pg13"))]
+#[cfg(any(feature = "pg10", feature = "pg11", feature = "pg12"))]
 unsafe fn build_relopts(
     reloptions: pg_sys::Datum,
     validate: bool,
@@ -872,7 +870,7 @@ pub unsafe fn init() {
         "Server URL and port".as_pg_cstr(),
         "default".as_pg_cstr(),
         Some(validate_url),
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
@@ -883,7 +881,7 @@ pub unsafe fn init() {
         "What Elasticsearch index type name should ZDB use?  Default is 'doc'".as_pg_cstr(),
         "doc".as_pg_cstr(),
         None,
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
@@ -894,7 +892,7 @@ pub unsafe fn init() {
         "Frequency in which Elasticsearch indexes are refreshed.  Related to ES' index.refresh_interval setting".as_pg_cstr(),
         DEFAULT_REFRESH_INTERVAL.as_pg_cstr(),
         None,
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
             { pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE },
     );
     pg_sys::add_int_reloption(
@@ -904,7 +902,7 @@ pub unsafe fn init() {
         DEFAULT_SHARDS,
         1,
         32768,
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
@@ -916,7 +914,7 @@ pub unsafe fn init() {
         ZDB_DEFAULT_REPLICAS.get(),
         0,
         32768,
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
@@ -928,7 +926,7 @@ pub unsafe fn init() {
         *DEFAULT_BULK_CONCURRENCY,
         1,
         num_cpus::get() as i32,
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
@@ -940,7 +938,7 @@ pub unsafe fn init() {
         DEFAULT_BATCH_SIZE,
         1,
         (std::i32::MAX / 2) - 1,
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
@@ -952,7 +950,7 @@ pub unsafe fn init() {
         DEFAULT_COMPRESSION_LEVEL,
         0,
         9,
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
@@ -965,7 +963,7 @@ pub unsafe fn init() {
         DEFAULT_MAX_RESULT_WINDOW,
         1,
         std::i32::MAX,
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
@@ -977,7 +975,7 @@ pub unsafe fn init() {
         DEFAULT_NESTED_FIELDS_LIMIT,
         1,
         std::i32::MAX,
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
@@ -989,7 +987,7 @@ pub unsafe fn init() {
         DEFAULT_NESTED_OBJECTS_LIMIT,
         1,
         std::i32::MAX,
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
@@ -1001,7 +999,7 @@ pub unsafe fn init() {
         DEFAULT_TOTAL_FIELDS_LIMIT,
         1,
         std::i32::MAX,
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
@@ -1014,7 +1012,7 @@ pub unsafe fn init() {
         DEFAULT_MAX_TERMS_COUNT,
         1,
         std::i32::MAX,
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
@@ -1027,7 +1025,7 @@ pub unsafe fn init() {
         DEFAULT_MAX_ANALYZE_TOKEN_COUNT,
         1,
         std::i32::MAX,
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
@@ -1038,7 +1036,7 @@ pub unsafe fn init() {
         "The Elasticsearch Alias to which this index should belong".as_pg_cstr(),
         std::ptr::null(),
         None,
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
@@ -1049,7 +1047,7 @@ pub unsafe fn init() {
         "The Elasticsearch index name, as a UUID".as_pg_cstr(),
         std::ptr::null(),
         None,
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
@@ -1060,7 +1058,7 @@ pub unsafe fn init() {
         "Elasticsearch index.translog.durability setting.  Defaults to 'request'".as_pg_cstr(),
         "request".as_pg_cstr(),
         Some(validate_translog_durability),
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
@@ -1072,7 +1070,7 @@ pub unsafe fn init() {
         DEFAULT_OPTIMIZE_AFTER,
         0,
         std::i32::MAX,
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
@@ -1082,7 +1080,7 @@ pub unsafe fn init() {
         "llapi".as_pg_cstr(),
         "Will this index be used by ZomboDB's low-level API?".as_pg_cstr(),
         false,
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
@@ -1093,7 +1091,7 @@ pub unsafe fn init() {
         "ZomboDB Index Linking options".as_pg_cstr(),
         std::ptr::null(),
         Some(validate_options),
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
@@ -1104,7 +1102,7 @@ pub unsafe fn init() {
         "Combine fields into named lists during search".as_pg_cstr(),
         std::ptr::null(),
         Some(validate_field_lists),
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
@@ -1114,7 +1112,7 @@ pub unsafe fn init() {
         "shadow".as_pg_cstr(),
         "Is this index a shadow index, and if so, to which one".as_pg_cstr(),
         false,
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
@@ -1124,7 +1122,7 @@ pub unsafe fn init() {
         "nested_object_date_detection".as_pg_cstr(),
         "Should ES try to automatically detect dates in nested objects".as_pg_cstr(),
         false,
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
@@ -1134,7 +1132,7 @@ pub unsafe fn init() {
         "nested_object_numeric_detection".as_pg_cstr(),
         "Should ES try to automatically detect numbers in nested objects".as_pg_cstr(),
         false,
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
@@ -1145,7 +1143,7 @@ pub unsafe fn init() {
         "As a JSON mapping definition, how should dynamic text values in JSON be mapped?".as_pg_cstr(),
         r#"{ "type": "keyword", "ignore_above": 10922, "normalizer": "lowercase", "copy_to": "zdb_all" }"#.as_pg_cstr(),
         Some(validate_text_mapping),
-        #[cfg(feature = "pg13")]
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
         },
@@ -1153,6 +1151,7 @@ pub unsafe fn init() {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
+#[pgx_macros::pg_schema]
 mod tests {
     use crate::access_method::options::{
         validate_translog_durability, validate_url, RefreshInterval, ZDBIndexOptions,

@@ -3,6 +3,7 @@
 //!
 //!Returns documents that contain terms matching a wildcard pattern.
 
+#[pgx_macros::pg_schema]
 mod pg_catalog {
     use pgx::*;
     use serde::*;
@@ -18,6 +19,7 @@ mod pg_catalog {
     }
 }
 
+#[pgx_macros::pg_schema]
 mod dsl {
     use crate::query_dsl::misc::pg_catalog::RegexFlags;
     use crate::zdbquery::ZDBQuery;
@@ -85,7 +87,7 @@ mod dsl {
     pub(crate) fn script(
         source: &str,
         params: Option<default!(Json, NULL)>,
-        lang: default!(&str, "painless"),
+        lang: default!(&str, "'painless'"),
     ) -> ZDBQuery {
         let script = Script {
             source,
@@ -103,6 +105,7 @@ mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
+#[pgx_macros::pg_schema]
 mod tests {
     use crate::query_dsl::misc::dsl::*;
     use crate::zdbquery::ZDBQuery;

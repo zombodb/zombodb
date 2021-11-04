@@ -60,13 +60,13 @@ pub fn categorize_tupdesc<'a>(
                 let array_type = unsafe { pg_sys::get_element_type(attribute_type_oid.value()) };
 
                 let (base_oid, is_array) = if array_type != pg_sys::InvalidOid {
-                    (PgOid::from(array_type), true)
+                    typoid = PgOid::from(array_type);
+                    (typoid, true)
                 } else {
                     (attribute_type_oid, false)
                 };
 
-                typoid = base_oid;
-                break match &typoid {
+                break match &base_oid {
                     PgOid::BuiltIn(builtin) => match builtin {
                         PgBuiltInOids::BOOLOID => {
                             if is_array {
@@ -318,7 +318,7 @@ pub fn categorize_tupdesc<'a>(
                             }
                         }
                         PgBuiltInOids::TEXTOID | PgBuiltInOids::VARCHAROID => {
-                            handle_as_generic_string(is_array, typoid.value())
+                            handle_as_generic_string(is_array, base_oid.value())
                         }
                         PgBuiltInOids::JSONOID => {
                             if is_array {
@@ -386,55 +386,57 @@ pub fn categorize_tupdesc<'a>(
         if mapping.is_some() {
             let definition = match user_mappings.as_ref().unwrap().get(attname).cloned() {
                 Some(json) => json,
-                None => match lookup_type_mapping(typoid) {
-                    Some((mapping, regproc)) => match mapping {
-                        Some(mapping) => mapping,
-                        None => {
-                            let regproc: pg_sys::Oid = regproc.unwrap();
-                            unsafe {
-                                let datum = pg_sys::OidFunctionCall2Coll(
-                                    regproc,
-                                    pg_sys::InvalidOid,
-                                    typoid.into_datum().unwrap(),
-                                    typmod.into_datum().unwrap(),
-                                );
-                                JsonB::from_datum(datum, false, pg_sys::JSONBOID).unwrap().0
-                            }
-                        }
-                    },
-                    None => {
-                        match type_is_domain(typoid.value()) {
-                            Some((basetypeoid, name)) => {
-                                if basetypeoid == pg_sys::VARCHAROID {
-                                    // varchar types are considered keywords and the domain name
-                                    // becomes the "normalizer"
-
-                                    if name == "keyword" {
-                                        // unless the base type is "keyword"
-                                        json!( {"type": "keyword", "ignore_above": 10922 })
-                                    } else {
-                                        json!( {"type": "keyword", "ignore_above": 10922, "normalizer": name })
-                                    }
-                                } else if basetypeoid == pg_sys::TEXTOID {
-                                    // text types are mapped as "text" with the "analyzer" set to the name
-                                    json!( {"type": "text", "analyzer": name })
-                                } else {
-                                    panic!(
-                                        "Unsupported base domain type for {}: {}",
-                                        name, basetypeoid
+                None => {
+                    match lookup_type_mapping(typoid) {
+                        Some((mapping, regproc)) => match mapping {
+                            Some(mapping) => mapping,
+                            None => {
+                                let regproc: pg_sys::Oid = regproc.unwrap();
+                                unsafe {
+                                    let datum = pg_sys::OidFunctionCall2Coll(
+                                        regproc,
+                                        pg_sys::InvalidOid,
+                                        typoid.into_datum().unwrap(),
+                                        typmod.into_datum().unwrap(),
                                     );
+                                    JsonB::from_datum(datum, false, pg_sys::JSONBOID).unwrap().0
                                 }
                             }
-                            None => {
-                                info!(
+                        },
+                        None => {
+                            match type_is_domain(typoid.value()) {
+                                Some((basetypeoid, name)) => {
+                                    if basetypeoid == pg_sys::VARCHAROID {
+                                        // varchar types are considered keywords and the domain name
+                                        // becomes the "normalizer"
+
+                                        if name == "keyword" {
+                                            // unless the base type is "keyword"
+                                            json!( {"type": "keyword", "ignore_above": 10922 })
+                                        } else {
+                                            json!( {"type": "keyword", "ignore_above": 10922, "normalizer": name })
+                                        }
+                                    } else if basetypeoid == pg_sys::TEXTOID {
+                                        // text types are mapped as "text" with the "analyzer" set to the name
+                                        json!( {"type": "text", "analyzer": name })
+                                    } else {
+                                        panic!(
+                                            "Unsupported base domain type for {}: {}",
+                                            name, basetypeoid
+                                        );
+                                    }
+                                }
+                                None => {
+                                    info!(
                                     "Unrecognized type {:?} for {}, generating mapping as 'keyword'",
                                     typoid, attname
                                 );
-                                json!({ "type": "keyword" })
+                                    json!({ "type": "keyword" })
+                                }
                             }
                         }
                     }
-                },
+                }
             };
 
             mapping
@@ -499,11 +501,15 @@ fn handle_as_generic_string<'a>(
             builder.add_string_array(name, values)
         })
     } else {
-        Box::new(move |builder, name, datum, oid| {
-            builder.add_string(
-                name,
-                unsafe { String::from_datum(datum, false, oid) }.unwrap(),
-            )
+        Box::new(move |builder, name, datum, _oid| {
+            let result = unsafe {
+                std::ffi::CStr::from_ptr(pg_sys::OidOutputFunctionCall(output_func, datum))
+            };
+            let result_str = result
+                .to_str()
+                .expect("failed to convert unsupported type to a string");
+
+            builder.add_string(name, result_str.to_string());
         })
     }
 }
@@ -643,6 +649,7 @@ fn lookup_type_conversions() -> HashMap<pg_sys::Oid, pg_sys::Oid> {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
+#[pgx_macros::pg_schema]
 mod tests {
     use crate::mapping::{categorize_tupdesc, generate_default_mapping};
     use crate::utils::lookup_zdb_index_tupdesc;

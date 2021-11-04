@@ -30,14 +30,14 @@ pub unsafe extern "C" fn amcostestimate(
     #[cfg(any(feature = "pg10", feature = "pg11"))]
     let index_clauses = PgList::<pg_sys::RestrictInfo>::from_pg(path.indexclauses);
 
-    #[cfg(any(feature = "pg12", feature = "pg13"))]
+    #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14"))]
     let index_clauses = PgList::<pg_sys::IndexClause>::from_pg(path.indexclauses);
 
     for clause in index_clauses.iter_ptr() {
         #[cfg(any(feature = "pg10", feature = "pg11"))]
         let ri = clause.as_ref().expect("restrict info is NULL");
 
-        #[cfg(any(feature = "pg12", feature = "pg13"))]
+        #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14"))]
         let ri = clause
             .as_ref()
             .unwrap()

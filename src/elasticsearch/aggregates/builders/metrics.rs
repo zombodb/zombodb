@@ -30,10 +30,7 @@ pub enum TTestType {
     Heteroscedastic,
 }
 
-/// ```funcname
-/// sum_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe, name = "sum_agg")]
 fn sum_agg(aggregate_name: &str, field: &str) -> JsonB {
     JsonB(json! {
        {
@@ -45,10 +42,8 @@ fn sum_agg(aggregate_name: &str, field: &str) -> JsonB {
        }
     })
 }
-/// ```funcname
-/// sum_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "sum_agg")]
 fn sum_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> JsonB {
     JsonB(json! {
        {
@@ -61,10 +56,8 @@ fn sum_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> Jso
        }
     })
 }
-/// ```funcname
-/// sum_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "sum_agg")]
 fn sum_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
     JsonB(json! {
        {
@@ -78,10 +71,7 @@ fn sum_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> JsonB
     })
 }
 
-/// ```funcname
-/// avg_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe, name = "avg_agg")]
 fn avg_agg(aggregate_name: &str, field: &str) -> JsonB {
     JsonB(json! {
        {
@@ -93,10 +83,8 @@ fn avg_agg(aggregate_name: &str, field: &str) -> JsonB {
        }
     })
 }
-/// ```funcname
-/// avg_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "avg_agg")]
 fn avg_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
     JsonB(json! {
        {
@@ -109,10 +97,8 @@ fn avg_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> JsonB
        }
     })
 }
-/// ```funcname
-/// avg_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "avg_agg")]
 fn avg_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> JsonB {
     JsonB(json! {
        {
@@ -126,10 +112,7 @@ fn avg_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> Jso
     })
 }
 
-/// ```funcname
-/// min_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe, name = "min_agg")]
 fn min_agg(aggregate_name: &str, field: &str) -> JsonB {
     JsonB(json! {
        {
@@ -141,10 +124,8 @@ fn min_agg(aggregate_name: &str, field: &str) -> JsonB {
        }
     })
 }
-/// ```funcname
-/// min_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "min_agg")]
 fn min_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
     JsonB(json! {
        {
@@ -157,10 +138,8 @@ fn min_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> JsonB
        }
     })
 }
-/// ```funcname
-/// min_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "min_agg")]
 fn min_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> JsonB {
     JsonB(json! {
        {
@@ -174,10 +153,7 @@ fn min_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> Jso
     })
 }
 
-/// ```funcname
-/// max_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe, name = "max_agg")]
 fn max_agg(aggregate_name: &str, field: &str) -> JsonB {
     JsonB(json! {
        {
@@ -189,10 +165,8 @@ fn max_agg(aggregate_name: &str, field: &str) -> JsonB {
        }
     })
 }
-/// ```funcname
-/// max_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "max_agg")]
 fn max_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
     JsonB(json! {
        {
@@ -205,10 +179,8 @@ fn max_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> JsonB
        }
     })
 }
-/// ```funcname
-/// max_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "max_agg")]
 fn max_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> JsonB {
     JsonB(json! {
        {
@@ -222,10 +194,7 @@ fn max_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> Jso
     })
 }
 
-/// ```funcname
-/// stats_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe, name = "stats_agg")]
 fn stats_agg(aggregate_name: &str, field: &str) -> JsonB {
     JsonB(json! {
        {
@@ -237,10 +206,8 @@ fn stats_agg(aggregate_name: &str, field: &str) -> JsonB {
        }
     })
 }
-/// ```funcname
-/// stats_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "stats_agg")]
 fn stats_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
     JsonB(json! {
        {
@@ -253,10 +220,8 @@ fn stats_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> Jso
        }
     })
 }
-/// ```funcname
-/// stats_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "stats_agg")]
 fn stats_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> JsonB {
     JsonB(json! {
        {
@@ -270,10 +235,7 @@ fn stats_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> J
     })
 }
 
-/// ```funcname
-/// cardinality_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe, name = "cardinality_agg")]
 fn cardinality_agg(aggregate_name: &str, field: &str) -> JsonB {
     JsonB(json! {
        {
@@ -285,10 +247,8 @@ fn cardinality_agg(aggregate_name: &str, field: &str) -> JsonB {
        }
     })
 }
-/// ```funcname
-/// cardinality_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "cardinality_agg")]
 fn cardinality_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
     JsonB(json! {
        {
@@ -301,10 +261,8 @@ fn cardinality_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) 
        }
     })
 }
-/// ```funcname
-/// cardinality_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "cardinality_agg")]
 fn cardinality_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> JsonB {
     JsonB(json! {
        {
@@ -318,10 +276,7 @@ fn cardinality_agg_missing_float(aggregate_name: &str, field: &str, missing: f64
     })
 }
 
-/// ```funcname
-/// extended_stats_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe, name = "extended_stats_agg")]
 fn extended_stats_agg(aggregate_name: &str, field: &str) -> JsonB {
     JsonB(json! {
        {
@@ -333,10 +288,8 @@ fn extended_stats_agg(aggregate_name: &str, field: &str) -> JsonB {
        }
     })
 }
-/// ```funcname
-/// extended_stats_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "extended_stats_agg")]
 fn extended_stats_agg_missing_int(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
     JsonB(json! {
        {
@@ -349,10 +302,8 @@ fn extended_stats_agg_missing_int(aggregate_name: &str, field: &str, missing: i6
        }
     })
 }
-/// ```funcname
-/// extended_stats_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "extended_stats_agg")]
 fn extended_stats_agg_missing_float(aggregate_name: &str, field: &str, missing: f64) -> JsonB {
     JsonB(json! {
        {
@@ -366,10 +317,7 @@ fn extended_stats_agg_missing_float(aggregate_name: &str, field: &str, missing: 
     })
 }
 
-/// ```funcname
-/// matrix_stats_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe, name = "matrix_stats_agg")]
 fn matrix_stats_agg(aggregate_name: &str, field: Vec<&str>) -> JsonB {
     JsonB(json! {
         {
@@ -380,10 +328,8 @@ fn matrix_stats_agg(aggregate_name: &str, field: Vec<&str>) -> JsonB {
         }
     })
 }
-/// ```funcname
-/// matrix_stats_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "matrix_stats_agg")]
 fn matrix_stats_agg_missing_i64(
     aggregate_name: &str,
     field: Vec<&str>,
@@ -402,9 +348,6 @@ fn matrix_stats_agg_missing_i64(
     })
 }
 
-/// ```funcname
-/// geo_bounds_agg
-/// ```
 #[pg_extern(immutable, parallel_safe)]
 fn geo_bounds_agg(aggregate_name: &str, field: &str, wrap_longitude: bool) -> JsonB {
     JsonB(json! {
@@ -419,9 +362,6 @@ fn geo_bounds_agg(aggregate_name: &str, field: &str, wrap_longitude: bool) -> Js
     })
 }
 
-/// ```funcname
-/// value_count_agg
-/// ```
 #[pg_extern(immutable, parallel_safe)]
 fn value_count_agg(aggregate_name: &str, field: &str) -> JsonB {
     JsonB(json! {
@@ -435,10 +375,7 @@ fn value_count_agg(aggregate_name: &str, field: &str) -> JsonB {
     })
 }
 
-/// ```funcname
-/// boxplot_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe, name = "boxplot_agg")]
 fn boxplot_agg(aggregate_name: &str, field: &str) -> JsonB {
     JsonB(json! {
         {
@@ -450,10 +387,8 @@ fn boxplot_agg(aggregate_name: &str, field: &str) -> JsonB {
         }
     })
 }
-/// ```funcname
-/// boxplot_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "boxplot_agg")]
 fn boxplot_missing_agg(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
     JsonB(json! {
         {
@@ -466,10 +401,8 @@ fn boxplot_missing_agg(aggregate_name: &str, field: &str, missing: i64) -> JsonB
         }
     })
 }
-/// ```funcname
-/// boxplot_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "boxplot_agg")]
 fn boxplot_compression_missing_agg(
     aggregate_name: &str,
     field: &str,
@@ -489,9 +422,6 @@ fn boxplot_compression_missing_agg(
     })
 }
 
-/// ```funcname
-/// geo_centroid_agg
-/// ```
 #[pg_extern(immutable, parallel_safe)]
 fn geo_centroid_agg(aggregate_name: &str, field: &str) -> JsonB {
     JsonB(json! {
@@ -505,10 +435,7 @@ fn geo_centroid_agg(aggregate_name: &str, field: &str) -> JsonB {
     })
 }
 
-/// ```funcname
-/// median_absolute_deviation_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe, name = "median_absolute_deviation_agg")]
 fn median_absolute_deviation_agg(aggregate_name: &str, field: &str) -> JsonB {
     JsonB(json! {
         {
@@ -521,10 +448,7 @@ fn median_absolute_deviation_agg(aggregate_name: &str, field: &str) -> JsonB {
     })
 }
 
-/// ```funcname
-/// median_absolute_deviation_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe, name = "median_absolute_deviation_agg")]
 fn median_absolute_deviation_missing_agg(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
     JsonB(json! {
         {
@@ -537,10 +461,8 @@ fn median_absolute_deviation_missing_agg(aggregate_name: &str, field: &str, miss
         }
     })
 }
-/// ```funcname
-/// median_absolute_deviation_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "median_absolute_deviation_agg")]
 fn median_absolute_deviation_compression_missing_agg(
     aggregate_name: &str,
     field: &str,
@@ -560,10 +482,7 @@ fn median_absolute_deviation_compression_missing_agg(
     })
 }
 
-/// ```funcname
-/// percentiles_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe, name = "percentiles_agg")]
 fn percentiles_agg(aggregate_name: &str, field: &str) -> JsonB {
     JsonB(json! {
         {
@@ -575,10 +494,8 @@ fn percentiles_agg(aggregate_name: &str, field: &str) -> JsonB {
         }
     })
 }
-/// ```funcname
-/// percentiles
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "percentiles")]
 fn percentiles_precents_agg(aggregate_name: &str, field: &str, percents: Vec<f64>) -> JsonB {
     JsonB(json! {
         {
@@ -591,10 +508,8 @@ fn percentiles_precents_agg(aggregate_name: &str, field: &str, percents: Vec<f64
         }
     })
 }
-/// ```funcname
-/// percentiles
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "percentiles")]
 fn percentiles_keyed_agg(aggregate_name: &str, field: &str, keyed: bool) -> JsonB {
     JsonB(json! {
         {
@@ -607,10 +522,8 @@ fn percentiles_keyed_agg(aggregate_name: &str, field: &str, keyed: bool) -> Json
         }
     })
 }
-/// ```funcname
-/// percentiles_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "percentiles_agg")]
 fn percentiles_missing_agg(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
     JsonB(json! {
         {
@@ -623,10 +536,8 @@ fn percentiles_missing_agg(aggregate_name: &str, field: &str, missing: i64) -> J
         }
     })
 }
-/// ```funcname
-/// percentiles_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "percentiles_agg")]
 fn percentiles_precent_keyed_agg(
     aggregate_name: &str,
     field: &str,
@@ -645,10 +556,8 @@ fn percentiles_precent_keyed_agg(
         }
     })
 }
-/// ```funcname
-/// percentiles_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "percentiles_agg")]
 fn percentiles_precent_missing_agg(
     aggregate_name: &str,
     field: &str,
@@ -667,10 +576,8 @@ fn percentiles_precent_missing_agg(
         }
     })
 }
-/// ```funcname
-/// percentiles_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "percentiles_agg")]
 fn percentiles_keyed_missing_agg(
     aggregate_name: &str,
     field: &str,
@@ -689,10 +596,8 @@ fn percentiles_keyed_missing_agg(
         }
     })
 }
-/// ```funcname
-/// percentiles_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "percentiles_agg")]
 fn percentiles_precents_keyed_missing_agg(
     aggregate_name: &str,
     field: &str,
@@ -714,10 +619,7 @@ fn percentiles_precents_keyed_missing_agg(
     })
 }
 
-/// ```funcname
-/// string_stats_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe, name = "string_stats_agg")]
 fn string_stats_agg(aggregate_name: &str, field: &str) -> JsonB {
     JsonB(json! {
         {
@@ -731,10 +633,8 @@ fn string_stats_agg(aggregate_name: &str, field: &str) -> JsonB {
         }
     })
 }
-/// ```funcname
-/// string_stats_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "string_stats_agg")]
 fn string_stats_char_distribution_agg(
     aggregate_name: &str,
     field: &str,
@@ -751,10 +651,8 @@ fn string_stats_char_distribution_agg(
         }
     })
 }
-/// ```funcname
-/// string_stats_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "string_stats_agg")]
 fn string_stats_missing_agg(aggregate_name: &str, field: &str, missing: i64) -> JsonB {
     JsonB(json! {
         {
@@ -767,10 +665,8 @@ fn string_stats_missing_agg(aggregate_name: &str, field: &str, missing: i64) -> 
         }
     })
 }
-/// ```funcname
-/// string_stats_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "string_stats_agg")]
 fn string_stats_char_distribution_missing_agg(
     aggregate_name: &str,
     field: &str,
@@ -790,10 +686,7 @@ fn string_stats_char_distribution_missing_agg(
     })
 }
 
-/// ```funcname
-/// weighted_avg_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe, name = "weighted_avg_agg")]
 fn weighted_avg_agg(aggregate_name: &str, field_value: &str, field_weight: &str) -> JsonB {
     JsonB(json! {
         {
@@ -808,10 +701,8 @@ fn weighted_avg_agg(aggregate_name: &str, field_value: &str, field_weight: &str)
         }
     })
 }
-/// ```funcname
-/// weighted_avg_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "weighted_avg_agg")]
 fn weighted_avg_missing_value_agg(
     aggregate_name: &str,
     field_value: &str,
@@ -833,10 +724,7 @@ fn weighted_avg_missing_value_agg(
     })
 }
 
-/// ```funcname
-/// weighted_avg_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe, name = "weighted_avg_agg")]
 fn weighted_avg_missings_agg(
     aggregate_name: &str,
     field_value: &str,
@@ -860,10 +748,7 @@ fn weighted_avg_missings_agg(
     })
 }
 
-/// ```funcname
-/// top_metrics_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe, name = "top_metrics_agg")]
 fn top_metric_sort_desc_agg(
     aggregate_name: &str,
     metric_field: &str,
@@ -883,10 +768,8 @@ fn top_metric_sort_desc_agg(
         }
     })
 }
-/// ```funcname
-/// top_metrics_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "top_metrics_agg")]
 fn top_metric_score_agg(aggregate_name: &str, metric_field: &str) -> JsonB {
     JsonB(json! {
         {
@@ -901,10 +784,8 @@ fn top_metric_score_agg(aggregate_name: &str, metric_field: &str) -> JsonB {
         }
     })
 }
-/// ```funcname
-/// top_metrics_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "top_metrics_agg")]
 fn top_metric_agg(aggregate_name: &str, metric_field: &str, sort_type_lat_long: Vec<f64>) -> JsonB {
     JsonB(json! {
         {
@@ -924,10 +805,7 @@ fn top_metric_agg(aggregate_name: &str, metric_field: &str, sort_type_lat_long: 
     })
 }
 
-/// ```funcname
-/// t_test_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(immutable, parallel_safe, name = "t_test_agg")]
 fn t_test_fields_agg(aggregate_name: &str, fields: Vec<&str>, t_type: TTestType) -> JsonB {
     if fields.len() > 2 || fields.len() < 2 {
         PANIC!("Wrong amount of fields given, please list only 2")
@@ -946,10 +824,8 @@ fn t_test_fields_agg(aggregate_name: &str, fields: Vec<&str>, t_type: TTestType)
         }
     })
 }
-/// ```funcname
-/// t_test_agg
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+
+#[pg_extern(immutable, parallel_safe, name = "t_test_agg")]
 fn t_test_fields_queries_agg(
     aggregate_name: &str,
     fields: Vec<&str>,
@@ -982,6 +858,7 @@ fn t_test_fields_queries_agg(
 }
 
 #[cfg(test)]
+#[pgx_macros::pg_schema]
 mod tests {
     use crate::elasticsearch::aggregates::builders::metrics::*;
 

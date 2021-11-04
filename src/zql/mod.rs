@@ -391,6 +391,7 @@ mod macros {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
+#[pgx_macros::pg_schema]
 mod tests {
     use std::collections::{HashMap, HashSet};
 

@@ -15,8 +15,8 @@ fn date_histogram_agg(
     field: &str,
     calendar_interval: Option<default!(CalendarInterval, NULL)>,
     fixed_interval: Option<default!(&str, NULL)>,
-    time_zone: default!(&str, "+00:00"),
-    format: default!(&str, "yyyy-MM-dd"),
+    time_zone: default!(&str, "'+00:00'"),
+    format: default!(&str, "'yyyy-MM-dd'"),
     children: Option<default!(Vec<JsonB>, NULL)>,
 ) -> JsonB {
     #[derive(Serialize)]

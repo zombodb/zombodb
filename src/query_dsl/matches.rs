@@ -1,3 +1,4 @@
+#[pgx_macros::pg_schema]
 mod pg_catalog {
     use pgx::*;
     use serde::*;
@@ -27,6 +28,7 @@ mod pg_catalog {
     }
 }
 
+#[pgx_macros::pg_schema]
 mod dsl {
     use crate::query_dsl::matches::pg_catalog::*;
     use crate::zdbquery::ZDBQuery;
@@ -124,10 +126,7 @@ mod dsl {
         zero_terms_query: Option<ZeroTermsQuery>,
     }
 
-    /// ```funcname
-    /// match
-    /// ```
-    #[pg_extern(immutable, parallel_safe)]
+    #[pg_extern(immutable, parallel_safe, name = "match")]
     fn match_wrapper(
         field: &str,
         query: &str,
@@ -276,6 +275,7 @@ mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
+#[pgx_macros::pg_schema]
 mod tests {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;

@@ -57,6 +57,7 @@ lazy_static! {
     static ref NUM_CPUS: usize = num_cpus::get();
 }
 
+#[pgx_macros::pg_schema]
 pub mod pg_catalog {
     use pgx::*;
     use serde::Serialize;
@@ -530,7 +531,7 @@ fn request(
     index: PgRelation,
     endpoint: &str,
     method: default!(ArbitraryRequestType, "'GET'"),
-    post_data: Option<default!(JsonB, "NULL")>,
+    post_data: Option<default!(JsonB, NULL)>,
     null_on_error: Option<default!(bool, false)>,
 ) -> Option<String> {
     let es = Elasticsearch::new(&index);

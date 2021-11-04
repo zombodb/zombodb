@@ -1,3 +1,4 @@
+#[pgx_macros::pg_schema]
 mod pg_catalog {
     use crate::zdbquery::ZDBQueryClause;
     use pgx::*;
@@ -7,6 +8,7 @@ mod pg_catalog {
     pub struct BoolQueryPart(pub ZDBQueryClause);
 }
 
+#[pgx_macros::pg_schema]
 pub mod dsl {
     use super::pg_catalog::*;
     use crate::zdbquery::{ZDBQuery, ZDBQueryClause};
@@ -199,6 +201,7 @@ pub mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
+#[pgx_macros::pg_schema]
 mod tests {
     use crate::query_dsl::bool::dsl::*;
     use crate::zdbquery::ZDBQuery;

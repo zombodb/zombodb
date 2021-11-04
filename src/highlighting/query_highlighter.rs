@@ -373,6 +373,7 @@ fn highlight_document(
 }
 
 #[cfg(any(test, feature = "pg_test"))]
+#[pgx_macros::pg_schema]
 mod tests {
     use crate::highlighting::query_highlighter::QueryHighligther;
     use crate::zql::ast::Expr;
