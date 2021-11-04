@@ -56,6 +56,12 @@ name=PostgreSQL 13 for RHEL/CentOS 7 - x86_64\n\
 baseurl=https://download.postgresql.org/pub/repos/yum/13/redhat/rhel-7-x86_64\n\
 enabled=1\n\
 gpgcheck=0\n\
+\n\
+[pgdg14]\n\
+name=PostgreSQL 14 for RHEL/CentOS 7 - x86_64\n\
+baseurl=https://download.postgresql.org/pub/repos/yum/14/redhat/rhel-7-x86_64\n\
+enabled=1\n\
+gpgcheck=0\n\
 ' >> /etc/yum.repos.d/pgdg.repo
 
 
@@ -65,6 +71,7 @@ RUN yum install -y postgresql10 postgresql10-server postgresql10-devel
 RUN yum install -y postgresql11 postgresql11-server postgresql11-devel
 RUN yum install -y postgresql12 postgresql12-server postgresql12-devel
 RUN yum install -y postgresql13 postgresql13-server postgresql13-devel
+RUN yum install -y postgresql14 postgresql14-server postgresql14-devel
 
 USER ${UID}:${GID}
 WORKDIR /home/${USER}
@@ -85,4 +92,5 @@ RUN cargo pgx init \
 	--pg10=/usr/pgsql-10/bin/pg_config \
 	--pg11=/usr/pgsql-11/bin/pg_config \
 	--pg12=/usr/pgsql-12/bin/pg_config \
-	--pg13=/usr/pgsql-13/bin/pg_config
+	--pg13=/usr/pgsql-13/bin/pg_config \
+	--pg14=/usr/pgsql-14/bin/pg_config
