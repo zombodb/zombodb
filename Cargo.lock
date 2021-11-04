@@ -66,9 +66,9 @@ dependencies = [
 
 [[package]]
 name = "atomic-polyfill"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "053f1ab4712fe8c55de46932b46ecc774ae7906278ddf7fc2fbaaaa663b84392"
+checksum = "e686d748538a32325b28d6411dd8a939e7ad5128e5d0023cc4fd3573db456042"
 dependencies = [
  "critical-section",
  "riscv-target",
@@ -409,9 +409,9 @@ dependencies = [
 
 [[package]]
 name = "critical-section"
-version = "0.2.4"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "673b836c1c5a73bd981805236f46dfddbe1092a6a829b22464bd40d7ceefd2f9"
+checksum = "01e191a5a6f6edad9b679777ef6b6c0f2bdd4a333f2ecb8f61c3e28109a03d70"
 dependencies = [
  "bare-metal 1.0.0",
  "cfg-if",
@@ -788,9 +788,9 @@ dependencies = [
 
 [[package]]
 name = "gimli"
-version = "0.26.0"
+version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81a03ce013ffccead76c11a15751231f777d9295b845cc1266ed4d34fcbd7977"
+checksum = "78cc372d058dcf6d5ecd98510e7fbc9e5aec4d21de70f65fea8fecebcd881bd4"
 
 [[package]]
 name = "git2"
@@ -1347,8 +1347,9 @@ dependencies = [
 
 [[package]]
 name = "pgx"
-version = "0.2.0-beta.4"
-source = "git+https://github.com/zombodb/pgx?branch=pgbox-rewrite#9548fd19b3c06b7c22f1fed27ff140cb94164e68"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff7dda0222eb98f296cb099f4ada670356f1e106cc0547df24c32a6e74e35dff"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -1374,8 +1375,9 @@ dependencies = [
 
 [[package]]
 name = "pgx-macros"
-version = "0.2.0-beta.4"
-source = "git+https://github.com/zombodb/pgx?branch=pgbox-rewrite#9548fd19b3c06b7c22f1fed27ff140cb94164e68"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2903efe41e40c7b6aed4fae7a5bfc766a2239abdb61c36764514409e8afd2ec"
 dependencies = [
  "pgx-utils",
  "proc-macro-crate",
@@ -1387,8 +1389,9 @@ dependencies = [
 
 [[package]]
 name = "pgx-pg-sys"
-version = "0.2.0-beta.4"
-source = "git+https://github.com/zombodb/pgx?branch=pgbox-rewrite#9548fd19b3c06b7c22f1fed27ff140cb94164e68"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d98b9a9987180d7fabb622dd06688764f4b685f624ffdfdf0bbb125a84e44e0"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1406,8 +1409,9 @@ dependencies = [
 
 [[package]]
 name = "pgx-tests"
-version = "0.2.0-beta.4"
-source = "git+https://github.com/zombodb/pgx?branch=pgbox-rewrite#9548fd19b3c06b7c22f1fed27ff140cb94164e68"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef6bea5155c6256678b963034de61f4e4a1ae236ae67fc1924028caaf94586f1"
 dependencies = [
  "colored",
  "lazy_static",
@@ -1425,8 +1429,9 @@ dependencies = [
 
 [[package]]
 name = "pgx-utils"
-version = "0.2.0-beta.4"
-source = "git+https://github.com/zombodb/pgx?branch=pgbox-rewrite#9548fd19b3c06b7c22f1fed27ff140cb94164e68"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "84a0782fb45ad451a22f7b4b7f4eeb37dab6008fa8723a2b248581460287a9e4"
 dependencies = [
  "clap",
  "color-eyre",

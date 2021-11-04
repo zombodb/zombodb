@@ -31,17 +31,17 @@ lazy_static = "1.4.0"
 levenshtein = "1.0.5"
 memoffset = "0.6.4"
 num_cpus = "1.13.0"
-pathfinding = "2.2.1"
-pgx = { git = "https://github.com/zombodb/pgx", branch = "pgbox-rewrite" }
-pgx-macros = { git = "https://github.com/zombodb/pgx", branch = "pgbox-rewrite" }
+pathfinding = "2.2.2"
+pgx = "0.2.0"
+pgx-macros = "0.2.0"
 rayon = "1.5.1"
 regex = "1.5.4"
 rustc-hash = "1.1.0"
 serde = { version = "1.0.130", features = [ "derive" ] }
 serde_json = { version = "1.0.68", features = [ "preserve_order" ] }
-serde_cbor = "0.11.1"
-sqlformat = "0.1.6"
-ureq = { version = "2.1.1", features = [ "json" ] }
+serde_cbor = "0.11.2"
+sqlformat = "0.1.8"
+ureq = { version = "2.3.0", features = [ "json" ] }
 url = "2.2.2"
 
 [build-dependencies]
@@ -49,8 +49,8 @@ lalrpop = { version = "0.19.6", features = [ "lexer" ] }
 built = { version = "0.5.1", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
-pgx-tests = { git = "https://github.com/zombodb/pgx", branch = "pgbox-rewrite" }
-libc = "0.2.99"
+pgx-tests = "0.2.0"
+libc = "0.2.106"
 
 [profile.dev]
 panic = "unwind"
