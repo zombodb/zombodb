@@ -7,6 +7,7 @@ fi
 
 cargo update
 cargo install --git https://github.com/zombodb/pg-schema-diff.git
-cargo pgx dump-schema ./sql/releases
+cargo pgx schema -o ./sql/releases/zombodb--$2.sql
 echo "diffing schema..."
 pg-schema-diff diff sql/releases/zombodb--$1.sql sql/releases/zombodb--$2.sql > sql/zombodb--$1--$2.sql
+git add sql/releases/zombodb--$2.sql sql/zombodb--$1--$2.sql

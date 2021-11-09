@@ -646,8 +646,8 @@ CREATE TYPE pg_catalog.sortmode AS ENUM (
 'median'
 );
 CREATE TYPE pg_catalog.zdbquery;
-CREATE OR REPLACE FUNCTION pg_catalog.zdbquery_in(cstring) RETURNS pg_catalog.zdbquery IMMUTABLE STRICT PARALLEL SAFE LANGUAGE C AS 'MODULE_PATHNAME', 'zdbquery_in_wrapper';
-CREATE OR REPLACE FUNCTION pg_catalog.zdbquery_out(pg_catalog.zdbquery) RETURNS cstring IMMUTABLE STRICT PARALLEL SAFE LANGUAGE C AS 'MODULE_PATHNAME', 'zdbquery_out_wrapper';
+CREATE OR REPLACE FUNCTION pg_catalog.zdbquery_in("input" cstring) RETURNS pg_catalog.zdbquery IMMUTABLE STRICT PARALLEL SAFE LANGUAGE C AS 'MODULE_PATHNAME', 'zdbquery_in_wrapper';
+CREATE OR REPLACE FUNCTION pg_catalog.zdbquery_out("input" pg_catalog.zdbquery) RETURNS cstring IMMUTABLE STRICT PARALLEL SAFE LANGUAGE C AS 'MODULE_PATHNAME', 'zdbquery_out_wrapper';
 CREATE TYPE pg_catalog.zdbquery (
                                 INTERNALLENGTH = variable,
                                 INPUT = pg_catalog.zdbquery_in,
@@ -655,8 +655,8 @@ CREATE TYPE pg_catalog.zdbquery (
                                 STORAGE = extended
                             );
 CREATE TYPE pg_catalog.sortdescriptoroptions;
-CREATE OR REPLACE FUNCTION pg_catalog.sortdescriptoroptions_in(cstring) RETURNS pg_catalog.sortdescriptoroptions IMMUTABLE STRICT PARALLEL SAFE LANGUAGE C AS 'MODULE_PATHNAME', 'sortdescriptoroptions_in_wrapper';
-CREATE OR REPLACE FUNCTION pg_catalog.sortdescriptoroptions_out(pg_catalog.sortdescriptoroptions) RETURNS cstring IMMUTABLE STRICT PARALLEL SAFE LANGUAGE C AS 'MODULE_PATHNAME', 'sortdescriptoroptions_out_wrapper';
+CREATE OR REPLACE FUNCTION pg_catalog.sortdescriptoroptions_in("input" cstring) RETURNS pg_catalog.sortdescriptoroptions IMMUTABLE STRICT PARALLEL SAFE LANGUAGE C AS 'MODULE_PATHNAME', 'sortdescriptoroptions_in_wrapper';
+CREATE OR REPLACE FUNCTION pg_catalog.sortdescriptoroptions_out("input" pg_catalog.sortdescriptoroptions) RETURNS cstring IMMUTABLE STRICT PARALLEL SAFE LANGUAGE C AS 'MODULE_PATHNAME', 'sortdescriptoroptions_out_wrapper';
 CREATE TYPE pg_catalog.sortdescriptoroptions (
                                 INTERNALLENGTH = variable,
                                 INPUT = pg_catalog.sortdescriptoroptions_in,
@@ -664,8 +664,8 @@ CREATE TYPE pg_catalog.sortdescriptoroptions (
                                 STORAGE = extended
                             );
 CREATE TYPE pg_catalog.sortdescriptor;
-CREATE OR REPLACE FUNCTION pg_catalog.sortdescriptor_in(cstring) RETURNS pg_catalog.sortdescriptor IMMUTABLE STRICT PARALLEL SAFE LANGUAGE C AS 'MODULE_PATHNAME', 'sortdescriptor_in_wrapper';
-CREATE OR REPLACE FUNCTION pg_catalog.sortdescriptor_out(pg_catalog.sortdescriptor) RETURNS cstring IMMUTABLE STRICT PARALLEL SAFE LANGUAGE C AS 'MODULE_PATHNAME', 'sortdescriptor_out_wrapper';
+CREATE OR REPLACE FUNCTION pg_catalog.sortdescriptor_in("input" cstring) RETURNS pg_catalog.sortdescriptor IMMUTABLE STRICT PARALLEL SAFE LANGUAGE C AS 'MODULE_PATHNAME', 'sortdescriptor_in_wrapper';
+CREATE OR REPLACE FUNCTION pg_catalog.sortdescriptor_out("input" pg_catalog.sortdescriptor) RETURNS cstring IMMUTABLE STRICT PARALLEL SAFE LANGUAGE C AS 'MODULE_PATHNAME', 'sortdescriptor_out_wrapper';
 CREATE TYPE pg_catalog.sortdescriptor (
                                 INTERNALLENGTH = variable,
                                 INPUT = pg_catalog.sortdescriptor_in,
@@ -860,8 +860,8 @@ CREATE OR REPLACE FUNCTION zdb."query_tids"("index" regclass, "query" ZDBQuery) 
 -- sql/zql_ast.generated.sql
 --
 CREATE TYPE pg_catalog.proximitypart;
-CREATE OR REPLACE FUNCTION pg_catalog.proximitypart_in(cstring) RETURNS pg_catalog.proximitypart IMMUTABLE STRICT PARALLEL SAFE LANGUAGE C AS 'MODULE_PATHNAME', 'proximitypart_in_wrapper';
-CREATE OR REPLACE FUNCTION pg_catalog.proximitypart_out(pg_catalog.proximitypart) RETURNS cstring IMMUTABLE STRICT PARALLEL SAFE LANGUAGE C AS 'MODULE_PATHNAME', 'proximitypart_out_wrapper';
+CREATE OR REPLACE FUNCTION pg_catalog.proximitypart_in("input" cstring) RETURNS pg_catalog.proximitypart IMMUTABLE STRICT PARALLEL SAFE LANGUAGE C AS 'MODULE_PATHNAME', 'proximitypart_in_wrapper';
+CREATE OR REPLACE FUNCTION pg_catalog.proximitypart_out("input" pg_catalog.proximitypart) RETURNS cstring IMMUTABLE STRICT PARALLEL SAFE LANGUAGE C AS 'MODULE_PATHNAME', 'proximitypart_out_wrapper';
 CREATE TYPE pg_catalog.proximitypart (
                                 INTERNALLENGTH = variable,
                                 INPUT = pg_catalog.proximitypart_in,
@@ -1095,8 +1095,8 @@ CREATE OR REPLACE FUNCTION dsl."dis_max"("queries" ZDBQuery[], "boost" real DEFA
 -- sql/query_dsl_bool.generated.sql
 --
 CREATE TYPE pg_catalog.boolquerypart;
-CREATE OR REPLACE FUNCTION pg_catalog.boolquerypart_in(cstring) RETURNS pg_catalog.boolquerypart IMMUTABLE STRICT PARALLEL SAFE LANGUAGE C AS 'MODULE_PATHNAME', 'boolquerypart_in_wrapper';
-CREATE OR REPLACE FUNCTION pg_catalog.boolquerypart_out(pg_catalog.boolquerypart) RETURNS cstring IMMUTABLE STRICT PARALLEL SAFE LANGUAGE C AS 'MODULE_PATHNAME', 'boolquerypart_out_wrapper';
+CREATE OR REPLACE FUNCTION pg_catalog.boolquerypart_in("input" cstring) RETURNS pg_catalog.boolquerypart IMMUTABLE STRICT PARALLEL SAFE LANGUAGE C AS 'MODULE_PATHNAME', 'boolquerypart_in_wrapper';
+CREATE OR REPLACE FUNCTION pg_catalog.boolquerypart_out("input" pg_catalog.boolquerypart) RETURNS cstring IMMUTABLE STRICT PARALLEL SAFE LANGUAGE C AS 'MODULE_PATHNAME', 'boolquerypart_out_wrapper';
 CREATE TYPE pg_catalog.boolquerypart (
                                 INTERNALLENGTH = variable,
                                 INPUT = pg_catalog.boolquerypart_in,
