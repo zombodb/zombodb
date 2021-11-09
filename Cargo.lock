@@ -1347,9 +1347,9 @@ dependencies = [
 
 [[package]]
 name = "pgx"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed416b97385ad5e920f896d1c57e233ea282df84145d37f65d0f012cfd3fae97"
+checksum = "267f941341d659f0ecef7a3a99abe81c10d8a488f55e492a027a8a98bd344fd8"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -1375,9 +1375,9 @@ dependencies = [
 
 [[package]]
 name = "pgx-macros"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "efb2d5f305ab36efb28b6a7c89a877246397f685e1d70bd1c1e6ce41228f0f75"
+checksum = "d80fc6cbcfa9f7bc45a084c8a656247b4df1e6660705efe82719b1073e122dfc"
 dependencies = [
  "pgx-utils",
  "proc-macro-crate",
@@ -1389,9 +1389,9 @@ dependencies = [
 
 [[package]]
 name = "pgx-pg-sys"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "639a73d01ae517315f5856ca184923f082e857833b10fb7522c8f51f7591fd3d"
+checksum = "2c3c54566e6233c7c6204adf740abf123acd1ec54d94abb715ed987d4980a8e9"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1409,9 +1409,9 @@ dependencies = [
 
 [[package]]
 name = "pgx-tests"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4ebda1d8dcca7401dfb474c4b8304644524a5f8efecbdcb1b36f9edef3fcbf3"
+checksum = "22acb09be511d6563d54e866994038b51f8b0be19b8ee41e0c049295d0387732"
 dependencies = [
  "colored",
  "lazy_static",
@@ -1429,9 +1429,9 @@ dependencies = [
 
 [[package]]
 name = "pgx-utils"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "889b95bb8d8700c330155b59750fd6648c3d3758d58614b7116832b2335ae2bc"
+checksum = "9f408699e998b18ad4ed319d25e987145a7302e11aee04c4dce041334958cbc7"
 dependencies = [
  "clap",
  "color-eyre",
@@ -2240,9 +2240,9 @@ dependencies = [
 
 [[package]]
 name = "tinyvec"
-version = "1.5.0"
+version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f83b2a3d4d9091d0abd7eba4dc2710b1718583bd4d8992e2190720ea38f391f7"
+checksum = "2c1c1d5a42b6245520c249549ec267180beaffcc0615401ac8e31853d4b6d8d2"
 dependencies = [
  "tinyvec_macros",
 ]
