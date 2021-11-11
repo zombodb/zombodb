@@ -95,4 +95,8 @@ mod dsl {
     }
 }
 
-extension_sql_file!("../../sql/_postgis-support.sql", name = "postgis_support");
+extension_sql_file!(
+    "../../sql/_postgis-support.sql",
+    name = "postgis_support",
+    requires = ["mappings"]
+);
