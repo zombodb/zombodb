@@ -3,8 +3,7 @@ DROP FUNCTION IF EXISTS zdb.schema_version() CASCADE;
 CREATE FUNCTION zdb.schema_version() RETURNS text LANGUAGE sql AS $$
 SELECT '@DEFAULT_VERSION@ (@GIT_HASH@)'
 $$;
-DROP FUNCTION IF EXISTS zdb.restrict(root internal, _operator_oid oid, args internal, var_relid int4) CASCADE;
-CREATE OR REPLACE FUNCTION zdb.restrict(root internal, _operator_oid oid, args internal, var_relid int4) RETURNS float8 AS 'MODULE_PATHNAME', 'restrict_wrapper' IMMUTABLE LANGUAGE c PARALLEL SAFE;
+ALTER FUNCTION zdb.restrict IMMUTABLE PARALLEL SAFE;
 DROP FUNCTION IF EXISTS zdb.highlight_term(index regclass, field_name text, text text, token_to_highlight text) CASCADE;
 CREATE OR REPLACE FUNCTION zdb.highlight_term(index regclass, field_name text, text text, token_to_highlight text) RETURNS TABLE(field_name text, term text, type text, "position" int4, start_offset int8, end_offset int8) AS 'MODULE_PATHNAME', 'highlight_term_wrapper' IMMUTABLE LANGUAGE c PARALLEL SAFE STRICT;
 DROP FUNCTION IF EXISTS zdb.highlight_wildcard(index regclass, field_name text, text text, token_to_highlight text) CASCADE;
