@@ -248,6 +248,7 @@ FieldName: &'input str = {
 UntrackedFieldName: &'input str = {
     IDENTIFIER,
     DOTTED_IDENTIFIER,
+    QUOTED_IDENTIFIER,
 };
 
 ComparisonOperator: ComparisonOpcode = {
@@ -340,7 +341,7 @@ String: (&'input str, bool) = {
 };
 
 TableIndexName: QualifiedIndex = {
-    FieldName => {
+    UntrackedFieldName => {
         let mut parts = <>.split_terminator('.');
         let mut schema = parts.next();
         let mut table = parts.next();
