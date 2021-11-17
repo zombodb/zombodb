@@ -9,12 +9,12 @@ pub fn assign_links<'a>(root_index: &IndexLink, expr: &mut Expr<'a>, indexes: &V
                 Expr::Not(inner) => {
                     let dummy = Box::new(Expr::Null);
                     let swapped = std::mem::replace(inner, dummy);
-                    *expr = Expr::Not(Box::new(Expr::Linked(target_link.clone(), swapped)))
+                    *expr = Expr::Not(Box::new(Expr::Linked(target_link, swapped)))
                 }
                 _ => {
                     let dummy = Expr::Null;
                     let swapped = std::mem::replace(expr, dummy);
-                    *expr = Expr::Linked(target_link.clone(), Box::new(swapped));
+                    *expr = Expr::Linked(target_link, Box::new(swapped));
                 }
             }
         }
@@ -104,7 +104,11 @@ fn group_links<F: Fn(Vec<Expr>) -> Expr>(
             match target_link {
                 // the link is not the root_index, so we must wrap it in an Expr::Linked
                 Some(target_link) if &target_link != root_index => {
-                    v.push(Expr::Linked(target_link, Box::new(expr_list)))
+                    if let Expr::Not(not_expr) = expr_list {
+                        v.push(Expr::Not(Box::new(Expr::Linked(target_link, not_expr))))
+                    } else {
+                        v.push(Expr::Linked(target_link, Box::new(expr_list)))
+                    }
                 }
 
                 // it is the root_index, so we don't need to wrap it
