@@ -44,7 +44,11 @@ fn determine_link(
             Some(i.clone())
         }
 
-        Expr::Not(e) => determine_link(root_index, e, indexes),
+        // Expr::Not(e) => determine_link(root_index, e, indexes),
+        Expr::Not(e) => {
+            assign_links(root_index, e.as_mut(), indexes);
+            None
+        }
 
         Expr::WithList(v) => group_links(root_index, v, indexes, |v| Expr::WithList(v)),
         Expr::AndList(v) => group_links(root_index, v, indexes, |v| Expr::AndList(v)),
