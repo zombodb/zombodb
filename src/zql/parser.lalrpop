@@ -342,7 +342,15 @@ String: (&'input str, bool) = {
 
 TableIndexName: QualifiedIndex = {
     UntrackedFieldName => {
-        let mut parts = <>.split_terminator('.');
+        let name = <>;
+        let name = if name.starts_with('`') && name.ends_with('`') {
+            // if it's a QUOTED_IDENTIFIER we need to strip off the leading and trailing backticks
+            &name[1..name.len()-1]
+        } else {
+            // intended to use as-is
+            name
+        };
+        let mut parts = name.split_terminator('.');
         let mut schema = parts.next();
         let mut table = parts.next();
         let mut index = parts.next();
