@@ -1366,5 +1366,6 @@ mod tests {
         let link_definition = links.first().unwrap();
         let link = IndexLink::parse(&link_definition);
         assert_eq!(link, IndexLink::parse("id=<schema.table.index>other_id"));
+        assert_eq!(link.qualified_index.schema, Some("schema".into()))
     }
 }

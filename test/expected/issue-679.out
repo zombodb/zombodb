@@ -6,5 +6,17 @@ select zdb.count('so_posts', 'not user_data.id:-1');
  164867
 (1 row)
 
+select zdb.count('so_posts', 'not user_data.id:-1 or user_data.id:-1');
+ count  
+--------
+ 165240
+(1 row)
+
+select zdb.count('so_posts', '(not user_data.id:-1 or user_data.id:-1 and user_data.id:-1) not user_data.id:-1');
+ count  
+--------
+ 164867
+(1 row)
+
 alter index idxso_posts reset(options);
 alter index idxso_posts reset(max_terms_count);

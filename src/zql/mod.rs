@@ -699,12 +699,35 @@ mod tests {
     #[pg_test]
     fn test_expr_precedence() {
         assert_expr(
+            "a or (a.b:b with a.c:c) and (d and not (not (e or f)))",
+            Or!(
+                String!(Contains, "_", "a"),
+                And!(
+                    And!(
+                        And!(String!(Contains, "a.c", "c"), String!(Contains, "a.b", "b")),
+                        String!(Contains, "_", "d")
+                    ),
+                    Not!(Not!(Or!(
+                        String!(Contains, "_", "e"),
+                        String!(Contains, "_", "f")
+                    )))
+                )
+            ),
+        )
+    }
+
+    // same result as [test_expr_precedence], just different formatting
+    #[pg_test]
+    fn test_expr_precedence_no_groupings() {
+        assert_expr(
             "a or a.b:b with a.c:c and d and not not (e or f)",
             Or!(
                 String!(Contains, "_", "a"),
                 And!(
-                    And!(String!(Contains, "a.c", "c"), String!(Contains, "a.b", "b")),
-                    String!(Contains, "_", "d"),
+                    And!(
+                        And!(String!(Contains, "a.c", "c"), String!(Contains, "a.b", "b")),
+                        String!(Contains, "_", "d")
+                    ),
                     Not!(Not!(Or!(
                         String!(Contains, "_", "e"),
                         String!(Contains, "_", "f")
