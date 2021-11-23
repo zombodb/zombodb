@@ -1,0 +1,347 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js zombo">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Getting started tutorial</title>
+
+
+        <!-- Custom HTML head -->
+<link href="https://fonts.googleapis.com/css?family=Josefin+Slab|Open+Sans|Raleway" rel="stylesheet">
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+        <link rel="stylesheet" href="zombo-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="zombo.css">
+        <link rel="stylesheet" href="zombo-highlight.css">
+
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = "zombo";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('zombo')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="index.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="getting-started.html" class="active"><strong aria-hidden="true">2.</strong> Getting started tutorial</a></li><li class="chapter-item expanded affix "><li class="part-title">Usage</li><li class="chapter-item expanded "><a href="usage/zql-queries.html"><strong aria-hidden="true">3.</strong> ZQL queries</a></li><li class="chapter-item expanded "><a href="usage/elasticsearch-dsl-queries.html"><strong aria-hidden="true">4.</strong> ElasticSearch QueryDSL queries</a></li><li class="chapter-item expanded "><a href="usage/using-sql-functions.html"><strong aria-hidden="true">5.</strong> Using SQL functions</a></li><li class="chapter-item expanded "><a href="usage/scoring.html"><strong aria-hidden="true">6.</strong> Scoring</a></li><li class="chapter-item expanded "><a href="usage/highlighting.html"><strong aria-hidden="true">7.</strong> Highlighting</a></li><li class="chapter-item expanded "><a href="usage/cross-index-joins.html"><strong aria-hidden="true">8.</strong> Cross-index joins</a></li><li class="chapter-item expanded "><a href="usage/aggregations.html"><strong aria-hidden="true">9.</strong> Aggregations</a></li><li class="chapter-item expanded "><a href="usage/aggregate-builder-api.html"><strong aria-hidden="true">10.</strong> Aggregate Builder API</a></li><li class="chapter-item expanded "><a href="usage/_cat-api_.html"><strong aria-hidden="true">11.</strong> ElasticSearch _cat API</a></li><li class="chapter-item expanded "><a href="usage/postgis-support.html"><strong aria-hidden="true">12.</strong> PostGIS Support</a></li><li class="chapter-item expanded affix "><li class="part-title">Administration</li><li class="chapter-item expanded "><a href="administration/binary-installation.html"><strong aria-hidden="true">13.</strong> Binary installation</a></li><li class="chapter-item expanded "><a href="administration/source-installation.html"><strong aria-hidden="true">14.</strong> Source installation</a></li><li class="chapter-item expanded "><a href="administration/configuration.html"><strong aria-hidden="true">15.</strong> Configuration</a></li><li class="chapter-item expanded "><a href="administration/index-management.html"><strong aria-hidden="true">16.</strong> Index Management</a></li><li class="chapter-item expanded "><a href="usage/creating-a-zombodb-index.html"><strong aria-hidden="true">17.</strong> Creating a ZomboDB Index in Postgres</a></li><li class="chapter-item expanded affix "><li class="part-title">Internals</li><li class="chapter-item expanded "><a href="internals/important-things-to-know.html"><strong aria-hidden="true">18.</strong> Architecture</a></li><li class="chapter-item expanded "><a href="internals/type-mapping.html"><strong aria-hidden="true">19.</strong> Type Mapping</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="zombo">Zombo (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Cool</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title"></h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="getting-started"><a class="header" href="#getting-started">Getting Started</a></h1>
+<p>Assuming you’ve followed the <a href="/administration/binary-installation.html">Installation instructions</a>, using ZomboDB is extremely simple.</p>
+<p>Since ZomboDB is an actual Postgres index type, creating and querying its indices is about as simple as any other SQL query you might execute in Postgres.</p>
+<p>This guide intends to demonstrate the basics using <code>psql</code>.  A few assumptions I’m making about you are:</p>
+<ul>
+<li>You have a functional Postgres 10 Server</li>
+<li>You have a functional Elasticsearch 7.x cluster (even if just one node)</li>
+<li>You’re familiar with Postgres and <code>psql</code></li>
+<li>You’re familiar with Elasticsearch on at least a high-level</li>
+</ul>
+<p>ZomboDB’s intent is to abstract away Elasticsearch such that it appears as any other Postgres index, so the latter assumption isn’t necessarily important.</p>
+<h2 id="create-a-database-and-the-zombodb-extension"><a class="header" href="#create-a-database-and-the-zombodb-extension">Create a Database and the ZomboDB Extension</a></h2>
+<p>Lets begin with a new database named <code>tutorial</code>.</p>
+<pre><code>$ createdb tutorial
+$ psql tutorial
+psql (10.1)
+Type &quot;help&quot; for help.
+
+tutorial=# 
+</code></pre>
+<p>The first thing you need to do is create the ZomboDB extension in a database.</p>
+<p>If you’re unfamiliar with Postgres extensions, spend a few minutes reading <a href="http://www.postgresql.org/docs/10/static/sql-createextension.html">up on them</a>.</p>
+<p>Now, lets create the extension:</p>
+<pre><code class="language-sql">tutorial=# 
+CREATE EXTENSION zombodb;
+CREATE EXTENSION
+tutorial=#
+</code></pre>
+<p>ZomboDB installs itself into a new schema named <code>zdb</code>.  It also creates a schema called <code>dsl</code> which we’ll cover in the <a href="/usage/elasticsearch-dsl-queries.html">query syntax</a> documentation.</p>
+<p>The idea here is that you would never add the <code>zdb</code> schema to your <code>SEARCH_PATH</code>, but you might want to add the <code>dsl</code> schema for convenience while querying.</p>
+<p>To prove to yourself that the extension is really installed, you can double-check the <code>pg_extension</code> system catalog:</p>
+<pre><code class="language-sql">tutorial=# 
+SELECT * FROM pg_extension;
+ extname | extowner | extnamespace | extrelocatable | extversion | extconfig | extcondition 
+---------+----------+--------------+----------------+------------+-----------+--------------
+ plpgsql |       10 |           11 | f              | 1.0        |           | 
+ zombodb |       10 |         2200 | t              | 1.0.0      |           | 
+(2 rows)
+
+tutorial=# 
+</code></pre>
+<p>Here you can see that ZomboDB v1.0.0 is really installed.</p>
+<h2 id="create-and-populate-a-table"><a class="header" href="#create-and-populate-a-table">Create and Populate a Table</a></h2>
+<p>Nothing too out of the ordinary here.  Lets create a simple table that might represent a product catalog.</p>
+<pre><code class="language-sql">tutorial=# 
+CREATE TABLE products (
+    id SERIAL8 NOT NULL PRIMARY KEY,
+    name text NOT NULL,
+    keywords varchar(64)[],
+    short_summary text,
+    long_description zdb.fulltext, 
+    price bigint,
+    inventory_count integer,
+    discontinued boolean default false,
+    availability_date date
+);
+CREATE TABLE
+tutorial=#
+</code></pre>
+<p>Before we populate the table with some data, notice that the <code>long_description</code> field has a datatype of <code>zdb.fulltext</code>.</p>
+<p><code>zdb.fulltext</code> is a <a href="http://www.postgresql.org/docs/10.0/static/sql-createdomain.html">DOMAIN type</a> that sits on top of the standard <code>text</code> datatype.  As far as Postgres is concerned, it’s functionally no different than the <code>text</code> datatype, but it has special meaning to ZomboDB when indexing and searching (which we’ll discuss in a bit).</p>
+<p>ZomboDB will automatically create an Elasticsearch mapping that will analyze fields of type <code>text</code>, including ZomboDB’s DOMAIN type <code>zdb.fulltext</code>.</p>
+<p>Lets COPY some data into this table before we move on to creating a ZomboDB index and querying.  Rather than fill this document with boring data, just COPY it using curl:</p>
+<pre><code class="language-sql">tutorial=# 
+COPY products FROM PROGRAM 'curl https://raw.githubusercontent.com/zombodb/zombodb/master/TUTORIAL-data.dmp';
+COPY 4
+tutorial=#
+</code></pre>
+<p>Which should give you 4 rows that look a lot like:</p>
+<pre><code> id |      name      |                     keywords                      |                  short_summary                  |                                              long_description                                              | price | inventory_count | discontinued | availability_date 
+----+----------------+---------------------------------------------------+-------------------------------------------------+------------------------------------------------------------------------------------------------------------+-------+-----------------+--------------+-------------------
+  1 | Magical Widget | {magical,widget,round}                            | A widget that is quite magical                  | Magical Widgets come from the land of Magicville and are capable of things you can't imagine               |  9900 |              42 | f            | 2015-08-31
+  2 | Baseball       | {baseball,sports,round}                           | It's a baseball                                 | Throw it at a person with a big wooden stick and hope they don't hit it                                    |  1249 |               2 | f            | 2015-08-21
+  3 | Telephone      | {communication,primitive,&quot;alexander graham bell&quot;} | A device to enable long-distance communications | Use this to call your friends and family and be annoyed by telemarketers.  Long-distance charges may apply |  1899 |             200 | f            | 2015-08-11
+  4 | Box            | {wooden,box,&quot;negative space&quot;,square}              | Just an empty box made of wood                  | A wooden container that will eventually rot away.  Put stuff it in (but not a cat).                        | 17000 |               0 | t            | 2015-07-01
+(4 rows)
+</code></pre>
+<h2 id="creating-an-index"><a class="header" href="#creating-an-index">Creating an Index</a></h2>
+<p>In its basic form, a ZomboDB index is essentially a “covering index” that includes all the columns.</p>
+<p>Behind the scenes, ZomboDB automatically coverts the row being indexed into JSON because JSON is the format Elasticsearch requires.</p>
+<p>Knowing this, lets create an index on our <code>products</code> table:</p>
+<pre><code class="language-sql">tutorial=# 
+           CREATE INDEX idxproducts 
+                     ON products 
+                  USING zombodb ((products.*))
+                   WITH (url='http://localhost:9200/');
+CREATE INDEX
+tutorial=# 
+</code></pre>
+<p>So what we’ve done is create an index named <code>idxproducts</code> on the <code>products</code> table, we’ve indicated that we want the index to be of type <code>zombodb</code> (via <code>USING zombodb</code>) as opposed to say “btree” or “gin” or “gist”, and that it should index all columns in from the table (via, <code>(products.*)</code>).</p>
+<p>We’ve also specified the URL to our Elasticsearch cluster (<code>WITH (url='...')</code>).</p>
+<p>(a few other index options exist to control the number of Elasticsearch <code>shards</code> and <code>replicas</code> (among other things), but we’ll consider those advanced-use features and outside the scope of this document.)</p>
+<p>When we ran <code>CREATE INDEX</code> not only did we create an index within Postgres, we also created one within Elasticsearch.</p>
+<p>An Elasticsearch type mapping was automatically generated based on the structure of the <code>products</code> table as well.</p>
+<p>Lets move on to querying...</p>
+<h2 id="full-text-queries"><a class="header" href="#full-text-queries">Full-text Queries</a></h2>
+<p>In order to ensure the ZomboDB index is used, we’ll be making use of a custom operator: </p>
+<ul>
+<li><code>==&gt;</code> is defined as taking <code>::anyelement</code> on the left and <code>::zdbquery</code> on the right.</li>
+</ul>
+<p><code>::zdbquery</code> is a custom data type that ZomboDB installs which represents an Elasticsearch query in its QueryDSL JSON form.</p>
+<p>If the query isn’t valid json (as shown below), then it is automatically considered to be an Elasticsearch <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-syntax">Query String Syntax</a> query.</p>
+<p>Building Elasticsearch QueryDSL can be complicated, but ZomboDB provides an entire set of <a href="/usage/elasticsearch-dsl-queries.html">SQL-based builder functions</a> to make this process simple and type-safe.</p>
+<p>A typical query might be:</p>
+<pre><code class="language-sql">tutorial=# 
+SELECT * FROM products WHERE products ==&gt; 'sports, box';
+ id |   name   |           keywords            |         short_summary          |                                  long_description                                   | price | inventory_count | discontinued 
+----+----------+-------------------------------+--------------------------------+-------------------------------------------------------------------------------------+-------+-----------------+--------------
+  4 | Box      | {wooden,box,&quot;negative space&quot;} | Just an empty box made of wood | A wooden container that will eventually rot away.  Put stuff it in (but not a cat). | 17000 |               0 | t
+  2 | Baseball | {baseball,sports}             | It's a baseball                | Throw it at a person with a big wooden stick and hope they don't hit it             |  1249 |               2 | f
+(2 rows)
+
+tutorial=# 
+</code></pre>
+<p>And its query plan is:</p>
+<pre><code class="language-sql">tutorial=# 
+ EXPLAIN SELECT * FROM products WHERE products ==&gt; 'sports, box';
+                                  QUERY PLAN                                  
+------------------------------------------------------------------------------
+ Index Scan using idxproducts on products  (cost=0.00..4.06 rows=4 width=153)
+   Index Cond: (products.* ==&gt; 'sports or box'::zdbquery)
+(2 rows)
+
+tutorial=# 
+</code></pre>
+<p>From here, it’s just a matter of coming up with a full-text query to answer your question.  See the <a href="./usage/zql-queries.html">Query Syntax documentation</a> or the <a href="./usage/generating-queries.html">DSL Query Builder documentation</a> for details on what the full-text query syntax can do.</p>
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<p>In summary, the process of getting up and running is simply:</p>
+<pre><code class="language-sql">CREATE EXTENSION zombodb;
+CREATE TABLE foo ...;
+&lt;load data&gt;
+CREATE INDEX ON foo USING zombodb ((foo.*) WITH (...);
+SELECT FROM foo WHERE foo ==&gt; '...';
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="index.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next" href="usage/zql-queries.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="index.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next" href="usage/zql-queries.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script type="text/javascript">
+            var socket = new WebSocket("ws://localhost:3000/__livereload");
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </body>
+</html>
