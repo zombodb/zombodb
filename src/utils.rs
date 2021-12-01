@@ -5,14 +5,21 @@ use pgx::*;
 use serde_json::Value;
 use std::io::Read;
 
-pub fn has_zdb_index(heap_relation: &PgRelation, current_index: &PgRelation) -> bool {
+pub fn count_non_shadow_zdb_indices(
+    heap_relation: &PgRelation,
+    current_index: &PgRelation,
+) -> usize {
+    let mut cnt = 0;
     for index in heap_relation.indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
         if index.oid() != current_index.oid() && is_zdb_index(&index) {
-            return true;
+            let options = ZDBIndexOptions::from_relation_no_lookup(&index, None);
+            if !options.is_shadow_index() {
+                cnt += 1;
+            }
         }
     }
 
-    false
+    cnt
 }
 
 fn get_heap_relation_for_func_expr(
