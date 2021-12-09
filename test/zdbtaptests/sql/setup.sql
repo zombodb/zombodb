@@ -424,4 +424,5 @@ CREATE OR REPLACE VIEW unit_tests.data_json_agg_view AS
 VACUUM ANALYZE unit_tests.data_same;
 VACUUM ANALYZE unit_tests.var_same;
 VACUUM ANALYZE unit_tests.vol_same;
+ALTER DATABASE zdbtaptests SET zdb.enable_search_accelerator TO ON;
 --**********************************************************************************************************************
