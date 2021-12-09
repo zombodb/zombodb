@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use pgx::PgRelation;
 
-use crate::utils::is_nested_field;
+use crate::utils::{is_named_index_link, is_nested_field};
 use crate::zql::ast::Expr;
 
 pub fn group_nested(index: &Option<&PgRelation>, expr: &mut Expr) {
@@ -82,7 +82,7 @@ fn maybe_nest(index: &Option<&PgRelation>, expr: &mut Expr) {
 
             // then we build bottom-up for the leading paths
             let mut paths: Vec<&str> = path.split('.').collect();
-            if is_nested {
+            if is_nested || is_named_index_link(index, &path) {
                 paths.pop();
             }
 

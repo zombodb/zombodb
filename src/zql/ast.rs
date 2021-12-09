@@ -742,7 +742,6 @@ impl QualifiedIndex {
 }
 
 impl IndexLink {
-    #[cfg(any(test, feature = "pg_test"))]
     pub fn parse(input: &str) -> Self {
         INDEX_LINK_PARSER.with(|parser| {
             parser

@@ -1,4 +1,5 @@
 use crate::access_method::options::ZDBIndexOptions;
+use crate::zql::ast::IndexLink;
 use byteorder::ReadBytesExt;
 use pgx::pg_sys::AsPgCStr;
 use pgx::*;
@@ -321,6 +322,22 @@ pub fn is_date_subfield(index: &PgRelation, field: &str) -> bool {
 
 pub fn is_nested_field(index: &PgRelation, field: &str) -> bool {
     lookup_es_field_type(index, field) == "nested"
+}
+
+pub fn is_named_index_link(index: &PgRelation, name: &str) -> bool {
+    let options = ZDBIndexOptions::from_relation(index);
+    if options.links().is_some() {
+        for link in options.links().as_ref().unwrap() {
+            let link = IndexLink::parse(link.as_str());
+            if let Some(link_name) = link.name {
+                if link_name == name {
+                    return true;
+                }
+            }
+        }
+    }
+
+    false
 }
 
 pub fn lookup_es_field_type(index: &PgRelation, field: &str) -> String {
