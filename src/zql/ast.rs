@@ -14,7 +14,7 @@ use crate::utils::{find_zdb_index, get_null_copy_to_fields};
 use crate::zql::parser::Token;
 use crate::zql::relationship_manager::RelationshipManager;
 use crate::zql::transformations::expand::expand;
-use crate::zql::transformations::expand_index_links::{expand_index_links, merge_adjacent_links};
+use crate::zql::transformations::expand_index_links::expand_index_links;
 use crate::zql::transformations::field_finder::{find_fields, find_link_for_field};
 use crate::zql::transformations::field_lists::expand_field_lists;
 use crate::zql::transformations::index_links::assign_links;
@@ -546,7 +546,6 @@ impl<'input> Expr<'input> {
             &mut relationship_manager,
             &index_links,
         );
-        merge_adjacent_links(&mut expr);
         rewrite_proximity_chains(&mut expr);
         expr = retarget_expr(expr, &root_index, target_link, &mut relationship_manager);
         Ok(expr)
