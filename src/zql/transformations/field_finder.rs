@@ -17,7 +17,7 @@ pub fn find_fields(expr: &mut Expr, root_index: &IndexLink, indexes: &Vec<IndexL
         Expr::WithList(v) | Expr::AndList(v) | Expr::OrList(v) => v
             .iter_mut()
             .for_each(|e| find_fields(e, root_index, indexes)),
-        Expr::Linked(_, _) => {}
+        Expr::Linked(_, _) => unreachable!("No Expr::Linked node should exist yet"),
         Expr::Json(_) => {}
         Expr::Contains(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
         Expr::Eq(f, _) => f.index = find_link_for_field(&f, root_index, indexes),

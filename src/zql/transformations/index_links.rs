@@ -1,4 +1,5 @@
-use crate::zql::ast::{Expr, IndexLink};
+use crate::zql::ast::{Expr, IndexLink, QualifiedField};
+use crate::zql::transformations::field_finder::find_link_for_field;
 use indexmap::IndexMap;
 
 pub fn assign_links<'a>(root_index: &IndexLink, expr: &mut Expr<'a>, indexes: &Vec<IndexLink>) {
@@ -38,14 +39,14 @@ fn determine_link(
         }
         Expr::Expand(i, e, f) => {
             if let Some(f) = f {
-                assign_links(i, f, indexes);
+                determine_link(i, f, indexes);
             }
-            assign_links(i, e, indexes);
-            Some(i.clone())
+            determine_link(i, e, indexes);
+            None
         }
 
         Expr::Not(e) => {
-            assign_links(root_index, e.as_mut(), indexes);
+            determine_link(root_index, e.as_mut(), indexes);
             None
         }
 
@@ -55,7 +56,18 @@ fn determine_link(
 
         Expr::Linked(_, _) => unreachable!("determine_link: linked"),
 
-        Expr::Nested(_, e) => determine_link(root_index, e, indexes),
+        Expr::Nested(path, _) => {
+            let index_link = find_link_for_field(
+                &QualifiedField {
+                    index: None,
+                    field: path.to_string(),
+                },
+                root_index,
+                indexes,
+            )
+            .unwrap();
+            maybe_link(root_index, expr, index_link)
+        }
 
         Expr::Json(_) => Some(root_index.clone()),
 
@@ -70,7 +82,19 @@ fn determine_link(
         | Expr::Regex(f, _)
         | Expr::MoreLikeThis(f, _)
         | Expr::FuzzyLikeThis(f, _)
-        | Expr::Matches(f, _) => f.index.clone(),
+        | Expr::Matches(f, _) => {
+            let index_link = f.index.clone().unwrap();
+            maybe_link(root_index, expr, index_link)
+        }
+    }
+}
+
+fn maybe_link(root_index: &IndexLink, expr: &mut Expr, index_link: IndexLink) -> Option<IndexLink> {
+    if root_index.qualified_index != index_link.qualified_index {
+        *expr = Expr::Linked(index_link, Box::new(expr.clone()));
+        Some(root_index.clone())
+    } else {
+        Some(index_link)
     }
 }
 
@@ -106,7 +130,9 @@ fn group_links<F: Fn(Vec<Expr>) -> Expr>(
 
             match target_link {
                 // the link is not the root_index, so we must wrap it in an Expr::Linked
-                Some(target_link) if &target_link != root_index => {
+                Some(target_link)
+                    if &target_link.qualified_index != &root_index.qualified_index =>
+                {
                     if let Expr::Not(not_expr) = expr_list {
                         v.push(Expr::Not(Box::new(Expr::Linked(target_link, not_expr))))
                     } else {

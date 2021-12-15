@@ -62,7 +62,9 @@ pub fn expr_to_dsl(
         Expr::Null => unreachable!(),
 
         Expr::Subselect(link, e) => expr_to_dsl(link, index_links, e),
-        Expr::Expand(link, e, _) => expr_to_dsl(link, index_links, e),
+        Expr::Expand(link, e, _) => {
+            expr_to_dsl(link, index_links, &Expr::Linked(link.clone(), e.clone()))
+        }
 
         Expr::WithList(_) => unreachable!("dsl conversion of Expr::WithList shouldn't happen"),
         Expr::AndList(v) => {
