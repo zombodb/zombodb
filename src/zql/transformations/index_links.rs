@@ -106,8 +106,7 @@ fn group_links<F: Fn(Vec<Expr>) -> Expr>(
 ) -> Option<IndexLink> {
     // group the elements of 'v' together by whatever link we determine each to belong
     let mut link_groups = IndexMap::<Option<IndexLink>, Vec<Expr>>::new();
-    while !v.is_empty() {
-        let mut e = v.pop().unwrap();
+    for mut e in v.drain(..) {
         link_groups
             .entry(determine_link(root_index, &mut e, indexes))
             .or_default()
