@@ -1,6 +1,8 @@
 use crate::elasticsearch::aggregates::terms::pg_catalog::TermsOrderBy;
 use crate::elasticsearch::Elasticsearch;
-use crate::utils::{is_date_field, is_date_subfield, is_string_field, json_to_string};
+use crate::utils::{
+    is_date_field, is_date_subfield, is_named_index_link, is_string_field, json_to_string,
+};
 use crate::zdbquery::ZDBQuery;
 use chrono::{TimeZone, Utc};
 use pgx::*;
@@ -142,6 +144,22 @@ fn tally(
         minute(Option<&'a str>),
         second(Option<&'a str>),
     }
+
+    let original_index = index.clone();
+    let (prepared_query, index) = query.prepare(&index, Some(field_name.to_string()));
+    let elasticsearch = Elasticsearch::new(&index);
+
+    let field_name = if field_name.contains(".") {
+        if is_named_index_link(&original_index, field_name.split('.').next().unwrap()) {
+            let mut split = field_name.splitn(2, '.');
+            split.next().unwrap();
+            split.next().unwrap()
+        } else {
+            field_name
+        }
+    } else {
+        field_name
+    };
 
     let is_string_field = is_string_field(&index, field_name);
     let is_date_subfield = is_date_subfield(&index, field_name);
@@ -285,8 +303,6 @@ fn tally(
         );
     }
 
-    let (prepared_query, index) = query.prepare(&index, Some(field_name.clone()));
-    let elasticsearch = Elasticsearch::new(&index);
     let request = elasticsearch.aggregate_set::<TermsAggData>(
         Some(field_name.clone()),
         is_nested,
