@@ -1,7 +1,7 @@
 [package]
 name = "zombodb"
 description = "Making Postgres and Elasticsearch work together like it's 2021"
-version = "3000.0.6"
+version = "3000.0.7"
 edition = "2018"
 build = "build.rs"
 readme = "README.md"
@@ -23,22 +23,21 @@ pg_test = [ ]
 byteorder = "1.4.3"
 chrono = "0.4.19"
 crossbeam-channel = "0.5.1"
-dashmap = "4.0.2"
+dashmap = "5.0.0"
 humantime = "2.1.0"
 indexmap = "1.7.0"
 lalrpop-util = "0.19.6"
 lazy_static = "1.4.0"
 levenshtein = "1.0.5"
-memoffset = "0.6.4"
+memoffset = "0.6.5"
 num_cpus = "1.13.0"
-pathfinding = "2.2.2"
-pgx = "0.2.5"
-pgx-macros = "0.2.5"
+pgx = "0.2.6"
+pgx-macros = "0.2.6"
 rayon = "1.5.1"
 regex = "1.5.4"
 rustc-hash = "1.1.0"
-serde = { version = "1.0.130", features = [ "derive" ] }
-serde_json = { version = "1.0.71", features = [ "preserve_order" ] }
+serde = { version = "1.0.132", features = [ "derive" ] }
+serde_json = { version = "1.0.73", features = [ "preserve_order" ] }
 serde_cbor = "0.11.2"
 sqlformat = "0.1.8"
 ureq = { version = "2.3.1", features = [ "json" ] }
@@ -49,8 +48,8 @@ lalrpop = { version = "0.19.6", features = [ "lexer" ] }
 built = { version = "0.5.1", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
-pgx-tests = "0.2.5"
-libc = "0.2.107"
+pgx-tests = "0.2.6"
+libc = "0.2.112"
 
 [profile.dev]
 panic = "unwind"

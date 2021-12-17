@@ -118,7 +118,7 @@ dependencies = [
 
 [[package]]
 name = "docker-build-system"
-version = "3000.0.6"
+version = "3000.0.7"
 dependencies = [
  "colored",
  "ctrlc",
