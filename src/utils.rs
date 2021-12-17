@@ -1,18 +1,26 @@
 use crate::access_method::options::ZDBIndexOptions;
+use crate::zql::ast::IndexLink;
 use byteorder::ReadBytesExt;
 use pgx::pg_sys::AsPgCStr;
 use pgx::*;
 use serde_json::Value;
 use std::io::Read;
 
-pub fn has_zdb_index(heap_relation: &PgRelation, current_index: &PgRelation) -> bool {
+pub fn count_non_shadow_zdb_indices(
+    heap_relation: &PgRelation,
+    current_index: &PgRelation,
+) -> usize {
+    let mut cnt = 0;
     for index in heap_relation.indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
         if index.oid() != current_index.oid() && is_zdb_index(&index) {
-            return true;
+            let options = ZDBIndexOptions::from_relation_no_lookup(&index, None);
+            if !options.is_shadow_index() {
+                cnt += 1;
+            }
         }
     }
 
-    false
+    cnt
 }
 
 fn get_heap_relation_for_func_expr(
@@ -95,7 +103,7 @@ pub fn find_zdb_index(
                         let shadow_index = find_zdb_shadow_index(&heap, func_expr.funcid);
                         let options = ZDBIndexOptions::from_relation(&shadow_index);
                         let links = options.links().clone();
-                        return Ok((shadow_index, links));
+                        return Ok((options.index_relation(), links));
                     }
                 }
             }
@@ -314,6 +322,22 @@ pub fn is_date_subfield(index: &PgRelation, field: &str) -> bool {
 
 pub fn is_nested_field(index: &PgRelation, field: &str) -> bool {
     lookup_es_field_type(index, field) == "nested"
+}
+
+pub fn is_named_index_link(index: &PgRelation, name: &str) -> bool {
+    let options = ZDBIndexOptions::from_relation(index);
+    if options.links().is_some() {
+        for link in options.links().as_ref().unwrap() {
+            let link = IndexLink::parse(link.as_str());
+            if let Some(link_name) = link.name {
+                if link_name == name {
+                    return true;
+                }
+            }
+        }
+    }
+
+    false
 }
 
 pub fn lookup_es_field_type(index: &PgRelation, field: &str) -> String {

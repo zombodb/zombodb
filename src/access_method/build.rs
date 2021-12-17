@@ -5,7 +5,7 @@ use crate::executor_manager::get_executor_manager;
 use crate::gucs::ZDB_LOG_LEVEL;
 use crate::json::builder::JsonBuilder;
 use crate::mapping::{categorize_tupdesc, generate_default_mapping, CategorizedAttribute};
-use crate::utils::{has_zdb_index, lookup_zdb_index_tupdesc};
+use crate::utils::{count_non_shadow_zdb_indices, lookup_zdb_index_tupdesc};
 use pgx::*;
 
 struct BuildState<'a> {
@@ -45,8 +45,8 @@ pub extern "C" fn ambuild(
     }
 
     unsafe {
-        if has_zdb_index(&heap_relation, &index_relation) {
-            panic!("Relations can only have one ZomboDB index");
+        if count_non_shadow_zdb_indices(&heap_relation, &index_relation) != 0 {
+            panic!("Relations can only have one non-shadow ZomboDB index");
         } else if !index_info
             .as_ref()
             .expect("index_info is null")
