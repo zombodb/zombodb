@@ -887,15 +887,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "integer-sqrt"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "276ec31bcb4a9ee45f58bec6f9ec700ae4cf4f4f8f2fa7e06cb406bd5ffdd770"
-dependencies = [
- "num-traits",
-]
-
-[[package]]
 name = "itertools"
 version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1249,20 +1240,6 @@ dependencies = [
  "redox_syscall",
  "smallvec",
  "winapi 0.3.9",
-]
-
-[[package]]
-name = "pathfinding"
-version = "3.0.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a64bfa665d8821a903701c7bb440e7f72b1f05387b390cc23f498cc23148099"
-dependencies = [
- "fixedbitset 0.4.0",
- "indexmap",
- "integer-sqrt",
- "itertools",
- "num-traits",
- "rustc-hash",
 ]
 
 [[package]]
@@ -2679,7 +2656,6 @@ dependencies = [
  "libc",
  "memoffset",
  "num_cpus",
- "pathfinding",
  "pgx",
  "pgx-macros",
  "pgx-tests",
