@@ -191,7 +191,7 @@ pub fn is_non_shadow_zdb_index(index: &PgRelation) -> bool {
 #[inline]
 pub fn is_view(relation: &PgRelation) -> bool {
     let rel = unsafe { PgBox::from_pg(relation.rd_rel) };
-    rel.relkind == pg_sys::RELKIND_VIEW as i8
+    rel.relkind == pg_sys::RELKIND_VIEW as std::os::raw::c_char
 }
 
 pub fn lookup_zdb_extension_oid() -> pg_sys::Oid {
