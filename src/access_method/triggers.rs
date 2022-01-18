@@ -32,7 +32,7 @@ fn zdb_update_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
 
     unsafe {
         let args = std::slice::from_raw_parts(tg_trigger.tgargs, tg_trigger.tgnargs as usize);
-        let index_relid_str = CStr::from_ptr(args[0] as *const i8).to_str().unwrap();
+        let index_relid_str = CStr::from_ptr(args[0] as *const std::os::raw::c_char).to_str().unwrap();
         let index_relid = str::parse::<pg_sys::Oid>(index_relid_str).expect("malformed oid");
         let mut tid = (*trigdata.tg_trigtuple).t_self;
 
@@ -82,7 +82,7 @@ fn zdb_delete_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
 
     unsafe {
         let args = std::slice::from_raw_parts(tg_trigger.tgargs, tg_trigger.tgnargs as usize);
-        let index_relid_str = CStr::from_ptr(args[0] as *const i8).to_str().unwrap();
+        let index_relid_str = CStr::from_ptr(args[0] as *const std::os::raw::c_char).to_str().unwrap();
         let index_relid = str::parse::<pg_sys::Oid>(index_relid_str).expect("malformed oid");
         let mut tid = (*trigdata.tg_trigtuple).t_self;
 
