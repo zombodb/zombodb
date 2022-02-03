@@ -1,6 +1,6 @@
 [package]
 name = "docker-build-system"
-version = "3000.0.7"
+version = "3000.0.8"
 authors = ["Eric B. Ridge <eebbrr@gmail.com>"]
 edition = "2018"
 
