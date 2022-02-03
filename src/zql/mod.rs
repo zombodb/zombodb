@@ -894,4 +894,15 @@ mod tests {
             String!(Contains, "some:weird:field%", "value"),
         )
     }
+
+    #[pg_test]
+    fn issue713() {
+        assert_expr(
+            "`some:weird:field%`: value AND `some:other:weird:field%`: value",
+            And!(
+                String!(Contains, "some:weird:field%", "value"),
+                String!(Contains, "some:other:weird:field%", "value")
+            ),
+        )
+    }
 }

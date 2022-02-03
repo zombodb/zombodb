@@ -66,7 +66,7 @@ match {
     // with a higher matching precedence
     r#"(?i)[a-z0-9_]+"# => IDENTIFIER,
     r#"(?i)([a-z0-9_]+(\.[a-z0-9_]+)+)"# => DOTTED_IDENTIFIER,
-    r#"(?i)`.+`"# => QUOTED_IDENTIFIER,
+    r#"(?i)`[^`]+`"# => QUOTED_IDENTIFIER,
 } else {
     // even lower precedence values
     r#"(([^:=<>~!,&%/\\^\[\](){}"'\t\n\v\f\r ]|(\\.))+\.?)+"# => UNQUOTED_VALUE,
