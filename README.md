@@ -1,6 +1,6 @@
 [![logo](logo.png)](https://www.zombodb.com/)
 
-###### Making Postgres and Elasticsearch work together like it's 2021
+###### Making Postgres and Elasticsearch work together like it's 2022
 
 ![cargo test --all](https://github.com/zombodb/zombodb/workflows/cargo%20pgx%20test%20pgXX/badge.svg)
 [![Twitter Follow](https://img.shields.io/twitter/follow/zombodb.svg?style=flat)](https://twitter.com/zombodb)
@@ -168,7 +168,7 @@ complexity.
 
 ## License
 
-Copyright 2018-2021 ZomboDB, LLC
+Copyright 2018-2022 ZomboDB, LLC
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the
 License. You may obtain a copy of the License at
