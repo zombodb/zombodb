@@ -1372,8 +1372,9 @@ dependencies = [
 
 [[package]]
 name = "pgx"
-version = "0.3.2"
-source = "git+https://github.com/zombodb/pgx.git?rev=9c27108a09adda8842d810d7a6a982fc0f2a7f1c#9c27108a09adda8842d810d7a6a982fc0f2a7f1c"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "016d4c6b863e2edcccc3e7a05f4e3eed5c3c09eafe407d7a8123e98f5f929e58"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -1401,8 +1402,9 @@ dependencies = [
 
 [[package]]
 name = "pgx-macros"
-version = "0.3.2"
-source = "git+https://github.com/zombodb/pgx.git?rev=9c27108a09adda8842d810d7a6a982fc0f2a7f1c#9c27108a09adda8842d810d7a6a982fc0f2a7f1c"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4450f0bec80592f1c1caad4436d7bb1a8fe52788a07f20d33365e015a56ec0ae"
 dependencies = [
  "pgx-utils",
  "proc-macro-crate",
@@ -1414,8 +1416,9 @@ dependencies = [
 
 [[package]]
 name = "pgx-pg-sys"
-version = "0.3.2"
-source = "git+https://github.com/zombodb/pgx.git?rev=9c27108a09adda8842d810d7a6a982fc0f2a7f1c#9c27108a09adda8842d810d7a6a982fc0f2a7f1c"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92b83b5a8849515b7134daa729ccb703c5767469934cbd029ff7ece2b775fe0a"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1435,8 +1438,9 @@ dependencies = [
 
 [[package]]
 name = "pgx-tests"
-version = "0.3.2"
-source = "git+https://github.com/zombodb/pgx.git?rev=9c27108a09adda8842d810d7a6a982fc0f2a7f1c#9c27108a09adda8842d810d7a6a982fc0f2a7f1c"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4eedda8926249b2db1c3572e581dadc55265bdcce5414cc86d9ba80381e72bdf"
 dependencies = [
  "colored",
  "eyre",
@@ -1455,8 +1459,9 @@ dependencies = [
 
 [[package]]
 name = "pgx-utils"
-version = "0.3.2"
-source = "git+https://github.com/zombodb/pgx.git?rev=9c27108a09adda8842d810d7a6a982fc0f2a7f1c#9c27108a09adda8842d810d7a6a982fc0f2a7f1c"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d72485c2441a16c38e6f676224f943d4e3e3d0c48d7045353efbb62871170438"
 dependencies = [
  "clap 3.0.14",
  "color-eyre",
