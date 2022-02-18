@@ -8,11 +8,10 @@ mod scan;
 mod triggers;
 mod vacuum;
 
-/// ```pgxsql
-/// CREATE OR REPLACE FUNCTION amhandler(internal) RETURNS index_am_handler PARALLEL SAFE IMMUTABLE STRICT COST 0.0001 LANGUAGE c AS 'MODULE_PATHNAME', '@FUNCTION_NAME@';
-/// CREATE ACCESS METHOD zombodb TYPE INDEX HANDLER amhandler;
-/// ```
-#[pg_extern]
+#[pg_extern(sql = "
+    CREATE OR REPLACE FUNCTION amhandler(internal) RETURNS index_am_handler PARALLEL SAFE IMMUTABLE STRICT COST 0.0001 LANGUAGE c AS 'MODULE_PATHNAME', '@FUNCTION_NAME@';
+    CREATE ACCESS METHOD zombodb TYPE INDEX HANDLER amhandler;
+")]
 fn amhandler(_fcinfo: pg_sys::FunctionCallInfo) -> PgBox<pg_sys::IndexAmRoutine> {
     let mut amroutine =
         PgBox::<pg_sys::IndexAmRoutine>::alloc_node(pg_sys::NodeTag_T_IndexAmRoutine);

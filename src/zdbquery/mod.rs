@@ -13,7 +13,6 @@ use crate::zql::transformations::field_finder::find_link_for_field;
 pub use pg_catalog::*;
 use serde::*;
 use std::collections::{HashMap, HashSet};
-use std::ffi::CStr;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Bool {
@@ -173,7 +172,7 @@ mod pg_catalog {
 }
 
 impl InOutFuncs for ZDBQuery {
-    fn input(input: &CStr) -> Self {
+    fn input(input: &pgx::cstr_core::CStr) -> Self {
         let input = input.to_str().expect("zdbquery input is not valid UTF8");
         ZDBQuery::from_str(input)
     }
@@ -904,7 +903,7 @@ mod tests {
 
     #[pg_test]
     fn test_zdbquery_in_with_query_string() {
-        let input = std::ffi::CStr::from_bytes_with_nul(b"this is a test\0").unwrap();
+        let input = pgx::cstr_core::CStr::from_bytes_with_nul(b"this is a test\0").unwrap();
         let zdbquery = pg_catalog::zdbquery_in(input);
         let json = serde_json::to_value(&zdbquery).unwrap();
 
@@ -916,7 +915,7 @@ mod tests {
 
     #[pg_test]
     fn test_zdbquery_in_with_query_dsl() {
-        let input = std::ffi::CStr::from_bytes_with_nul(b" {\"match_all\":{}} \0").unwrap();
+        let input = pgx::cstr_core::CStr::from_bytes_with_nul(b" {\"match_all\":{}} \0").unwrap();
         let zdbquery = pg_catalog::zdbquery_in(input);
         let json = serde_json::to_value(&zdbquery).unwrap();
 
@@ -925,7 +924,7 @@ mod tests {
 
     #[pg_test]
     fn test_zdbquery_in_with_full_query() {
-        let input = std::ffi::CStr::from_bytes_with_nul(
+        let input = pgx::cstr_core::CStr::from_bytes_with_nul(
             b" {\"query_dsl\":{\"query_string\":{\"query\":\"this is a test\"}}} \0",
         )
         .unwrap();
