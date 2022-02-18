@@ -1374,8 +1374,7 @@ dependencies = [
 [[package]]
 name = "pgx"
 version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "016d4c6b863e2edcccc3e7a05f4e3eed5c3c09eafe407d7a8123e98f5f929e58"
+source = "git+https://github.com/zombodb/pgx.git?rev=94443117a0efe5e029958eff9ff05cc628a889f8#94443117a0efe5e029958eff9ff05cc628a889f8"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -1386,7 +1385,6 @@ dependencies = [
  "heapless",
  "num-traits",
  "once_cell",
- "petgraph 0.6.0",
  "pgx-macros",
  "pgx-pg-sys",
  "pgx-utils",
@@ -1404,8 +1402,7 @@ dependencies = [
 [[package]]
 name = "pgx-macros"
 version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4450f0bec80592f1c1caad4436d7bb1a8fe52788a07f20d33365e015a56ec0ae"
+source = "git+https://github.com/zombodb/pgx.git?rev=94443117a0efe5e029958eff9ff05cc628a889f8#94443117a0efe5e029958eff9ff05cc628a889f8"
 dependencies = [
  "pgx-utils",
  "proc-macro-crate",
@@ -1418,8 +1415,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-sys"
 version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92b83b5a8849515b7134daa729ccb703c5767469934cbd029ff7ece2b775fe0a"
+source = "git+https://github.com/zombodb/pgx.git?rev=94443117a0efe5e029958eff9ff05cc628a889f8#94443117a0efe5e029958eff9ff05cc628a889f8"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1440,8 +1436,7 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4eedda8926249b2db1c3572e581dadc55265bdcce5414cc86d9ba80381e72bdf"
+source = "git+https://github.com/zombodb/pgx.git?rev=94443117a0efe5e029958eff9ff05cc628a889f8#94443117a0efe5e029958eff9ff05cc628a889f8"
 dependencies = [
  "colored",
  "eyre",
@@ -1461,8 +1456,7 @@ dependencies = [
 [[package]]
 name = "pgx-utils"
 version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d72485c2441a16c38e6f676224f943d4e3e3d0c48d7045353efbb62871170438"
+source = "git+https://github.com/zombodb/pgx.git?rev=94443117a0efe5e029958eff9ff05cc628a889f8#94443117a0efe5e029958eff9ff05cc628a889f8"
 dependencies = [
  "clap 3.1.0",
  "color-eyre",
@@ -1472,6 +1466,8 @@ dependencies = [
  "env_proxy",
  "eyre",
  "libloading",
+ "petgraph 0.6.0",
+ "prettyplease",
  "proc-macro2",
  "quote",
  "regex",
@@ -1585,6 +1581,16 @@ name = "precomputed-hash"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
+
+[[package]]
+name = "prettyplease"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53748b0c63a6a276a2c8b591de5b117d7590f1b41e34062efeadd222f841d1a3"
+dependencies = [
+ "proc-macro2",
+ "syn",
+]
 
 [[package]]
 name = "proc-macro-crate"
