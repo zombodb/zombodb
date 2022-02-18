@@ -133,7 +133,7 @@ fn main() -> Result<(), std::io::Error> {
                     .for_each(|pgver| {
                         let start = std::time::Instant::now();
                         let image = handle_result!(
-                            docker_build(image, Some(*pgver), &pgx_version),
+                            docker_build(image, Some(*pgver)),
                             "{}-pg{}:  failed to run `docker build`",
                             image.bold().red(),
                             pgver.to_string().bold().red()
@@ -147,7 +147,7 @@ fn main() -> Result<(), std::io::Error> {
 
                         let start = std::time::Instant::now();
                         handle_result!(
-                            docker_run(&image, *pgver, &repodir, &builddir, &artifactdir,),
+                            docker_run(&image, *pgver, &repodir, &builddir, &artifactdir, &pgx_version),
                             "Failed to compile {} for {}",
                             image,
                             pgver
@@ -164,7 +164,7 @@ fn main() -> Result<(), std::io::Error> {
                 // can build it just once
                 let start = std::time::Instant::now();
                 let image = handle_result!(
-                    docker_build(image, None, &pgx_version),
+                    docker_build(image, None),
                     "{}:  failed to run `docker build`",
                     image.bold().red()
                 );
@@ -183,7 +183,7 @@ fn main() -> Result<(), std::io::Error> {
                     .for_each(|pgver| {
                         let start = std::time::Instant::now();
                         handle_result!(
-                            docker_run(&image, *pgver, &repodir, &builddir, &artifactdir,),
+                            docker_run(&image, *pgver, &repodir, &builddir, &artifactdir, &pgx_version),
                             "Failed to compile {} for {}",
                             image,
                             pgver
@@ -217,7 +217,6 @@ fn remove_dir(dir: &PathBuf) {
 fn docker_build(
     base_image: &str,
     pgver: Option<u16>,
-    pgx_version: &str,
 ) -> Result<String, std::io::Error> {
     let image_name = format!(
         "{}{}",
@@ -241,9 +240,7 @@ fn docker_build(
         .arg("--build-arg")
         .arg(&format!("UID={}", users::get_current_uid()))
         .arg("--build-arg")
-        .arg(&format!("GID={}", users::get_current_gid()))
-        .arg("--build-arg")
-        .arg(&format!("PGXVERSION={}", pgx_version));
+        .arg(&format!("GID={}", users::get_current_gid()));
 
     if pgver.is_some() {
         command
@@ -265,6 +262,7 @@ fn docker_run(
     repodir: &PathBuf,
     builddir: &PathBuf,
     artifactdir: &PathBuf,
+    pgx_version: &str,
 ) -> Result<String, std::io::Error> {
     let mut builddir = builddir.clone();
     builddir.push(&format!("{}-{}", image, pgver));
@@ -291,11 +289,12 @@ fn docker_run(
     let mut command = Command::new("docker");
     command
         .arg("run")
-        .arg("--cpus=2")
         .arg("-e")
         .arg(&format!("pgver={}", pgver))
         .arg("-e")
         .arg(&format!("image={}", image))
+        .arg("-e")
+        .arg(&format!("pgx_version={}", pgx_version))
         .arg("-w")
         .arg(&format!("/build"))
         .arg("--mount")
@@ -318,7 +317,7 @@ fn docker_run(
         .arg(image)
         .arg("bash")
         .arg("-c")
-        .arg("./docker-build-system/package.sh ${pgver} ${image}");
+        .arg("./docker-build-system/package.sh ${pgver} ${image} ${pgx_version}");
 
     println!(
         "{} {} for pg{}",
