@@ -3,10 +3,11 @@ use pgx::pg_sys::{AsPgCStr, MaxOffsetNumber};
 use pgx::*;
 use std::ffi::CStr;
 
-/// ```pgxsql
-/// CREATE OR REPLACE FUNCTION zdb.zdb_update_trigger() RETURNS trigger LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_update_trigger_wrapper';
-/// ```
-#[pg_extern]
+#[pg_extern(
+    sql = "
+        CREATE OR REPLACE FUNCTION zdb.zdb_update_trigger() RETURNS trigger LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_update_trigger_wrapper';
+    "
+)]
 fn zdb_update_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     let trigdata: PgBox<pg_sys::TriggerData> = unsafe {
         PgBox::from_pg(fcinfo.as_ref().expect("fcinfo is NULL").context as *mut pg_sys::TriggerData)
@@ -53,10 +54,11 @@ fn zdb_update_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     }
 }
 
-/// ```pgxsql
-/// CREATE OR REPLACE FUNCTION zdb.zdb_delete_trigger() RETURNS trigger LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_delete_trigger_wrapper';
-/// ```
-#[pg_extern]
+#[pg_extern(
+    sql = "
+    CREATE OR REPLACE FUNCTION zdb.zdb_delete_trigger() RETURNS trigger LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_delete_trigger_wrapper';
+    "
+)]
 fn zdb_delete_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     let trigdata: PgBox<pg_sys::TriggerData> = unsafe {
         PgBox::from_pg(fcinfo.as_ref().expect("fcinfo is NULL").context as *mut pg_sys::TriggerData)

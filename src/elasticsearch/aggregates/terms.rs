@@ -353,18 +353,20 @@ fn tally(
 
 // need to hand-write the DDL for this b/c naming this function "terms_array"
 // conflicts with the function of the same name in the 'dsl' module
-/// ```pgxsql
-/// CREATE OR REPLACE FUNCTION zdb."terms_array"(
-///     "index" regclass,
-///     "field_name" text,
-///     "query" ZDBQuery,
-///     "size_limit" integer DEFAULT '2147483647',
-///     "order_by" TermsOrderBy DEFAULT 'count')
-/// RETURNS text[]
-/// IMMUTABLE PARALLEL SAFE
-/// LANGUAGE c AS 'MODULE_PATHNAME', 'terms_array_agg_wrapper';
-/// ```
-#[pg_extern(immutable, parallel_safe)]
+#[pg_extern(
+    immutable, parallel_safe,
+    sql = r#"
+        CREATE OR REPLACE FUNCTION zdb."terms_array"(
+            "index" regclass,
+            "field_name" text,
+            "query" ZDBQuery,
+            "size_limit" integer DEFAULT '2147483647',
+            "order_by" TermsOrderBy DEFAULT 'count')
+        RETURNS text[]
+        IMMUTABLE PARALLEL SAFE
+        LANGUAGE c AS 'MODULE_PATHNAME', 'terms_array_agg_wrapper';
+    "#
+)]
 pub(crate) fn terms_array_agg(
     index: PgRelation,
     field: &str,
