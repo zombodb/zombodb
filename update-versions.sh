@@ -12,8 +12,8 @@ set -x
 HEAD=$(git rev-parse HEAD)
 VERSION=$1
 
-cargo release --manifest-path ./docker-build-system/Cargo.toml --skip-publish --skip-push --skip-tag --no-dev-version ${VERSION} || exit 1
-cargo release --manifest-path ./Cargo.toml --skip-publish --skip-push --skip-tag --no-dev-version ${VERSION} || exit 1
+cargo release --manifest-path ./docker-build-system/Cargo.toml --no-publish --no-push --no-tag --no-dev-version ${VERSION} || exit 1
+cargo release --manifest-path ./Cargo.toml --no-publish --no-push --no-tag --no-dev-version ${VERSION} || exit 1
 
 git reset --soft ${HEAD} || exit 1 
 git reset HEAD || exit 1
