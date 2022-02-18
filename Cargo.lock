@@ -143,7 +143,7 @@ dependencies = [
  "bitflags",
  "cexpr",
  "clang-sys",
- "clap 2.34.0",
+ "clap",
  "env_logger",
  "lazy_static",
  "lazycell",
@@ -312,40 +312,10 @@ dependencies = [
  "ansi_term",
  "atty",
  "bitflags",
- "strsim 0.8.0",
- "textwrap 0.11.0",
+ "strsim",
+ "textwrap",
  "unicode-width",
  "vec_map",
-]
-
-[[package]]
-name = "clap"
-version = "3.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5f1fea81f183005ced9e59cdb01737ef2423956dac5a6d731b06b2ecfaa3467"
-dependencies = [
- "atty",
- "bitflags",
- "clap_derive",
- "indexmap",
- "lazy_static",
- "os_str_bytes",
- "strsim 0.10.0",
- "termcolor",
- "textwrap 0.14.2",
-]
-
-[[package]]
-name = "clap_derive"
-version = "3.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5fd1122e63869df2cb309f449da1ad54a7c6dfeb7c7e6ccd8e0825d9eb93bb72"
-dependencies = [
- "heck",
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -868,12 +838,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "heck"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2540771e65fc8cb83cd6e8a237f70c319bd5c29f78ed1084ba5d50eeac86f7f9"
-
-[[package]]
 name = "hermit-abi"
 version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1268,15 +1232,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da32515d9f6e6e489d7bc9d84c71b060db7247dc035bbe44eac88cf87486d8d5"
 
 [[package]]
-name = "os_str_bytes"
-version = "6.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e22443d1643a904602595ba1cd8f7d896afe56d26712531c5ff73a15b2fbf64"
-dependencies = [
- "memchr",
-]
-
-[[package]]
 name = "owo-colors"
 version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1374,7 +1329,7 @@ dependencies = [
 [[package]]
 name = "pgx"
 version = "0.3.3"
-source = "git+https://github.com/zombodb/pgx.git?rev=94443117a0efe5e029958eff9ff05cc628a889f8#94443117a0efe5e029958eff9ff05cc628a889f8"
+source = "git+https://github.com/zombodb/pgx.git?rev=5763860a874cef2e4eac33cd06f9d9ad13189681#5763860a874cef2e4eac33cd06f9d9ad13189681"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -1402,7 +1357,7 @@ dependencies = [
 [[package]]
 name = "pgx-macros"
 version = "0.3.3"
-source = "git+https://github.com/zombodb/pgx.git?rev=94443117a0efe5e029958eff9ff05cc628a889f8#94443117a0efe5e029958eff9ff05cc628a889f8"
+source = "git+https://github.com/zombodb/pgx.git?rev=5763860a874cef2e4eac33cd06f9d9ad13189681#5763860a874cef2e4eac33cd06f9d9ad13189681"
 dependencies = [
  "pgx-utils",
  "proc-macro-crate",
@@ -1415,7 +1370,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-sys"
 version = "0.3.3"
-source = "git+https://github.com/zombodb/pgx.git?rev=94443117a0efe5e029958eff9ff05cc628a889f8#94443117a0efe5e029958eff9ff05cc628a889f8"
+source = "git+https://github.com/zombodb/pgx.git?rev=5763860a874cef2e4eac33cd06f9d9ad13189681#5763860a874cef2e4eac33cd06f9d9ad13189681"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1436,7 +1391,7 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.3.3"
-source = "git+https://github.com/zombodb/pgx.git?rev=94443117a0efe5e029958eff9ff05cc628a889f8#94443117a0efe5e029958eff9ff05cc628a889f8"
+source = "git+https://github.com/zombodb/pgx.git?rev=5763860a874cef2e4eac33cd06f9d9ad13189681#5763860a874cef2e4eac33cd06f9d9ad13189681"
 dependencies = [
  "colored",
  "eyre",
@@ -1456,16 +1411,13 @@ dependencies = [
 [[package]]
 name = "pgx-utils"
 version = "0.3.3"
-source = "git+https://github.com/zombodb/pgx.git?rev=94443117a0efe5e029958eff9ff05cc628a889f8#94443117a0efe5e029958eff9ff05cc628a889f8"
+source = "git+https://github.com/zombodb/pgx.git?rev=5763860a874cef2e4eac33cd06f9d9ad13189681#5763860a874cef2e4eac33cd06f9d9ad13189681"
 dependencies = [
- "clap 3.1.0",
- "color-eyre",
  "colored",
  "convert_case",
  "dirs",
  "env_proxy",
  "eyre",
- "libloading",
  "petgraph 0.6.0",
  "prettyplease",
  "proc-macro2",
@@ -1600,30 +1552,6 @@ checksum = "9dada8c9981fcf32929c3c0f0cd796a9284aca335565227ed88c83babb1d43dc"
 dependencies = [
  "thiserror",
  "toml",
-]
-
-[[package]]
-name = "proc-macro-error"
-version = "1.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da25490ff9892aab3fcf7c36f08cfb902dd3e71ca0f9f9517bea02a73a5ce38c"
-dependencies = [
- "proc-macro-error-attr",
- "proc-macro2",
- "quote",
- "syn",
- "version_check",
-]
-
-[[package]]
-name = "proc-macro-error-attr"
-version = "1.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1be40180e52ecc98ad80b184934baf3d0d29f979574e439af5a55274b35f869"
-dependencies = [
- "proc-macro2",
- "quote",
- "version_check",
 ]
 
 [[package]]
@@ -2144,12 +2072,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
 
 [[package]]
-name = "strsim"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
-
-[[package]]
 name = "subtle"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2194,12 +2116,6 @@ checksum = "d326610f408c7a4eb6f51c37c330e496b08506c9457c9d34287ecc38809fb060"
 dependencies = [
  "unicode-width",
 ]
-
-[[package]]
-name = "textwrap"
-version = "0.14.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0066c8d12af8b5acd21e00547c3797fde4e8677254a7ee429176ccebbe93dd80"
 
 [[package]]
 name = "thiserror"
@@ -2777,7 +2693,7 @@ checksum = "d2d7d3948613f75c98fd9328cfdcc45acc4d360655289d0a7d4ec931392200a3"
 
 [[package]]
 name = "zombodb"
-version = "3000.0.8"
+version = "3000.0.9"
 dependencies = [
  "built",
  "byteorder",
