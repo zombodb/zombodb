@@ -53,7 +53,7 @@ jobs:
 
       # install cargo-pgx
     - name: install cargo-pgx
-      run: cargo install cargo-pgx --debug --force --git https://github.com/zombodb/pgx/ --branch develop
+      run: cargo install cargo-pgx --debug --force --git https://github.com/zombodb/pgx/ --rev 6dcbaa5132b97f32db74773eb8839ea86784939a
 
     # initialize pgx
     - name: cargo pgx init
