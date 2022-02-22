@@ -1329,7 +1329,7 @@ dependencies = [
 [[package]]
 name = "pgx"
 version = "0.3.3"
-source = "git+https://github.com/zombodb/pgx.git?rev=6dcbaa5132b97f32db74773eb8839ea86784939a#6dcbaa5132b97f32db74773eb8839ea86784939a"
+source = "git+https://github.com/zombodb/pgx.git?rev=22db7c30c000f8616d665b9692415e613648aca7#22db7c30c000f8616d665b9692415e613648aca7"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -1357,7 +1357,7 @@ dependencies = [
 [[package]]
 name = "pgx-macros"
 version = "0.3.3"
-source = "git+https://github.com/zombodb/pgx.git?rev=6dcbaa5132b97f32db74773eb8839ea86784939a#6dcbaa5132b97f32db74773eb8839ea86784939a"
+source = "git+https://github.com/zombodb/pgx.git?rev=22db7c30c000f8616d665b9692415e613648aca7#22db7c30c000f8616d665b9692415e613648aca7"
 dependencies = [
  "pgx-utils",
  "proc-macro-crate",
@@ -1370,7 +1370,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-sys"
 version = "0.3.3"
-source = "git+https://github.com/zombodb/pgx.git?rev=6dcbaa5132b97f32db74773eb8839ea86784939a#6dcbaa5132b97f32db74773eb8839ea86784939a"
+source = "git+https://github.com/zombodb/pgx.git?rev=22db7c30c000f8616d665b9692415e613648aca7#22db7c30c000f8616d665b9692415e613648aca7"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1391,7 +1391,7 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.3.3"
-source = "git+https://github.com/zombodb/pgx.git?rev=6dcbaa5132b97f32db74773eb8839ea86784939a#6dcbaa5132b97f32db74773eb8839ea86784939a"
+source = "git+https://github.com/zombodb/pgx.git?rev=22db7c30c000f8616d665b9692415e613648aca7#22db7c30c000f8616d665b9692415e613648aca7"
 dependencies = [
  "colored",
  "eyre",
@@ -1411,7 +1411,7 @@ dependencies = [
 [[package]]
 name = "pgx-utils"
 version = "0.3.3"
-source = "git+https://github.com/zombodb/pgx.git?rev=6dcbaa5132b97f32db74773eb8839ea86784939a#6dcbaa5132b97f32db74773eb8839ea86784939a"
+source = "git+https://github.com/zombodb/pgx.git?rev=22db7c30c000f8616d665b9692415e613648aca7#22db7c30c000f8616d665b9692415e613648aca7"
 dependencies = [
  "colored",
  "convert_case",
