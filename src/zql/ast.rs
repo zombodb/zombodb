@@ -221,6 +221,8 @@ impl<'input> Term<'input> {
                 }
             } else if has_whitespace {
                 Term::Phrase(s, b)
+            } else if Term::might_be_a_phrase(s) {
+                Term::Phrase(s, b)
             } else {
                 Term::String(s, b)
             }
@@ -240,6 +242,10 @@ impl<'input> Term<'input> {
             }
         }
         true
+    }
+
+    fn might_be_a_phrase(input: &str) -> bool {
+        input.chars().any(|c| !c.is_alphanumeric() && c != '_')
     }
 }
 
