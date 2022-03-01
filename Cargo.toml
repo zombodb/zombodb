@@ -49,7 +49,7 @@ built = { version = "0.5.1", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
 pgx-tests = "0.3.3"
-libc = "0.2.118"
+libc = "0.2.119"
 
 [profile.dev]
 panic = "unwind"
