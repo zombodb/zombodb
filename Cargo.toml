@@ -1,7 +1,7 @@
 [package]
 name = "zombodb"
 description = "Making Postgres and Elasticsearch work together like it's 2022"
-version = "3000.0.9"
+version = "3000.0.10"
 edition = "2018"
 build = "build.rs"
 readme = "README.md"
@@ -49,7 +49,7 @@ built = { version = "0.5.1", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
 pgx-tests = "0.3.3"
-libc = "0.2.118"
+libc = "0.2.119"
 
 [profile.dev]
 panic = "unwind"
