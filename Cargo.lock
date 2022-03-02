@@ -143,7 +143,7 @@ dependencies = [
  "bitflags",
  "cexpr",
  "clang-sys",
- "clap",
+ "clap 2.34.0",
  "env_logger",
  "lazy_static",
  "lazycell",
@@ -312,10 +312,40 @@ dependencies = [
  "ansi_term",
  "atty",
  "bitflags",
- "strsim",
- "textwrap",
+ "strsim 0.8.0",
+ "textwrap 0.11.0",
  "unicode-width",
  "vec_map",
+]
+
+[[package]]
+name = "clap"
+version = "3.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5177fac1ab67102d8989464efd043c6ff44191b1557ec1ddd489b4f7e1447e77"
+dependencies = [
+ "atty",
+ "bitflags",
+ "clap_derive",
+ "indexmap",
+ "lazy_static",
+ "os_str_bytes",
+ "strsim 0.10.0",
+ "termcolor",
+ "textwrap 0.14.2",
+]
+
+[[package]]
+name = "clap_derive"
+version = "3.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "01d42c94ce7c2252681b5fed4d3627cc807b13dfc033246bd05d5b252399000e"
+dependencies = [
+ "heck",
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -838,6 +868,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "heck"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2540771e65fc8cb83cd6e8a237f70c319bd5c29f78ed1084ba5d50eeac86f7f9"
+
+[[package]]
 name = "hermit-abi"
 version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1232,6 +1268,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da32515d9f6e6e489d7bc9d84c71b060db7247dc035bbe44eac88cf87486d8d5"
 
 [[package]]
+name = "os_str_bytes"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e22443d1643a904602595ba1cd8f7d896afe56d26712531c5ff73a15b2fbf64"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "owo-colors"
 version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1329,7 +1374,7 @@ dependencies = [
 [[package]]
 name = "pgx"
 version = "0.3.3"
-source = "git+https://github.com/zombodb/pgx.git?rev=e4d135c4762b89e79a129eb790b4ebe7435eb868#e4d135c4762b89e79a129eb790b4ebe7435eb868"
+source = "git+https://github.com/zombodb/pgx.git?rev=dc185530da5ef018938063f9226fa29a63b03a54#dc185530da5ef018938063f9226fa29a63b03a54"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -1340,6 +1385,7 @@ dependencies = [
  "heapless",
  "num-traits",
  "once_cell",
+ "petgraph 0.6.0",
  "pgx-macros",
  "pgx-pg-sys",
  "pgx-utils",
@@ -1357,7 +1403,7 @@ dependencies = [
 [[package]]
 name = "pgx-macros"
 version = "0.3.3"
-source = "git+https://github.com/zombodb/pgx.git?rev=e4d135c4762b89e79a129eb790b4ebe7435eb868#e4d135c4762b89e79a129eb790b4ebe7435eb868"
+source = "git+https://github.com/zombodb/pgx.git?rev=dc185530da5ef018938063f9226fa29a63b03a54#dc185530da5ef018938063f9226fa29a63b03a54"
 dependencies = [
  "pgx-utils",
  "proc-macro-crate",
@@ -1370,7 +1416,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-sys"
 version = "0.3.3"
-source = "git+https://github.com/zombodb/pgx.git?rev=e4d135c4762b89e79a129eb790b4ebe7435eb868#e4d135c4762b89e79a129eb790b4ebe7435eb868"
+source = "git+https://github.com/zombodb/pgx.git?rev=dc185530da5ef018938063f9226fa29a63b03a54#dc185530da5ef018938063f9226fa29a63b03a54"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1391,7 +1437,7 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.3.3"
-source = "git+https://github.com/zombodb/pgx.git?rev=e4d135c4762b89e79a129eb790b4ebe7435eb868#e4d135c4762b89e79a129eb790b4ebe7435eb868"
+source = "git+https://github.com/zombodb/pgx.git?rev=dc185530da5ef018938063f9226fa29a63b03a54#dc185530da5ef018938063f9226fa29a63b03a54"
 dependencies = [
  "colored",
  "eyre",
@@ -1411,15 +1457,16 @@ dependencies = [
 [[package]]
 name = "pgx-utils"
 version = "0.3.3"
-source = "git+https://github.com/zombodb/pgx.git?rev=e4d135c4762b89e79a129eb790b4ebe7435eb868#e4d135c4762b89e79a129eb790b4ebe7435eb868"
+source = "git+https://github.com/zombodb/pgx.git?rev=dc185530da5ef018938063f9226fa29a63b03a54#dc185530da5ef018938063f9226fa29a63b03a54"
 dependencies = [
+ "clap 3.1.2",
+ "color-eyre",
  "colored",
  "convert_case",
  "dirs",
  "env_proxy",
  "eyre",
- "petgraph 0.6.0",
- "prettyplease",
+ "libloading",
  "proc-macro2",
  "quote",
  "regex",
@@ -1535,16 +1582,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
 
 [[package]]
-name = "prettyplease"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53748b0c63a6a276a2c8b591de5b117d7590f1b41e34062efeadd222f841d1a3"
-dependencies = [
- "proc-macro2",
- "syn",
-]
-
-[[package]]
 name = "proc-macro-crate"
 version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1552,6 +1589,30 @@ checksum = "e17d47ce914bf4de440332250b0edd23ce48c005f59fab39d3335866b114f11a"
 dependencies = [
  "thiserror",
  "toml",
+]
+
+[[package]]
+name = "proc-macro-error"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da25490ff9892aab3fcf7c36f08cfb902dd3e71ca0f9f9517bea02a73a5ce38c"
+dependencies = [
+ "proc-macro-error-attr",
+ "proc-macro2",
+ "quote",
+ "syn",
+ "version_check",
+]
+
+[[package]]
+name = "proc-macro-error-attr"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1be40180e52ecc98ad80b184934baf3d0d29f979574e439af5a55274b35f869"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "version_check",
 ]
 
 [[package]]
@@ -2071,6 +2132,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
 
 [[package]]
+name = "strsim"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
+
+[[package]]
 name = "subtle"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2115,6 +2182,12 @@ checksum = "d326610f408c7a4eb6f51c37c330e496b08506c9457c9d34287ecc38809fb060"
 dependencies = [
  "unicode-width",
 ]
+
+[[package]]
+name = "textwrap"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0066c8d12af8b5acd21e00547c3797fde4e8677254a7ee429176ccebbe93dd80"
 
 [[package]]
 name = "thiserror"
