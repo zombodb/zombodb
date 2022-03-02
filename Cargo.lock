@@ -320,9 +320,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.1.2"
+version = "3.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5177fac1ab67102d8989464efd043c6ff44191b1557ec1ddd489b4f7e1447e77"
+checksum = "86f8c0e2a6b902acc18214e24a6935cdaf8a8e34231913d4404dcaee659f65a1"
 dependencies = [
  "atty",
  "bitflags",
@@ -350,9 +350,9 @@ dependencies = [
 
 [[package]]
 name = "color-eyre"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d6ec7641ff3474b7593009c809db602c414cd97c7d47a78ed004162b74ff96c"
+checksum = "8ebf286c900a6d5867aeff75cfee3192857bb7f24b547d4f0df2ed6baa812c90"
 dependencies = [
  "backtrace",
  "color-spantrace",
@@ -640,9 +640,9 @@ dependencies = [
 
 [[package]]
 name = "eyre"
-version = "0.6.6"
+version = "0.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc225d8f637923fe585089fcf03e705c222131232d2c1fb622e84ecf725d0eb8"
+checksum = "9289ed2c0440a6536e65119725cf91fc2c6b5e513bfd2e36e1134d7cca6ca12f"
 dependencies = [
  "indenter",
  "once_cell",
@@ -1374,7 +1374,8 @@ dependencies = [
 [[package]]
 name = "pgx"
 version = "0.3.3"
-source = "git+https://github.com/zombodb/pgx.git?rev=dc185530da5ef018938063f9226fa29a63b03a54#dc185530da5ef018938063f9226fa29a63b03a54"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "016d4c6b863e2edcccc3e7a05f4e3eed5c3c09eafe407d7a8123e98f5f929e58"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -1403,7 +1404,8 @@ dependencies = [
 [[package]]
 name = "pgx-macros"
 version = "0.3.3"
-source = "git+https://github.com/zombodb/pgx.git?rev=dc185530da5ef018938063f9226fa29a63b03a54#dc185530da5ef018938063f9226fa29a63b03a54"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4450f0bec80592f1c1caad4436d7bb1a8fe52788a07f20d33365e015a56ec0ae"
 dependencies = [
  "pgx-utils",
  "proc-macro-crate",
@@ -1416,7 +1418,8 @@ dependencies = [
 [[package]]
 name = "pgx-pg-sys"
 version = "0.3.3"
-source = "git+https://github.com/zombodb/pgx.git?rev=dc185530da5ef018938063f9226fa29a63b03a54#dc185530da5ef018938063f9226fa29a63b03a54"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92b83b5a8849515b7134daa729ccb703c5767469934cbd029ff7ece2b775fe0a"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1437,7 +1440,8 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.3.3"
-source = "git+https://github.com/zombodb/pgx.git?rev=dc185530da5ef018938063f9226fa29a63b03a54#dc185530da5ef018938063f9226fa29a63b03a54"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4eedda8926249b2db1c3572e581dadc55265bdcce5414cc86d9ba80381e72bdf"
 dependencies = [
  "colored",
  "eyre",
@@ -1457,9 +1461,10 @@ dependencies = [
 [[package]]
 name = "pgx-utils"
 version = "0.3.3"
-source = "git+https://github.com/zombodb/pgx.git?rev=dc185530da5ef018938063f9226fa29a63b03a54#dc185530da5ef018938063f9226fa29a63b03a54"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d72485c2441a16c38e6f676224f943d4e3e3d0c48d7045353efbb62871170438"
 dependencies = [
- "clap 3.1.2",
+ "clap 3.1.3",
  "color-eyre",
  "colored",
  "convert_case",
@@ -1731,9 +1736,9 @@ dependencies = [
 
 [[package]]
 name = "redox_syscall"
-version = "0.2.10"
+version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8383f39639269cde97d255a32bdb68c047337295414940c68bdd30c2e13203ff"
+checksum = "8380fe0152551244f0747b1bf41737e0f8a74f97a14ccefd1148187271634f3c"
 dependencies = [
  "bitflags",
 ]
@@ -2743,7 +2748,7 @@ checksum = "d2d7d3948613f75c98fd9328cfdcc45acc4d360655289d0a7d4ec931392200a3"
 
 [[package]]
 name = "zombodb"
-version = "3000.0.9"
+version = "3000.0.10"
 dependencies = [
  "built",
  "byteorder",

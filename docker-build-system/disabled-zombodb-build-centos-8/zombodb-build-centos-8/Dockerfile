@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-FROM centos:7
+FROM centos:8
 
 LABEL maintainer="ZomboDB, LLC (zombodb@gmail.com)"
 
@@ -23,17 +23,21 @@ ARG GID=1000
 
 RUN useradd -m ${USER} --uid=${UID}
 
-RUN yum install -y git
-RUN yum install -y epel-release
-RUN yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
-RUN yum install -y centos-release-scl
-RUN yum install -y devtoolset-7 llvm-toolset-7 llvm-toolset-7-clang-*
-RUN yum install -y llvm5.0-devel
-RUN yum install -y postgresql12-server postgresql12-devel
-RUN yum install -y postgresql11-server postgresql11-devel
-RUN yum install -y postgresql10-server postgresql10-devel
-RUN yum groupinstall -y "Development Tools"
-RUN yum install -y openssl-devel
+
+RUN dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+RUN dnf -qy module disable postgresql
+RUN dnf install -y git
+RUN dnf install -y postgresql10-server postgresql10-devel
+RUN dnf install -y postgresql11-server postgresql11-devel
+RUN dnf install -y postgresql12-server postgresql12-devel
+RUN dnf install -y postgresql13-server postgresql13-devel
+RUN dnf install -y postgresql14-server postgresql14-devel
+RUN dnf install -y ruby-devel gcc make rpm-build libffi-devel
+RUN gem install --no-document fpm
+
+
+RUN dnf group install -y "Development Tools"
+RUN dnf install -y openssl-devel
 
 USER ${UID}:${GID}
 WORKDIR /home/${USER}
@@ -44,11 +48,6 @@ RUN cargo install cargo-pgx
 RUN cargo pgx init \
 	--pg10=/usr/pgsql-10/bin/pg_config \
 	--pg11=/usr/pgsql-11/bin/pg_config \
-	--pg12=/usr/pgsql-12/bin/pg_config
-ENV LIBCLANG_PATH=/opt/rh/llvm-toolset-7/root/usr/lib64/
-RUN ln -s /opt/rh/llvm-toolset-7/root/usr/lib64/clang/5.0.1/include/stdbool.h /usr/include/stdbool.h
-RUN ln -s /opt/rh/llvm-toolset-7/root/usr/lib64/clang/5.0.1/include/stddef.h /usr/include/stddef.h
-RUN ln -s /opt/rh/llvm-toolset-7/root/usr/lib64/clang/5.0.1/include/stdarg.h /usr/include/stdarg.h
-
-
-
+	--pg12=/usr/pgsql-12/bin/pg_config \
+	--pg13=/usr/pgsql-13/bin/pg_config \
+	--pg14=/usr/pgsql-14/bin/pg_config
