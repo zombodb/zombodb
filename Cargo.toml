@@ -31,8 +31,8 @@ lazy_static = "1.4.0"
 levenshtein = "1.0.5"
 memoffset = "0.6.5"
 num_cpus = "1.13.1"
-pgx = { git = "https://github.com/zombodb/pgx.git", rev = "dc185530da5ef018938063f9226fa29a63b03a54" }
-pgx-macros = { git = "https://github.com/zombodb/pgx.git", rev = "dc185530da5ef018938063f9226fa29a63b03a54" }
+pgx = "0.4.0-beta.0"
+pgx-macros = "0.4.0-beta.0"
 rayon = "1.5.1"
 regex = "1.5.4"
 rustc-hash = "1.1.0"
@@ -48,7 +48,7 @@ lalrpop = { version = "0.19.7", features = [ "lexer" ] }
 built = { version = "0.5.1", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
-pgx-tests = { git = "https://github.com/zombodb/pgx.git", rev = "dc185530da5ef018938063f9226fa29a63b03a54" }
+pgx-tests = "0.4.0-beta.0"
 libc = "0.2.119"
 
 [profile.dev]
