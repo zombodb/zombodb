@@ -7,7 +7,7 @@ use std::collections::{HashMap, HashSet};
 
 struct QueryHighligther<'a> {
     query: Expr<'a>,
-    highlighters: HashMap<String, DocumentHighlighter<'a>>,
+    highlighters: HashMap<String, Vec<DocumentHighlighter<'a>>>,
     index: &'a PgRelation,
 }
 
@@ -30,7 +30,14 @@ impl<'a> QueryHighligther<'a> {
 
             let base_field = field.base_field();
             if let Some(value) = document.remove(&base_field) {
-                highlighters.extend(DocumentHighlighter::from_json(index, &base_field, &value));
+                for ((fieldname, _), highlighter) in
+                    DocumentHighlighter::from_json(index, &base_field, &value, 0)
+                {
+                    highlighters
+                        .entry(fieldname)
+                        .or_insert_with(Vec::new)
+                        .push(highlighter);
+                }
             }
         });
 
@@ -127,66 +134,90 @@ impl<'a> QueryHighligther<'a> {
 
             Expr::Contains(f, t) | Expr::Eq(f, t) | Expr::Regex(f, t) => {
                 if let Some(dh) = self.highlighters.get(f.field.as_str()) {
-                    return self.highlight_term(dh, f.clone(), expr, t, highlights);
+                    let mut did_highlight = false;
+                    for dh in dh {
+                        did_highlight |= self.highlight_term(dh, f.clone(), expr, t, highlights);
+                    }
+                    return did_highlight;
                 }
                 false
             }
             Expr::DoesNotContain(f, t) | Expr::Ne(f, t) => {
                 if let Some(dh) = self.highlighters.get(f.field.as_str()) {
-                    return !self.highlight_term(dh, f.clone(), expr, t, highlights);
+                    let mut did_highlight = false;
+                    for dh in dh {
+                        did_highlight |= !self.highlight_term(dh, f.clone(), expr, t, highlights);
+                    }
+                    return did_highlight;
                 }
                 false
             }
 
             Expr::Gt(f, t) => {
                 if let Some(dh) = self.highlighters.get(f.field.as_str()) {
-                    return self.highlight_term_scan(
-                        dh,
-                        f.clone(),
-                        expr,
-                        t,
-                        highlights,
-                        dh.gt_func(),
-                    );
+                    let mut did_highlight = false;
+                    for dh in dh {
+                        did_highlight |= self.highlight_term_scan(
+                            dh,
+                            f.clone(),
+                            expr,
+                            t,
+                            highlights,
+                            dh.gt_func(),
+                        );
+                    }
+                    return did_highlight;
                 }
                 false
             }
             Expr::Lt(f, t) => {
                 if let Some(dh) = self.highlighters.get(f.field.as_str()) {
-                    return self.highlight_term_scan(
-                        dh,
-                        f.clone(),
-                        expr,
-                        t,
-                        highlights,
-                        dh.lt_func(),
-                    );
+                    let mut did_highlight = false;
+                    for dh in dh {
+                        did_highlight |= self.highlight_term_scan(
+                            dh,
+                            f.clone(),
+                            expr,
+                            t,
+                            highlights,
+                            dh.lt_func(),
+                        );
+                    }
+                    return did_highlight;
                 }
                 false
             }
             Expr::Gte(f, t) => {
                 if let Some(dh) = self.highlighters.get(f.field.as_str()) {
-                    return self.highlight_term_scan(
-                        dh,
-                        f.clone(),
-                        expr,
-                        t,
-                        highlights,
-                        dh.ge_func(),
-                    );
+                    let mut did_highlight = false;
+                    for dh in dh {
+                        did_highlight |= self.highlight_term_scan(
+                            dh,
+                            f.clone(),
+                            expr,
+                            t,
+                            highlights,
+                            dh.ge_func(),
+                        );
+                    }
+                    return did_highlight;
                 }
                 false
             }
             Expr::Lte(f, t) => {
                 if let Some(dh) = self.highlighters.get(f.field.as_str()) {
-                    return self.highlight_term_scan(
-                        dh,
-                        f.clone(),
-                        expr,
-                        t,
-                        highlights,
-                        dh.le_func(),
-                    );
+                    let mut did_highlight = false;
+                    for dh in dh {
+                        did_highlight |= self.highlight_term_scan(
+                            dh,
+                            f.clone(),
+                            expr,
+                            t,
+                            highlights,
+                            dh.le_func(),
+                        );
+                    }
+                    return did_highlight;
                 }
                 false
             }

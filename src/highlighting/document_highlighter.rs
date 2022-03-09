@@ -8,7 +8,6 @@ use regex::Regex;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
-use std::marker::PhantomData;
 use std::ops::Deref;
 use std::str::FromStr;
 
@@ -33,12 +32,11 @@ pub struct DocumentHighlighter<'a> {
     data_type: Option<DataType>,
     index: &'a PgRelation,
     field: String,
-    __marker: PhantomData<&'a TokenEntry>,
 }
 
 impl<'a> Debug for DocumentHighlighter<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}::{:?}={:?}", self.field, self.data_type, self.lookup)
+        write!(f, "{}::{:?}={:#?}", self.field, self.data_type, self.lookup)
     }
 }
 
@@ -77,14 +75,19 @@ macro_rules! compare_integer {
 
 impl<'a> DocumentHighlighter<'a> {
     pub fn new(index: &'a PgRelation, field: &str, text: &str) -> Self {
-        DocumentHighlighter::from_json(index, field, &Value::String(text.into()))
+        DocumentHighlighter::from_json(index, field, &Value::String(text.into()), 0)
             .into_iter()
             .next()
             .unwrap()
             .1
     }
 
-    pub fn from_json(index: &'a PgRelation, field: &str, value: &Value) -> HashMap<String, Self> {
+    pub fn from_json(
+        index: &'a PgRelation,
+        field: &str,
+        value: &Value,
+        array_index: u32,
+    ) -> HashMap<(String, u32), Self> {
         match value {
             Value::Object(o) => {
                 // recursively build highlighters for each (k, v) pair
@@ -96,6 +99,24 @@ impl<'a> DocumentHighlighter<'a> {
                         index,
                         &format!("{}.{}", field, k),
                         v,
+                        array_index,
+                    ))
+                });
+
+                highlighters
+            }
+
+            Value::Array(a) => {
+                // recursively build highlighters for each element
+                // in this JSON Array
+                let mut highlighters = HashMap::new();
+
+                a.iter().enumerate().for_each(|(i, v)| {
+                    highlighters.extend(DocumentHighlighter::from_json(
+                        index,
+                        field,
+                        v,
+                        array_index + i as u32,
                     ))
                 });
 
@@ -108,14 +129,13 @@ impl<'a> DocumentHighlighter<'a> {
                     data_type: None,
                     index,
                     field: field.into(),
-                    __marker: PhantomData,
                 };
 
-                result.analyze_document(field, value, 0);
+                result.analyze_document(field, value, array_index);
 
-                let mut map = HashMap::new();
-                map.insert(field.into(), result);
-                map
+                let mut highlighters = HashMap::new();
+                highlighters.insert((field.into(), array_index), result);
+                highlighters
             }
         }
     }
@@ -162,7 +182,7 @@ impl<'a> DocumentHighlighter<'a> {
             Value::String(s) => {
                 let es = Elasticsearch::new(self.index);
                 let results = es
-                    .analyze_with_field(&self.field, &s)
+                    .analyze_with_field(field, &s)
                     .execute()
                     .expect("failed to analyze text for highlighting");
 
@@ -187,6 +207,12 @@ impl<'a> DocumentHighlighter<'a> {
                 .iter()
                 .enumerate()
                 .for_each(|(idx, v)| self.analyze_document(field, v, array_index + (idx as u32))),
+
+            Value::Object(o) => {
+                o.iter().for_each(|(k, v)| {
+                    self.analyze_document(&format!("{}.{}", field, k), v, array_index);
+                });
+            }
 
             Value::Null => { /* noop */ }
 

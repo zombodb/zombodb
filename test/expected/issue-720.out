@@ -1,0 +1,23 @@
+select *
+from zdb.highlight_document('idxso_posts', '
+{
+  "my_object_array": [
+    {
+      "state": "foo"
+    },
+    {
+      "state": "bar"
+    },
+    {
+      "state": "baz"
+    }
+  ]
+}
+', 'my_object_array.state = [bar, foo, baz]') order by 1, 2;
+      field_name       | array_index | term |    type    | position | start_offset | end_offset |               query_clause                
+-----------------------+-------------+------+------------+----------+--------------+------------+-------------------------------------------
+ my_object_array.state |           0 | foo  | <ALPHANUM> |        1 |            0 |          3 | my_object_array.state=["bar","foo","baz"]
+ my_object_array.state |           1 | bar  | <ALPHANUM> |        1 |            0 |          3 | my_object_array.state=["bar","foo","baz"]
+ my_object_array.state |           2 | baz  | <ALPHANUM> |        1 |            0 |          3 | my_object_array.state=["bar","foo","baz"]
+(3 rows)
+
