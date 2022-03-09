@@ -1,7 +1,7 @@
 [package]
 name = "zombodb"
 description = "Making Postgres and Elasticsearch work together like it's 2022"
-version = "3000.0.10"
+version = "3000.0.11"
 edition = "2018"
 build = "build.rs"
 readme = "README.md"
@@ -34,7 +34,7 @@ num_cpus = "1.13.1"
 pgx = "0.3.3"
 pgx-macros = "0.3.3"
 rayon = "1.5.1"
-regex = "1.5.4"
+regex = "1.5.5"
 rustc-hash = "1.1.0"
 serde = { version = "1.0.136", features = [ "derive" ] }
 serde_json = { version = "1.0.79", features = [ "preserve_order" ] }
