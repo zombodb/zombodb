@@ -354,7 +354,8 @@ fn tally(
 // need to hand-write the DDL for this b/c naming this function "terms_array"
 // conflicts with the function of the same name in the 'dsl' module
 #[pg_extern(
-    immutable, parallel_safe,
+    immutable,
+    parallel_safe,
     sql = r#"
         CREATE OR REPLACE FUNCTION zdb."terms_array"(
             "index" regclass,

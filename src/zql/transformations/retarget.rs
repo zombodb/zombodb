@@ -10,7 +10,7 @@ pub(crate) fn retarget_expr<'a>(
     if let Some(target_link) = target_link {
         let mut path = relationship_manager.calc_path(target_link, source_link);
         if path.is_empty() {
-            if source_link != target_link {
+            if source_link.qualified_index != target_link.qualified_index {
                 panic!("no path from {} to {}", target_link, source_link);
             } else {
                 // same link, so that's okay
