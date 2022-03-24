@@ -152,9 +152,9 @@ PREPARE example AS SELECT * FROM table WHERE table ==> dsl.and($1, dsl.range(fie
 Now we can execute that query using a different search term and age range:
 
 ```sql
-EXECUTE exampe('cats', 3);
-EXECUTE exampe('dogs', 7);
-EXECUTE exampe('elephants', 23);
+EXECUTE example('cats', 3);
+EXECUTE example('dogs', 7);
+EXECUTE example('elephants', 23);
 ```
 
 Using prepared statements is extremely important to avoid SQL-injection attacks. ZomboDB makes this possible for your
