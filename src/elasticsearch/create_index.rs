@@ -75,6 +75,12 @@ impl ElasticsearchCreateIndexRequest {
             } }
         };
 
+        let source = if self.elasticsearch.options.include_source() {
+            json! { { "enabled": true } }
+        } else {
+            json! { { "includes": [ "zdb_aborted_xids"] } }
+        };
+
         json! {
             {
                "settings": {
@@ -89,7 +95,7 @@ impl ElasticsearchCreateIndexRequest {
                  "similarity": lookup_analysis_thing("similarities")
                },
                "mappings": {
-                     "_source": { "enabled": true },
+                     "_source": source,
                      "date_detection": self.elasticsearch.options.nested_object_date_detection(),
                      "numeric_detection": self.elasticsearch.options.nested_object_numeric_detection(),
                      "dynamic_templates": [
