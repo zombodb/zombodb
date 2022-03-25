@@ -78,7 +78,7 @@ impl ElasticsearchCreateIndexRequest {
         let source = if self.elasticsearch.options.include_source() {
             json! { { "enabled": true } }
         } else {
-            json! { { "includes": [ "zdb_*"] } }
+            json! { { "includes": [ "zdb_aborted_xids"] } }
         };
 
         json! {
