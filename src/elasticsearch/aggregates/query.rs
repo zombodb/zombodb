@@ -20,7 +20,8 @@ fn query(index: PgRelation, query: ZDBQuery) -> impl Iterator<Item = pg_sys::Ite
 }
 
 #[pg_extern(
-    immutable, parallel_safe,
+    immutable,
+    parallel_safe,
     sql = "
         CREATE OR REPLACE FUNCTION query_raw(index regclass, query zdbquery)
             RETURNS SETOF tid SET zdb.ignore_visibility = true

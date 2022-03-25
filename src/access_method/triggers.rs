@@ -3,11 +3,9 @@ use pgx::pg_sys::{AsPgCStr, MaxOffsetNumber};
 use pgx::*;
 use std::ffi::CStr;
 
-#[pg_extern(
-    sql = "
+#[pg_extern(sql = "
         CREATE OR REPLACE FUNCTION zdb.zdb_update_trigger() RETURNS trigger LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_update_trigger_wrapper';
-    "
-)]
+    ")]
 fn zdb_update_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     let trigdata: PgBox<pg_sys::TriggerData> = unsafe {
         PgBox::from_pg(fcinfo.as_ref().expect("fcinfo is NULL").context as *mut pg_sys::TriggerData)
@@ -33,7 +31,9 @@ fn zdb_update_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
 
     unsafe {
         let args = std::slice::from_raw_parts(tg_trigger.tgargs, tg_trigger.tgnargs as usize);
-        let index_relid_str = CStr::from_ptr(args[0] as *const std::os::raw::c_char).to_str().unwrap();
+        let index_relid_str = CStr::from_ptr(args[0] as *const std::os::raw::c_char)
+            .to_str()
+            .unwrap();
         let index_relid = str::parse::<pg_sys::Oid>(index_relid_str).expect("malformed oid");
         let mut tid = (*trigdata.tg_trigtuple).t_self;
 
@@ -54,11 +54,9 @@ fn zdb_update_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     }
 }
 
-#[pg_extern(
-    sql = "
+#[pg_extern(sql = "
     CREATE OR REPLACE FUNCTION zdb.zdb_delete_trigger() RETURNS trigger LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_delete_trigger_wrapper';
-    "
-)]
+    ")]
 fn zdb_delete_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
     let trigdata: PgBox<pg_sys::TriggerData> = unsafe {
         PgBox::from_pg(fcinfo.as_ref().expect("fcinfo is NULL").context as *mut pg_sys::TriggerData)
@@ -84,7 +82,9 @@ fn zdb_delete_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
 
     unsafe {
         let args = std::slice::from_raw_parts(tg_trigger.tgargs, tg_trigger.tgnargs as usize);
-        let index_relid_str = CStr::from_ptr(args[0] as *const std::os::raw::c_char).to_str().unwrap();
+        let index_relid_str = CStr::from_ptr(args[0] as *const std::os::raw::c_char)
+            .to_str()
+            .unwrap();
         let index_relid = str::parse::<pg_sys::Oid>(index_relid_str).expect("malformed oid");
         let mut tid = (*trigdata.tg_trigtuple).t_self;
 

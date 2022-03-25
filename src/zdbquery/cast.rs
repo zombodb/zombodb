@@ -27,13 +27,16 @@ fn zdbquery_to_jsonb(input: ZDBQuery) -> JsonB {
     JsonB(input.into_value())
 }
 
-extension_sql!(r#"
+extension_sql!(
+    r#"
 CREATE CAST (text AS zdbquery) WITH FUNCTION zdbquery_from_text(text) AS IMPLICIT;
 CREATE CAST (json AS zdbquery) WITH FUNCTION zdbquery_from_json(json) AS IMPLICIT;
 CREATE CAST (jsonb AS zdbquery) WITH FUNCTION zdbquery_from_jsonb(jsonb) AS IMPLICIT;
 CREATE CAST (zdbquery AS json) WITH FUNCTION zdbquery_to_json(zdbquery) AS IMPLICIT;
 CREATE CAST (zdbquery AS jsonb) WITH FUNCTION zdbquery_to_jsonb(zdbquery) AS IMPLICIT;
-"#, name = "zdb_query_casts");
+"#,
+    name = "zdb_query_casts"
+);
 
 #[cfg(any(test, feature = "pg_test"))]
 #[pgx_macros::pg_schema]
