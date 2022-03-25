@@ -81,6 +81,8 @@ struct ZDBIndexOptionsInternal {
     nested_object_date_detection: bool,
     nested_object_numeric_detection: bool,
     nested_object_text_mapping_offset: i32,
+
+    include_source: bool,
 }
 
 #[allow(dead_code)]
@@ -105,6 +107,7 @@ impl ZDBIndexOptionsInternal {
             ops.max_analyze_token_count = DEFAULT_MAX_ANALYZE_TOKEN_COUNT;
             ops.nested_object_date_detection = false;
             ops.nested_object_numeric_detection = false;
+            ops.include_source = true;
             ops.into_pg_boxed()
         } else {
             unsafe { PgBox::from_pg(relation.rd_options as *mut ZDBIndexOptionsInternal) }
@@ -266,6 +269,8 @@ pub struct ZDBIndexOptions {
     nested_object_date_detection: bool,
     nested_object_numeric_detection: bool,
     nested_object_text_mapping: serde_json::Value,
+
+    include_source: bool,
 }
 
 #[allow(dead_code)]
@@ -308,6 +313,7 @@ impl ZDBIndexOptions {
             nested_object_date_detection: internal.nested_object_date_detection,
             nested_object_numeric_detection: internal.nested_object_numeric_detection,
             nested_object_text_mapping: internal.nested_object_text_mapping(),
+            include_source: internal.include_source,
         }
     }
 
@@ -429,10 +435,17 @@ impl ZDBIndexOptions {
     pub fn nested_object_text_mapping(&self) -> &serde_json::Value {
         &self.nested_object_text_mapping
     }
+
+    pub fn include_source(&self) -> bool {
+        self.include_source
+    }
 }
 
 #[pg_extern(
-    immutable, parallel_safe, raw, no_guard,
+    immutable,
+    parallel_safe,
+    raw,
+    no_guard,
     sql = r#"
         -- we don't want any SQL generated for the "shadow" function, but we do want its '_wrapper' symbol
         -- exported so that shadow indexes can reference it using whatever argument type they want    
@@ -668,7 +681,7 @@ extern "C" fn validate_text_mapping(value: *const std::os::raw::c_char) {
     .expect("invalid nested_object_text_mapping");
 }
 
-const NUM_REL_OPTS: usize = 25;
+const NUM_REL_OPTS: usize = 26;
 #[allow(clippy::unneeded_field_pattern)] // b/c of offset_of!()
 #[pg_guard]
 pub unsafe extern "C" fn amoptions(
@@ -801,6 +814,11 @@ pub unsafe extern "C" fn amoptions(
             optname: "nested_object_text_mapping".as_pg_cstr(),
             opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, nested_object_text_mapping_offset) as i32,
+        },
+        pg_sys::relopt_parse_elt {
+            optname: "include_source".as_pg_cstr(),
+            opttype: pg_sys::relopt_type_RELOPT_TYPE_BOOL,
+            offset: offset_of!(ZDBIndexOptionsInternal, include_source) as i32,
         },
     ];
 
@@ -1145,6 +1163,16 @@ pub unsafe fn init() {
         "As a JSON mapping definition, how should dynamic text values in JSON be mapped?".as_pg_cstr(),
         r#"{ "type": "keyword", "ignore_above": 10922, "normalizer": "lowercase", "copy_to": "zdb_all" }"#.as_pg_cstr(),
         Some(validate_text_mapping),
+        #[cfg(any(feature = "pg13", feature = "pg14"))]
+        {
+            pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
+        },
+    );
+    pg_sys::add_bool_reloption(
+        RELOPT_KIND_ZDB,
+        "include_source".as_pg_cstr(),
+        "Should the source of the document be included in the _source field?".as_pg_cstr(),
+        true,
         #[cfg(any(feature = "pg13", feature = "pg14"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE

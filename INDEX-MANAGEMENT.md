@@ -315,6 +315,17 @@ You can override this at `CREATE INDEX` time.
 
 ### Advanced Options
 
+#### `include_source`
+
+```
+Type: bool, default 'true'
+```
+
+Should the source of each row be included in the _source field of the document within Elasticsearch?
+
+Turning this off is useful for reducing the size of the documents, but it's not recommended for production use.  The
+primary problem with this is that it makes it impossible to properly UPDATE/DELETE rows.  This is for experts only.
+
 #### `options`
 
 ```
