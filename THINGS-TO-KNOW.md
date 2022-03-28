@@ -78,7 +78,7 @@ This means your Elasticsearch index sizes are most likely going to be measurably
 than the on-disk representation in Postgres. This is due to storing the document source plus all the indexed/analyzed
 terms for every field. Keep this in mind when designing your Elasticsearch cluster.
 
-It is worth noting that in extremely exceptional cases, in order to significantly reduce the size of the index, it may be useful to disable the `include_source` option (described [here](https://github.com/zombodb/zombodb/blob/develop/INDEX-MANAGEMENT.md#include_source)).
+It is worth noting that in extremely exceptional cases, in order to significantly reduce the size of the index, it may be useful to disable the `include_source` option (described [here](https://github.com/zombodb/zombodb/blob/master/INDEX-MANAGEMENT.md#include_source)).
 
 ### ZomboDB Rewrites Your Queries and CREATE INDEX Statements
 
