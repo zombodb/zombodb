@@ -26,7 +26,7 @@ $$;
 
 -- it's imperative for `update-versions.sh` that this function be formatted exactly this way
 CREATE FUNCTION zdb.schema_version() RETURNS text LANGUAGE sql AS $$
-SELECT '3000.0.11 (953addc6d911a9d237930efcc6b01129c8575d65)'
+SELECT '3000.0.11 (88de979fbc0b0c23f4bc71abef6bf0a632dfe2cd)'
 $$;
 
 CREATE SCHEMA dsl;
@@ -97,13 +97,6 @@ IMMUTABLE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'point_array_to_json_wrapper';
 
--- src/lib.rs:63
--- zombodb::internal_version
-CREATE OR REPLACE FUNCTION zdb."internal_version"() RETURNS text /* alloc::string::String */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'internal_version_wrapper';
-
 -- src/lib.rs:84
 -- zombodb::ctid
 CREATE OR REPLACE FUNCTION zdb."ctid"(
@@ -112,6 +105,13 @@ CREATE OR REPLACE FUNCTION zdb."ctid"(
 IMMUTABLE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'ctid_wrapper';
+
+-- src/lib.rs:63
+-- zombodb::internal_version
+CREATE OR REPLACE FUNCTION zdb."internal_version"() RETURNS text /* alloc::string::String */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'internal_version_wrapper';
 
 -- src/highlighting/query_highlighter.rs:370
 -- zombodb::highlighting::query_highlighter::highlight_document
@@ -133,13 +133,13 @@ STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'highlight_document_wrapper';
 
--- src/highlighting/document_highlighter.rs:611
--- zombodb::highlighting::document_highlighter::highlight_wildcard
-CREATE OR REPLACE FUNCTION zdb."highlight_wildcard"(
+-- src/highlighting/document_highlighter.rs:535
+-- zombodb::highlighting::document_highlighter::highlight_term
+CREATE OR REPLACE FUNCTION zdb."highlight_term"(
 	"index" regclass, /* pgx::rel::PgRelation */
 	"field_name" text, /* &str */
 	"text" text, /* &str */
-	"token_to_highlight" text /* &str */
+	"token_to_highlight" text /* alloc::string::String */
 ) RETURNS TABLE (
 	"field_name" text,  /* alloc::string::String */
 	"term" text,  /* alloc::string::String */
@@ -150,7 +150,26 @@ CREATE OR REPLACE FUNCTION zdb."highlight_wildcard"(
 )
 IMMUTABLE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'highlight_wildcard_wrapper';
+AS 'MODULE_PATHNAME', 'highlight_term_wrapper';
+
+-- src/highlighting/document_highlighter.rs:573
+-- zombodb::highlighting::document_highlighter::highlight_phrase
+CREATE OR REPLACE FUNCTION zdb."highlight_phrase"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"field_name" text, /* &str */
+	"text" text, /* &str */
+	"tokens_to_highlight" text /* &str */
+) RETURNS TABLE (
+	"field_name" text,  /* alloc::string::String */
+	"term" text,  /* alloc::string::String */
+	"type" text,  /* alloc::string::String */
+	"position" integer,  /* i32 */
+	"start_offset" bigint,  /* i64 */
+	"end_offset" bigint  /* i64 */
+)
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'highlight_phrase_wrapper';
 
 -- src/highlighting/document_highlighter.rs:687
 -- zombodb::highlighting::document_highlighter::highlight_fuzzy
@@ -172,6 +191,25 @@ IMMUTABLE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'highlight_fuzzy_wrapper';
 
+-- src/highlighting/document_highlighter.rs:611
+-- zombodb::highlighting::document_highlighter::highlight_wildcard
+CREATE OR REPLACE FUNCTION zdb."highlight_wildcard"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"field_name" text, /* &str */
+	"text" text, /* &str */
+	"token_to_highlight" text /* &str */
+) RETURNS TABLE (
+	"field_name" text,  /* alloc::string::String */
+	"term" text,  /* alloc::string::String */
+	"type" text,  /* alloc::string::String */
+	"position" integer,  /* i32 */
+	"start_offset" bigint,  /* i64 */
+	"end_offset" bigint  /* i64 */
+)
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'highlight_wildcard_wrapper';
+
 -- src/highlighting/document_highlighter.rs:649
 -- zombodb::highlighting::document_highlighter::highlight_regex
 CREATE OR REPLACE FUNCTION zdb."highlight_regex"(
@@ -190,78 +228,6 @@ CREATE OR REPLACE FUNCTION zdb."highlight_regex"(
 IMMUTABLE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'highlight_regex_wrapper';
-
--- src/highlighting/document_highlighter.rs:573
--- zombodb::highlighting::document_highlighter::highlight_phrase
-CREATE OR REPLACE FUNCTION zdb."highlight_phrase"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"field_name" text, /* &str */
-	"text" text, /* &str */
-	"tokens_to_highlight" text /* &str */
-) RETURNS TABLE (
-	"field_name" text,  /* alloc::string::String */
-	"term" text,  /* alloc::string::String */
-	"type" text,  /* alloc::string::String */
-	"position" integer,  /* i32 */
-	"start_offset" bigint,  /* i64 */
-	"end_offset" bigint  /* i64 */
-)
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'highlight_phrase_wrapper';
-
--- src/highlighting/document_highlighter.rs:535
--- zombodb::highlighting::document_highlighter::highlight_term
-CREATE OR REPLACE FUNCTION zdb."highlight_term"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"field_name" text, /* &str */
-	"text" text, /* &str */
-	"token_to_highlight" text /* alloc::string::String */
-) RETURNS TABLE (
-	"field_name" text,  /* alloc::string::String */
-	"term" text,  /* alloc::string::String */
-	"type" text,  /* alloc::string::String */
-	"position" integer,  /* i32 */
-	"start_offset" bigint,  /* i64 */
-	"end_offset" bigint  /* i64 */
-)
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'highlight_term_wrapper';
-
--- src/elasticsearch/analyze.rs:118
--- zombodb::elasticsearch::analyze::analyze_text
-CREATE OR REPLACE FUNCTION zdb."analyze_text"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"analyzer" text, /* &str */
-	"text" text /* &str */
-) RETURNS TABLE (
-	"type" text,  /* alloc::string::String */
-	"token" text,  /* alloc::string::String */
-	"position" integer,  /* i32 */
-	"start_offset" bigint,  /* i64 */
-	"end_offset" bigint  /* i64 */
-)
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'analyze_text_wrapper';
-
--- src/elasticsearch/analyze.rs:137
--- zombodb::elasticsearch::analyze::analyze_with_field
-CREATE OR REPLACE FUNCTION zdb."analyze_with_field"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"field" text, /* &str */
-	"text" text /* &str */
-) RETURNS TABLE (
-	"type" text,  /* alloc::string::String */
-	"token" text,  /* alloc::string::String */
-	"position" integer,  /* i32 */
-	"start_offset" bigint,  /* i64 */
-	"end_offset" bigint  /* i64 */
-)
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'analyze_with_field_wrapper';
 
 -- src/elasticsearch/analyze.rs:156
 -- zombodb::elasticsearch::analyze::analyze_custom
@@ -283,6 +249,40 @@ CREATE OR REPLACE FUNCTION zdb."analyze_custom"(
 IMMUTABLE PARALLEL SAFE
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'analyze_custom_wrapper';
+
+-- src/elasticsearch/analyze.rs:137
+-- zombodb::elasticsearch::analyze::analyze_with_field
+CREATE OR REPLACE FUNCTION zdb."analyze_with_field"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"field" text, /* &str */
+	"text" text /* &str */
+) RETURNS TABLE (
+	"type" text,  /* alloc::string::String */
+	"token" text,  /* alloc::string::String */
+	"position" integer,  /* i32 */
+	"start_offset" bigint,  /* i64 */
+	"end_offset" bigint  /* i64 */
+)
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'analyze_with_field_wrapper';
+
+-- src/elasticsearch/analyze.rs:118
+-- zombodb::elasticsearch::analyze::analyze_text
+CREATE OR REPLACE FUNCTION zdb."analyze_text"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"analyzer" text, /* &str */
+	"text" text /* &str */
+) RETURNS TABLE (
+	"type" text,  /* alloc::string::String */
+	"token" text,  /* alloc::string::String */
+	"position" integer,  /* i32 */
+	"start_offset" bigint,  /* i64 */
+	"end_offset" bigint  /* i64 */
+)
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'analyze_text_wrapper';
 
 -- src/elasticsearch/aggregates/builders/sampler.rs:10
 -- zombodb::elasticsearch::aggregates::builders::sampler::sampler_agg
@@ -307,151 +307,16 @@ IMMUTABLE PARALLEL SAFE
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'range_agg_wrapper';
 
--- src/elasticsearch/aggregates/builders/metrics.rs:169
--- zombodb::elasticsearch::aggregates::builders::metrics::max_agg
-CREATE OR REPLACE FUNCTION zdb."max_agg"(
+-- src/elasticsearch/aggregates/builders/metrics.rs:87
+-- zombodb::elasticsearch::aggregates::builders::metrics::avg_agg
+CREATE OR REPLACE FUNCTION zdb."avg_agg"(
 	"aggregate_name" text, /* &str */
 	"field" text, /* &str */
 	"missing" bigint /* i64 */
 ) RETURNS jsonb /* pgx::datum::json::JsonB */
 IMMUTABLE PARALLEL SAFE  STRICT
 LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'max_agg_missing_int_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:197
--- zombodb::elasticsearch::aggregates::builders::metrics::stats_agg
-CREATE OR REPLACE FUNCTION zdb."stats_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text /* &str */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'stats_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:727
--- zombodb::elasticsearch::aggregates::builders::metrics::weighted_avg_agg
-CREATE OR REPLACE FUNCTION zdb."weighted_avg_agg"(
-	"aggregate_name" text, /* &str */
-	"field_value" text, /* &str */
-	"field_weight" text, /* &str */
-	"value_missing" bigint, /* i64 */
-	"weight_missing" bigint /* i64 */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'weighted_avg_missings_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:238
--- zombodb::elasticsearch::aggregates::builders::metrics::cardinality_agg
-CREATE OR REPLACE FUNCTION zdb."cardinality_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text /* &str */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'cardinality_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:560
--- zombodb::elasticsearch::aggregates::builders::metrics::percentiles_agg
-CREATE OR REPLACE FUNCTION zdb."percentiles_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text, /* &str */
-	"precents" double precision[], /* alloc::vec::Vec<f64> */
-	"missing" bigint /* i64 */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'percentiles_precent_missing_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:465
--- zombodb::elasticsearch::aggregates::builders::metrics::median_absolute_deviation_agg
-CREATE OR REPLACE FUNCTION zdb."median_absolute_deviation_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text, /* &str */
-	"compression" bigint, /* i64 */
-	"missing" bigint /* i64 */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'median_absolute_deviation_compression_missing_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:265
--- zombodb::elasticsearch::aggregates::builders::metrics::cardinality_agg
-CREATE OR REPLACE FUNCTION zdb."cardinality_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text, /* &str */
-	"missing" double precision /* f64 */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'cardinality_agg_missing_float_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:512
--- zombodb::elasticsearch::aggregates::builders::metrics::percentiles
-CREATE OR REPLACE FUNCTION zdb."percentiles"(
-	"aggregate_name" text, /* &str */
-	"field" text, /* &str */
-	"keyed" bool /* bool */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'percentiles_keyed_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:46
--- zombodb::elasticsearch::aggregates::builders::metrics::sum_agg
-CREATE OR REPLACE FUNCTION zdb."sum_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text, /* &str */
-	"missing" double precision /* f64 */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'sum_agg_missing_float_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:540
--- zombodb::elasticsearch::aggregates::builders::metrics::percentiles_agg
-CREATE OR REPLACE FUNCTION zdb."percentiles_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text, /* &str */
-	"percents" double precision[], /* alloc::vec::Vec<f64> */
-	"keyed" bool /* bool */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'percentiles_precent_keyed_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:485
--- zombodb::elasticsearch::aggregates::builders::metrics::percentiles_agg
-CREATE OR REPLACE FUNCTION zdb."percentiles_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text /* &str */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'percentiles_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:332
--- zombodb::elasticsearch::aggregates::builders::metrics::matrix_stats_agg
-CREATE OR REPLACE FUNCTION zdb."matrix_stats_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text[], /* alloc::vec::Vec<&str> */
-	"missing_field" text, /* &str */
-	"missing_value" bigint /* i64 */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'matrix_stats_agg_missing_i64_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:306
--- zombodb::elasticsearch::aggregates::builders::metrics::extended_stats_agg
-CREATE OR REPLACE FUNCTION zdb."extended_stats_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text, /* &str */
-	"missing" double precision /* f64 */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'extended_stats_agg_missing_float_wrapper';
+AS 'MODULE_PATHNAME', 'avg_agg_missing_int_wrapper';
 
 -- src/elasticsearch/aggregates/builders/metrics.rs:705
 -- zombodb::elasticsearch::aggregates::builders::metrics::weighted_avg_agg
@@ -464,59 +329,6 @@ CREATE OR REPLACE FUNCTION zdb."weighted_avg_agg"(
 IMMUTABLE PARALLEL SAFE  STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'weighted_avg_missing_value_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:689
--- zombodb::elasticsearch::aggregates::builders::metrics::weighted_avg_agg
-CREATE OR REPLACE FUNCTION zdb."weighted_avg_agg"(
-	"aggregate_name" text, /* &str */
-	"field_value" text, /* &str */
-	"field_weight" text /* &str */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'weighted_avg_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:772
--- zombodb::elasticsearch::aggregates::builders::metrics::top_metrics_agg
-CREATE OR REPLACE FUNCTION zdb."top_metrics_agg"(
-	"aggregate_name" text, /* &str */
-	"metric_field" text /* &str */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'top_metric_score_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:60
--- zombodb::elasticsearch::aggregates::builders::metrics::sum_agg
-CREATE OR REPLACE FUNCTION zdb."sum_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text, /* &str */
-	"missing" bigint /* i64 */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'sum_agg_missing_int_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:115
--- zombodb::elasticsearch::aggregates::builders::metrics::min_agg
-CREATE OR REPLACE FUNCTION zdb."min_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text /* &str */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'min_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:183
--- zombodb::elasticsearch::aggregates::builders::metrics::max_agg
-CREATE OR REPLACE FUNCTION zdb."max_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text, /* &str */
-	"missing" double precision /* f64 */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'max_agg_missing_float_wrapper';
 
 -- src/elasticsearch/aggregates/builders/metrics.rs:600
 -- zombodb::elasticsearch::aggregates::builders::metrics::percentiles_agg
@@ -531,167 +343,15 @@ IMMUTABLE PARALLEL SAFE  STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'percentiles_precents_keyed_missing_agg_wrapper';
 
--- src/elasticsearch/aggregates/builders/metrics.rs:451
--- zombodb::elasticsearch::aggregates::builders::metrics::median_absolute_deviation_agg
-CREATE OR REPLACE FUNCTION zdb."median_absolute_deviation_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text, /* &str */
-	"missing" bigint /* i64 */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'median_absolute_deviation_missing_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:101
--- zombodb::elasticsearch::aggregates::builders::metrics::avg_agg
-CREATE OR REPLACE FUNCTION zdb."avg_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text, /* &str */
-	"missing" double precision /* f64 */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'avg_agg_missing_float_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:33
--- zombodb::elasticsearch::aggregates::builders::metrics::sum_agg
-CREATE OR REPLACE FUNCTION zdb."sum_agg"(
+-- src/elasticsearch/aggregates/builders/metrics.rs:365
+-- zombodb::elasticsearch::aggregates::builders::metrics::value_count_agg
+CREATE OR REPLACE FUNCTION zdb."value_count_agg"(
 	"aggregate_name" text, /* &str */
 	"field" text /* &str */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'sum_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:498
--- zombodb::elasticsearch::aggregates::builders::metrics::percentiles
-CREATE OR REPLACE FUNCTION zdb."percentiles"(
-	"aggregate_name" text, /* &str */
-	"field" text, /* &str */
-	"percents" double precision[] /* alloc::vec::Vec<f64> */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'percentiles_precents_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:142
--- zombodb::elasticsearch::aggregates::builders::metrics::min_agg
-CREATE OR REPLACE FUNCTION zdb."min_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text, /* &str */
-	"missing" double precision /* f64 */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'min_agg_missing_float_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:320
--- zombodb::elasticsearch::aggregates::builders::metrics::matrix_stats_agg
-CREATE OR REPLACE FUNCTION zdb."matrix_stats_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text[] /* alloc::vec::Vec<&str> */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'matrix_stats_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:128
--- zombodb::elasticsearch::aggregates::builders::metrics::min_agg
-CREATE OR REPLACE FUNCTION zdb."min_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text, /* &str */
-	"missing" bigint /* i64 */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'min_agg_missing_int_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:637
--- zombodb::elasticsearch::aggregates::builders::metrics::string_stats_agg
-CREATE OR REPLACE FUNCTION zdb."string_stats_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text, /* &str */
-	"show_distribution" bool /* bool */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'string_stats_char_distribution_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:156
--- zombodb::elasticsearch::aggregates::builders::metrics::max_agg
-CREATE OR REPLACE FUNCTION zdb."max_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text /* &str */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'max_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:87
--- zombodb::elasticsearch::aggregates::builders::metrics::avg_agg
-CREATE OR REPLACE FUNCTION zdb."avg_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text, /* &str */
-	"missing" bigint /* i64 */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'avg_agg_missing_int_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:279
--- zombodb::elasticsearch::aggregates::builders::metrics::extended_stats_agg
-CREATE OR REPLACE FUNCTION zdb."extended_stats_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text /* &str */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'extended_stats_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:526
--- zombodb::elasticsearch::aggregates::builders::metrics::percentiles_agg
-CREATE OR REPLACE FUNCTION zdb."percentiles_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text, /* &str */
-	"missing" bigint /* i64 */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'percentiles_missing_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:391
--- zombodb::elasticsearch::aggregates::builders::metrics::boxplot_agg
-CREATE OR REPLACE FUNCTION zdb."boxplot_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text, /* &str */
-	"missing" bigint /* i64 */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'boxplot_missing_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:351
--- zombodb::elasticsearch::aggregates::builders::metrics::geo_bounds_agg
-CREATE OR REPLACE FUNCTION zdb."geo_bounds_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text, /* &str */
-	"wrap_longitude" bool /* bool */
 ) RETURNS jsonb /* pgx::datum::json::JsonB */
 IMMUTABLE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'geo_bounds_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:669
--- zombodb::elasticsearch::aggregates::builders::metrics::string_stats_agg
-CREATE OR REPLACE FUNCTION zdb."string_stats_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text, /* &str */
-	"show_distribution" bool, /* bool */
-	"missing" bigint /* i64 */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'string_stats_char_distribution_missing_agg_wrapper';
+AS 'MODULE_PATHNAME', 'value_count_agg_wrapper';
 
 -- src/elasticsearch/aggregates/builders/metrics.rs:251
 -- zombodb::elasticsearch::aggregates::builders::metrics::cardinality_agg
@@ -704,27 +364,36 @@ IMMUTABLE PARALLEL SAFE  STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'cardinality_agg_missing_int_wrapper';
 
--- src/elasticsearch/aggregates/builders/metrics.rs:378
--- zombodb::elasticsearch::aggregates::builders::metrics::boxplot_agg
-CREATE OR REPLACE FUNCTION zdb."boxplot_agg"(
+-- src/elasticsearch/aggregates/builders/metrics.rs:425
+-- zombodb::elasticsearch::aggregates::builders::metrics::geo_centroid_agg
+CREATE OR REPLACE FUNCTION zdb."geo_centroid_agg"(
 	"aggregate_name" text, /* &str */
 	"field" text /* &str */
 ) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'geo_centroid_agg_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:772
+-- zombodb::elasticsearch::aggregates::builders::metrics::top_metrics_agg
+CREATE OR REPLACE FUNCTION zdb."top_metrics_agg"(
+	"aggregate_name" text, /* &str */
+	"metric_field" text /* &str */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
 IMMUTABLE PARALLEL SAFE  STRICT
 LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'boxplot_agg_wrapper';
+AS 'MODULE_PATHNAME', 'top_metric_score_agg_wrapper';
 
--- src/elasticsearch/aggregates/builders/metrics.rs:405
--- zombodb::elasticsearch::aggregates::builders::metrics::boxplot_agg
-CREATE OR REPLACE FUNCTION zdb."boxplot_agg"(
+-- src/elasticsearch/aggregates/builders/metrics.rs:210
+-- zombodb::elasticsearch::aggregates::builders::metrics::stats_agg
+CREATE OR REPLACE FUNCTION zdb."stats_agg"(
 	"aggregate_name" text, /* &str */
 	"field" text, /* &str */
-	"compression" bigint, /* i64 */
 	"missing" bigint /* i64 */
 ) RETURNS jsonb /* pgx::datum::json::JsonB */
 IMMUTABLE PARALLEL SAFE  STRICT
 LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'boxplot_compression_missing_agg_wrapper';
+AS 'MODULE_PATHNAME', 'stats_agg_missing_int_wrapper';
 
 -- src/elasticsearch/aggregates/builders/metrics.rs:438
 -- zombodb::elasticsearch::aggregates::builders::metrics::median_absolute_deviation_agg
@@ -736,67 +405,16 @@ IMMUTABLE PARALLEL SAFE  STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'median_absolute_deviation_agg_wrapper';
 
--- src/elasticsearch/aggregates/builders/metrics.rs:224
--- zombodb::elasticsearch::aggregates::builders::metrics::stats_agg
-CREATE OR REPLACE FUNCTION zdb."stats_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text, /* &str */
-	"missing" double precision /* f64 */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'stats_agg_missing_float_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:292
--- zombodb::elasticsearch::aggregates::builders::metrics::extended_stats_agg
-CREATE OR REPLACE FUNCTION zdb."extended_stats_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text, /* &str */
-	"missing" bigint /* i64 */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'extended_stats_agg_missing_int_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:425
--- zombodb::elasticsearch::aggregates::builders::metrics::geo_centroid_agg
-CREATE OR REPLACE FUNCTION zdb."geo_centroid_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text /* &str */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'geo_centroid_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:74
--- zombodb::elasticsearch::aggregates::builders::metrics::avg_agg
-CREATE OR REPLACE FUNCTION zdb."avg_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text /* &str */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'avg_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:622
+-- src/elasticsearch/aggregates/builders/metrics.rs:637
 -- zombodb::elasticsearch::aggregates::builders::metrics::string_stats_agg
 CREATE OR REPLACE FUNCTION zdb."string_stats_agg"(
 	"aggregate_name" text, /* &str */
-	"field" text /* &str */
+	"field" text, /* &str */
+	"show_distribution" bool /* bool */
 ) RETURNS jsonb /* pgx::datum::json::JsonB */
 IMMUTABLE PARALLEL SAFE  STRICT
 LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'string_stats_agg_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:365
--- zombodb::elasticsearch::aggregates::builders::metrics::value_count_agg
-CREATE OR REPLACE FUNCTION zdb."value_count_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text /* &str */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'value_count_agg_wrapper';
+AS 'MODULE_PATHNAME', 'string_stats_char_distribution_agg_wrapper';
 
 -- src/elasticsearch/aggregates/builders/metrics.rs:580
 -- zombodb::elasticsearch::aggregates::builders::metrics::percentiles_agg
@@ -810,6 +428,81 @@ IMMUTABLE PARALLEL SAFE  STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'percentiles_keyed_missing_agg_wrapper';
 
+-- src/elasticsearch/aggregates/builders/metrics.rs:197
+-- zombodb::elasticsearch::aggregates::builders::metrics::stats_agg
+CREATE OR REPLACE FUNCTION zdb."stats_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text /* &str */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'stats_agg_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:451
+-- zombodb::elasticsearch::aggregates::builders::metrics::median_absolute_deviation_agg
+CREATE OR REPLACE FUNCTION zdb."median_absolute_deviation_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text, /* &str */
+	"missing" bigint /* i64 */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'median_absolute_deviation_missing_agg_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:465
+-- zombodb::elasticsearch::aggregates::builders::metrics::median_absolute_deviation_agg
+CREATE OR REPLACE FUNCTION zdb."median_absolute_deviation_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text, /* &str */
+	"compression" bigint, /* i64 */
+	"missing" bigint /* i64 */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'median_absolute_deviation_compression_missing_agg_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:169
+-- zombodb::elasticsearch::aggregates::builders::metrics::max_agg
+CREATE OR REPLACE FUNCTION zdb."max_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text, /* &str */
+	"missing" bigint /* i64 */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'max_agg_missing_int_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:60
+-- zombodb::elasticsearch::aggregates::builders::metrics::sum_agg
+CREATE OR REPLACE FUNCTION zdb."sum_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text, /* &str */
+	"missing" bigint /* i64 */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'sum_agg_missing_int_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:320
+-- zombodb::elasticsearch::aggregates::builders::metrics::matrix_stats_agg
+CREATE OR REPLACE FUNCTION zdb."matrix_stats_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text[] /* alloc::vec::Vec<&str> */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'matrix_stats_agg_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:33
+-- zombodb::elasticsearch::aggregates::builders::metrics::sum_agg
+CREATE OR REPLACE FUNCTION zdb."sum_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text /* &str */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'sum_agg_wrapper';
+
 -- src/elasticsearch/aggregates/builders/metrics.rs:788
 -- zombodb::elasticsearch::aggregates::builders::metrics::top_metrics_agg
 CREATE OR REPLACE FUNCTION zdb."top_metrics_agg"(
@@ -820,6 +513,156 @@ CREATE OR REPLACE FUNCTION zdb."top_metrics_agg"(
 IMMUTABLE PARALLEL SAFE  STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'top_metric_agg_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:351
+-- zombodb::elasticsearch::aggregates::builders::metrics::geo_bounds_agg
+CREATE OR REPLACE FUNCTION zdb."geo_bounds_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text, /* &str */
+	"wrap_longitude" bool /* bool */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'geo_bounds_agg_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:485
+-- zombodb::elasticsearch::aggregates::builders::metrics::percentiles_agg
+CREATE OR REPLACE FUNCTION zdb."percentiles_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text /* &str */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'percentiles_agg_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:183
+-- zombodb::elasticsearch::aggregates::builders::metrics::max_agg
+CREATE OR REPLACE FUNCTION zdb."max_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text, /* &str */
+	"missing" double precision /* f64 */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'max_agg_missing_float_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:224
+-- zombodb::elasticsearch::aggregates::builders::metrics::stats_agg
+CREATE OR REPLACE FUNCTION zdb."stats_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text, /* &str */
+	"missing" double precision /* f64 */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'stats_agg_missing_float_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:156
+-- zombodb::elasticsearch::aggregates::builders::metrics::max_agg
+CREATE OR REPLACE FUNCTION zdb."max_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text /* &str */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'max_agg_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:689
+-- zombodb::elasticsearch::aggregates::builders::metrics::weighted_avg_agg
+CREATE OR REPLACE FUNCTION zdb."weighted_avg_agg"(
+	"aggregate_name" text, /* &str */
+	"field_value" text, /* &str */
+	"field_weight" text /* &str */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'weighted_avg_agg_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:332
+-- zombodb::elasticsearch::aggregates::builders::metrics::matrix_stats_agg
+CREATE OR REPLACE FUNCTION zdb."matrix_stats_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text[], /* alloc::vec::Vec<&str> */
+	"missing_field" text, /* &str */
+	"missing_value" bigint /* i64 */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'matrix_stats_agg_missing_i64_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:101
+-- zombodb::elasticsearch::aggregates::builders::metrics::avg_agg
+CREATE OR REPLACE FUNCTION zdb."avg_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text, /* &str */
+	"missing" double precision /* f64 */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'avg_agg_missing_float_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:292
+-- zombodb::elasticsearch::aggregates::builders::metrics::extended_stats_agg
+CREATE OR REPLACE FUNCTION zdb."extended_stats_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text, /* &str */
+	"missing" bigint /* i64 */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'extended_stats_agg_missing_int_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:279
+-- zombodb::elasticsearch::aggregates::builders::metrics::extended_stats_agg
+CREATE OR REPLACE FUNCTION zdb."extended_stats_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text /* &str */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'extended_stats_agg_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:391
+-- zombodb::elasticsearch::aggregates::builders::metrics::boxplot_agg
+CREATE OR REPLACE FUNCTION zdb."boxplot_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text, /* &str */
+	"missing" bigint /* i64 */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'boxplot_missing_agg_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:622
+-- zombodb::elasticsearch::aggregates::builders::metrics::string_stats_agg
+CREATE OR REPLACE FUNCTION zdb."string_stats_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text /* &str */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'string_stats_agg_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:498
+-- zombodb::elasticsearch::aggregates::builders::metrics::percentiles
+CREATE OR REPLACE FUNCTION zdb."percentiles"(
+	"aggregate_name" text, /* &str */
+	"field" text, /* &str */
+	"percents" double precision[] /* alloc::vec::Vec<f64> */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'percentiles_precents_agg_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:115
+-- zombodb::elasticsearch::aggregates::builders::metrics::min_agg
+CREATE OR REPLACE FUNCTION zdb."min_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text /* &str */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'min_agg_wrapper';
 
 -- src/elasticsearch/aggregates/builders/metrics.rs:655
 -- zombodb::elasticsearch::aggregates::builders::metrics::string_stats_agg
@@ -832,16 +675,173 @@ IMMUTABLE PARALLEL SAFE  STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'string_stats_missing_agg_wrapper';
 
--- src/elasticsearch/aggregates/builders/metrics.rs:210
--- zombodb::elasticsearch::aggregates::builders::metrics::stats_agg
-CREATE OR REPLACE FUNCTION zdb."stats_agg"(
+-- src/elasticsearch/aggregates/builders/metrics.rs:46
+-- zombodb::elasticsearch::aggregates::builders::metrics::sum_agg
+CREATE OR REPLACE FUNCTION zdb."sum_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text, /* &str */
+	"missing" double precision /* f64 */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'sum_agg_missing_float_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:128
+-- zombodb::elasticsearch::aggregates::builders::metrics::min_agg
+CREATE OR REPLACE FUNCTION zdb."min_agg"(
 	"aggregate_name" text, /* &str */
 	"field" text, /* &str */
 	"missing" bigint /* i64 */
 ) RETURNS jsonb /* pgx::datum::json::JsonB */
 IMMUTABLE PARALLEL SAFE  STRICT
 LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'stats_agg_missing_int_wrapper';
+AS 'MODULE_PATHNAME', 'min_agg_missing_int_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:142
+-- zombodb::elasticsearch::aggregates::builders::metrics::min_agg
+CREATE OR REPLACE FUNCTION zdb."min_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text, /* &str */
+	"missing" double precision /* f64 */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'min_agg_missing_float_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:405
+-- zombodb::elasticsearch::aggregates::builders::metrics::boxplot_agg
+CREATE OR REPLACE FUNCTION zdb."boxplot_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text, /* &str */
+	"compression" bigint, /* i64 */
+	"missing" bigint /* i64 */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'boxplot_compression_missing_agg_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:727
+-- zombodb::elasticsearch::aggregates::builders::metrics::weighted_avg_agg
+CREATE OR REPLACE FUNCTION zdb."weighted_avg_agg"(
+	"aggregate_name" text, /* &str */
+	"field_value" text, /* &str */
+	"field_weight" text, /* &str */
+	"value_missing" bigint, /* i64 */
+	"weight_missing" bigint /* i64 */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'weighted_avg_missings_agg_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:74
+-- zombodb::elasticsearch::aggregates::builders::metrics::avg_agg
+CREATE OR REPLACE FUNCTION zdb."avg_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text /* &str */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'avg_agg_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:526
+-- zombodb::elasticsearch::aggregates::builders::metrics::percentiles_agg
+CREATE OR REPLACE FUNCTION zdb."percentiles_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text, /* &str */
+	"missing" bigint /* i64 */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'percentiles_missing_agg_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:540
+-- zombodb::elasticsearch::aggregates::builders::metrics::percentiles_agg
+CREATE OR REPLACE FUNCTION zdb."percentiles_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text, /* &str */
+	"percents" double precision[], /* alloc::vec::Vec<f64> */
+	"keyed" bool /* bool */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'percentiles_precent_keyed_agg_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:265
+-- zombodb::elasticsearch::aggregates::builders::metrics::cardinality_agg
+CREATE OR REPLACE FUNCTION zdb."cardinality_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text, /* &str */
+	"missing" double precision /* f64 */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'cardinality_agg_missing_float_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:306
+-- zombodb::elasticsearch::aggregates::builders::metrics::extended_stats_agg
+CREATE OR REPLACE FUNCTION zdb."extended_stats_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text, /* &str */
+	"missing" double precision /* f64 */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'extended_stats_agg_missing_float_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:238
+-- zombodb::elasticsearch::aggregates::builders::metrics::cardinality_agg
+CREATE OR REPLACE FUNCTION zdb."cardinality_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text /* &str */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'cardinality_agg_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:669
+-- zombodb::elasticsearch::aggregates::builders::metrics::string_stats_agg
+CREATE OR REPLACE FUNCTION zdb."string_stats_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text, /* &str */
+	"show_distribution" bool, /* bool */
+	"missing" bigint /* i64 */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'string_stats_char_distribution_missing_agg_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:512
+-- zombodb::elasticsearch::aggregates::builders::metrics::percentiles
+CREATE OR REPLACE FUNCTION zdb."percentiles"(
+	"aggregate_name" text, /* &str */
+	"field" text, /* &str */
+	"keyed" bool /* bool */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'percentiles_keyed_agg_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:378
+-- zombodb::elasticsearch::aggregates::builders::metrics::boxplot_agg
+CREATE OR REPLACE FUNCTION zdb."boxplot_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text /* &str */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'boxplot_agg_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:560
+-- zombodb::elasticsearch::aggregates::builders::metrics::percentiles_agg
+CREATE OR REPLACE FUNCTION zdb."percentiles_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text, /* &str */
+	"precents" double precision[], /* alloc::vec::Vec<f64> */
+	"missing" bigint /* i64 */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'percentiles_precent_missing_agg_wrapper';
 
 -- src/elasticsearch/aggregates/builders/ip_range.rs:18
 -- zombodb::elasticsearch::aggregates::builders::ip_range::ip_range_agg
@@ -974,23 +974,14 @@ AS 'MODULE_PATHNAME', 'cat_request_wrapper';
 
 
 
--- src/access_method/options.rs:458
--- zombodb::access_method::options::determine_index
-CREATE OR REPLACE FUNCTION zdb."determine_index"(
-	"relation" regclass /* pgx::rel::PgRelation */
-) RETURNS regclass /* core::option::Option<pgx::rel::PgRelation> */
-VOLATILE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'determine_index_wrapper';
+-- src/access_method/options.rs:444
+-- zombodb::access_method::options::shadow
 
--- src/access_method/options.rs:512
--- zombodb::access_method::options::index_settings
-CREATE OR REPLACE FUNCTION zdb."index_settings"(
-	"index_relation" regclass /* pgx::rel::PgRelation */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-VOLATILE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'index_settings_wrapper';
+        -- we don't want any SQL generated for the "shadow" function, but we do want its '_wrapper' symbol
+        -- exported so that shadow indexes can reference it using whatever argument type they want    
+    
+
+
 
 -- src/access_method/options.rs:529
 -- zombodb::access_method::options::index_field_lists
@@ -1013,33 +1004,6 @@ VOLATILE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'index_url_wrapper';
 
--- src/access_method/options.rs:495
--- zombodb::access_method::options::index_type_name
-CREATE OR REPLACE FUNCTION zdb."index_type_name"(
-	"index_relation" regclass /* pgx::rel::PgRelation */
-) RETURNS text /* alloc::string::String */
-VOLATILE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'index_type_name_wrapper';
-
--- src/access_method/options.rs:522
--- zombodb::access_method::options::index_options
-CREATE OR REPLACE FUNCTION zdb."index_options"(
-	"index_relation" regclass /* pgx::rel::PgRelation */
-) RETURNS text[] /* core::option::Option<alloc::vec::Vec<alloc::string::String>> */
-VOLATILE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'index_options_wrapper';
-
--- src/access_method/options.rs:474
--- zombodb::access_method::options::index_name
-CREATE OR REPLACE FUNCTION zdb."index_name"(
-	"index_relation" regclass /* pgx::rel::PgRelation */
-) RETURNS text /* alloc::string::String */
-VOLATILE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'index_name_wrapper';
-
 -- src/access_method/options.rs:502
 -- zombodb::access_method::options::index_mapping
 CREATE OR REPLACE FUNCTION zdb."index_mapping"(
@@ -1059,23 +1023,41 @@ VOLATILE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'field_mapping_wrapper';
 
--- src/access_method/options.rs:481
--- zombodb::access_method::options::index_alias
-CREATE OR REPLACE FUNCTION zdb."index_alias"(
+-- src/access_method/options.rs:458
+-- zombodb::access_method::options::determine_index
+CREATE OR REPLACE FUNCTION zdb."determine_index"(
+	"relation" regclass /* pgx::rel::PgRelation */
+) RETURNS regclass /* core::option::Option<pgx::rel::PgRelation> */
+VOLATILE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'determine_index_wrapper';
+
+-- src/access_method/options.rs:495
+-- zombodb::access_method::options::index_type_name
+CREATE OR REPLACE FUNCTION zdb."index_type_name"(
 	"index_relation" regclass /* pgx::rel::PgRelation */
 ) RETURNS text /* alloc::string::String */
 VOLATILE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'index_alias_wrapper';
+AS 'MODULE_PATHNAME', 'index_type_name_wrapper';
 
--- src/access_method/options.rs:444
--- zombodb::access_method::options::shadow
+-- src/access_method/options.rs:522
+-- zombodb::access_method::options::index_options
+CREATE OR REPLACE FUNCTION zdb."index_options"(
+	"index_relation" regclass /* pgx::rel::PgRelation */
+) RETURNS text[] /* core::option::Option<alloc::vec::Vec<alloc::string::String>> */
+VOLATILE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'index_options_wrapper';
 
-        -- we don't want any SQL generated for the "shadow" function, but we do want its '_wrapper' symbol
-        -- exported so that shadow indexes can reference it using whatever argument type they want    
-    
-
-
+-- src/access_method/options.rs:512
+-- zombodb::access_method::options::index_settings
+CREATE OR REPLACE FUNCTION zdb."index_settings"(
+	"index_relation" regclass /* pgx::rel::PgRelation */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+VOLATILE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'index_settings_wrapper';
 
 -- src/access_method/options.rs:468
 -- zombodb::access_method::options::index_links
@@ -1085,6 +1067,24 @@ CREATE OR REPLACE FUNCTION zdb."index_links"(
 VOLATILE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'index_links_wrapper';
+
+-- src/access_method/options.rs:474
+-- zombodb::access_method::options::index_name
+CREATE OR REPLACE FUNCTION zdb."index_name"(
+	"index_relation" regclass /* pgx::rel::PgRelation */
+) RETURNS text /* alloc::string::String */
+VOLATILE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'index_name_wrapper';
+
+-- src/access_method/options.rs:481
+-- zombodb::access_method::options::index_alias
+CREATE OR REPLACE FUNCTION zdb."index_alias"(
+	"index_relation" regclass /* pgx::rel::PgRelation */
+) RETURNS text /* alloc::string::String */
+VOLATILE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'index_alias_wrapper';
 
 -- src/access_method/mod.rs:11
 -- zombodb::access_method::amhandler
@@ -1210,631 +1210,6 @@ IMMUTABLE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'highlight_proximity_wrapper';
 
--- src/zdbquery/mod.rs:117
--- zombodb::zdbquery::pg_catalog::ZDBQuery
-CREATE TYPE pg_catalog.ZDBQuery;
-
--- src/zdbquery/mod.rs:117
--- zombodb::zdbquery::pg_catalog::zdbquery_in
-CREATE OR REPLACE FUNCTION pg_catalog."zdbquery_in"(
-	"input" cstring /* &cstr_core::CStr */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'zdbquery_in_wrapper';
-
--- src/zdbquery/mod.rs:117
--- zombodb::zdbquery::pg_catalog::zdbquery_out
-CREATE OR REPLACE FUNCTION pg_catalog."zdbquery_out"(
-	"input" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS cstring /* &cstr_core::CStr */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'zdbquery_out_wrapper';
-
--- src/zdbquery/mod.rs:117
--- zombodb::zdbquery::pg_catalog::ZDBQuery
-CREATE TYPE pg_catalog.ZDBQuery (
-	INTERNALLENGTH = variable,
-	INPUT = pg_catalog.zdbquery_in, /* zombodb::zdbquery::pg_catalog::zdbquery_in */
-	OUTPUT = pg_catalog.zdbquery_out, /* zombodb::zdbquery::pg_catalog::zdbquery_out */
-	STORAGE = extended
-);
-
--- src/zdbquery/cast.rs:15
--- zombodb::zdbquery::cast::zdbquery_from_jsonb
-CREATE OR REPLACE FUNCTION zdb."zdbquery_from_jsonb"(
-	"input" jsonb /* pgx::datum::json::JsonB */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'zdbquery_from_jsonb_wrapper';
-
--- src/elasticsearch/aggregates/top_hits_with_id.rs:7
--- zombodb::elasticsearch::aggregates::top_hits_with_id::top_hits_with_id
-CREATE OR REPLACE FUNCTION zdb."top_hits_with_id"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"fields" text[], /* pgx::datum::array::Array<&str> */
-	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-	"size_limit" bigint /* i64 */
-) RETURNS TABLE (
-	"id" text,  /* alloc::string::String */
-	"score" double precision,  /* f64 */
-	"source" json  /* pgx::datum::json::Json */
-)
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'top_hits_with_id_wrapper';
-
--- src/elasticsearch/aggregates/builders/filters.rs:13
--- zombodb::elasticsearch::aggregates::builders::filters::filters_agg
-CREATE OR REPLACE FUNCTION zdb."filters_agg"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"aggregate_name" text, /* &str */
-	"labels" text[], /* pgx::datum::array::Array<&str> */
-	"filters" pg_catalog.ZDBQuery[] /* pgx::datum::array::Array<zombodb::zdbquery::pg_catalog::ZDBQuery> */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'filters_agg_wrapper';
-
--- src/elasticsearch/aggregates/date_range.rs:8
--- zombodb::elasticsearch::aggregates::date_range::date_range
-CREATE OR REPLACE FUNCTION zdb."date_range"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"field" text, /* &str */
-	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-	"date_range_array" json /* pgx::datum::json::Json */
-) RETURNS TABLE (
-	"key" text,  /* alloc::string::String */
-	"from" numeric,  /* core::option::Option<pgx::datum::numeric::Numeric> */
-	"from_as_string" text,  /* core::option::Option<alloc::string::String> */
-	"to" numeric,  /* core::option::Option<pgx::datum::numeric::Numeric> */
-	"to_as_string" text,  /* core::option::Option<alloc::string::String> */
-	"doc_count" bigint  /* i64 */
-)
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'date_range_wrapper';
-
--- src/elasticsearch/aggregates/metrics.rs:181
--- zombodb::elasticsearch::aggregates::metrics::value_count
-CREATE OR REPLACE FUNCTION zdb."value_count"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"field" text, /* &str */
-	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS numeric /* pgx::datum::numeric::Numeric */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'value_count_wrapper';
-
--- src/elasticsearch/aggregates/metrics.rs:7
--- zombodb::elasticsearch::aggregates::metrics::sum
-CREATE OR REPLACE FUNCTION zdb."sum"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"field" text, /* &str */
-	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS numeric /* pgx::datum::numeric::Numeric */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'sum_wrapper';
-
--- src/elasticsearch/aggregates/count.rs:17
--- zombodb::elasticsearch::aggregates::count::raw_count
-CREATE OR REPLACE FUNCTION zdb."raw_count"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS bigint /* i64 */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'raw_count_wrapper';
-
--- src/elasticsearch/aggregates/builders/adjacency_matrix.rs:14
--- zombodb::elasticsearch::aggregates::builders::adjacency_matrix::adjacency_matrix_agg
-CREATE OR REPLACE FUNCTION zdb."adjacency_matrix_agg"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"aggregate_name" text, /* &str */
-	"labels" text[], /* pgx::datum::array::Array<&str> */
-	"filters" pg_catalog.ZDBQuery[] /* pgx::datum::array::Array<zombodb::zdbquery::pg_catalog::ZDBQuery> */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'adjacency_matrix_agg_wrapper';
-
--- src/elasticsearch/aggregates/arbitrary_agg.rs:5
--- zombodb::elasticsearch::aggregates::arbitrary_agg::arbitrary_agg
-CREATE OR REPLACE FUNCTION zdb."arbitrary_agg"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-	"json" jsonb /* pgx::datum::json::JsonB */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'arbitrary_agg_wrapper';
-
--- src/elasticsearch/aggregates/percentile_ranks.rs:7
--- zombodb::elasticsearch::aggregates::percentile_ranks::percentile_ranks
-CREATE OR REPLACE FUNCTION zdb."percentile_ranks"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"field" text, /* &str */
-	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-	"values" json /* pgx::datum::json::Json */
-) RETURNS TABLE (
-	"key" double precision,  /* f64 */
-	"value" numeric  /* pgx::datum::numeric::Numeric */
-)
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'percentile_ranks_wrapper';
-
--- src/elasticsearch/aggregates/percentiles.rs:7
--- zombodb::elasticsearch::aggregates::percentiles::percentiles
-CREATE OR REPLACE FUNCTION zdb."percentiles"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"field" text, /* &str */
-	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-	"percents" json DEFAULT NULL /* core::option::Option<pgx::datum::json::Json> */
-) RETURNS TABLE (
-	"key" double precision,  /* f64 */
-	"value" numeric  /* pgx::datum::numeric::Numeric */
-)
-IMMUTABLE PARALLEL SAFE
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'percentiles_wrapper';
-
--- src/elasticsearch/aggregates/query.rs:22
--- zombodb::elasticsearch::aggregates::query::query_raw
-
-        CREATE OR REPLACE FUNCTION query_raw(index regclass, query zdbquery)
-            RETURNS SETOF tid SET zdb.ignore_visibility = true
-            IMMUTABLE STRICT ROWS 2500 LANGUAGE c AS 'MODULE_PATHNAME', 'query_raw_wrapper';
-    
-
-
-
--- src/zql/dsl/mod.rs:16
--- zombodb::zql::dsl::dump_query
-CREATE OR REPLACE FUNCTION zdb."dump_query"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS text /* alloc::string::String */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'dump_query_wrapper';
-
--- src/elasticsearch/aggregates/histogram.rs:7
--- zombodb::elasticsearch::aggregates::histogram::histogram
-CREATE OR REPLACE FUNCTION zdb."histogram"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"field" text, /* &str */
-	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-	"interval" double precision, /* f64 */
-	"min_doc_count" integer DEFAULT 0 /* i32 */
-) RETURNS TABLE (
-	"term" numeric,  /* pgx::datum::numeric::Numeric */
-	"doc_count" bigint  /* i64 */
-)
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'histogram_wrapper';
-
--- src/zdbquery/mod.rs:888
--- zombodb::zdbquery::to_queries_dsl
-CREATE OR REPLACE FUNCTION zdb."to_queries_dsl"(
-	"queries" pg_catalog.ZDBQuery[] /* pgx::datum::array::Array<zombodb::zdbquery::pg_catalog::ZDBQuery> */
-) RETURNS json[] /* alloc::vec::Vec<core::option::Option<pgx::datum::json::Json>> */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'to_queries_dsl_wrapper';
-
--- src/elasticsearch/aggregates/metrics.rs:123
--- zombodb::elasticsearch::aggregates::metrics::min
-CREATE OR REPLACE FUNCTION zdb."min"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"field" text, /* &str */
-	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS numeric /* pgx::datum::numeric::Numeric */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'min_wrapper';
-
--- src/elasticsearch/aggregates/range.rs:8
--- zombodb::elasticsearch::aggregates::range::range
-CREATE OR REPLACE FUNCTION zdb."range"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"field" text, /* &str */
-	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-	"range_array" json /* pgx::datum::json::Json */
-) RETURNS TABLE (
-	"key" text,  /* alloc::string::String */
-	"from" numeric,  /* core::option::Option<pgx::datum::numeric::Numeric> */
-	"to" numeric,  /* core::option::Option<pgx::datum::numeric::Numeric> */
-	"doc_count" bigint  /* i64 */
-)
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'range_wrapper';
-
--- src/elasticsearch/aggregates/matrix_stats.rs:7
--- zombodb::elasticsearch::aggregates::matrix_stats::matrix_stats
-CREATE OR REPLACE FUNCTION zdb."matrix_stats"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"fields" text[], /* pgx::datum::array::Array<&str> */
-	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS TABLE (
-	"term" text,  /* alloc::string::String */
-	"count" bigint,  /* i64 */
-	"mean" numeric,  /* pgx::datum::numeric::Numeric */
-	"variance" numeric,  /* pgx::datum::numeric::Numeric */
-	"skewness" numeric,  /* pgx::datum::numeric::Numeric */
-	"kurtosis" numeric,  /* pgx::datum::numeric::Numeric */
-	"covariance" json,  /* core::option::Option<pgx::datum::json::Json> */
-	"correlation" json  /* core::option::Option<pgx::datum::json::Json> */
-)
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'matrix_stats_wrapper';
-
--- src/elasticsearch/aggregates/significant_terms_two_level.rs:8
--- zombodb::elasticsearch::aggregates::significant_terms_two_level::significant_terms_two_level
-CREATE OR REPLACE FUNCTION zdb."significant_terms_two_level"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"field_first" text, /* &str */
-	"field_second" text, /* &str */
-	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-	"size_limit" integer DEFAULT 2147483647 /* core::option::Option<i32> */
-) RETURNS TABLE (
-	"term_one" text,  /* core::option::Option<alloc::string::String> */
-	"term_two" text,  /* core::option::Option<alloc::string::String> */
-	"doc_count" bigint,  /* i64 */
-	"score" double precision,  /* f64 */
-	"bg_count" bigint,  /* i64 */
-	"doc_count_error_upper_bound" bigint,  /* i64 */
-	"sum_other_doc_count" bigint  /* i64 */
-)
-IMMUTABLE PARALLEL SAFE
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'significant_terms_two_level_wrapper';
-
--- src/elasticsearch/aggregates/stats.rs:7
--- zombodb::elasticsearch::aggregates::stats::stats
-CREATE OR REPLACE FUNCTION zdb."stats"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"field" text, /* &str */
-	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS TABLE (
-	"count" bigint,  /* i64 */
-	"min" numeric,  /* pgx::datum::numeric::Numeric */
-	"max" numeric,  /* pgx::datum::numeric::Numeric */
-	"avg" numeric,  /* pgx::datum::numeric::Numeric */
-	"sum" numeric  /* pgx::datum::numeric::Numeric */
-)
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'stats_wrapper';
-
--- src/elasticsearch/aggregates/filters.rs:9
--- zombodb::elasticsearch::aggregates::filters::filters
-CREATE OR REPLACE FUNCTION zdb."filters"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"labels" text[], /* pgx::datum::array::Array<&str> */
-	"filters" pg_catalog.ZDBQuery[] /* pgx::datum::array::Array<zombodb::zdbquery::pg_catalog::ZDBQuery> */
-) RETURNS TABLE (
-	"term" text,  /* alloc::string::String */
-	"doc_count" bigint  /* i64 */
-)
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'filters_wrapper';
-
--- src/zdbquery/mvcc.rs:17
--- zombodb::zdbquery::mvcc::wrap_with_visibility_clause
-CREATE OR REPLACE FUNCTION zdb."wrap_with_visibility_clause"(
-	"index_relation" regclass, /* pgx::rel::PgRelation */
-	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'wrap_with_visibility_clause_wrapper';
-
--- src/elasticsearch/aggregates/count.rs:6
--- zombodb::elasticsearch::aggregates::count::count
-CREATE OR REPLACE FUNCTION zdb."count"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS bigint /* i64 */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'count_wrapper';
-
--- src/zdbquery/cast.rs:4
--- zombodb::zdbquery::cast::zdbquery_from_text
-CREATE OR REPLACE FUNCTION zdb."zdbquery_from_text"(
-	"input" text /* &str */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'zdbquery_from_text_wrapper';
-
--- src/misc/mod.rs:5
--- zombodb::misc::query_tids
-CREATE OR REPLACE FUNCTION zdb."query_tids"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS tid[] /* alloc::vec::Vec<pgx_pg_sys::pg14::ItemPointerData> */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'query_tids_wrapper';
-
--- src/zdbquery/opclass.rs:8
--- zombodb::zdbquery::opclass::anyelement_cmpfunc
-CREATE OR REPLACE FUNCTION zdb."anyelement_cmpfunc"(
-	"element" anyelement, /* pgx::datum::anyelement::AnyElement */
-	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS bool /* bool */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'anyelement_cmpfunc_wrapper';
-
--- src/elasticsearch/aggregates/builders/metrics.rs:828
--- zombodb::elasticsearch::aggregates::builders::metrics::t_test_agg
-CREATE OR REPLACE FUNCTION zdb."t_test_agg"(
-	"aggregate_name" text, /* &str */
-	"fields" text[], /* alloc::vec::Vec<&str> */
-	"queries" pg_catalog.ZDBQuery[], /* alloc::vec::Vec<zombodb::zdbquery::pg_catalog::ZDBQuery> */
-	"t_type" zdb.TTestType /* zombodb::elasticsearch::aggregates::builders::metrics::TTestType */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE  STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 't_test_fields_queries_agg_wrapper';
-
--- src/elasticsearch/suggest_term.rs:87
--- zombodb::elasticsearch::suggest_term::suggest_terms
-CREATE OR REPLACE FUNCTION zdb."suggest_terms"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"field_name" text, /* alloc::string::String */
-	"suggest" text, /* alloc::string::String */
-	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS TABLE (
-	"term" text,  /* alloc::string::String */
-	"offset" bigint,  /* i64 */
-	"length" bigint,  /* i64 */
-	"suggestion" text,  /* alloc::string::String */
-	"score" double precision,  /* f64 */
-	"frequency" bigint  /* i64 */
-)
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'suggest_terms_wrapper';
-
--- src/elasticsearch/aggregates/metrics.rs:152
--- zombodb::elasticsearch::aggregates::metrics::missing
-CREATE OR REPLACE FUNCTION zdb."missing"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"field" text, /* &str */
-	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS numeric /* pgx::datum::numeric::Numeric */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'missing_wrapper';
-
--- src/elasticsearch/aggregates/metrics.rs:65
--- zombodb::elasticsearch::aggregates::metrics::cardinality
-CREATE OR REPLACE FUNCTION zdb."cardinality"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"field" text, /* &str */
-	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS numeric /* pgx::datum::numeric::Numeric */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'cardinality_wrapper';
-
--- src/elasticsearch/profile_query.rs:40
--- zombodb::elasticsearch::profile_query::profile_query
-CREATE OR REPLACE FUNCTION zdb."profile_query"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'profile_query_wrapper';
-
--- src/elasticsearch/aggregates/query.rs:5
--- zombodb::elasticsearch::aggregates::query::query
-CREATE OR REPLACE FUNCTION zdb."query"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS SETOF tid /* pgx_pg_sys::pg14::ItemPointerData */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'query_wrapper';
-
--- src/elasticsearch/aggregates/builders/filter.rs:13
--- zombodb::elasticsearch::aggregates::builders::filter::filter_agg
-CREATE OR REPLACE FUNCTION zdb."filter_agg"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"aggregate_name" text, /* &str */
-	"filter" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-	"children" jsonb[] DEFAULT NULL /* core::option::Option<alloc::vec::Vec<pgx::datum::json::JsonB>> */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'filter_agg_wrapper';
-
--- src/elasticsearch/aggregates/metrics.rs:36
--- zombodb::elasticsearch::aggregates::metrics::avg
-CREATE OR REPLACE FUNCTION zdb."avg"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"field" text, /* &str */
-	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS numeric /* pgx::datum::numeric::Numeric */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'avg_wrapper';
-
--- src/elasticsearch/aggregates/extended_stats.rs:7
--- zombodb::elasticsearch::aggregates::extended_stats::extended_stats
-CREATE OR REPLACE FUNCTION zdb."extended_stats"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"field" text, /* &str */
-	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-	"sigma" bigint DEFAULT 0 /* i64 */
-) RETURNS TABLE (
-	"count" bigint,  /* i64 */
-	"min" numeric,  /* pgx::datum::numeric::Numeric */
-	"max" numeric,  /* pgx::datum::numeric::Numeric */
-	"avg" numeric,  /* pgx::datum::numeric::Numeric */
-	"sum" numeric,  /* pgx::datum::numeric::Numeric */
-	"sum_of_squares" numeric,  /* pgx::datum::numeric::Numeric */
-	"variance" numeric,  /* pgx::datum::numeric::Numeric */
-	"std_deviation" numeric,  /* pgx::datum::numeric::Numeric */
-	"upper" numeric,  /* pgx::datum::numeric::Numeric */
-	"lower" numeric  /* pgx::datum::numeric::Numeric */
-)
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'extended_stats_wrapper';
-
--- src/elasticsearch/aggregates/adjacency_matrix.rs:10
--- zombodb::elasticsearch::aggregates::adjacency_matrix::adjacency_matrix
-CREATE OR REPLACE FUNCTION zdb."adjacency_matrix"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"labels" text[], /* pgx::datum::array::Array<&str> */
-	"filters" pg_catalog.ZDBQuery[] /* pgx::datum::array::Array<zombodb::zdbquery::pg_catalog::ZDBQuery> */
-) RETURNS TABLE (
-	"term" text,  /* core::option::Option<alloc::string::String> */
-	"doc_count" bigint  /* i64 */
-)
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'adjacency_matrix_wrapper';
-
--- src/elasticsearch/aggregates/ip_range.rs:8
--- zombodb::elasticsearch::aggregates::ip_range::ip_range
-CREATE OR REPLACE FUNCTION zdb."ip_range"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"field" text, /* &str */
-	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-	"range_array" json /* pgx::datum::json::Json */
-) RETURNS TABLE (
-	"key" text,  /* alloc::string::String */
-	"from" inet,  /* core::option::Option<pgx::datum::inet::Inet> */
-	"to" inet,  /* core::option::Option<pgx::datum::inet::Inet> */
-	"doc_count" bigint  /* i64 */
-)
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'ip_range_wrapper';
-
--- src/elasticsearch/aggregates/significant_text.rs:8
--- zombodb::elasticsearch::aggregates::significant_text::significant_text
-CREATE OR REPLACE FUNCTION zdb."significant_text"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"field" text, /* &str */
-	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-	"size" integer DEFAULT 10, /* i32 */
-	"filter_duplicate_text" bool DEFAULT true /* core::option::Option<bool> */
-) RETURNS TABLE (
-	"term" text,  /* core::option::Option<alloc::string::String> */
-	"doc_count" bigint,  /* i64 */
-	"score" double precision,  /* f64 */
-	"bg_count" bigint  /* i64 */
-)
-IMMUTABLE PARALLEL SAFE
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'significant_text_wrapper';
-
--- src/zdbquery/mod.rs:881
--- zombodb::zdbquery::to_query_dsl
-CREATE OR REPLACE FUNCTION zdb."to_query_dsl"(
-	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS json /* core::option::Option<pgx::datum::json::Json> */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'to_query_dsl_wrapper';
-
--- src/elasticsearch/aggregates/significant_terms.rs:8
--- zombodb::elasticsearch::aggregates::significant_terms::significant_terms
-CREATE OR REPLACE FUNCTION zdb."significant_terms"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"field" text, /* &str */
-	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-	"include" text DEFAULT '.*', /* core::option::Option<&str> */
-	"size_limit" integer DEFAULT 2147483647, /* core::option::Option<i32> */
-	"min_doc_count" integer DEFAULT 3 /* core::option::Option<i32> */
-) RETURNS TABLE (
-	"term" text,  /* core::option::Option<alloc::string::String> */
-	"doc_count" bigint,  /* i64 */
-	"score" real,  /* f32 */
-	"bg_count" bigint  /* i64 */
-)
-IMMUTABLE PARALLEL SAFE
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'significant_terms_wrapper';
-
--- src/zdbquery/cast.rs:10
--- zombodb::zdbquery::cast::zdbquery_from_json
-CREATE OR REPLACE FUNCTION zdb."zdbquery_from_json"(
-	"input" json /* pgx::datum::json::Json */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'zdbquery_from_json_wrapper';
-
--- src/scoring/mod.rs:30
--- zombodb::scoring::want_scores
-CREATE OR REPLACE FUNCTION zdb."want_scores"(
-	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'want_scores_wrapper';
-
--- src/zdbquery/cast.rs:20
--- zombodb::zdbquery::cast::zdbquery_to_json
-CREATE OR REPLACE FUNCTION zdb."zdbquery_to_json"(
-	"input" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS json /* pgx::datum::json::Json */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'zdbquery_to_json_wrapper';
-
--- src/elasticsearch/aggregates/metrics.rs:94
--- zombodb::elasticsearch::aggregates::metrics::max
-CREATE OR REPLACE FUNCTION zdb."max"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"field" text, /* &str */
-	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS numeric /* pgx::datum::numeric::Numeric */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'max_wrapper';
-
--- src/zdbquery/cast.rs:25
--- zombodb::zdbquery::cast::zdbquery_to_jsonb
-CREATE OR REPLACE FUNCTION zdb."zdbquery_to_jsonb"(
-	"input" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'zdbquery_to_jsonb_wrapper';
-
--- src/elasticsearch/aggregates/top_hits.rs:7
--- zombodb::elasticsearch::aggregates::top_hits::top_hits
-CREATE OR REPLACE FUNCTION zdb."top_hits"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"fields" text[], /* pgx::datum::array::Array<&str> */
-	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-	"size_limit" bigint /* i64 */
-) RETURNS TABLE (
-	"id" tid,  /* pgx_pg_sys::pg14::ItemPointerData */
-	"score" double precision,  /* f64 */
-	"source" json  /* pgx::datum::json::Json */
-)
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'top_hits_wrapper';
-
 -- src/zdbquery/mod.rs:167
 -- zombodb::zdbquery::pg_catalog::SortDescriptor
 CREATE TYPE pg_catalog.SortDescriptor;
@@ -1877,6 +1252,631 @@ IMMUTABLE PARALLEL SAFE  STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'top_metric_sort_desc_agg_wrapper';
 
+-- src/zdbquery/mod.rs:117
+-- zombodb::zdbquery::pg_catalog::ZDBQuery
+CREATE TYPE pg_catalog.ZDBQuery;
+
+-- src/zdbquery/mod.rs:117
+-- zombodb::zdbquery::pg_catalog::zdbquery_in
+CREATE OR REPLACE FUNCTION pg_catalog."zdbquery_in"(
+	"input" cstring /* &cstr_core::CStr */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'zdbquery_in_wrapper';
+
+-- src/zdbquery/mod.rs:117
+-- zombodb::zdbquery::pg_catalog::zdbquery_out
+CREATE OR REPLACE FUNCTION pg_catalog."zdbquery_out"(
+	"input" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS cstring /* &cstr_core::CStr */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'zdbquery_out_wrapper';
+
+-- src/zdbquery/mod.rs:117
+-- zombodb::zdbquery::pg_catalog::ZDBQuery
+CREATE TYPE pg_catalog.ZDBQuery (
+	INTERNALLENGTH = variable,
+	INPUT = pg_catalog.zdbquery_in, /* zombodb::zdbquery::pg_catalog::zdbquery_in */
+	OUTPUT = pg_catalog.zdbquery_out, /* zombodb::zdbquery::pg_catalog::zdbquery_out */
+	STORAGE = extended
+);
+
+-- src/elasticsearch/aggregates/builders/filter.rs:13
+-- zombodb::elasticsearch::aggregates::builders::filter::filter_agg
+CREATE OR REPLACE FUNCTION zdb."filter_agg"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"aggregate_name" text, /* &str */
+	"filter" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+	"children" jsonb[] DEFAULT NULL /* core::option::Option<alloc::vec::Vec<pgx::datum::json::JsonB>> */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'filter_agg_wrapper';
+
+-- src/zdbquery/mvcc.rs:17
+-- zombodb::zdbquery::mvcc::wrap_with_visibility_clause
+CREATE OR REPLACE FUNCTION zdb."wrap_with_visibility_clause"(
+	"index_relation" regclass, /* pgx::rel::PgRelation */
+	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'wrap_with_visibility_clause_wrapper';
+
+-- src/misc/mod.rs:5
+-- zombodb::misc::query_tids
+CREATE OR REPLACE FUNCTION zdb."query_tids"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS tid[] /* alloc::vec::Vec<pgx_pg_sys::pg14::ItemPointerData> */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'query_tids_wrapper';
+
+-- src/elasticsearch/aggregates/builders/filters.rs:13
+-- zombodb::elasticsearch::aggregates::builders::filters::filters_agg
+CREATE OR REPLACE FUNCTION zdb."filters_agg"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"aggregate_name" text, /* &str */
+	"labels" text[], /* pgx::datum::array::Array<&str> */
+	"filters" pg_catalog.ZDBQuery[] /* pgx::datum::array::Array<zombodb::zdbquery::pg_catalog::ZDBQuery> */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'filters_agg_wrapper';
+
+-- src/zdbquery/cast.rs:20
+-- zombodb::zdbquery::cast::zdbquery_to_json
+CREATE OR REPLACE FUNCTION zdb."zdbquery_to_json"(
+	"input" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS json /* pgx::datum::json::Json */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'zdbquery_to_json_wrapper';
+
+-- src/elasticsearch/aggregates/histogram.rs:7
+-- zombodb::elasticsearch::aggregates::histogram::histogram
+CREATE OR REPLACE FUNCTION zdb."histogram"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"field" text, /* &str */
+	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+	"interval" double precision, /* f64 */
+	"min_doc_count" integer DEFAULT 0 /* i32 */
+) RETURNS TABLE (
+	"term" numeric,  /* pgx::datum::numeric::Numeric */
+	"doc_count" bigint  /* i64 */
+)
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'histogram_wrapper';
+
+-- src/elasticsearch/aggregates/extended_stats.rs:7
+-- zombodb::elasticsearch::aggregates::extended_stats::extended_stats
+CREATE OR REPLACE FUNCTION zdb."extended_stats"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"field" text, /* &str */
+	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+	"sigma" bigint DEFAULT 0 /* i64 */
+) RETURNS TABLE (
+	"count" bigint,  /* i64 */
+	"min" numeric,  /* pgx::datum::numeric::Numeric */
+	"max" numeric,  /* pgx::datum::numeric::Numeric */
+	"avg" numeric,  /* pgx::datum::numeric::Numeric */
+	"sum" numeric,  /* pgx::datum::numeric::Numeric */
+	"sum_of_squares" numeric,  /* pgx::datum::numeric::Numeric */
+	"variance" numeric,  /* pgx::datum::numeric::Numeric */
+	"std_deviation" numeric,  /* pgx::datum::numeric::Numeric */
+	"upper" numeric,  /* pgx::datum::numeric::Numeric */
+	"lower" numeric  /* pgx::datum::numeric::Numeric */
+)
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'extended_stats_wrapper';
+
+-- src/elasticsearch/aggregates/date_range.rs:8
+-- zombodb::elasticsearch::aggregates::date_range::date_range
+CREATE OR REPLACE FUNCTION zdb."date_range"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"field" text, /* &str */
+	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+	"date_range_array" json /* pgx::datum::json::Json */
+) RETURNS TABLE (
+	"key" text,  /* alloc::string::String */
+	"from" numeric,  /* core::option::Option<pgx::datum::numeric::Numeric> */
+	"from_as_string" text,  /* core::option::Option<alloc::string::String> */
+	"to" numeric,  /* core::option::Option<pgx::datum::numeric::Numeric> */
+	"to_as_string" text,  /* core::option::Option<alloc::string::String> */
+	"doc_count" bigint  /* i64 */
+)
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'date_range_wrapper';
+
+-- src/elasticsearch/aggregates/arbitrary_agg.rs:5
+-- zombodb::elasticsearch::aggregates::arbitrary_agg::arbitrary_agg
+CREATE OR REPLACE FUNCTION zdb."arbitrary_agg"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+	"json" jsonb /* pgx::datum::json::JsonB */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'arbitrary_agg_wrapper';
+
+-- src/elasticsearch/aggregates/matrix_stats.rs:7
+-- zombodb::elasticsearch::aggregates::matrix_stats::matrix_stats
+CREATE OR REPLACE FUNCTION zdb."matrix_stats"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"fields" text[], /* pgx::datum::array::Array<&str> */
+	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS TABLE (
+	"term" text,  /* alloc::string::String */
+	"count" bigint,  /* i64 */
+	"mean" numeric,  /* pgx::datum::numeric::Numeric */
+	"variance" numeric,  /* pgx::datum::numeric::Numeric */
+	"skewness" numeric,  /* pgx::datum::numeric::Numeric */
+	"kurtosis" numeric,  /* pgx::datum::numeric::Numeric */
+	"covariance" json,  /* core::option::Option<pgx::datum::json::Json> */
+	"correlation" json  /* core::option::Option<pgx::datum::json::Json> */
+)
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'matrix_stats_wrapper';
+
+-- src/elasticsearch/aggregates/count.rs:6
+-- zombodb::elasticsearch::aggregates::count::count
+CREATE OR REPLACE FUNCTION zdb."count"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS bigint /* i64 */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'count_wrapper';
+
+-- src/elasticsearch/aggregates/range.rs:8
+-- zombodb::elasticsearch::aggregates::range::range
+CREATE OR REPLACE FUNCTION zdb."range"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"field" text, /* &str */
+	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+	"range_array" json /* pgx::datum::json::Json */
+) RETURNS TABLE (
+	"key" text,  /* alloc::string::String */
+	"from" numeric,  /* core::option::Option<pgx::datum::numeric::Numeric> */
+	"to" numeric,  /* core::option::Option<pgx::datum::numeric::Numeric> */
+	"doc_count" bigint  /* i64 */
+)
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'range_wrapper';
+
+-- src/elasticsearch/profile_query.rs:40
+-- zombodb::elasticsearch::profile_query::profile_query
+CREATE OR REPLACE FUNCTION zdb."profile_query"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'profile_query_wrapper';
+
+-- src/elasticsearch/aggregates/metrics.rs:36
+-- zombodb::elasticsearch::aggregates::metrics::avg
+CREATE OR REPLACE FUNCTION zdb."avg"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"field" text, /* &str */
+	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS numeric /* pgx::datum::numeric::Numeric */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'avg_wrapper';
+
+-- src/elasticsearch/aggregates/percentile_ranks.rs:7
+-- zombodb::elasticsearch::aggregates::percentile_ranks::percentile_ranks
+CREATE OR REPLACE FUNCTION zdb."percentile_ranks"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"field" text, /* &str */
+	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+	"values" json /* pgx::datum::json::Json */
+) RETURNS TABLE (
+	"key" double precision,  /* f64 */
+	"value" numeric  /* pgx::datum::numeric::Numeric */
+)
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'percentile_ranks_wrapper';
+
+-- src/elasticsearch/aggregates/significant_text.rs:8
+-- zombodb::elasticsearch::aggregates::significant_text::significant_text
+CREATE OR REPLACE FUNCTION zdb."significant_text"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"field" text, /* &str */
+	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+	"size" integer DEFAULT 10, /* i32 */
+	"filter_duplicate_text" bool DEFAULT true /* core::option::Option<bool> */
+) RETURNS TABLE (
+	"term" text,  /* core::option::Option<alloc::string::String> */
+	"doc_count" bigint,  /* i64 */
+	"score" double precision,  /* f64 */
+	"bg_count" bigint  /* i64 */
+)
+IMMUTABLE PARALLEL SAFE
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'significant_text_wrapper';
+
+-- src/elasticsearch/aggregates/top_hits_with_id.rs:7
+-- zombodb::elasticsearch::aggregates::top_hits_with_id::top_hits_with_id
+CREATE OR REPLACE FUNCTION zdb."top_hits_with_id"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"fields" text[], /* pgx::datum::array::Array<&str> */
+	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+	"size_limit" bigint /* i64 */
+) RETURNS TABLE (
+	"id" text,  /* alloc::string::String */
+	"score" double precision,  /* f64 */
+	"source" json  /* pgx::datum::json::Json */
+)
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'top_hits_with_id_wrapper';
+
+-- src/elasticsearch/aggregates/adjacency_matrix.rs:10
+-- zombodb::elasticsearch::aggregates::adjacency_matrix::adjacency_matrix
+CREATE OR REPLACE FUNCTION zdb."adjacency_matrix"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"labels" text[], /* pgx::datum::array::Array<&str> */
+	"filters" pg_catalog.ZDBQuery[] /* pgx::datum::array::Array<zombodb::zdbquery::pg_catalog::ZDBQuery> */
+) RETURNS TABLE (
+	"term" text,  /* core::option::Option<alloc::string::String> */
+	"doc_count" bigint  /* i64 */
+)
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'adjacency_matrix_wrapper';
+
+-- src/elasticsearch/aggregates/filters.rs:9
+-- zombodb::elasticsearch::aggregates::filters::filters
+CREATE OR REPLACE FUNCTION zdb."filters"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"labels" text[], /* pgx::datum::array::Array<&str> */
+	"filters" pg_catalog.ZDBQuery[] /* pgx::datum::array::Array<zombodb::zdbquery::pg_catalog::ZDBQuery> */
+) RETURNS TABLE (
+	"term" text,  /* alloc::string::String */
+	"doc_count" bigint  /* i64 */
+)
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'filters_wrapper';
+
+-- src/elasticsearch/aggregates/top_hits.rs:7
+-- zombodb::elasticsearch::aggregates::top_hits::top_hits
+CREATE OR REPLACE FUNCTION zdb."top_hits"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"fields" text[], /* pgx::datum::array::Array<&str> */
+	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+	"size_limit" bigint /* i64 */
+) RETURNS TABLE (
+	"id" tid,  /* pgx_pg_sys::pg14::ItemPointerData */
+	"score" double precision,  /* f64 */
+	"source" json  /* pgx::datum::json::Json */
+)
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'top_hits_wrapper';
+
+-- src/zdbquery/mod.rs:888
+-- zombodb::zdbquery::to_queries_dsl
+CREATE OR REPLACE FUNCTION zdb."to_queries_dsl"(
+	"queries" pg_catalog.ZDBQuery[] /* pgx::datum::array::Array<zombodb::zdbquery::pg_catalog::ZDBQuery> */
+) RETURNS json[] /* alloc::vec::Vec<core::option::Option<pgx::datum::json::Json>> */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'to_queries_dsl_wrapper';
+
+-- src/elasticsearch/aggregates/metrics.rs:65
+-- zombodb::elasticsearch::aggregates::metrics::cardinality
+CREATE OR REPLACE FUNCTION zdb."cardinality"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"field" text, /* &str */
+	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS numeric /* pgx::datum::numeric::Numeric */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'cardinality_wrapper';
+
+-- src/elasticsearch/aggregates/metrics.rs:181
+-- zombodb::elasticsearch::aggregates::metrics::value_count
+CREATE OR REPLACE FUNCTION zdb."value_count"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"field" text, /* &str */
+	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS numeric /* pgx::datum::numeric::Numeric */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'value_count_wrapper';
+
+-- src/elasticsearch/aggregates/significant_terms_two_level.rs:8
+-- zombodb::elasticsearch::aggregates::significant_terms_two_level::significant_terms_two_level
+CREATE OR REPLACE FUNCTION zdb."significant_terms_two_level"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"field_first" text, /* &str */
+	"field_second" text, /* &str */
+	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+	"size_limit" integer DEFAULT 2147483647 /* core::option::Option<i32> */
+) RETURNS TABLE (
+	"term_one" text,  /* core::option::Option<alloc::string::String> */
+	"term_two" text,  /* core::option::Option<alloc::string::String> */
+	"doc_count" bigint,  /* i64 */
+	"score" double precision,  /* f64 */
+	"bg_count" bigint,  /* i64 */
+	"doc_count_error_upper_bound" bigint,  /* i64 */
+	"sum_other_doc_count" bigint  /* i64 */
+)
+IMMUTABLE PARALLEL SAFE
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'significant_terms_two_level_wrapper';
+
+-- src/zdbquery/mod.rs:881
+-- zombodb::zdbquery::to_query_dsl
+CREATE OR REPLACE FUNCTION zdb."to_query_dsl"(
+	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS json /* core::option::Option<pgx::datum::json::Json> */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'to_query_dsl_wrapper';
+
+-- src/elasticsearch/aggregates/count.rs:17
+-- zombodb::elasticsearch::aggregates::count::raw_count
+CREATE OR REPLACE FUNCTION zdb."raw_count"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS bigint /* i64 */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'raw_count_wrapper';
+
+-- src/elasticsearch/aggregates/metrics.rs:7
+-- zombodb::elasticsearch::aggregates::metrics::sum
+CREATE OR REPLACE FUNCTION zdb."sum"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"field" text, /* &str */
+	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS numeric /* pgx::datum::numeric::Numeric */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'sum_wrapper';
+
+-- src/elasticsearch/aggregates/builders/metrics.rs:828
+-- zombodb::elasticsearch::aggregates::builders::metrics::t_test_agg
+CREATE OR REPLACE FUNCTION zdb."t_test_agg"(
+	"aggregate_name" text, /* &str */
+	"fields" text[], /* alloc::vec::Vec<&str> */
+	"queries" pg_catalog.ZDBQuery[], /* alloc::vec::Vec<zombodb::zdbquery::pg_catalog::ZDBQuery> */
+	"t_type" zdb.TTestType /* zombodb::elasticsearch::aggregates::builders::metrics::TTestType */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE  STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 't_test_fields_queries_agg_wrapper';
+
+-- src/zdbquery/cast.rs:25
+-- zombodb::zdbquery::cast::zdbquery_to_jsonb
+CREATE OR REPLACE FUNCTION zdb."zdbquery_to_jsonb"(
+	"input" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'zdbquery_to_jsonb_wrapper';
+
+-- src/elasticsearch/aggregates/metrics.rs:123
+-- zombodb::elasticsearch::aggregates::metrics::min
+CREATE OR REPLACE FUNCTION zdb."min"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"field" text, /* &str */
+	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS numeric /* pgx::datum::numeric::Numeric */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'min_wrapper';
+
+-- src/zql/dsl/mod.rs:16
+-- zombodb::zql::dsl::dump_query
+CREATE OR REPLACE FUNCTION zdb."dump_query"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS text /* alloc::string::String */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'dump_query_wrapper';
+
+-- src/zdbquery/cast.rs:10
+-- zombodb::zdbquery::cast::zdbquery_from_json
+CREATE OR REPLACE FUNCTION zdb."zdbquery_from_json"(
+	"input" json /* pgx::datum::json::Json */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'zdbquery_from_json_wrapper';
+
+-- src/elasticsearch/aggregates/significant_terms.rs:8
+-- zombodb::elasticsearch::aggregates::significant_terms::significant_terms
+CREATE OR REPLACE FUNCTION zdb."significant_terms"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"field" text, /* &str */
+	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+	"include" text DEFAULT '.*', /* core::option::Option<&str> */
+	"size_limit" integer DEFAULT 2147483647, /* core::option::Option<i32> */
+	"min_doc_count" integer DEFAULT 3 /* core::option::Option<i32> */
+) RETURNS TABLE (
+	"term" text,  /* core::option::Option<alloc::string::String> */
+	"doc_count" bigint,  /* i64 */
+	"score" real,  /* f32 */
+	"bg_count" bigint  /* i64 */
+)
+IMMUTABLE PARALLEL SAFE
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'significant_terms_wrapper';
+
+-- src/elasticsearch/suggest_term.rs:87
+-- zombodb::elasticsearch::suggest_term::suggest_terms
+CREATE OR REPLACE FUNCTION zdb."suggest_terms"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"field_name" text, /* alloc::string::String */
+	"suggest" text, /* alloc::string::String */
+	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS TABLE (
+	"term" text,  /* alloc::string::String */
+	"offset" bigint,  /* i64 */
+	"length" bigint,  /* i64 */
+	"suggestion" text,  /* alloc::string::String */
+	"score" double precision,  /* f64 */
+	"frequency" bigint  /* i64 */
+)
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'suggest_terms_wrapper';
+
+-- src/elasticsearch/aggregates/query.rs:22
+-- zombodb::elasticsearch::aggregates::query::query_raw
+
+        CREATE OR REPLACE FUNCTION query_raw(index regclass, query zdbquery)
+            RETURNS SETOF tid SET zdb.ignore_visibility = true
+            IMMUTABLE STRICT ROWS 2500 LANGUAGE c AS 'MODULE_PATHNAME', 'query_raw_wrapper';
+    
+
+
+
+-- src/elasticsearch/aggregates/metrics.rs:152
+-- zombodb::elasticsearch::aggregates::metrics::missing
+CREATE OR REPLACE FUNCTION zdb."missing"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"field" text, /* &str */
+	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS numeric /* pgx::datum::numeric::Numeric */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'missing_wrapper';
+
+-- src/zdbquery/opclass.rs:8
+-- zombodb::zdbquery::opclass::anyelement_cmpfunc
+CREATE OR REPLACE FUNCTION zdb."anyelement_cmpfunc"(
+	"element" anyelement, /* pgx::datum::anyelement::AnyElement */
+	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS bool /* bool */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'anyelement_cmpfunc_wrapper';
+
+-- src/elasticsearch/aggregates/ip_range.rs:8
+-- zombodb::elasticsearch::aggregates::ip_range::ip_range
+CREATE OR REPLACE FUNCTION zdb."ip_range"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"field" text, /* &str */
+	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+	"range_array" json /* pgx::datum::json::Json */
+) RETURNS TABLE (
+	"key" text,  /* alloc::string::String */
+	"from" inet,  /* core::option::Option<pgx::datum::inet::Inet> */
+	"to" inet,  /* core::option::Option<pgx::datum::inet::Inet> */
+	"doc_count" bigint  /* i64 */
+)
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'ip_range_wrapper';
+
+-- src/scoring/mod.rs:30
+-- zombodb::scoring::want_scores
+CREATE OR REPLACE FUNCTION zdb."want_scores"(
+	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'want_scores_wrapper';
+
+-- src/elasticsearch/aggregates/percentiles.rs:7
+-- zombodb::elasticsearch::aggregates::percentiles::percentiles
+CREATE OR REPLACE FUNCTION zdb."percentiles"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"field" text, /* &str */
+	"query" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+	"percents" json DEFAULT NULL /* core::option::Option<pgx::datum::json::Json> */
+) RETURNS TABLE (
+	"key" double precision,  /* f64 */
+	"value" numeric  /* pgx::datum::numeric::Numeric */
+)
+IMMUTABLE PARALLEL SAFE
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'percentiles_wrapper';
+
+-- src/elasticsearch/aggregates/builders/adjacency_matrix.rs:14
+-- zombodb::elasticsearch::aggregates::builders::adjacency_matrix::adjacency_matrix_agg
+CREATE OR REPLACE FUNCTION zdb."adjacency_matrix_agg"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"aggregate_name" text, /* &str */
+	"labels" text[], /* pgx::datum::array::Array<&str> */
+	"filters" pg_catalog.ZDBQuery[] /* pgx::datum::array::Array<zombodb::zdbquery::pg_catalog::ZDBQuery> */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'adjacency_matrix_agg_wrapper';
+
+-- src/elasticsearch/aggregates/stats.rs:7
+-- zombodb::elasticsearch::aggregates::stats::stats
+CREATE OR REPLACE FUNCTION zdb."stats"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"field" text, /* &str */
+	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS TABLE (
+	"count" bigint,  /* i64 */
+	"min" numeric,  /* pgx::datum::numeric::Numeric */
+	"max" numeric,  /* pgx::datum::numeric::Numeric */
+	"avg" numeric,  /* pgx::datum::numeric::Numeric */
+	"sum" numeric  /* pgx::datum::numeric::Numeric */
+)
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'stats_wrapper';
+
+-- src/elasticsearch/aggregates/query.rs:5
+-- zombodb::elasticsearch::aggregates::query::query
+CREATE OR REPLACE FUNCTION zdb."query"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS SETOF tid /* pgx_pg_sys::pg14::ItemPointerData */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'query_wrapper';
+
+-- src/zdbquery/cast.rs:15
+-- zombodb::zdbquery::cast::zdbquery_from_jsonb
+CREATE OR REPLACE FUNCTION zdb."zdbquery_from_jsonb"(
+	"input" jsonb /* pgx::datum::json::JsonB */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'zdbquery_from_jsonb_wrapper';
+
+-- src/elasticsearch/aggregates/metrics.rs:94
+-- zombodb::elasticsearch::aggregates::metrics::max
+CREATE OR REPLACE FUNCTION zdb."max"(
+	"index" regclass, /* pgx::rel::PgRelation */
+	"field" text, /* &str */
+	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS numeric /* pgx::datum::numeric::Numeric */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'max_wrapper';
+
+-- src/zdbquery/cast.rs:4
+-- zombodb::zdbquery::cast::zdbquery_from_text
+CREATE OR REPLACE FUNCTION zdb."zdbquery_from_text"(
+	"input" text /* &str */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'zdbquery_from_text_wrapper';
+
 -- src/zdbquery/mod.rs:156
 -- zombodb::zdbquery::pg_catalog::SortDescriptorOptions
 CREATE TYPE pg_catalog.SortDescriptorOptions;
@@ -1908,6 +1908,13 @@ CREATE TYPE pg_catalog.SortDescriptorOptions (
 	STORAGE = extended
 );
 
+-- src/zdbquery/mod.rs:141
+-- zombodb::zdbquery::pg_catalog::SortDirection
+CREATE TYPE pg_catalog.SortDirection AS ENUM (
+	'asc',
+	'desc'
+);
+
 -- src/zdbquery/mod.rs:147
 -- zombodb::zdbquery::pg_catalog::SortMode
 CREATE TYPE pg_catalog.SortMode AS ENUM (
@@ -1916,13 +1923,6 @@ CREATE TYPE pg_catalog.SortMode AS ENUM (
 	'sum',
 	'avg',
 	'median'
-);
-
--- src/zdbquery/mod.rs:141
--- zombodb::zdbquery::pg_catalog::SortDirection
-CREATE TYPE pg_catalog.SortDirection AS ENUM (
-	'asc',
-	'desc'
 );
 
 -- src/query_dsl/zdb.rs:1
@@ -1980,6 +1980,16 @@ AS 'MODULE_PATHNAME', 'terms_array_wrapper';
 -- src/query_dsl/terms.rs:6
 CREATE SCHEMA IF NOT EXISTS dsl; /* zombodb::query_dsl::terms::dsl */
 
+-- src/query_dsl/terms.rs:17
+-- zombodb::query_dsl::terms::dsl::terms
+CREATE OR REPLACE FUNCTION dsl."terms"(
+	"field" text, /* &str */
+	"values" VARIADIC bool[] /* pgx::datum::array::Array<bool> */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+ IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'terms_bool_wrapper';
+
 -- src/query_dsl/terms.rs:12
 -- zombodb::query_dsl::terms::dsl::terms
 CREATE OR REPLACE FUNCTION dsl."terms"(
@@ -1990,16 +2000,6 @@ CREATE OR REPLACE FUNCTION dsl."terms"(
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'terms_str_wrapper';
 
--- src/query_dsl/terms.rs:22
--- zombodb::query_dsl::terms::dsl::terms
-CREATE OR REPLACE FUNCTION dsl."terms"(
-	"field" text, /* &str */
-	"values" VARIADIC smallint[] /* pgx::datum::array::Array<i16> */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
- IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'terms_i16_wrapper';
-
 -- src/query_dsl/terms.rs:42
 -- zombodb::query_dsl::terms::dsl::terms
 CREATE OR REPLACE FUNCTION dsl."terms"(
@@ -2009,6 +2009,26 @@ CREATE OR REPLACE FUNCTION dsl."terms"(
  IMMUTABLE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'terms_f64_wrapper';
+
+-- src/query_dsl/terms.rs:27
+-- zombodb::query_dsl::terms::dsl::terms
+CREATE OR REPLACE FUNCTION dsl."terms"(
+	"field" text, /* &str */
+	"values" VARIADIC integer[] /* pgx::datum::array::Array<i32> */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+ IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'terms_i32_wrapper';
+
+-- src/query_dsl/terms.rs:22
+-- zombodb::query_dsl::terms::dsl::terms
+CREATE OR REPLACE FUNCTION dsl."terms"(
+	"field" text, /* &str */
+	"values" VARIADIC smallint[] /* pgx::datum::array::Array<i16> */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+ IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'terms_i16_wrapper';
 
 -- src/query_dsl/terms.rs:37
 -- zombodb::query_dsl::terms::dsl::terms
@@ -2030,105 +2050,8 @@ CREATE OR REPLACE FUNCTION dsl."terms"(
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'terms_i64_wrapper';
 
--- src/query_dsl/terms.rs:17
--- zombodb::query_dsl::terms::dsl::terms
-CREATE OR REPLACE FUNCTION dsl."terms"(
-	"field" text, /* &str */
-	"values" VARIADIC bool[] /* pgx::datum::array::Array<bool> */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
- IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'terms_bool_wrapper';
-
--- src/query_dsl/terms.rs:27
--- zombodb::query_dsl::terms::dsl::terms
-CREATE OR REPLACE FUNCTION dsl."terms"(
-	"field" text, /* &str */
-	"values" VARIADIC integer[] /* pgx::datum::array::Array<i32> */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
- IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'terms_i32_wrapper';
-
 -- src/query_dsl/term.rs:6
 CREATE SCHEMA IF NOT EXISTS dsl; /* zombodb::query_dsl::term::dsl */
-
--- src/query_dsl/term.rs:110
--- zombodb::query_dsl::term::dsl::term
-CREATE OR REPLACE FUNCTION dsl."term"(
-	"field" text, /* &str */
-	"value" time with time zone, /* pgx::datum::time_with_timezone::TimeWithTimeZone */
-	"boost" real DEFAULT NULL /* core::option::Option<f32> */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
- IMMUTABLE PARALLEL SAFE
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'term_time_with_timezone_wrapper';
-
--- src/query_dsl/term.rs:60
--- zombodb::query_dsl::term::dsl::term
-CREATE OR REPLACE FUNCTION dsl."term"(
-	"field" text, /* &str */
-	"value" bigint, /* i64 */
-	"boost" real DEFAULT NULL /* core::option::Option<f32> */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
- IMMUTABLE PARALLEL SAFE
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'term_i64_wrapper';
-
--- src/query_dsl/term.rs:130
--- zombodb::query_dsl::term::dsl::term
-CREATE OR REPLACE FUNCTION dsl."term"(
-	"field" text, /* &str */
-	"value" timestamp with time zone, /* pgx::datum::time_stamp_with_timezone::TimestampWithTimeZone */
-	"boost" real DEFAULT NULL /* core::option::Option<f32> */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
- IMMUTABLE PARALLEL SAFE
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'term_timestamp_with_timezone_wrapper';
-
--- src/query_dsl/term.rs:30
--- zombodb::query_dsl::term::dsl::term
-CREATE OR REPLACE FUNCTION dsl."term"(
-	"field" text, /* &str */
-	"value" bool, /* bool */
-	"boost" real DEFAULT NULL /* core::option::Option<f32> */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
- IMMUTABLE PARALLEL SAFE
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'term_bool_wrapper';
-
--- src/query_dsl/term.rs:20
--- zombodb::query_dsl::term::dsl::term
-CREATE OR REPLACE FUNCTION dsl."term"(
-	"field" text, /* &str */
-	"value" text, /* &str */
-	"boost" real DEFAULT NULL /* core::option::Option<f32> */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
- IMMUTABLE PARALLEL SAFE
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'term_str_wrapper';
-
--- src/query_dsl/term.rs:70
--- zombodb::query_dsl::term::dsl::term
-CREATE OR REPLACE FUNCTION dsl."term"(
-	"field" text, /* &str */
-	"value" real, /* f32 */
-	"boost" real DEFAULT NULL /* core::option::Option<f32> */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
- IMMUTABLE PARALLEL SAFE
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'term_f32_wrapper';
-
--- src/query_dsl/term.rs:80
--- zombodb::query_dsl::term::dsl::term
-CREATE OR REPLACE FUNCTION dsl."term"(
-	"field" text, /* &str */
-	"value" double precision, /* f64 */
-	"boost" real DEFAULT NULL /* core::option::Option<f32> */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
- IMMUTABLE PARALLEL SAFE
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'term_f64_wrapper';
 
 -- src/query_dsl/term.rs:120
 -- zombodb::query_dsl::term::dsl::term
@@ -2141,17 +2064,6 @@ CREATE OR REPLACE FUNCTION dsl."term"(
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'term_timestamp_wrapper';
 
--- src/query_dsl/term.rs:100
--- zombodb::query_dsl::term::dsl::term
-CREATE OR REPLACE FUNCTION dsl."term"(
-	"field" text, /* &str */
-	"value" date, /* pgx::datum::date::Date */
-	"boost" real DEFAULT NULL /* core::option::Option<f32> */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
- IMMUTABLE PARALLEL SAFE
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'term_date_wrapper';
-
 -- src/query_dsl/term.rs:40
 -- zombodb::query_dsl::term::dsl::term
 CREATE OR REPLACE FUNCTION dsl."term"(
@@ -2163,16 +2075,27 @@ CREATE OR REPLACE FUNCTION dsl."term"(
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'term_i16_wrapper';
 
--- src/query_dsl/term.rs:50
+-- src/query_dsl/term.rs:110
 -- zombodb::query_dsl::term::dsl::term
 CREATE OR REPLACE FUNCTION dsl."term"(
 	"field" text, /* &str */
-	"value" integer, /* i32 */
+	"value" time with time zone, /* pgx::datum::time_with_timezone::TimeWithTimeZone */
 	"boost" real DEFAULT NULL /* core::option::Option<f32> */
 ) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
  IMMUTABLE PARALLEL SAFE
 LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'term_i32_wrapper';
+AS 'MODULE_PATHNAME', 'term_time_with_timezone_wrapper';
+
+-- src/query_dsl/term.rs:70
+-- zombodb::query_dsl::term::dsl::term
+CREATE OR REPLACE FUNCTION dsl."term"(
+	"field" text, /* &str */
+	"value" real, /* f32 */
+	"boost" real DEFAULT NULL /* core::option::Option<f32> */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+ IMMUTABLE PARALLEL SAFE
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'term_f32_wrapper';
 
 -- src/query_dsl/term.rs:90
 -- zombodb::query_dsl::term::dsl::term
@@ -2185,8 +2108,95 @@ CREATE OR REPLACE FUNCTION dsl."term"(
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'term_time_wrapper';
 
+-- src/query_dsl/term.rs:60
+-- zombodb::query_dsl::term::dsl::term
+CREATE OR REPLACE FUNCTION dsl."term"(
+	"field" text, /* &str */
+	"value" bigint, /* i64 */
+	"boost" real DEFAULT NULL /* core::option::Option<f32> */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+ IMMUTABLE PARALLEL SAFE
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'term_i64_wrapper';
+
+-- src/query_dsl/term.rs:30
+-- zombodb::query_dsl::term::dsl::term
+CREATE OR REPLACE FUNCTION dsl."term"(
+	"field" text, /* &str */
+	"value" bool, /* bool */
+	"boost" real DEFAULT NULL /* core::option::Option<f32> */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+ IMMUTABLE PARALLEL SAFE
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'term_bool_wrapper';
+
+-- src/query_dsl/term.rs:50
+-- zombodb::query_dsl::term::dsl::term
+CREATE OR REPLACE FUNCTION dsl."term"(
+	"field" text, /* &str */
+	"value" integer, /* i32 */
+	"boost" real DEFAULT NULL /* core::option::Option<f32> */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+ IMMUTABLE PARALLEL SAFE
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'term_i32_wrapper';
+
+-- src/query_dsl/term.rs:130
+-- zombodb::query_dsl::term::dsl::term
+CREATE OR REPLACE FUNCTION dsl."term"(
+	"field" text, /* &str */
+	"value" timestamp with time zone, /* pgx::datum::time_stamp_with_timezone::TimestampWithTimeZone */
+	"boost" real DEFAULT NULL /* core::option::Option<f32> */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+ IMMUTABLE PARALLEL SAFE
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'term_timestamp_with_timezone_wrapper';
+
+-- src/query_dsl/term.rs:100
+-- zombodb::query_dsl::term::dsl::term
+CREATE OR REPLACE FUNCTION dsl."term"(
+	"field" text, /* &str */
+	"value" date, /* pgx::datum::date::Date */
+	"boost" real DEFAULT NULL /* core::option::Option<f32> */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+ IMMUTABLE PARALLEL SAFE
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'term_date_wrapper';
+
+-- src/query_dsl/term.rs:80
+-- zombodb::query_dsl::term::dsl::term
+CREATE OR REPLACE FUNCTION dsl."term"(
+	"field" text, /* &str */
+	"value" double precision, /* f64 */
+	"boost" real DEFAULT NULL /* core::option::Option<f32> */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+ IMMUTABLE PARALLEL SAFE
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'term_f64_wrapper';
+
+-- src/query_dsl/term.rs:20
+-- zombodb::query_dsl::term::dsl::term
+CREATE OR REPLACE FUNCTION dsl."term"(
+	"field" text, /* &str */
+	"value" text, /* &str */
+	"boost" real DEFAULT NULL /* core::option::Option<f32> */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+ IMMUTABLE PARALLEL SAFE
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'term_str_wrapper';
+
 -- src/query_dsl/span.rs:6
 CREATE SCHEMA IF NOT EXISTS dsl; /* zombodb::query_dsl::span::dsl */
+
+-- src/query_dsl/span.rs:13
+-- zombodb::query_dsl::span::dsl::span_containing
+CREATE OR REPLACE FUNCTION dsl."span_containing"(
+	"little" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+	"big" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'span_containing_wrapper';
 
 -- src/query_dsl/span.rs:55
 -- zombodb::query_dsl::span::dsl::span_near
@@ -2207,6 +2217,37 @@ CREATE OR REPLACE FUNCTION dsl."span_multi"(
 IMMUTABLE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'span_multi_wrapper';
+
+-- src/query_dsl/span.rs:35
+-- zombodb::query_dsl::span::dsl::span_masking
+CREATE OR REPLACE FUNCTION dsl."span_masking"(
+	"field" text, /* &str */
+	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'span_masking_wrapper';
+
+-- src/query_dsl/span.rs:161
+-- zombodb::query_dsl::span::dsl::span_within
+CREATE OR REPLACE FUNCTION dsl."span_within"(
+	"little" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+	"big" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'span_within_wrapper';
+
+-- src/query_dsl/span.rs:144
+-- zombodb::query_dsl::span::dsl::span_term
+CREATE OR REPLACE FUNCTION dsl."span_term"(
+	"field" text, /* &str */
+	"value" text, /* &str */
+	"boost" real DEFAULT NULL /* core::option::Option<f32> */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'span_term_wrapper';
 
 -- src/query_dsl/span.rs:93
 -- zombodb::query_dsl::span::dsl::span_not
@@ -2230,47 +2271,6 @@ IMMUTABLE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'span_or_wrapper';
 
--- src/query_dsl/span.rs:13
--- zombodb::query_dsl::span::dsl::span_containing
-CREATE OR REPLACE FUNCTION dsl."span_containing"(
-	"little" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-	"big" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'span_containing_wrapper';
-
--- src/query_dsl/span.rs:144
--- zombodb::query_dsl::span::dsl::span_term
-CREATE OR REPLACE FUNCTION dsl."span_term"(
-	"field" text, /* &str */
-	"value" text, /* &str */
-	"boost" real DEFAULT NULL /* core::option::Option<f32> */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'span_term_wrapper';
-
--- src/query_dsl/span.rs:35
--- zombodb::query_dsl::span::dsl::span_masking
-CREATE OR REPLACE FUNCTION dsl."span_masking"(
-	"field" text, /* &str */
-	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'span_masking_wrapper';
-
--- src/query_dsl/span.rs:161
--- zombodb::query_dsl::span::dsl::span_within
-CREATE OR REPLACE FUNCTION dsl."span_within"(
-	"little" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-	"big" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'span_within_wrapper';
-
 -- src/query_dsl/span.rs:25
 -- zombodb::query_dsl::span::dsl::span_first
 CREATE OR REPLACE FUNCTION dsl."span_first"(
@@ -2283,6 +2283,39 @@ AS 'MODULE_PATHNAME', 'span_first_wrapper';
 
 -- src/query_dsl/sort.rs:6
 CREATE SCHEMA IF NOT EXISTS dsl; /* zombodb::query_dsl::sort::dsl */
+
+-- src/query_dsl/sort.rs:71
+-- zombodb::query_dsl::sort::dsl::sort_direct
+CREATE OR REPLACE FUNCTION dsl."sort_direct"(
+	"sort_json" json, /* pgx::datum::json::Json */
+	"zdbquery" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'sort_direct_wrapper';
+
+-- src/query_dsl/sort.rs:66
+-- zombodb::query_dsl::sort::dsl::sort_many
+CREATE OR REPLACE FUNCTION dsl."sort_many"(
+	"zdbquery" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+	"sort_descriptors" VARIADIC pg_catalog.SortDescriptor[] /* pgx::datum::array::Array<zombodb::zdbquery::pg_catalog::SortDescriptor> */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'sort_many_wrapper';
+
+-- src/query_dsl/sort.rs:30
+-- zombodb::query_dsl::sort::dsl::sd_nested
+CREATE OR REPLACE FUNCTION dsl."sd_nested"(
+	"field" text, /* &str */
+	"order" pg_catalog.SortDirection, /* zombodb::zdbquery::pg_catalog::SortDirection */
+	"nested_path" text, /* &str */
+	"nested_filter" pg_catalog.ZDBQuery DEFAULT NULL, /* core::option::Option<zombodb::zdbquery::pg_catalog::ZDBQuery> */
+	"mode" pg_catalog.SortMode DEFAULT NULL /* core::option::Option<zombodb::zdbquery::pg_catalog::SortMode> */
+) RETURNS pg_catalog.SortDescriptor /* zombodb::zdbquery::pg_catalog::SortDescriptor */
+IMMUTABLE PARALLEL SAFE
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'sd_nested_wrapper';
 
 -- src/query_dsl/sort.rs:13
 -- zombodb::query_dsl::sort::dsl::sd
@@ -2305,39 +2338,6 @@ CREATE OR REPLACE FUNCTION dsl."sort"(
 IMMUTABLE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'sort_wrapper';
-
--- src/query_dsl/sort.rs:30
--- zombodb::query_dsl::sort::dsl::sd_nested
-CREATE OR REPLACE FUNCTION dsl."sd_nested"(
-	"field" text, /* &str */
-	"order" pg_catalog.SortDirection, /* zombodb::zdbquery::pg_catalog::SortDirection */
-	"nested_path" text, /* &str */
-	"nested_filter" pg_catalog.ZDBQuery DEFAULT NULL, /* core::option::Option<zombodb::zdbquery::pg_catalog::ZDBQuery> */
-	"mode" pg_catalog.SortMode DEFAULT NULL /* core::option::Option<zombodb::zdbquery::pg_catalog::SortMode> */
-) RETURNS pg_catalog.SortDescriptor /* zombodb::zdbquery::pg_catalog::SortDescriptor */
-IMMUTABLE PARALLEL SAFE
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'sd_nested_wrapper';
-
--- src/query_dsl/sort.rs:66
--- zombodb::query_dsl::sort::dsl::sort_many
-CREATE OR REPLACE FUNCTION dsl."sort_many"(
-	"zdbquery" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-	"sort_descriptors" VARIADIC pg_catalog.SortDescriptor[] /* pgx::datum::array::Array<zombodb::zdbquery::pg_catalog::SortDescriptor> */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'sort_many_wrapper';
-
--- src/query_dsl/sort.rs:71
--- zombodb::query_dsl::sort::dsl::sort_direct
-CREATE OR REPLACE FUNCTION dsl."sort_direct"(
-	"sort_json" json, /* pgx::datum::json::Json */
-	"zdbquery" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'sort_direct_wrapper';
 
 -- src/query_dsl/range.rs:1
 CREATE SCHEMA IF NOT EXISTS dsl; /* zombodb::query_dsl::range::dsl */
@@ -2370,15 +2370,15 @@ IMMUTABLE PARALLEL SAFE
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'range_numeric_wrapper';
 
+-- src/query_dsl/query_string.rs:14
+CREATE SCHEMA IF NOT EXISTS dsl; /* zombodb::query_dsl::query_string::dsl */
+
 -- src/query_dsl/query_string.rs:7
 -- zombodb::query_dsl::query_string::pg_catalog::QueryStringDefaultOperator
 CREATE TYPE pg_catalog.QueryStringDefaultOperator AS ENUM (
 	'and',
 	'or'
 );
-
--- src/query_dsl/query_string.rs:14
-CREATE SCHEMA IF NOT EXISTS dsl; /* zombodb::query_dsl::query_string::dsl */
 
 -- src/query_dsl/query_string.rs:67
 -- zombodb::query_dsl::query_string::dsl::query_string
@@ -2422,6 +2422,9 @@ IMMUTABLE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'prefix_wrapper';
 
+-- src/query_dsl/nested.rs:17
+CREATE SCHEMA IF NOT EXISTS dsl; /* zombodb::query_dsl::nested::dsl */
+
 -- src/query_dsl/nested.rs:7
 -- zombodb::query_dsl::nested::pg_catalog::ScoreMode
 CREATE TYPE pg_catalog.ScoreMode AS ENUM (
@@ -2431,9 +2434,6 @@ CREATE TYPE pg_catalog.ScoreMode AS ENUM (
 	'max',
 	'none'
 );
-
--- src/query_dsl/nested.rs:17
-CREATE SCHEMA IF NOT EXISTS dsl; /* zombodb::query_dsl::nested::dsl */
 
 -- src/query_dsl/nested.rs:23
 -- zombodb::query_dsl::nested::dsl::nested
@@ -2499,17 +2499,6 @@ AS 'MODULE_PATHNAME', 'more_like_this_without_array_wrapper';
 -- src/query_dsl/misc.rs:22
 CREATE SCHEMA IF NOT EXISTS dsl; /* zombodb::query_dsl::misc::dsl */
 
--- src/query_dsl/misc.rs:49
--- zombodb::query_dsl::misc::dsl::wildcard
-CREATE OR REPLACE FUNCTION dsl."wildcard"(
-	"field" text, /* &str */
-	"value" text, /* &str */
-	"boost" real DEFAULT 1.0 /* f32 */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'wildcard_wrapper';
-
 -- src/query_dsl/misc.rs:86
 -- zombodb::query_dsl::misc::dsl::script
 CREATE OR REPLACE FUNCTION dsl."script"(
@@ -2520,6 +2509,17 @@ CREATE OR REPLACE FUNCTION dsl."script"(
 IMMUTABLE PARALLEL SAFE
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'script_wrapper';
+
+-- src/query_dsl/misc.rs:49
+-- zombodb::query_dsl::misc::dsl::wildcard
+CREATE OR REPLACE FUNCTION dsl."wildcard"(
+	"field" text, /* &str */
+	"value" text, /* &str */
+	"boost" real DEFAULT 1.0 /* f32 */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'wildcard_wrapper';
 
 -- src/query_dsl/misc.rs:12
 -- zombodb::query_dsl::misc::pg_catalog::RegexFlags
@@ -2571,6 +2571,28 @@ CREATE TYPE pg_catalog.Operator AS ENUM (
 -- src/query_dsl/matches.rs:31
 CREATE SCHEMA IF NOT EXISTS dsl; /* zombodb::query_dsl::matches::dsl */
 
+-- src/query_dsl/matches.rs:129
+-- zombodb::query_dsl::matches::dsl::match
+CREATE OR REPLACE FUNCTION dsl."match"(
+	"field" text, /* &str */
+	"query" text, /* &str */
+	"boost" real DEFAULT NULL, /* core::option::Option<f32> */
+	"analyzer" text DEFAULT NULL, /* core::option::Option<&str> */
+	"minimum_should_match" integer DEFAULT NULL, /* core::option::Option<i32> */
+	"lenient" bool DEFAULT NULL, /* core::option::Option<bool> */
+	"fuzziness" integer DEFAULT NULL, /* core::option::Option<i32> */
+	"fuzzy_rewrite" text DEFAULT NULL, /* core::option::Option<&str> */
+	"fuzzy_transpositions" bool DEFAULT NULL, /* core::option::Option<bool> */
+	"prefix_length" integer DEFAULT NULL, /* core::option::Option<i32> */
+	"cutoff_frequency" real DEFAULT NULL, /* core::option::Option<f32> */
+	"auto_generate_synonyms_phrase_query" bool DEFAULT NULL, /* core::option::Option<bool> */
+	"zero_terms_query" pg_catalog.ZeroTermsQuery DEFAULT NULL, /* core::option::Option<zombodb::query_dsl::matches::pg_catalog::ZeroTermsQuery> */
+	"operator" pg_catalog.Operator DEFAULT NULL /* core::option::Option<zombodb::query_dsl::matches::pg_catalog::Operator> */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE 
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'match_wrapper_wrapper';
+
 -- src/query_dsl/matches.rs:170
 -- zombodb::query_dsl::matches::dsl::multi_match
 CREATE OR REPLACE FUNCTION dsl."multi_match"(
@@ -2593,6 +2615,20 @@ CREATE OR REPLACE FUNCTION dsl."multi_match"(
 IMMUTABLE PARALLEL SAFE
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'multi_match_wrapper';
+
+-- src/query_dsl/matches.rs:212
+-- zombodb::query_dsl::matches::dsl::match_phrase
+CREATE OR REPLACE FUNCTION dsl."match_phrase"(
+	"field" text, /* &str */
+	"query" text, /* &str */
+	"boost" real DEFAULT NULL, /* core::option::Option<f32> */
+	"slop" integer DEFAULT NULL, /* core::option::Option<i32> */
+	"analyzer" text DEFAULT NULL, /* core::option::Option<&str> */
+	"zero_terms_query" pg_catalog.ZeroTermsQuery DEFAULT NULL /* core::option::Option<zombodb::query_dsl::matches::pg_catalog::ZeroTermsQuery> */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'match_phrase_wrapper';
 
 -- src/query_dsl/matches.rs:249
 -- zombodb::query_dsl::matches::dsl::match_phrase_prefix
@@ -2623,51 +2659,8 @@ IMMUTABLE PARALLEL SAFE
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'phrase_wrapper';
 
--- src/query_dsl/matches.rs:129
--- zombodb::query_dsl::matches::dsl::match
-CREATE OR REPLACE FUNCTION dsl."match"(
-	"field" text, /* &str */
-	"query" text, /* &str */
-	"boost" real DEFAULT NULL, /* core::option::Option<f32> */
-	"analyzer" text DEFAULT NULL, /* core::option::Option<&str> */
-	"minimum_should_match" integer DEFAULT NULL, /* core::option::Option<i32> */
-	"lenient" bool DEFAULT NULL, /* core::option::Option<bool> */
-	"fuzziness" integer DEFAULT NULL, /* core::option::Option<i32> */
-	"fuzzy_rewrite" text DEFAULT NULL, /* core::option::Option<&str> */
-	"fuzzy_transpositions" bool DEFAULT NULL, /* core::option::Option<bool> */
-	"prefix_length" integer DEFAULT NULL, /* core::option::Option<i32> */
-	"cutoff_frequency" real DEFAULT NULL, /* core::option::Option<f32> */
-	"auto_generate_synonyms_phrase_query" bool DEFAULT NULL, /* core::option::Option<bool> */
-	"zero_terms_query" pg_catalog.ZeroTermsQuery DEFAULT NULL, /* core::option::Option<zombodb::query_dsl::matches::pg_catalog::ZeroTermsQuery> */
-	"operator" pg_catalog.Operator DEFAULT NULL /* core::option::Option<zombodb::query_dsl::matches::pg_catalog::Operator> */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE 
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'match_wrapper_wrapper';
-
--- src/query_dsl/matches.rs:212
--- zombodb::query_dsl::matches::dsl::match_phrase
-CREATE OR REPLACE FUNCTION dsl."match_phrase"(
-	"field" text, /* &str */
-	"query" text, /* &str */
-	"boost" real DEFAULT NULL, /* core::option::Option<f32> */
-	"slop" integer DEFAULT NULL, /* core::option::Option<i32> */
-	"analyzer" text DEFAULT NULL, /* core::option::Option<&str> */
-	"zero_terms_query" pg_catalog.ZeroTermsQuery DEFAULT NULL /* core::option::Option<zombodb::query_dsl::matches::pg_catalog::ZeroTermsQuery> */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'match_phrase_wrapper';
-
 -- src/query_dsl/match_all.rs:6
 CREATE SCHEMA IF NOT EXISTS dsl; /* zombodb::query_dsl::match_all::dsl */
-
--- src/query_dsl/match_all.rs:29
--- zombodb::query_dsl::match_all::dsl::match_none
-CREATE OR REPLACE FUNCTION dsl."match_none"() RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'match_none_wrapper';
 
 -- src/query_dsl/match_all.rs:12
 -- zombodb::query_dsl::match_all::dsl::match_all
@@ -2678,8 +2671,35 @@ IMMUTABLE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'match_all_wrapper';
 
+-- src/query_dsl/match_all.rs:29
+-- zombodb::query_dsl::match_all::dsl::match_none
+CREATE OR REPLACE FUNCTION dsl."match_none"() RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'match_none_wrapper';
+
 -- src/query_dsl/limit.rs:1
 CREATE SCHEMA IF NOT EXISTS dsl; /* zombodb::query_dsl::limit::dsl */
+
+-- src/query_dsl/limit.rs:14
+-- zombodb::query_dsl::limit::dsl::offset
+CREATE OR REPLACE FUNCTION dsl."offset"(
+	"offset" bigint, /* i64 */
+	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'offset_wrapper';
+
+-- src/query_dsl/limit.rs:28
+-- zombodb::query_dsl::limit::dsl::min_score
+CREATE OR REPLACE FUNCTION dsl."min_score"(
+	"min_score" double precision, /* f64 */
+	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'min_score_wrapper';
 
 -- src/query_dsl/limit.rs:22
 -- zombodb::query_dsl::limit::dsl::offset_limit
@@ -2691,16 +2711,6 @@ CREATE OR REPLACE FUNCTION dsl."offset_limit"(
 IMMUTABLE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'offset_limit_wrapper';
-
--- src/query_dsl/limit.rs:28
--- zombodb::query_dsl::limit::dsl::min_score
-CREATE OR REPLACE FUNCTION dsl."min_score"(
-	"min_score" double precision, /* f64 */
-	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'min_score_wrapper';
 
 -- src/query_dsl/limit.rs:6
 -- zombodb::query_dsl::limit::dsl::limit
@@ -2722,16 +2732,6 @@ IMMUTABLE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'row_estimate_wrapper';
 
--- src/query_dsl/limit.rs:14
--- zombodb::query_dsl::limit::dsl::offset
-CREATE OR REPLACE FUNCTION dsl."offset"(
-	"offset" bigint, /* i64 */
-	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'offset_wrapper';
-
 -- src/query_dsl/geo.rs:37
 CREATE SCHEMA IF NOT EXISTS dsl; /* zombodb::query_dsl::geo::dsl */
 
@@ -2744,6 +2744,24 @@ CREATE OR REPLACE FUNCTION dsl."geo_polygon"(
 IMMUTABLE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'geo_polygon_wrapper';
+
+-- src/query_dsl/geo.rs:18
+-- zombodb::query_dsl::geo::pg_catalog::GeoBoundingBoxType
+CREATE TYPE pg_catalog.GeoBoundingBoxType AS ENUM (
+	'indexed',
+	'memory'
+);
+
+-- src/query_dsl/geo.rs:59
+-- zombodb::query_dsl::geo::dsl::geo_bounding_box
+CREATE OR REPLACE FUNCTION dsl."geo_bounding_box"(
+	"field" text, /* &str */
+	"bounding_box" box, /* pgx_pg_sys::pg14::BOX */
+	"box_type" pg_catalog.GeoBoundingBoxType DEFAULT 'memory' /* zombodb::query_dsl::geo::pg_catalog::GeoBoundingBoxType */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'geo_bounding_box_wrapper';
 
 -- src/query_dsl/geo.rs:9
 -- zombodb::query_dsl::geo::pg_catalog::GeoShapeRelation
@@ -2764,24 +2782,6 @@ CREATE OR REPLACE FUNCTION dsl."geo_shape"(
 IMMUTABLE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'geo_shape_wrapper';
-
--- src/query_dsl/geo.rs:18
--- zombodb::query_dsl::geo::pg_catalog::GeoBoundingBoxType
-CREATE TYPE pg_catalog.GeoBoundingBoxType AS ENUM (
-	'indexed',
-	'memory'
-);
-
--- src/query_dsl/geo.rs:59
--- zombodb::query_dsl::geo::dsl::geo_bounding_box
-CREATE OR REPLACE FUNCTION dsl."geo_bounding_box"(
-	"field" text, /* &str */
-	"bounding_box" box, /* pgx_pg_sys::pg14::BOX */
-	"box_type" pg_catalog.GeoBoundingBoxType DEFAULT 'memory' /* zombodb::query_dsl::geo::pg_catalog::GeoBoundingBoxType */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'geo_bounding_box_wrapper';
 
 -- src/query_dsl/fuzzy.rs:1
 CREATE SCHEMA IF NOT EXISTS dsl; /* zombodb::query_dsl::fuzzy::dsl */
@@ -2836,21 +2836,6 @@ CREATE TYPE pg_catalog.Relation AS ENUM (
 -- src/query_dsl/datetime_range.rs:15
 CREATE SCHEMA IF NOT EXISTS dsl; /* zombodb::query_dsl::datetime_range::dsl */
 
--- src/query_dsl/datetime_range.rs:38
--- zombodb::query_dsl::datetime_range::dsl::datetime_range
-CREATE OR REPLACE FUNCTION dsl."datetime_range"(
-	"field" text, /* &str */
-	"lt" date DEFAULT NULL, /* core::option::Option<pgx::datum::date::Date> */
-	"gt" date DEFAULT NULL, /* core::option::Option<pgx::datum::date::Date> */
-	"lte" date DEFAULT NULL, /* core::option::Option<pgx::datum::date::Date> */
-	"gte" date DEFAULT NULL, /* core::option::Option<pgx::datum::date::Date> */
-	"boost" real DEFAULT NULL, /* core::option::Option<f32> */
-	"relation" pg_catalog.Relation DEFAULT 'intersects' /* core::option::Option<zombodb::query_dsl::datetime_range::pg_catalog::Relation> */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE 
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'datetime_range_date_wrapper';
-
 -- src/query_dsl/datetime_range.rs:122
 -- zombodb::query_dsl::datetime_range::dsl::datetime_range
 CREATE OR REPLACE FUNCTION dsl."datetime_range"(
@@ -2865,6 +2850,36 @@ CREATE OR REPLACE FUNCTION dsl."datetime_range"(
 IMMUTABLE PARALLEL SAFE 
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'datetime_range_time_with_timezone_wrapper';
+
+-- src/query_dsl/datetime_range.rs:80
+-- zombodb::query_dsl::datetime_range::dsl::datetime_range
+CREATE OR REPLACE FUNCTION dsl."datetime_range"(
+	"field" text, /* &str */
+	"lt" timestamp DEFAULT NULL, /* core::option::Option<pgx::datum::time_stamp::Timestamp> */
+	"gt" timestamp DEFAULT NULL, /* core::option::Option<pgx::datum::time_stamp::Timestamp> */
+	"lte" timestamp DEFAULT NULL, /* core::option::Option<pgx::datum::time_stamp::Timestamp> */
+	"gte" timestamp DEFAULT NULL, /* core::option::Option<pgx::datum::time_stamp::Timestamp> */
+	"boost" real DEFAULT NULL, /* core::option::Option<f32> */
+	"relation" pg_catalog.Relation DEFAULT 'intersects' /* core::option::Option<zombodb::query_dsl::datetime_range::pg_catalog::Relation> */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE 
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'datetime_range_time_stamp_wrapper';
+
+-- src/query_dsl/datetime_range.rs:38
+-- zombodb::query_dsl::datetime_range::dsl::datetime_range
+CREATE OR REPLACE FUNCTION dsl."datetime_range"(
+	"field" text, /* &str */
+	"lt" date DEFAULT NULL, /* core::option::Option<pgx::datum::date::Date> */
+	"gt" date DEFAULT NULL, /* core::option::Option<pgx::datum::date::Date> */
+	"lte" date DEFAULT NULL, /* core::option::Option<pgx::datum::date::Date> */
+	"gte" date DEFAULT NULL, /* core::option::Option<pgx::datum::date::Date> */
+	"boost" real DEFAULT NULL, /* core::option::Option<f32> */
+	"relation" pg_catalog.Relation DEFAULT 'intersects' /* core::option::Option<zombodb::query_dsl::datetime_range::pg_catalog::Relation> */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE 
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'datetime_range_date_wrapper';
 
 -- src/query_dsl/datetime_range.rs:59
 -- zombodb::query_dsl::datetime_range::dsl::datetime_range
@@ -2896,23 +2911,19 @@ IMMUTABLE PARALLEL SAFE
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'datetime_range_timestamp_with_timezone_wrapper';
 
--- src/query_dsl/datetime_range.rs:80
--- zombodb::query_dsl::datetime_range::dsl::datetime_range
-CREATE OR REPLACE FUNCTION dsl."datetime_range"(
-	"field" text, /* &str */
-	"lt" timestamp DEFAULT NULL, /* core::option::Option<pgx::datum::time_stamp::Timestamp> */
-	"gt" timestamp DEFAULT NULL, /* core::option::Option<pgx::datum::time_stamp::Timestamp> */
-	"lte" timestamp DEFAULT NULL, /* core::option::Option<pgx::datum::time_stamp::Timestamp> */
-	"gte" timestamp DEFAULT NULL, /* core::option::Option<pgx::datum::time_stamp::Timestamp> */
-	"boost" real DEFAULT NULL, /* core::option::Option<f32> */
-	"relation" pg_catalog.Relation DEFAULT 'intersects' /* core::option::Option<zombodb::query_dsl::datetime_range::pg_catalog::Relation> */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE 
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'datetime_range_time_stamp_wrapper';
-
 -- src/query_dsl/constant_score.rs:1
 CREATE SCHEMA IF NOT EXISTS dsl; /* zombodb::query_dsl::constant_score::dsl */
+
+-- src/query_dsl/constant_score.rs:25
+-- zombodb::query_dsl::constant_score::dsl::dis_max
+CREATE OR REPLACE FUNCTION dsl."dis_max"(
+	"queries" pg_catalog.ZDBQuery[], /* pgx::datum::array::Array<zombodb::zdbquery::pg_catalog::ZDBQuery> */
+	"boost" real DEFAULT NULL, /* core::option::Option<f32> */
+	"tie_breaker" real DEFAULT NULL /* core::option::Option<f32> */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'dis_max_wrapper';
 
 -- src/query_dsl/constant_score.rs:12
 -- zombodb::query_dsl::constant_score::dsl::boosting
@@ -2935,16 +2946,54 @@ IMMUTABLE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'constant_score_wrapper';
 
--- src/query_dsl/constant_score.rs:25
--- zombodb::query_dsl::constant_score::dsl::dis_max
-CREATE OR REPLACE FUNCTION dsl."dis_max"(
-	"queries" pg_catalog.ZDBQuery[], /* pgx::datum::array::Array<zombodb::zdbquery::pg_catalog::ZDBQuery> */
-	"boost" real DEFAULT NULL, /* core::option::Option<f32> */
-	"tie_breaker" real DEFAULT NULL /* core::option::Option<f32> */
+-- src/query_dsl/bool.rs:11
+CREATE SCHEMA IF NOT EXISTS dsl; /* zombodb::query_dsl::bool::dsl */
+
+-- src/query_dsl/bool.rs:154
+-- zombodb::query_dsl::bool::dsl::or
+CREATE OR REPLACE FUNCTION dsl."or"(
+	"queries" VARIADIC pg_catalog.ZDBQuery[] /* pgx::datum::array::Array<zombodb::zdbquery::pg_catalog::ZDBQuery> */
 ) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE
+IMMUTABLE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'dis_max_wrapper';
+AS 'MODULE_PATHNAME', 'or_wrapper';
+
+-- src/query_dsl/bool.rs:173
+-- zombodb::query_dsl::bool::dsl::not
+CREATE OR REPLACE FUNCTION dsl."not"(
+	"queries" VARIADIC pg_catalog.ZDBQuery[] /* pgx::datum::array::Array<zombodb::zdbquery::pg_catalog::ZDBQuery> */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'not_wrapper';
+
+-- src/query_dsl/bool.rs:192
+-- zombodb::query_dsl::bool::dsl::noteq
+CREATE OR REPLACE FUNCTION dsl."noteq"(
+	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'noteq_wrapper';
+
+-- src/query_dsl/bool.rs:135
+-- zombodb::query_dsl::bool::dsl::and
+CREATE OR REPLACE FUNCTION dsl."and"(
+	"queries" VARIADIC pg_catalog.ZDBQuery[] /* alloc::vec::Vec<core::option::Option<zombodb::zdbquery::pg_catalog::ZDBQuery>> */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'and_wrapper';
+
+-- src/query_dsl/bool.rs:121
+-- zombodb::query_dsl::bool::dsl::binary_and
+CREATE OR REPLACE FUNCTION dsl."binary_and"(
+	"a" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+	"b" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+IMMUTABLE PARALLEL SAFE STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'binary_and_wrapper';
 
 -- src/query_dsl/bool.rs:7
 -- zombodb::query_dsl::bool::pg_catalog::BoolQueryPart
@@ -2977,26 +3026,14 @@ CREATE TYPE pg_catalog.BoolQueryPart (
 	STORAGE = extended
 );
 
--- src/query_dsl/bool.rs:11
-CREATE SCHEMA IF NOT EXISTS dsl; /* zombodb::query_dsl::bool::dsl */
-
--- src/query_dsl/bool.rs:154
--- zombodb::query_dsl::bool::dsl::or
-CREATE OR REPLACE FUNCTION dsl."or"(
-	"queries" VARIADIC pg_catalog.ZDBQuery[] /* pgx::datum::array::Array<zombodb::zdbquery::pg_catalog::ZDBQuery> */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'or_wrapper';
-
--- src/query_dsl/bool.rs:45
--- zombodb::query_dsl::bool::dsl::should
-CREATE OR REPLACE FUNCTION dsl."should"(
+-- src/query_dsl/bool.rs:64
+-- zombodb::query_dsl::bool::dsl::must
+CREATE OR REPLACE FUNCTION dsl."must"(
 	"queries" VARIADIC pg_catalog.ZDBQuery[] /* pgx::datum::array::Array<zombodb::zdbquery::pg_catalog::ZDBQuery> */
 ) RETURNS pg_catalog.BoolQueryPart /* zombodb::query_dsl::bool::pg_catalog::BoolQueryPart */
 IMMUTABLE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'should_wrapper';
+AS 'MODULE_PATHNAME', 'must_wrapper';
 
 -- src/query_dsl/bool.rs:17
 -- zombodb::query_dsl::bool::dsl::bool
@@ -3007,14 +3044,14 @@ IMMUTABLE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'bool_wrapper';
 
--- src/query_dsl/bool.rs:192
--- zombodb::query_dsl::bool::dsl::noteq
-CREATE OR REPLACE FUNCTION dsl."noteq"(
-	"query" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
+-- src/query_dsl/bool.rs:83
+-- zombodb::query_dsl::bool::dsl::must_not
+CREATE OR REPLACE FUNCTION dsl."must_not"(
+	"queries" VARIADIC pg_catalog.ZDBQuery[] /* pgx::datum::array::Array<zombodb::zdbquery::pg_catalog::ZDBQuery> */
+) RETURNS pg_catalog.BoolQueryPart /* zombodb::query_dsl::bool::pg_catalog::BoolQueryPart */
 IMMUTABLE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'noteq_wrapper';
+AS 'MODULE_PATHNAME', 'must_not_wrapper';
 
 -- src/query_dsl/bool.rs:102
 -- zombodb::query_dsl::bool::dsl::filter
@@ -3025,51 +3062,21 @@ IMMUTABLE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'filter_wrapper';
 
--- src/query_dsl/bool.rs:64
--- zombodb::query_dsl::bool::dsl::must
-CREATE OR REPLACE FUNCTION dsl."must"(
+-- src/query_dsl/bool.rs:45
+-- zombodb::query_dsl::bool::dsl::should
+CREATE OR REPLACE FUNCTION dsl."should"(
 	"queries" VARIADIC pg_catalog.ZDBQuery[] /* pgx::datum::array::Array<zombodb::zdbquery::pg_catalog::ZDBQuery> */
 ) RETURNS pg_catalog.BoolQueryPart /* zombodb::query_dsl::bool::pg_catalog::BoolQueryPart */
 IMMUTABLE PARALLEL SAFE STRICT
 LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'must_wrapper';
+AS 'MODULE_PATHNAME', 'should_wrapper';
 
--- src/query_dsl/bool.rs:83
--- zombodb::query_dsl::bool::dsl::must_not
-CREATE OR REPLACE FUNCTION dsl."must_not"(
-	"queries" VARIADIC pg_catalog.ZDBQuery[] /* pgx::datum::array::Array<zombodb::zdbquery::pg_catalog::ZDBQuery> */
-) RETURNS pg_catalog.BoolQueryPart /* zombodb::query_dsl::bool::pg_catalog::BoolQueryPart */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'must_not_wrapper';
-
--- src/query_dsl/bool.rs:121
--- zombodb::query_dsl::bool::dsl::binary_and
-CREATE OR REPLACE FUNCTION dsl."binary_and"(
-	"a" pg_catalog.ZDBQuery, /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-	"b" pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'binary_and_wrapper';
-
--- src/query_dsl/bool.rs:135
--- zombodb::query_dsl::bool::dsl::and
-CREATE OR REPLACE FUNCTION dsl."and"(
-	"queries" VARIADIC pg_catalog.ZDBQuery[] /* alloc::vec::Vec<core::option::Option<zombodb::zdbquery::pg_catalog::ZDBQuery>> */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'and_wrapper';
-
--- src/query_dsl/bool.rs:173
--- zombodb::query_dsl::bool::dsl::not
-CREATE OR REPLACE FUNCTION dsl."not"(
-	"queries" VARIADIC pg_catalog.ZDBQuery[] /* pgx::datum::array::Array<zombodb::zdbquery::pg_catalog::ZDBQuery> */
-) RETURNS pg_catalog.ZDBQuery /* zombodb::zdbquery::pg_catalog::ZDBQuery */
-IMMUTABLE PARALLEL SAFE STRICT
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'not_wrapper';
+-- src/highlighting/es_highlighting.rs:29
+-- zombodb::highlighting::es_highlighting::pg_catalog::EncoderType
+CREATE TYPE pg_catalog.EncoderType AS ENUM (
+	'default',
+	'html'
+);
 
 -- src/highlighting/es_highlighting.rs:14
 -- zombodb::highlighting::es_highlighting::pg_catalog::HighlightType
@@ -3085,13 +3092,6 @@ CREATE TYPE pg_catalog.BoundaryScannerType AS ENUM (
 	'chars',
 	'sentence',
 	'word'
-);
-
--- src/highlighting/es_highlighting.rs:29
--- zombodb::highlighting::es_highlighting::pg_catalog::EncoderType
-CREATE TYPE pg_catalog.EncoderType AS ENUM (
-	'default',
-	'html'
 );
 
 -- src/highlighting/es_highlighting.rs:22
@@ -3312,21 +3312,6 @@ CREATE TYPE pg_catalog.CalendarInterval AS ENUM (
 	'year'
 );
 
--- src/elasticsearch/aggregates/builders/date_histogram.rs:12
--- zombodb::elasticsearch::aggregates::builders::date_histogram::date_histogram_agg
-CREATE OR REPLACE FUNCTION zdb."date_histogram_agg"(
-	"aggregate_name" text, /* &str */
-	"field" text, /* &str */
-	"calendar_interval" pg_catalog.CalendarInterval DEFAULT NULL, /* core::option::Option<zombodb::elasticsearch::aggregates::date_histogram::pg_catalog::CalendarInterval> */
-	"fixed_interval" text DEFAULT NULL, /* core::option::Option<&str> */
-	"time_zone" text DEFAULT '+00:00', /* &str */
-	"format" text DEFAULT 'yyyy-MM-dd', /* &str */
-	"children" jsonb[] DEFAULT NULL /* core::option::Option<alloc::vec::Vec<pgx::datum::json::JsonB>> */
-) RETURNS jsonb /* pgx::datum::json::JsonB */
-IMMUTABLE PARALLEL SAFE
-LANGUAGE c /* Rust */
-AS 'MODULE_PATHNAME', 'date_histogram_agg_wrapper';
-
 -- src/elasticsearch/aggregates/date_histogram.rs:26
 -- zombodb::elasticsearch::aggregates::date_histogram::date_histogram
 CREATE OR REPLACE FUNCTION zdb."date_histogram"(
@@ -3346,6 +3331,21 @@ IMMUTABLE PARALLEL SAFE
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'date_histogram_wrapper';
 
+-- src/elasticsearch/aggregates/builders/date_histogram.rs:12
+-- zombodb::elasticsearch::aggregates::builders::date_histogram::date_histogram_agg
+CREATE OR REPLACE FUNCTION zdb."date_histogram_agg"(
+	"aggregate_name" text, /* &str */
+	"field" text, /* &str */
+	"calendar_interval" pg_catalog.CalendarInterval DEFAULT NULL, /* core::option::Option<zombodb::elasticsearch::aggregates::date_histogram::pg_catalog::CalendarInterval> */
+	"fixed_interval" text DEFAULT NULL, /* core::option::Option<&str> */
+	"time_zone" text DEFAULT '+00:00', /* &str */
+	"format" text DEFAULT 'yyyy-MM-dd', /* &str */
+	"children" jsonb[] DEFAULT NULL /* core::option::Option<alloc::vec::Vec<pgx::datum::json::JsonB>> */
+) RETURNS jsonb /* pgx::datum::json::JsonB */
+IMMUTABLE PARALLEL SAFE
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'date_histogram_agg_wrapper';
+
 -- src/lib.rs:34
 CREATE OR REPLACE FUNCTION dsl.join(left_field name, index regclass, right_field name, query zdbquery,
                                     size int DEFAULT 0) RETURNS zdbquery
@@ -3364,131 +3364,6 @@ BEGIN
     END IF;
 END ;
 $$;
-
-
--- src/zdbquery/cast.rs:30
-
-CREATE CAST (text AS zdbquery) WITH FUNCTION zdbquery_from_text(text) AS IMPLICIT;
-CREATE CAST (json AS zdbquery) WITH FUNCTION zdbquery_from_json(json) AS IMPLICIT;
-CREATE CAST (jsonb AS zdbquery) WITH FUNCTION zdbquery_from_jsonb(jsonb) AS IMPLICIT;
-CREATE CAST (zdbquery AS json) WITH FUNCTION zdbquery_to_json(zdbquery) AS IMPLICIT;
-CREATE CAST (zdbquery AS jsonb) WITH FUNCTION zdbquery_to_jsonb(zdbquery) AS IMPLICIT;
-
-
--- src/elasticsearch/aggregates/adjacency_matrix.rs:58
-  
-
-CREATE OR REPLACE FUNCTION zdb.adjacency_matrix_2x2(index regclass, labels text[], filters zdbquery[]) RETURNS TABLE ("-" text, "1" text, "2" text) STABLE LANGUAGE sql AS $$
-
-WITH matrix AS (SELECT term, doc_count::text FROM zdb.adjacency_matrix(index, labels, filters))
-SELECT NULL::text, labels[1], labels[2]
-   UNION ALL
-SELECT labels[1],
-    (SELECT doc_count FROM matrix WHERE term = labels[1]),
-    (SELECT doc_count FROM matrix WHERE term in (labels[1]||'&'||labels[2], labels[2]||'&'||labels[1]))
-   UNION ALL
-SELECT labels[2],
-    (SELECT doc_count FROM matrix WHERE term in (labels[2]||'&'||labels[1], labels[1]||'&'||labels[2])),
-    (SELECT doc_count FROM matrix WHERE term = labels[2])
-
-$$;
-
-CREATE OR REPLACE FUNCTION zdb.adjacency_matrix_3x3(index regclass, labels text[], filters zdbquery[]) RETURNS TABLE ("-" text, "1" text, "2" text, "3" text) STABLE LANGUAGE sql AS $$
-
-WITH matrix AS (SELECT term, doc_count::text FROM zdb.adjacency_matrix(index, labels, filters))
-SELECT NULL::text, labels[1], labels[2], labels[3]
-   UNION ALL
-SELECT labels[1],
-    (SELECT doc_count FROM matrix WHERE term = labels[1]),
-    (SELECT doc_count FROM matrix WHERE term in (labels[1]||'&'||labels[2], labels[2]||'&'||labels[1])),
-    (SELECT doc_count FROM matrix WHERE term in (labels[1]||'&'||labels[3], labels[3]||'&'||labels[1]))
-   UNION ALL
-SELECT labels[2],
-    (SELECT doc_count FROM matrix WHERE term in (labels[2]||'&'||labels[1], labels[1]||'&'||labels[2])),
-    (SELECT doc_count FROM matrix WHERE term = labels[2]),
-    (SELECT doc_count FROM matrix WHERE term in (labels[2]||'&'||labels[3], labels[3]||'&'||labels[2]))
-   UNION ALL
-SELECT labels[3],
-    (SELECT doc_count FROM matrix WHERE term in (labels[3]||'&'||labels[1], labels[1]||'&'||labels[3])),
-    (SELECT doc_count FROM matrix WHERE term in (labels[3]||'&'||labels[2], labels[2]||'&'||labels[3])),
-    (SELECT doc_count FROM matrix WHERE term = labels[3])
-
-$$;
-
-CREATE OR REPLACE FUNCTION zdb.adjacency_matrix_4x4(index regclass, labels text[], filters zdbquery[]) RETURNS TABLE ("-" text, "1" text, "2" text, "3" text, "4" text) STABLE LANGUAGE sql AS $$
-
-WITH matrix AS (SELECT term, doc_count::text FROM zdb.adjacency_matrix(index, labels, filters))
-SELECT NULL::text, labels[1], labels[2], labels[3], labels[4]
-   UNION ALL
-SELECT labels[1],
-    (SELECT doc_count FROM matrix WHERE term = labels[1]),
-    (SELECT doc_count FROM matrix WHERE term in (labels[1]||'&'||labels[2], labels[2]||'&'||labels[1])),
-    (SELECT doc_count FROM matrix WHERE term in (labels[1]||'&'||labels[3], labels[3]||'&'||labels[1])),
-    (SELECT doc_count FROM matrix WHERE term in (labels[1]||'&'||labels[4], labels[4]||'&'||labels[1]))
-   UNION ALL
-SELECT labels[2],
-    (SELECT doc_count FROM matrix WHERE term in (labels[2]||'&'||labels[1], labels[1]||'&'||labels[2])),
-    (SELECT doc_count FROM matrix WHERE term = labels[2]),
-    (SELECT doc_count FROM matrix WHERE term in (labels[2]||'&'||labels[3], labels[3]||'&'||labels[2])),
-    (SELECT doc_count FROM matrix WHERE term in (labels[2]||'&'||labels[4], labels[4]||'&'||labels[2]))
-   UNION ALL
-SELECT labels[3],
-    (SELECT doc_count FROM matrix WHERE term in (labels[3]||'&'||labels[1], labels[1]||'&'||labels[3])),
-    (SELECT doc_count FROM matrix WHERE term in (labels[3]||'&'||labels[2], labels[2]||'&'||labels[3])),
-    (SELECT doc_count FROM matrix WHERE term = labels[3]),
-    (SELECT doc_count FROM matrix WHERE term in (labels[3]||'&'||labels[4], labels[4]||'&'||labels[3]))
-   UNION ALL
-SELECT labels[4],
-    (SELECT doc_count FROM matrix WHERE term in (labels[4]||'&'||labels[1], labels[1]||'&'||labels[4])),
-    (SELECT doc_count FROM matrix WHERE term in (labels[4]||'&'||labels[2], labels[2]||'&'||labels[4])),
-    (SELECT doc_count FROM matrix WHERE term in (labels[4]||'&'||labels[3], labels[3]||'&'||labels[4])),
-    (SELECT doc_count FROM matrix WHERE term = labels[4])
-
-$$;
-
-CREATE OR REPLACE FUNCTION zdb.adjacency_matrix_5x5(index regclass, labels text[], filters zdbquery[]) RETURNS TABLE ("-" text, "1" text, "2" text, "3" text, "4" text, "5" text) STABLE LANGUAGE sql AS $$
-
-WITH matrix AS (SELECT term, doc_count::text FROM zdb.adjacency_matrix(index, labels, filters))
-SELECT NULL::text, labels[1], labels[2], labels[3], labels[4], labels[5]
-   UNION ALL
-SELECT labels[1],
-    (SELECT doc_count FROM matrix WHERE term = labels[1]),
-    (SELECT doc_count FROM matrix WHERE term in (labels[1]||'&'||labels[2], labels[2]||'&'||labels[1])),
-    (SELECT doc_count FROM matrix WHERE term in (labels[1]||'&'||labels[3], labels[3]||'&'||labels[1])),
-    (SELECT doc_count FROM matrix WHERE term in (labels[1]||'&'||labels[4], labels[4]||'&'||labels[1])),
-    (SELECT doc_count FROM matrix WHERE term in (labels[1]||'&'||labels[5], labels[5]||'&'||labels[1]))
-   UNION ALL
-SELECT labels[2],
-    (SELECT doc_count FROM matrix WHERE term in (labels[2]||'&'||labels[1], labels[1]||'&'||labels[2])),
-    (SELECT doc_count FROM matrix WHERE term = labels[2]),
-    (SELECT doc_count FROM matrix WHERE term in (labels[2]||'&'||labels[3], labels[3]||'&'||labels[2])),
-    (SELECT doc_count FROM matrix WHERE term in (labels[2]||'&'||labels[4], labels[4]||'&'||labels[2])),
-    (SELECT doc_count FROM matrix WHERE term in (labels[2]||'&'||labels[5], labels[5]||'&'||labels[2]))
-   UNION ALL
-SELECT labels[3],
-    (SELECT doc_count FROM matrix WHERE term in (labels[3]||'&'||labels[1], labels[1]||'&'||labels[3])),
-    (SELECT doc_count FROM matrix WHERE term in (labels[3]||'&'||labels[2], labels[2]||'&'||labels[3])),
-    (SELECT doc_count FROM matrix WHERE term = labels[3]),
-    (SELECT doc_count FROM matrix WHERE term in (labels[3]||'&'||labels[4], labels[4]||'&'||labels[3])),
-    (SELECT doc_count FROM matrix WHERE term in (labels[3]||'&'||labels[5], labels[5]||'&'||labels[3]))
-   UNION ALL
-SELECT labels[4],
-    (SELECT doc_count FROM matrix WHERE term in (labels[4]||'&'||labels[1], labels[1]||'&'||labels[4])),
-    (SELECT doc_count FROM matrix WHERE term in (labels[4]||'&'||labels[2], labels[2]||'&'||labels[4])),
-    (SELECT doc_count FROM matrix WHERE term in (labels[4]||'&'||labels[3], labels[3]||'&'||labels[4])),
-    (SELECT doc_count FROM matrix WHERE term = labels[4]),
-    (SELECT doc_count FROM matrix WHERE term in (labels[4]||'&'||labels[5], labels[5]||'&'||labels[4]))
-   UNION ALL
-SELECT labels[5],
-    (SELECT doc_count FROM matrix WHERE term in (labels[5]||'&'||labels[1], labels[1]||'&'||labels[5])),
-    (SELECT doc_count FROM matrix WHERE term in (labels[5]||'&'||labels[2], labels[2]||'&'||labels[5])),
-    (SELECT doc_count FROM matrix WHERE term in (labels[5]||'&'||labels[3], labels[3]||'&'||labels[5])),
-    (SELECT doc_count FROM matrix WHERE term in (labels[5]||'&'||labels[4], labels[4]||'&'||labels[5])),
-    (SELECT doc_count FROM matrix WHERE term = labels[5])
-
-$$;
-
-
 
 
 -- src/lib.rs:28
@@ -4141,6 +4016,149 @@ DO LANGUAGE plpgsql $$
 $$;
 
 
+-- src/zdbquery/opclass.rs:191
+
+CREATE OPERATOR pg_catalog.==> (
+    PROCEDURE = anyelement_cmpfunc,
+    RESTRICT = restrict,
+    LEFTARG = anyelement,
+    RIGHTARG = zdbquery
+);
+
+CREATE OPERATOR CLASS anyelement_zdb_ops DEFAULT FOR TYPE anyelement USING zombodb AS
+    OPERATOR 1 pg_catalog.==>(anyelement, zdbquery),
+--    OPERATOR 2 pg_catalog.==|(anyelement, zdbquery[]),
+--    OPERATOR 3 pg_catalog.==&(anyelement, zdbquery[]),
+--    OPERATOR 4 pg_catalog.==!(anyelement, zdbquery[]),
+    STORAGE anyelement;
+
+
+
+-- src/zdbquery/cast.rs:30
+
+CREATE CAST (text AS zdbquery) WITH FUNCTION zdbquery_from_text(text) AS IMPLICIT;
+CREATE CAST (json AS zdbquery) WITH FUNCTION zdbquery_from_json(json) AS IMPLICIT;
+CREATE CAST (jsonb AS zdbquery) WITH FUNCTION zdbquery_from_jsonb(jsonb) AS IMPLICIT;
+CREATE CAST (zdbquery AS json) WITH FUNCTION zdbquery_to_json(zdbquery) AS IMPLICIT;
+CREATE CAST (zdbquery AS jsonb) WITH FUNCTION zdbquery_to_jsonb(zdbquery) AS IMPLICIT;
+
+
+-- src/elasticsearch/aggregates/adjacency_matrix.rs:58
+  
+
+CREATE OR REPLACE FUNCTION zdb.adjacency_matrix_2x2(index regclass, labels text[], filters zdbquery[]) RETURNS TABLE ("-" text, "1" text, "2" text) STABLE LANGUAGE sql AS $$
+
+WITH matrix AS (SELECT term, doc_count::text FROM zdb.adjacency_matrix(index, labels, filters))
+SELECT NULL::text, labels[1], labels[2]
+   UNION ALL
+SELECT labels[1],
+    (SELECT doc_count FROM matrix WHERE term = labels[1]),
+    (SELECT doc_count FROM matrix WHERE term in (labels[1]||'&'||labels[2], labels[2]||'&'||labels[1]))
+   UNION ALL
+SELECT labels[2],
+    (SELECT doc_count FROM matrix WHERE term in (labels[2]||'&'||labels[1], labels[1]||'&'||labels[2])),
+    (SELECT doc_count FROM matrix WHERE term = labels[2])
+
+$$;
+
+CREATE OR REPLACE FUNCTION zdb.adjacency_matrix_3x3(index regclass, labels text[], filters zdbquery[]) RETURNS TABLE ("-" text, "1" text, "2" text, "3" text) STABLE LANGUAGE sql AS $$
+
+WITH matrix AS (SELECT term, doc_count::text FROM zdb.adjacency_matrix(index, labels, filters))
+SELECT NULL::text, labels[1], labels[2], labels[3]
+   UNION ALL
+SELECT labels[1],
+    (SELECT doc_count FROM matrix WHERE term = labels[1]),
+    (SELECT doc_count FROM matrix WHERE term in (labels[1]||'&'||labels[2], labels[2]||'&'||labels[1])),
+    (SELECT doc_count FROM matrix WHERE term in (labels[1]||'&'||labels[3], labels[3]||'&'||labels[1]))
+   UNION ALL
+SELECT labels[2],
+    (SELECT doc_count FROM matrix WHERE term in (labels[2]||'&'||labels[1], labels[1]||'&'||labels[2])),
+    (SELECT doc_count FROM matrix WHERE term = labels[2]),
+    (SELECT doc_count FROM matrix WHERE term in (labels[2]||'&'||labels[3], labels[3]||'&'||labels[2]))
+   UNION ALL
+SELECT labels[3],
+    (SELECT doc_count FROM matrix WHERE term in (labels[3]||'&'||labels[1], labels[1]||'&'||labels[3])),
+    (SELECT doc_count FROM matrix WHERE term in (labels[3]||'&'||labels[2], labels[2]||'&'||labels[3])),
+    (SELECT doc_count FROM matrix WHERE term = labels[3])
+
+$$;
+
+CREATE OR REPLACE FUNCTION zdb.adjacency_matrix_4x4(index regclass, labels text[], filters zdbquery[]) RETURNS TABLE ("-" text, "1" text, "2" text, "3" text, "4" text) STABLE LANGUAGE sql AS $$
+
+WITH matrix AS (SELECT term, doc_count::text FROM zdb.adjacency_matrix(index, labels, filters))
+SELECT NULL::text, labels[1], labels[2], labels[3], labels[4]
+   UNION ALL
+SELECT labels[1],
+    (SELECT doc_count FROM matrix WHERE term = labels[1]),
+    (SELECT doc_count FROM matrix WHERE term in (labels[1]||'&'||labels[2], labels[2]||'&'||labels[1])),
+    (SELECT doc_count FROM matrix WHERE term in (labels[1]||'&'||labels[3], labels[3]||'&'||labels[1])),
+    (SELECT doc_count FROM matrix WHERE term in (labels[1]||'&'||labels[4], labels[4]||'&'||labels[1]))
+   UNION ALL
+SELECT labels[2],
+    (SELECT doc_count FROM matrix WHERE term in (labels[2]||'&'||labels[1], labels[1]||'&'||labels[2])),
+    (SELECT doc_count FROM matrix WHERE term = labels[2]),
+    (SELECT doc_count FROM matrix WHERE term in (labels[2]||'&'||labels[3], labels[3]||'&'||labels[2])),
+    (SELECT doc_count FROM matrix WHERE term in (labels[2]||'&'||labels[4], labels[4]||'&'||labels[2]))
+   UNION ALL
+SELECT labels[3],
+    (SELECT doc_count FROM matrix WHERE term in (labels[3]||'&'||labels[1], labels[1]||'&'||labels[3])),
+    (SELECT doc_count FROM matrix WHERE term in (labels[3]||'&'||labels[2], labels[2]||'&'||labels[3])),
+    (SELECT doc_count FROM matrix WHERE term = labels[3]),
+    (SELECT doc_count FROM matrix WHERE term in (labels[3]||'&'||labels[4], labels[4]||'&'||labels[3]))
+   UNION ALL
+SELECT labels[4],
+    (SELECT doc_count FROM matrix WHERE term in (labels[4]||'&'||labels[1], labels[1]||'&'||labels[4])),
+    (SELECT doc_count FROM matrix WHERE term in (labels[4]||'&'||labels[2], labels[2]||'&'||labels[4])),
+    (SELECT doc_count FROM matrix WHERE term in (labels[4]||'&'||labels[3], labels[3]||'&'||labels[4])),
+    (SELECT doc_count FROM matrix WHERE term = labels[4])
+
+$$;
+
+CREATE OR REPLACE FUNCTION zdb.adjacency_matrix_5x5(index regclass, labels text[], filters zdbquery[]) RETURNS TABLE ("-" text, "1" text, "2" text, "3" text, "4" text, "5" text) STABLE LANGUAGE sql AS $$
+
+WITH matrix AS (SELECT term, doc_count::text FROM zdb.adjacency_matrix(index, labels, filters))
+SELECT NULL::text, labels[1], labels[2], labels[3], labels[4], labels[5]
+   UNION ALL
+SELECT labels[1],
+    (SELECT doc_count FROM matrix WHERE term = labels[1]),
+    (SELECT doc_count FROM matrix WHERE term in (labels[1]||'&'||labels[2], labels[2]||'&'||labels[1])),
+    (SELECT doc_count FROM matrix WHERE term in (labels[1]||'&'||labels[3], labels[3]||'&'||labels[1])),
+    (SELECT doc_count FROM matrix WHERE term in (labels[1]||'&'||labels[4], labels[4]||'&'||labels[1])),
+    (SELECT doc_count FROM matrix WHERE term in (labels[1]||'&'||labels[5], labels[5]||'&'||labels[1]))
+   UNION ALL
+SELECT labels[2],
+    (SELECT doc_count FROM matrix WHERE term in (labels[2]||'&'||labels[1], labels[1]||'&'||labels[2])),
+    (SELECT doc_count FROM matrix WHERE term = labels[2]),
+    (SELECT doc_count FROM matrix WHERE term in (labels[2]||'&'||labels[3], labels[3]||'&'||labels[2])),
+    (SELECT doc_count FROM matrix WHERE term in (labels[2]||'&'||labels[4], labels[4]||'&'||labels[2])),
+    (SELECT doc_count FROM matrix WHERE term in (labels[2]||'&'||labels[5], labels[5]||'&'||labels[2]))
+   UNION ALL
+SELECT labels[3],
+    (SELECT doc_count FROM matrix WHERE term in (labels[3]||'&'||labels[1], labels[1]||'&'||labels[3])),
+    (SELECT doc_count FROM matrix WHERE term in (labels[3]||'&'||labels[2], labels[2]||'&'||labels[3])),
+    (SELECT doc_count FROM matrix WHERE term = labels[3]),
+    (SELECT doc_count FROM matrix WHERE term in (labels[3]||'&'||labels[4], labels[4]||'&'||labels[3])),
+    (SELECT doc_count FROM matrix WHERE term in (labels[3]||'&'||labels[5], labels[5]||'&'||labels[3]))
+   UNION ALL
+SELECT labels[4],
+    (SELECT doc_count FROM matrix WHERE term in (labels[4]||'&'||labels[1], labels[1]||'&'||labels[4])),
+    (SELECT doc_count FROM matrix WHERE term in (labels[4]||'&'||labels[2], labels[2]||'&'||labels[4])),
+    (SELECT doc_count FROM matrix WHERE term in (labels[4]||'&'||labels[3], labels[3]||'&'||labels[4])),
+    (SELECT doc_count FROM matrix WHERE term = labels[4]),
+    (SELECT doc_count FROM matrix WHERE term in (labels[4]||'&'||labels[5], labels[5]||'&'||labels[4]))
+   UNION ALL
+SELECT labels[5],
+    (SELECT doc_count FROM matrix WHERE term in (labels[5]||'&'||labels[1], labels[1]||'&'||labels[5])),
+    (SELECT doc_count FROM matrix WHERE term in (labels[5]||'&'||labels[2], labels[2]||'&'||labels[5])),
+    (SELECT doc_count FROM matrix WHERE term in (labels[5]||'&'||labels[3], labels[3]||'&'||labels[5])),
+    (SELECT doc_count FROM matrix WHERE term in (labels[5]||'&'||labels[4], labels[4]||'&'||labels[5])),
+    (SELECT doc_count FROM matrix WHERE term = labels[5])
+
+$$;
+
+
+
+
 -- src/lib.rs:35
 --
 -- _cat/ API support
@@ -4508,6 +4526,33 @@ WHERE response->>'index' IN (SELECT index from zdb.all_es_index_names() index);
 
 
 
+-- src/lib.rs:36
+-- requires:
+--   mappings
+--   cat_api
+--   query_dsl::geo::point_to_json
+--   query_dsl::geo::point_array_to_json
+
+--
+-- custom type conversions for some built-in postgres types
+--
+
+INSERT INTO zdb.type_conversions (typeoid, funcoid, is_default)
+VALUES ('point'::regtype, 'zdb.point_to_json'::regproc, true);
+INSERT INTO zdb.type_conversions (typeoid, funcoid, is_default)
+VALUES ('point[]'::regtype, 'zdb.point_array_to_json'::regproc, true);
+
+CREATE OR REPLACE FUNCTION zdb.bytea_to_json(bytea) RETURNS json
+    PARALLEL SAFE IMMUTABLE STRICT
+    LANGUAGE sql AS
+$$
+SELECT to_json(encode($1, 'base64'));
+$$;
+
+INSERT INTO zdb.type_conversions (typeoid, funcoid, is_default)
+VALUES ('bytea'::regtype, 'zdb.bytea_to_json'::regproc, true);
+
+
 -- src/lib.rs:29
 -- requires:
 --   query_dsl::bool::dsl
@@ -4546,51 +4591,6 @@ SELECT (select array_to_string(array_agg(alias), ',') from zdb.cat_aliases where
        coalesce(json_array_length((zdb.request(pg_index_name, '_doc/zdb_aborted_xids', 'GET', NULL, true) :: JSON) ->
                                   '_source' -> 'zdb_aborted_xids'), 0)                               AS aborted_xids
 FROM stats;
-
-
--- src/lib.rs:36
--- requires:
---   mappings
---   cat_api
---   query_dsl::geo::point_to_json
---   query_dsl::geo::point_array_to_json
-
---
--- custom type conversions for some built-in postgres types
---
-
-INSERT INTO zdb.type_conversions (typeoid, funcoid, is_default)
-VALUES ('point'::regtype, 'zdb.point_to_json'::regproc, true);
-INSERT INTO zdb.type_conversions (typeoid, funcoid, is_default)
-VALUES ('point[]'::regtype, 'zdb.point_array_to_json'::regproc, true);
-
-CREATE OR REPLACE FUNCTION zdb.bytea_to_json(bytea) RETURNS json
-    PARALLEL SAFE IMMUTABLE STRICT
-    LANGUAGE sql AS
-$$
-SELECT to_json(encode($1, 'base64'));
-$$;
-
-INSERT INTO zdb.type_conversions (typeoid, funcoid, is_default)
-VALUES ('bytea'::regtype, 'zdb.bytea_to_json'::regproc, true);
-
-
--- src/zdbquery/opclass.rs:191
-
-CREATE OPERATOR pg_catalog.==> (
-    PROCEDURE = anyelement_cmpfunc,
-    RESTRICT = restrict,
-    LEFTARG = anyelement,
-    RIGHTARG = zdbquery
-);
-
-CREATE OPERATOR CLASS anyelement_zdb_ops DEFAULT FOR TYPE anyelement USING zombodb AS
-    OPERATOR 1 pg_catalog.==>(anyelement, zdbquery),
---    OPERATOR 2 pg_catalog.==|(anyelement, zdbquery[]),
---    OPERATOR 3 pg_catalog.==&(anyelement, zdbquery[]),
---    OPERATOR 4 pg_catalog.==!(anyelement, zdbquery[]),
-    STORAGE anyelement;
-
 
 
 -- src/lib.rs:46
