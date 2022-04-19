@@ -302,6 +302,7 @@ impl ElasticsearchSearchRequest {
             limit,
             offset,
             elasticsearch,
+            track_scores,
             should_sort_hits,
             json! { body },
         )
@@ -329,6 +330,7 @@ impl ElasticsearchSearchRequest {
             None,
             None,
             elasticsearch,
+            track_scores,
             should_sort_hits,
             json! {
                 {
@@ -345,6 +347,7 @@ impl ElasticsearchSearchRequest {
         limit: Option<u64>,
         offset: Option<u64>,
         elasticsearch: &Elasticsearch,
+        track_scores: bool,
         should_sort_hits: bool,
         body: serde_json::Value,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
@@ -414,6 +417,7 @@ impl ElasticsearchSearchRequest {
                     response.limit = limit;
                     response.offset = offset;
                     response.should_sort_hits = should_sort_hits;
+                    response.track_scores = track_scores;
 
                     Ok(response)
                 },
