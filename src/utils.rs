@@ -23,8 +23,8 @@ pub fn count_non_shadow_zdb_indices(
     cnt
 }
 
-fn get_heap_relation_for_func_expr(
-    relation: &PgRelation,
+pub fn get_heap_relation_for_func_expr(
+    relation: Option<&PgRelation>,
     func_expr: &PgBox<pg_sys::FuncExpr>,
     view_def: &PgBox<pg_sys::Query>,
 ) -> PgRelation {
@@ -44,14 +44,17 @@ fn get_heap_relation_for_func_expr(
 }
 
 fn get_heap_relation_from_var(
-    relation: &PgRelation,
+    relation: Option<&PgRelation>,
     view_def: &PgBox<pg_sys::Query>,
     var: &PgBox<pg_sys::Var>,
 ) -> PgRelation {
     if var.varno == pg_sys::INNER_VAR || var.varno == pg_sys::OUTER_VAR {
         panic!(
             "The 'zdb' column in view '{}' is a Var we don't understand",
-            relation.name()
+            match relation {
+                None => "unknown",
+                Some(rel) => rel.name(),
+            }
         )
     }
 
@@ -93,12 +96,15 @@ pub fn find_zdb_index(
 
                         // the 'zdb' column is not a functional expression, so it just points to the table
                         // from which it is derived
-                        let heap = get_heap_relation_from_var(any_relation, &view_def, &var);
+                        let heap = get_heap_relation_from_var(Some(any_relation), &view_def, &var);
                         return find_zdb_index(&heap);
                     } else if is_a(te.expr as *mut pg_sys::Node, pg_sys::NodeTag_T_FuncExpr) {
                         let func_expr = PgBox::from_pg(te.expr as *mut pg_sys::FuncExpr);
-                        let heap =
-                            get_heap_relation_for_func_expr(&any_relation, &func_expr, &view_def);
+                        let heap = get_heap_relation_for_func_expr(
+                            Some(any_relation),
+                            &func_expr,
+                            &view_def,
+                        );
 
                         let shadow_index = find_zdb_shadow_index(&heap, func_expr.funcid);
                         let options = ZDBIndexOptions::from_relation(&shadow_index);
