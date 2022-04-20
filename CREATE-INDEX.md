@@ -37,6 +37,8 @@ CREATE INDEX idxproducts
 
 If you only wish to index, and as such only be able to query/aggregate, specific columns, you can use the Postgres
 `ROW()` constructor in a custom function to return a custom type that represents the shape of the row you wish to index.
+Be warned: this function must be a one-argument function that takes the table row type (other types are not allowed!) as its only argument
+and returns whatever your custom type is.
 
 First however, you must define a custom Postgres composite data type in which to cast the columns you wish to
 index.\
@@ -80,10 +82,8 @@ and separating with a space) into the field named `description`.
 
 ## Advanced Functional Indexing
 
-If you want to build more complex indices than the above options allow, the process is similar to the above.
-
-The function must be a one-argument function that takes the table as its only argument and returns whatever your custom
-type is.
+If you want to build more complex indices than the above options allow, the process is similar to the above
+(including the constraints described above on the signature of the function that returns your custom type).
 
 For this example, lets assume we also have a table called `manufacturer`:
 
