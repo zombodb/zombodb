@@ -1,6 +1,7 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::executor_manager::get_executor_manager;
 use crate::gucs::ZDB_DEFAULT_ROW_ESTIMATE;
+use crate::utils::get_heap_relation_for_func_expr;
 use crate::zdbquery::ZDBQuery;
 use pgx::*;
 use std::collections::HashSet;
@@ -99,12 +100,12 @@ fn do_seqscan(query: ZDBQuery, index_oid: u32) -> HashSet<u64> {
 
 #[pg_extern(immutable, parallel_safe)]
 fn restrict(
-    root: Internal, // <pg_sys::PlannerInfo>,
+    planner_info: Internal, // <pg_sys::PlannerInfo>,
     _operator_oid: pg_sys::Oid,
     args: Internal, // <pg_sys::List>,
     var_relid: i32,
 ) -> f64 {
-    let root = unsafe { root.get_mut::<pg_sys::PlannerInfo>().unwrap() as *mut _ };
+    let root = unsafe { planner_info.get_mut::<pg_sys::PlannerInfo>().unwrap() as *mut _ };
     let args = unsafe { args.get_mut::<pg_sys::List>().unwrap() as *mut _ };
     let args = unsafe { PgList::<pg_sys::Node>::from_pg(args) };
     let left = args.get_ptr(0);
@@ -122,7 +123,16 @@ fn restrict(
     let right = right.unwrap();
     let mut heap_relation = None;
 
-    if unsafe { is_a(left, pg_sys::NodeTag_T_Var) } {
+    if unsafe { is_a(left, pg_sys::NodeTag_T_FuncExpr) } {
+        unsafe {
+            let func = PgBox::<pg_sys::FuncExpr>::from_pg(left as *mut pg_sys::FuncExpr);
+            let planner_info = planner_info.get::<pg_sys::PlannerInfo>().unwrap();
+            let query = PgBox::<pg_sys::Query>::from_pg(planner_info.parse);
+            let heap = get_heap_relation_for_func_expr(None, &func, &query);
+
+            heap_relation = Some(heap);
+        }
+    } else if unsafe { is_a(left, pg_sys::NodeTag_T_Var) } {
         let mut ldata = pg_sys::VariableStatData::default();
 
         unsafe {
