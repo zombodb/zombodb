@@ -161,6 +161,20 @@ Using prepared statements is extremely important to avoid SQL-injection attacks.
 Elasticsearch QueryDSL query clauses too. Any argument to any of the functions can become a prepared statement arugment
 that you can change at EXECUTE time.
 
+### Query-time configuration
+
+#### `dsl.row_estimate()`
+
+```sql
+FUNCTION dsl.row_estimate(
+  row_estimate bigint,
+  query zdbquery
+) RETURNS zdbquery
+```
+
+Similar to [`zdb.default_row_estimate`](CONFIGURATION-SETTINGS.md#zdbdefault_row_estimate),
+but applies (and is actual) only during the query.
+
 ### Sorting and Limiting Results
 
 ZomboDB allows you to limit the number of rows returned, and their sort order, similar to the SQL `LIMIT` and `ORDER BY`

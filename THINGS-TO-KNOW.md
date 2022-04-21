@@ -44,8 +44,8 @@ Filter/Recheck conditions, you really want Postgres to choose an Index Scan agai
 
 ZomboDB assumes, by default, that the number of rows returned from a `==>` query will be 2500. For large tables, this is
 a good default that generally convinces Postgres that an Index Scan is the right choice. You can, however, override this
-number either via the `zdb.default_row_estimate` GUC, or per query (described in
-[QUERY-BUILDER-API.md](QUERY-BUILDER-API.md)).
+number either via the [`zdb.default_row_estimate`](CONFIGURATION-SETTINGS.md#zdbdefault_row_estimate) GUC,
+or per query (see [`dsl.row_estimate()`](QUERY-BUILDER-API.md#dslrow_estimate)).
 
 So as usual with Postgres, if you're troubleshooting "slow queries", make sure to `EXPLAIN` your query and ensure it's
 using an Index Scan.

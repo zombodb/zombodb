@@ -45,6 +45,8 @@ ZomboDB needs to provide Postgres with an estimate of the number of rows Elastic
 2500 is a sensible default estimate that generally convinces Postgres to use an IndexScan plan. Setting this to `-1`
 will cause ZomboDB to execute an Elasticsearch `_count` request for every query to return the exact number.
 
+Also note that you can change this parameter at query-time (see [`dsl.row_estimate()`](QUERY-BUILDER-API.md#dslrow_estimate)).
+
 #### `zdb.ignore_visibility`
 
 ```
