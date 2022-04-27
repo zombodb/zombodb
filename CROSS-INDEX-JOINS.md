@@ -212,7 +212,7 @@ be aliased `AS zdb`. For example:
 
 ```sql
 CREATE VIEW test AS 
-   SELECT *, my_shadow_func(bool) AS zdb FROM book;
+   SELECT *, my_shadow_func(book) AS zdb FROM book;
 ```
 
 Then you can query it as:
