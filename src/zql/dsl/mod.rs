@@ -66,8 +66,8 @@ pub fn expr_to_dsl(
             expr_to_dsl(link, index_links, &Expr::Linked(link.clone(), e.clone()))
         }
 
-        Expr::WithList(_) => unreachable!("dsl conversion of Expr::WithList shouldn't happen"),
-        Expr::AndList(v) => {
+        // AND and WITH output the same query DSL, but we want to maintain their differences in the AST
+        Expr::AndList(v) | Expr::WithList(v) => {
             let dsl: Vec<serde_json::Value> = v
                 .iter()
                 .map(|v| expr_to_dsl(root, index_links, v))
