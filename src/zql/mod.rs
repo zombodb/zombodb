@@ -616,7 +616,7 @@ mod tests {
     fn test_expr_with() {
         assert_expr(
             "a.foo:foo with a.bar:bar",
-            And!(
+            With!(
                 String!(Contains, "a.bar", "bar"),
                 String!(Contains, "a.foo", "foo")
             ),
@@ -627,7 +627,7 @@ mod tests {
     fn test_expr_percent() {
         assert_expr(
             "a.foo:foo%a.bar:bar",
-            And!(
+            With!(
                 String!(Contains, "a.bar", "bar"),
                 String!(Contains, "a.foo", "foo")
             ),
@@ -704,7 +704,7 @@ mod tests {
                 String!(Contains, "_", "a"),
                 And!(
                     And!(
-                        And!(String!(Contains, "a.c", "c"), String!(Contains, "a.b", "b")),
+                        With!(String!(Contains, "a.c", "c"), String!(Contains, "a.b", "b")),
                         String!(Contains, "_", "d")
                     ),
                     Not!(Not!(Or!(
@@ -725,7 +725,7 @@ mod tests {
                 String!(Contains, "_", "a"),
                 And!(
                     And!(
-                        And!(String!(Contains, "a.c", "c"), String!(Contains, "a.b", "b")),
+                        With!(String!(Contains, "a.c", "c"), String!(Contains, "a.b", "b")),
                         String!(Contains, "_", "d")
                     ),
                     Not!(Not!(Or!(
