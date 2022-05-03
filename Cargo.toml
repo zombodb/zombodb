@@ -23,7 +23,7 @@ pg_test = [ ]
 byteorder = "1.4.3"
 chrono = "0.4.19"
 crossbeam-channel = "0.5.4"
-dashmap = "5.2.0"
+dashmap = "5.3.3"
 humantime = "2.1.0"
 indexmap = "1.8.1"
 lalrpop-util = "0.19.7"
@@ -36,8 +36,8 @@ pgx-macros = "0.4.3"
 rayon = "1.5.2"
 regex = "1.5.5"
 rustc-hash = "1.1.0"
-serde = { version = "1.0.136", features = [ "derive" ] }
-serde_json = { version = "1.0.79", features = [ "preserve_order" ] }
+serde = { version = "1.0.137", features = [ "derive" ] }
+serde_json = { version = "1.0.80", features = [ "preserve_order" ] }
 serde_cbor = "0.11.2"
 sqlformat = "0.1.8"
 ureq = { version = "2.4.0", features = [ "json" ] }
@@ -49,7 +49,7 @@ built = { version = "0.5.1", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
 pgx-tests = "0.4.3"
-libc = "0.2.124"
+libc = "0.2.125"
 
 [profile.dev]
 panic = "unwind"
