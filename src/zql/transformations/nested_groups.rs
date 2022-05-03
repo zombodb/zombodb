@@ -25,16 +25,15 @@ pub fn group_nested(index: &Option<&PgRelation>, expr: &mut Expr) {
             // group sub-expressions in the WITH clause by their nested path
             while !v.is_empty() {
                 let e = v.pop().unwrap();
-                groups
-                    .entry(e.get_nested_path().expect("Expression is not nested"))
-                    .or_default()
-                    .push(e);
+                let nested_path = e.get_nested_path().expect("Expression is not nested");
+                let nested_path = nested_path.split('.').next().unwrap();
+                groups.entry(nested_path.into()).or_default().push(e);
             }
 
             // now, each of those are put in an Expr::AndList, and then wrapped in an Expr::Nested
             let mut ands = Vec::new();
             for (_, v) in groups.into_iter() {
-                let mut e = Expr::AndList(v);
+                let mut e = Expr::WithList(v);
                 maybe_nest(index, &mut e);
                 ands.push(e);
             }
@@ -44,7 +43,7 @@ pub fn group_nested(index: &Option<&PgRelation>, expr: &mut Expr) {
                 *expr = ands.pop().unwrap();
             } else {
                 // and finally, we swap out expr with an Expr::AndList of all these
-                *expr = Expr::AndList(ands);
+                *expr = Expr::WithList(ands);
             }
         }
         Expr::AndList(v) => v.iter_mut().for_each(|e| group_nested(index, e)),
