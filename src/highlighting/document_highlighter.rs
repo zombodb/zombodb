@@ -1,3 +1,4 @@
+use crate::elasticsearch::analyze::Token;
 use crate::elasticsearch::Elasticsearch;
 use crate::zql::ast::{IndexLink, ProximityPart, QualifiedField};
 use crate::zql::ast::{ProximityTerm, Term};
@@ -10,6 +11,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::ops::Deref;
 use std::str::FromStr;
+use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct TokenEntry {
@@ -180,13 +182,32 @@ impl<'a> DocumentHighlighter<'a> {
             }
 
             Value::String(s) => {
-                let es = Elasticsearch::new(self.index);
-                let results = es
-                    .analyze_with_field(field, &s)
-                    .execute()
-                    .expect("failed to analyze text for highlighting");
+                let results: Box<dyn Iterator<Item = Token>> = if s.len() < 100 * 1024 * 1024 {
+                    // it's a "small" document, so we'll ask ES to analyze it
+                    let es = Elasticsearch::new(self.index);
+                    Box::new(
+                        es.analyze_with_field(field, &s)
+                            .execute()
+                            .expect("failed to analyze text for highlighting")
+                            .tokens
+                            .into_iter(),
+                    )
+                } else {
+                    // it's a "large" document, so we'll tokenize it ourselves, assuming
+                    // 1) that splitting on unicode words is okay; and
+                    // 2) that lowercase tokens is what we want
+                    Box::new(s.unicode_word_indices().enumerate().map(
+                        |(position, (start_offset, token))| Token {
+                            type_: "<ALPHANUM>".to_string(),
+                            token: token.to_lowercase().to_string(),
+                            position: position as i32,
+                            start_offset: start_offset as i64,
+                            end_offset: (start_offset + token.len()) as i64,
+                        },
+                    ))
+                };
 
-                for token in results.tokens {
+                for token in results {
                     let entry = self
                         .lookup
                         .entry(token.token)
@@ -1354,7 +1375,8 @@ mod tests {
 
     #[pg_test]
     #[initialize(es = true)]
-    fn test_highlighter_fuzzy_with_prefix_number_longer_then_given_string() {
+    // fn test_highlighter_fuzzy_with_prefix_number_longer_then_given_string() {
+    fn test_highlighter_fuzzy_1() {
         let title = "fuzzy_long_prefix";
         start_table_and_index(title);
         let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cot', 4) order by position;", title);
@@ -1375,7 +1397,8 @@ mod tests {
 
     #[pg_test]
     #[initialize(es = true)]
-    fn test_highlighter_fuzzy_with_prefix_number_longer_then_given_string_with_non_return() {
+    // fn test_highlighter_fuzzy_with_prefix_number_longer_then_given_string_with_non_return() {
+    fn test_highlighter_fuzzy_2() {
         let title = "fuzzy_long_prefix_no_return";
         start_table_and_index(title);
         let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cet', 4) order by position;", title);

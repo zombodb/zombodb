@@ -367,10 +367,49 @@ impl<'a> QueryHighligther<'a> {
     }
 }
 
-#[pg_extern]
-fn highlight_document(
+#[pg_extern(immutable, parallel_safe, name = "highlight_document")]
+fn highlight_document_jsonb(
     index: PgRelation,
     document: JsonB,
+    query_string: &'static str,
+) -> impl std::iter::Iterator<
+    Item = (
+        name!(field_name, String),
+        name!(array_index, i32),
+        name!(term, String),
+        name!(type, String),
+        name!(position, i32),
+        name!(start_offset, i64),
+        name!(end_offset, i64),
+        name!(query_clause, String),
+    ),
+> {
+    highlight_document_internal(index, document.0, query_string)
+}
+
+#[pg_extern(immutable, parallel_safe, name = "highlight_document")]
+fn highlight_document_json(
+    index: PgRelation,
+    document: Json,
+    query_string: &'static str,
+) -> impl std::iter::Iterator<
+    Item = (
+        name!(field_name, String),
+        name!(array_index, i32),
+        name!(term, String),
+        name!(type, String),
+        name!(position, i32),
+        name!(start_offset, i64),
+        name!(end_offset, i64),
+        name!(query_clause, String),
+    ),
+> {
+    highlight_document_internal(index, document.0, query_string)
+}
+
+fn highlight_document_internal(
+    index: PgRelation,
+    document: serde_json::Value,
     query_string: &'static str,
 ) -> impl std::iter::Iterator<
     Item = (
@@ -398,7 +437,7 @@ fn highlight_document(
     )
     .expect("failed to parse query");
 
-    QueryHighligther::new(&index, document.0, &used_fields, query)
+    QueryHighligther::new(&index, document, &used_fields, query)
         .highlight()
         .into_iter()
 }
