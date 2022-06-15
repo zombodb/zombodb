@@ -1375,7 +1375,8 @@ mod tests {
 
     #[pg_test]
     #[initialize(es = true)]
-    fn test_highlighter_fuzzy_with_prefix_number_longer_then_given_string() {
+    // fn test_highlighter_fuzzy_with_prefix_number_longer_then_given_string() {
+    fn test_highlighter_fuzzy_1() {
         let title = "fuzzy_long_prefix";
         start_table_and_index(title);
         let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cot', 4) order by position;", title);
@@ -1396,7 +1397,8 @@ mod tests {
 
     #[pg_test]
     #[initialize(es = true)]
-    fn test_highlighter_fuzzy_with_prefix_number_longer_then_given_string_with_non_return() {
+    // fn test_highlighter_fuzzy_with_prefix_number_longer_then_given_string_with_non_return() {
+    fn test_highlighter_fuzzy_2() {
         let title = "fuzzy_long_prefix_no_return";
         start_table_and_index(title);
         let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cet', 4) order by position;", title);
