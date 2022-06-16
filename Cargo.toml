@@ -22,7 +22,7 @@ pg_test = [ ]
 [dependencies]
 byteorder = "1.4.3"
 chrono = "0.4.19"
-crossbeam-channel = "0.5.4"
+crossbeam-channel = "0.5.5"
 dashmap = "5.3.4"
 humantime = "2.1.0"
 indexmap = "1.8.2"
