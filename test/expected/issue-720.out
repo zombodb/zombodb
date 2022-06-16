@@ -13,7 +13,7 @@ from zdb.highlight_document('idxso_posts', '
     }
   ]
 }
-', 'my_object_array.state = [bar, foo, baz]') order by 1, 2;
+'::jsonb, 'my_object_array.state = [bar, foo, baz]') order by 1, 2;
       field_name       | array_index | term |    type    | position | start_offset | end_offset |               query_clause                
 -----------------------+-------------+------+------------+----------+--------------+------------+-------------------------------------------
  my_object_array.state |           0 | foo  | <ALPHANUM> |        1 |            0 |          3 | my_object_array.state=["bar","foo","baz"]

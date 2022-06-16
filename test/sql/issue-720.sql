@@ -13,4 +13,4 @@ from zdb.highlight_document('idxso_posts', '
     }
   ]
 }
-', 'my_object_array.state = [bar, foo, baz]') order by 1, 2;
+'::jsonb, 'my_object_array.state = [bar, foo, baz]') order by 1, 2;
