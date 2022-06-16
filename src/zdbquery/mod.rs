@@ -444,10 +444,8 @@ impl ZDBQuery {
                 } else {
                     index.clone()
                 };
-                (
-                    self.prepare_with_target(&target_index, target_link),
-                    target_index,
-                )
+
+                (self.prepare_with_target(index, target_link), target_index)
             }
             None => (self.prepare_with_target(index, None), index.clone()),
         }

@@ -544,11 +544,16 @@ impl<'input> Expr<'input> {
                 link.right_field.as_ref().unwrap(),
             )
         }
+        let root_index = if let Some(link) = target_link {
+            link
+        } else {
+            &root_index
+        };
 
         assign_links(&root_index, &mut expr, index_links);
         expand_index_links(&mut expr, &root_index, &mut relationship_manager);
         rewrite_proximity_chains(&mut expr);
-        expr = retarget_expr(expr, &root_index, target_link, &mut relationship_manager);
+        // expr = retarget_expr(expr, &root_index, target_link, &mut relationship_manager);
         Ok(expr)
     }
 
