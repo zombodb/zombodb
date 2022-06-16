@@ -20,7 +20,6 @@ use crate::zql::transformations::field_lists::expand_field_lists;
 use crate::zql::transformations::index_links::assign_links;
 use crate::zql::transformations::nested_groups::group_nested;
 use crate::zql::transformations::prox_rewriter::rewrite_proximity_chains;
-use crate::zql::transformations::retarget::retarget_expr;
 use crate::zql::{INDEX_LINK_PARSER, ZDB_QUERY_PARSER};
 
 #[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
@@ -553,7 +552,6 @@ impl<'input> Expr<'input> {
         assign_links(&root_index, &mut expr, index_links);
         expand_index_links(&mut expr, &root_index, &mut relationship_manager);
         rewrite_proximity_chains(&mut expr);
-        // expr = retarget_expr(expr, &root_index, target_link, &mut relationship_manager);
         Ok(expr)
     }
 
