@@ -30,8 +30,8 @@ match {
     "{" => O_BRACE,
     "}" => C_BRACE,
 
-    "w/" => WITHIN,
-    "wo/" => WITHIN_ORDER,
+    r#"(?i)w/"# => WITHIN,
+    r#"(?i)wo/"# => WITHIN_ORDER,
 
     r#"(?i)#subselect"# => SUBSELECT,
     r#"(?i)#expand"# => EXPAND,

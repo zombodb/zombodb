@@ -793,6 +793,31 @@ mod tests {
     }
 
     #[pg_test]
+    fn test_expr_prox_groups_uppercase() {
+        assert_expr(
+            "(a, b, c) WO/2 (x, y, z)",
+            ProximityChain!(
+                Contains,
+                "_",
+                Within!(
+                    vec![
+                        ProximityString!("a"),
+                        ProximityString!("b"),
+                        ProximityString!("c")
+                    ],
+                    2,
+                    true
+                ),
+                Within!(vec![
+                    ProximityString!("x"),
+                    ProximityString!("y"),
+                    ProximityString!("z")
+                ])
+            ),
+        )
+    }
+
+    #[pg_test]
     fn test_expr_prox_mixed_groups() {
         assert_expr(
             "(a, b, c) w/8 foo wo/2 (x, y, z)",
