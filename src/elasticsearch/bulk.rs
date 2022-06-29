@@ -143,7 +143,7 @@ impl ElasticsearchBulkRequest {
             bulk.do_refresh = false; // we don't need to do a refresh for this bulk as we'll take care of it below
             deferred_commands.into_iter().for_each(|command| {
                 bulk.handler
-                    .queue_command(command)
+                    .queue_command_ex(command, true)
                     .expect("failed to queue leftover command")
             });
             let (t, nr) = bulk.finish()?;
@@ -716,9 +716,17 @@ impl Handler {
 
     pub fn queue_command(
         &mut self,
-        mut command: BulkRequestCommand<'static>,
+        command: BulkRequestCommand<'static>,
     ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand<'static>>> {
-        if self.current_xid.is_none() {
+        self.queue_command_ex(command, false)
+    }
+
+    pub fn queue_command_ex(
+        &mut self,
+        mut command: BulkRequestCommand<'static>,
+        is_deferred: bool,
+    ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand<'static>>> {
+        if is_deferred == false && self.current_xid.is_none() {
             match &command {
                 BulkRequestCommand::Insert { .. } | BulkRequestCommand::Update { .. } => {
                     let current_xid = unsafe { pg_sys::GetCurrentTransactionId() };
