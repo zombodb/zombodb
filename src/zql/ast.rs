@@ -367,7 +367,14 @@ impl ProximityTerm {
             // might be (string, wildcard, regex, fuzzy)
             let token = groups.values().into_iter().next().unwrap().get(0).unwrap();
             let token = ProximityTerm::replace_substitutions(token);
-            let term = Term::maybe_make_wildcard_or_regex(None, &token, b);
+            let mut term = Term::maybe_make_wildcard_or_regex(None, &token, b);
+
+            // there's no way we'd expect this to be a Term::Phrase here, since we know there's only
+            // one value in the list.
+            if let Term::Phrase(s, b) = term {
+                // so if it is, we'll convert it back to just a string
+                term = Term::String(s, b)
+            }
             ProximityTerm::from_term(&term)
         } else {
             // next, build ProximityParts for each group
