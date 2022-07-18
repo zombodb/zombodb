@@ -1,0 +1,9 @@
+CREATE TABLE issue574 (t zdb.fulltext_with_shingles);
+CREATE INDEX idxissue574 ON issue574 USING zombodb ((issue574.*));
+SELECT * FROM zdb.highlight_document('issue574', '{"t": "hi there"}'::jsonb, 't:"hi there"');
+ field_name | array_index |   term   |  type   | position | start_offset | end_offset | query_clause 
+------------+-------------+----------+---------+----------+--------------+------------+--------------
+ t          |           0 | hi$there | shingle |        1 |            0 |          8 | t:"hi there"
+(1 row)
+
+DROP TABLE issue574;
