@@ -69,3 +69,4 @@ select zdb.score(ctid) > 0.0 as score, id from xform_test where xform_test ==> '
 (1 row)
 
 DROP TABLE xform_test CASCADE;
+NOTICE:  drop cascades to 2 other objects

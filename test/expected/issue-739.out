@@ -235,3 +235,4 @@ WHERE testwithview.zdb ==> '(data.action="hit" WITH data.number="100")';
 (2 rows)
 
 DROP TABLE testwith_main, testwith_vol CASCADE;
+NOTICE:  drop cascades to view testwithview

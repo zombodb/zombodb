@@ -50,4 +50,5 @@ select zdb.score(ctid) > 0.0, index(test_zombodb) from test_zombodb where index(
 (1 row)
 
 drop table test_zombodb cascade;
+NOTICE:  drop cascades to function index(test_zombodb)
 drop type test_zombodb_es cascade;

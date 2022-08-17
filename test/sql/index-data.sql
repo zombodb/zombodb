@@ -5,3 +5,6 @@ CREATE INDEX idxso_posts ON so_posts USING zombodb ((so_posts)) WITH (bulk_concu
 CREATE INDEX idxso_comments ON so_comments USING zombodb ((so_comments)) WITH (bulk_concurrency=2, batch_size=2097152);
 CREATE INDEX idxproducts ON products USING zombodb ((products)) WITH (bulk_concurrency=2, batch_size=2097152);
 CREATE INDEX idxwords ON words USING zombodb ((words)) WITH (bulk_concurrency=2, batch_size=2097152);
+CREATE INDEX es_unit_tests_data ON data USING zombodb ((data)) WITH (bulk_concurrency=2, batch_size=2097152, OPTIONS ='pk_data = <public.var.es_unit_tests_var>pk_var,pk_data = <public.vol.es_unit_tests_vol>pk_vol');
+CREATE INDEX es_unit_tests_var ON var USING zombodb ((var)) WITH (bulk_concurrency=2, batch_size=2097152);
+CREATE INDEX es_unit_tests_vol ON vol USING zombodb ((vol)) WITH (bulk_concurrency=2, batch_size=2097152);

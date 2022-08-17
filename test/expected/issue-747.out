@@ -38,4 +38,5 @@ SELECT term, count FROM zdb.tally('public.testtallyview','state',false,'^.*','(n
 (2 rows)
 
 DROP TABLE testtally_var CASCADE;
+NOTICE:  drop cascades to view testtallyview
 DROP TABLE testtally_main CASCADE;

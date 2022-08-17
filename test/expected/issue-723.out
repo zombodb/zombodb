@@ -89,3 +89,4 @@ select term, count from zdb.tally('testwithview'::regclass, 'data.meal', 'TRUE',
 (1 row)
 
 DROP TABLE testwith_main, testwith_vol CASCADE;
+NOTICE:  drop cascades to view testwithview

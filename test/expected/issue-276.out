@@ -1,3 +1,6 @@
 DROP INDEX IF EXISTS does_not_exist;
+NOTICE:  index "does_not_exist" does not exist, skipping
 DROP TABLE IF EXISTS does_not_exist;
+NOTICE:  table "does_not_exist" does not exist, skipping
 DROP SCHEMA IF EXISTS does_not_exist CASCADE;
+NOTICE:  schema "does_not_exist" does not exist, skipping

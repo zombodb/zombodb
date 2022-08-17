@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS table_a (
                                        val text
 );
 DROP TABLE IF EXISTS table_b;
+NOTICE:  table "table_b" does not exist, skipping
 CREATE TABLE IF NOT EXISTS table_b (
                                        id serial primary key,
                                        id_a integer references table_a(id),
@@ -116,8 +117,11 @@ release savepoint asdf;
 release savepoint abc;
 COMMIT;
 DROP function table_a_idx cascade;
+NOTICE:  drop cascades to index table_a_idx
 DROP TYPE table_a_type cascade;
 DROP function table_b_idx cascade;
+NOTICE:  drop cascades to index table_b_idx
 DROP TYPE table_b_type cascade;
 DROP TABLE table_a CASCADE;
+NOTICE:  drop cascades to constraint table_b_id_a_fkey on table table_b
 DROP TABLE table_b CASCADE;

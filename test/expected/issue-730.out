@@ -15,3 +15,4 @@ SELECT * FROM cats where cat_idx_func(name) ==> dsl.row_estimate(2,'cat');
 
 DROP TABLE cats;
 DROP TYPE cat_idx_type CASCADE;
+NOTICE:  drop cascades to function cat_idx_func(text)

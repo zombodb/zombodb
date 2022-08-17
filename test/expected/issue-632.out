@@ -52,4 +52,5 @@ select zdb.score(ctid), id, name, email, password from issue632 where issue632 =
 (5 rows)
 
 DROP TABLE issue632 CASCADE;
+NOTICE:  drop cascades to function issue632_idx_func(issue632)
 DROP TYPE issue632_idx_type;
