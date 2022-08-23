@@ -529,11 +529,11 @@ pub(crate) fn index_options(index_relation: PgRelation) -> Option<Vec<String>> {
 #[pg_extern(volatile, parallel_safe)]
 fn index_field_lists(
     index_relation: PgRelation,
-) -> impl std::iter::Iterator<Item = (name!(fieldname, String), name!(fields, Vec<String>))> {
-    ZDBIndexOptions::from_relation(&index_relation)
+) -> TableIterator<'static, (name!(fieldname, String), name!(fields, Vec<String>))> {
+    TableIterator::new(ZDBIndexOptions::from_relation(&index_relation)
         .field_lists()
         .into_iter()
-        .map(|(k, v)| (k, v.into_iter().map(|f| f.field_name()).collect()))
+        .map(|(k, v)| (k, v.into_iter().map(|f| f.field_name()).collect())))
 }
 
 #[pg_extern(volatile, parallel_safe)]

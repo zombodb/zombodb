@@ -29,10 +29,9 @@ fn terms_two_level(
     field_first: &str,
     field_second: &str,
     query: ZDBQuery,
-    order_by: Option<default!(TwoLevelTermsOrderBy, "'count'")>,
-    size_limit: Option<default!(i32, 2147483647)>,
-) -> impl std::iter::Iterator<
-    Item = (
+    order_by: default!(Option<TwoLevelTermsOrderBy>, "'count'"),
+    size_limit: default!(Option<i32>, 2147483647),
+) -> TableIterator<'static, (
         name!(term_one, Option<String>),
         name!(term_two, Option<String>),
         name!(doc_count, i64),
@@ -110,5 +109,5 @@ fn terms_two_level(
         }
     }
 
-    response.into_iter()
+    TableIterator::new(response.into_iter())
 }

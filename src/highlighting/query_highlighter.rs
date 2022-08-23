@@ -372,8 +372,7 @@ fn highlight_document_jsonb(
     index: PgRelation,
     document: JsonB,
     query_string: &'static str,
-) -> impl std::iter::Iterator<
-    Item = (
+) -> TableIterator<(
         name!(field_name, String),
         name!(array_index, i32),
         name!(term, String),
@@ -382,8 +381,7 @@ fn highlight_document_jsonb(
         name!(start_offset, i64),
         name!(end_offset, i64),
         name!(query_clause, String),
-    ),
-> {
+    )> {
     highlight_document_internal(index, document.0, query_string)
 }
 
@@ -392,8 +390,7 @@ fn highlight_document_json(
     index: PgRelation,
     document: Json,
     query_string: &'static str,
-) -> impl std::iter::Iterator<
-    Item = (
+) -> TableIterator<(
         name!(field_name, String),
         name!(array_index, i32),
         name!(term, String),
@@ -402,8 +399,7 @@ fn highlight_document_json(
         name!(start_offset, i64),
         name!(end_offset, i64),
         name!(query_clause, String),
-    ),
-> {
+    )> {
     highlight_document_internal(index, document.0, query_string)
 }
 
@@ -411,8 +407,7 @@ fn highlight_document_internal(
     index: PgRelation,
     document: serde_json::Value,
     query_string: &'static str,
-) -> impl std::iter::Iterator<
-    Item = (
+) -> TableIterator<(
         name!(field_name, String),
         name!(array_index, i32),
         name!(term, String),
@@ -421,8 +416,7 @@ fn highlight_document_internal(
         name!(start_offset, i64),
         name!(end_offset, i64),
         name!(query_clause, String),
-    ),
-> {
+    )> {
     // select * from zdb.highlight_document('idxbeer', '{"subject":"free beer", "authoremail":"Christi l nicolay"}', '!!subject:beer or subject:fr?? and authoremail:(christi, nicolay)') order by field_name, position;
     let mut used_fields = HashSet::new();
     let (index, options) = find_zdb_index(&index).expect("unable to find ZomboDB index");

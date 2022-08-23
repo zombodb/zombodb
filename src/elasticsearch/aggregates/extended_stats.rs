@@ -10,8 +10,7 @@ fn extended_stats(
     field: &str,
     query: ZDBQuery,
     sigma: default!(i64, 0),
-) -> impl std::iter::Iterator<
-    Item = (
+) -> TableIterator<(
         name!(count, i64),
         name!(min, Numeric),
         name!(max, Numeric),
@@ -63,7 +62,7 @@ fn extended_stats(
         .execute()
         .expect("failed to execute aggregate search");
 
-    vec![(
+    TableIterator::new(vec![(
         result.count,
         result.min,
         result.max,
@@ -75,5 +74,5 @@ fn extended_stats(
         result.std_deviation_bounds.upper,
         result.std_deviation_bounds.lower,
     )]
-    .into_iter()
+    .into_iter())
 }

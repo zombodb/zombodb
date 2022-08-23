@@ -13,7 +13,7 @@ mod dsl {
     pub fn boosting(
         positive_query: ZDBQuery,
         negative_query: ZDBQuery,
-        negative_boost: Option<default!(f32, NULL)>,
+        negative_boost: default!(Option<f32>, NULL),
     ) -> ZDBQuery {
         ZDBQuery::new_with_query_clause(ZDBQueryClause::boosting(
             positive_query.query_dsl(),
@@ -25,8 +25,8 @@ mod dsl {
     #[pg_extern(immutable, parallel_safe)]
     pub fn dis_max(
         queries: Array<ZDBQuery>,
-        boost: Option<default!(f32, NULL)>,
-        tie_breaker: Option<default!(f32, NULL)>,
+        boost: default!(Option<f32>, NULL),
+        tie_breaker: default!(Option<f32>, NULL),
     ) -> ZDBQuery {
         let queries = queries
             .iter()

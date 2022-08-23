@@ -10,7 +10,7 @@ fn percentile_ranks(
     field: &str,
     query: ZDBQuery,
     values: Json,
-) -> impl std::iter::Iterator<Item = (name!(key, f64), name!(value, Numeric))> {
+) -> TableIterator<(name!(key, f64), name!(value, Numeric))> {
     #[derive(Deserialize, Serialize)]
     struct Entry {
         key: f64,
@@ -52,8 +52,8 @@ fn percentile_ranks(
         .execute()
         .expect("failed to execute aggregate search");
 
-    result
+    TableIterator::new(result
         .values
         .into_iter()
-        .map(|entry| (entry.key, entry.value))
+        .map(|entry| (entry.key, entry.value)))
 }

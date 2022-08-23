@@ -9,8 +9,7 @@ fn stats(
     index: PgRelation,
     field: &str,
     query: ZDBQuery,
-) -> impl std::iter::Iterator<
-    Item = (
+) -> TableIterator<(
         name!(count, i64),
         name!(min, Numeric),
         name!(max, Numeric),
@@ -46,5 +45,5 @@ fn stats(
         .execute()
         .expect("failed to execute aggregate search");
 
-    vec![(result.count, result.min, result.max, result.avg, result.sum)].into_iter()
+    TableIterator::new(vec![(result.count, result.min, result.max, result.avg, result.sum)].into_iter())
 }

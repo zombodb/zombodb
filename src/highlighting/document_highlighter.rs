@@ -559,8 +559,7 @@ fn highlight_term(
     field_name: &str,
     text: &str,
     token_to_highlight: String,
-) -> impl std::iter::Iterator<
-    Item = (
+) -> TableIterator<'static, (
         name!(field_name, String),
         name!(term, String),
         name!(type, String),
@@ -572,7 +571,7 @@ fn highlight_term(
     let highlighter = DocumentHighlighter::new(&index, field_name, text);
     let highlights = highlighter.highlight_token(&token_to_highlight);
 
-    match highlights {
+    TableIterator::new(match highlights {
         Some(vec) => vec
             .iter()
             .map(|e| {
@@ -588,7 +587,7 @@ fn highlight_term(
             .collect::<Vec<(String, String, String, i32, i64, i64)>>()
             .into_iter(),
         None => Vec::<(String, String, String, i32, i64, i64)>::new().into_iter(),
-    }
+    })
 }
 
 #[pg_extern(immutable, parallel_safe)]
@@ -597,8 +596,7 @@ fn highlight_phrase(
     field_name: &str,
     text: &str,
     tokens_to_highlight: &str,
-) -> impl std::iter::Iterator<
-    Item = (
+) -> TableIterator<'static, (
         name!(field_name, String),
         name!(term, String),
         name!(type, String),
@@ -610,7 +608,7 @@ fn highlight_phrase(
     let highlighter = DocumentHighlighter::new(&index, field_name, text);
     let highlights = highlighter.highlight_phrase(&index, field_name, tokens_to_highlight);
 
-    match highlights {
+    TableIterator::new(match highlights {
         Some(vec) => vec
             .iter()
             .map(|e| {
@@ -626,7 +624,7 @@ fn highlight_phrase(
             .collect::<Vec<(String, String, String, i32, i64, i64)>>()
             .into_iter(),
         None => Vec::<(String, String, String, i32, i64, i64)>::new().into_iter(),
-    }
+    })
 }
 
 #[pg_extern(immutable, parallel_safe)]
@@ -635,8 +633,7 @@ fn highlight_wildcard(
     field_name: &str,
     text: &str,
     token_to_highlight: &str,
-) -> impl std::iter::Iterator<
-    Item = (
+) -> TableIterator<'static, (
         name!(field_name, String),
         name!(term, String),
         name!(type, String),
@@ -648,7 +645,7 @@ fn highlight_wildcard(
     let highlighter = DocumentHighlighter::new(&index, field_name, text);
     let highlights = highlighter.highlight_wildcard(token_to_highlight);
 
-    match highlights {
+    TableIterator::new(match highlights {
         Some(vec) => vec
             .iter()
             .map(|e| {
@@ -664,7 +661,7 @@ fn highlight_wildcard(
             .collect::<Vec<(String, String, String, i32, i64, i64)>>()
             .into_iter(),
         None => Vec::<(String, String, String, i32, i64, i64)>::new().into_iter(),
-    }
+    })
 }
 
 #[pg_extern(immutable, parallel_safe)]
@@ -673,8 +670,7 @@ fn highlight_regex(
     field_name: &str,
     text: &str,
     token_to_highlight: &str,
-) -> impl std::iter::Iterator<
-    Item = (
+) -> TableIterator<'static, (
         name!(field_name, String),
         name!(term, String),
         name!(type, String),
@@ -686,7 +682,7 @@ fn highlight_regex(
     let highlighter = DocumentHighlighter::new(&index, field_name, text);
     let highlights = highlighter.highlight_regex(token_to_highlight);
 
-    match highlights {
+    TableIterator::new(match highlights {
         Some(vec) => vec
             .iter()
             .map(|e| {
@@ -702,7 +698,7 @@ fn highlight_regex(
             .collect::<Vec<(String, String, String, i32, i64, i64)>>()
             .into_iter(),
         None => Vec::<(String, String, String, i32, i64, i64)>::new().into_iter(),
-    }
+    })
 }
 
 #[pg_extern(immutable, parallel_safe)]
@@ -712,8 +708,7 @@ fn highlight_fuzzy(
     text: &str,
     token_to_highlight: &str,
     prefix: i32,
-) -> impl std::iter::Iterator<
-    Item = (
+) -> TableIterator<'static, (
         name!(field_name, String),
         name!(term, String),
         name!(type, String),
@@ -728,7 +723,7 @@ fn highlight_fuzzy(
     let highlighter = DocumentHighlighter::new(&index, field_name, text);
     let highlights = highlighter.highlight_fuzzy(token_to_highlight, prefix as u8);
 
-    match highlights {
+    TableIterator::new(match highlights {
         Some(vec) => vec
             .iter()
             .map(|e| {
@@ -744,7 +739,7 @@ fn highlight_fuzzy(
             .collect::<Vec<(String, String, String, i32, i64, i64)>>()
             .into_iter(),
         None => Vec::<(String, String, String, i32, i64, i64)>::new().into_iter(),
-    }
+    })
 }
 
 //  select zdb.highlight_proximity('idx_test','test','this is a test', ARRAY['{"word": "this", distance:2, in_order: false}'::proximitypart, '{"word": "test", distance: 0, in_order: false}'::proximitypart]);
@@ -754,16 +749,14 @@ fn highlight_proximity(
     field_name: &str,
     text: &str,
     prox_clause: Vec<Option<ProximityPart>>,
-) -> impl std::iter::Iterator<
-    Item = (
+) -> TableIterator<'static, (
         name!(field_name, String),
         name!(term, String),
         name!(type, String),
         name!(position, i32),
         name!(start_offset, i64),
         name!(end_offset, i64),
-    ),
-> {
+    )> {
     let prox_clause = prox_clause
         .into_iter()
         .map(|e| e.unwrap())
@@ -771,7 +764,7 @@ fn highlight_proximity(
     let highlighter = DocumentHighlighter::new(&index, field_name, text);
     let highlights = highlighter.highlight_proximity(&prox_clause);
 
-    match highlights {
+    TableIterator::new(match highlights {
         Some(vec) => vec
             .iter()
             .map(|e| {
@@ -787,7 +780,7 @@ fn highlight_proximity(
             .collect::<Vec<(String, String, String, i32, i64, i64)>>()
             .into_iter(),
         None => Vec::<(String, String, String, i32, i64, i64)>::new().into_iter(),
-    }
+    })
 }
 
 #[cfg(any(test, feature = "pg_test"))]

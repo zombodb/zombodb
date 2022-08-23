@@ -11,7 +11,7 @@ fn filters(
     index: PgRelation,
     labels: Array<&str>,
     filters: Array<ZDBQuery>,
-) -> impl std::iter::Iterator<Item = (name!(term, String), name!(doc_count, i64))> {
+) -> TableIterator<'static, (name!(term, String), name!(doc_count, i64))> {
     let elasticsearch = Elasticsearch::new(&index);
 
     #[derive(Deserialize, Serialize)]
@@ -47,8 +47,8 @@ fn filters(
         .execute()
         .expect("failed to execute aggregate search");
 
-    result
+    TableIterator::new(result
         .buckets
         .into_iter()
-        .map(|entry| (entry.0, entry.1.doc_count))
+        .map(|entry| (entry.0, entry.1.doc_count)))
 }

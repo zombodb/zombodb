@@ -11,8 +11,7 @@ fn date_range(
     field: &str,
     query: ZDBQuery,
     date_range_array: Json,
-) -> impl std::iter::Iterator<
-    Item = (
+) -> TableIterator<(
         name!(key, String),
         name!(from, Option<Numeric>),
         name!(from_as_string, Option<String>),
@@ -56,7 +55,7 @@ fn date_range(
         .execute()
         .expect("failed to execute aggregate search");
 
-    result.buckets.into_iter().map(|entry| {
+    TableIterator::new(result.buckets.into_iter().map(|entry| {
         (
             json_to_string(entry.key).unwrap(),
             entry.from,
@@ -65,5 +64,5 @@ fn date_range(
             entry.to_as_string,
             entry.doc_count,
         )
-    })
+    }))
 }

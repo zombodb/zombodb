@@ -11,8 +11,7 @@ fn range(
     field: &str,
     query: ZDBQuery,
     range_array: Json,
-) -> impl std::iter::Iterator<
-    Item = (
+) -> TableIterator<(
         name!(key, String),
         name!(from, Option<Numeric>),
         name!(to, Option<Numeric>),

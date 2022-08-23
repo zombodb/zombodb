@@ -90,8 +90,7 @@ fn suggest_terms(
     field_name: String,
     suggest: String,
     query: ZDBQuery,
-) -> impl std::iter::Iterator<
-    Item = (
+) -> TableIterator<'static, (
         name!(term, String),
         name!(offset, i64),
         name!(length, i64),
@@ -108,7 +107,7 @@ fn suggest_terms(
         .execute()
         .expect("failed to suggest terms");
 
-    results
+    TableIterator::new(results
         .iter()
         .map(|terms| {
             terms.options.iter().map(move |opts| {
@@ -124,5 +123,5 @@ fn suggest_terms(
         })
         .flatten()
         .collect::<Vec<_>>()
-        .into_iter()
+        .into_iter())
 }

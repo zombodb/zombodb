@@ -3,7 +3,7 @@ use crate::zdbquery::ZDBQuery;
 use pgx::*;
 
 #[pg_extern(immutable, parallel_safe)]
-fn query(index: PgRelation, query: ZDBQuery) -> impl Iterator<Item = pg_sys::ItemPointerData> {
+fn query(index: PgRelation, query: ZDBQuery) -> SetOfIterator<'static, pg_sys::ItemPointerData> {
     let es = Elasticsearch::new(&index);
     let result = es
         .open_search(query.prepare(&index, None).0)
@@ -28,6 +28,6 @@ fn query(index: PgRelation, query: ZDBQuery) -> impl Iterator<Item = pg_sys::Ite
             IMMUTABLE STRICT ROWS 2500 LANGUAGE c AS 'MODULE_PATHNAME', 'query_raw_wrapper';
     "
 )]
-fn query_raw(index: PgRelation, query: ZDBQuery) -> impl Iterator<Item = pg_sys::ItemPointerData> {
+fn query_raw(index: PgRelation, query: ZDBQuery) -> SetOfIterator<'static, pg_sys::ItemPointerData> {
     self::query(index, query)
 }

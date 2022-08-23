@@ -11,9 +11,8 @@ fn significant_text(
     field: &str,
     query: ZDBQuery,
     size: default!(i32, 10),
-    filter_duplicate_text: Option<default!(bool, true)>,
-) -> impl std::iter::Iterator<
-    Item = (
+    filter_duplicate_text: default!(Option<bool>, true),
+) -> TableIterator<(
         name!(term, Option<String>),
         name!(doc_count, i64),
         name!(score, f64),
@@ -66,7 +65,7 @@ fn significant_text(
         .execute()
         .expect("failed to execute aggregate search");
 
-    result
+    TableIterator::new(result
         .significant_keywords
         .buckets
         .into_iter()
@@ -77,5 +76,5 @@ fn significant_text(
                 entry.score,
                 entry.bg_count,
             )
-        })
+        }))
 }

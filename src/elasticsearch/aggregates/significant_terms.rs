@@ -10,11 +10,10 @@ fn significant_terms(
     index: PgRelation,
     field: &str,
     query: ZDBQuery,
-    include: Option<default!(&str, "'.*'")>,
-    size_limit: Option<default!(i32, 2147483647)>,
-    min_doc_count: Option<default!(i32, 3)>,
-) -> impl std::iter::Iterator<
-    Item = (
+    include: default!(Option<&str>, "'.*'"),
+    size_limit: default!(Option<i32>, 2147483647),
+    min_doc_count: default!(Option<i32>, 3),
+) -> TableIterator<'static, (
         name!(term, Option<String>),
         name!(doc_count, i64),
         name!(score, f32),

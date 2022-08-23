@@ -38,12 +38,12 @@ mod dsl {
     #[pg_extern(immutable, parallel_safe, name = "datetime_range")]
     fn datetime_range_date(
         field: &str,
-        lt: Option<default!(Date, NULL)>,
-        gt: Option<default!(Date, NULL)>,
-        lte: Option<default!(Date, NULL)>,
-        gte: Option<default!(Date, NULL)>,
-        boost: Option<default!(f32, NULL)>,
-        relation: Option<default!(Relation, "'intersects'")>,
+        lt: default!(Option<Date>, NULL),
+        gt: default!(Option<Date>, NULL),
+        lte: default!(Option<Date>, NULL),
+        gte: default!(Option<Date>, NULL),
+        boost: default!(Option<f32>, NULL),
+        relation: default!(Option<Relation>, "'intersects'"),
     ) -> ZDBQuery {
         let datetime_range = DateTimeRange {
             lt,
@@ -59,12 +59,12 @@ mod dsl {
     #[pg_extern(immutable, parallel_safe, name = "datetime_range")]
     fn datetime_range_time(
         field: &str,
-        lt: Option<default!(Time, NULL)>,
-        gt: Option<default!(Time, NULL)>,
-        lte: Option<default!(Time, NULL)>,
-        gte: Option<default!(Time, NULL)>,
-        boost: Option<default!(f32, NULL)>,
-        relation: Option<default!(Relation, "'intersects'")>,
+        lt: default!(Option<Time>, NULL),
+        gt: default!(Option<Time>, NULL),
+        lte: default!(Option<Time>, NULL),
+        gte: default!(Option<Time>, NULL),
+        boost: default!(Option<f32>, NULL),
+        relation: default!(Option<Relation>, "'intersects'"),
     ) -> ZDBQuery {
         let datetime_range: DateTimeRange<Time> = DateTimeRange {
             lt,
@@ -80,12 +80,12 @@ mod dsl {
     #[pg_extern(immutable, parallel_safe, name = "datetime_range")]
     fn datetime_range_time_stamp(
         field: &str,
-        lt: Option<default!(Timestamp, NULL)>,
-        gt: Option<default!(Timestamp, NULL)>,
-        lte: Option<default!(Timestamp, NULL)>,
-        gte: Option<default!(Timestamp, NULL)>,
-        boost: Option<default!(f32, NULL)>,
-        relation: Option<default!(Relation, "'intersects'")>,
+        lt: default!(Option<Timestamp>, NULL),
+        gt: default!(Option<Timestamp>, NULL),
+        lte: default!(Option<Timestamp>, NULL),
+        gte: default!(Option<Timestamp>, NULL),
+        boost: default!(Option<f32>, NULL),
+        relation: default!(Option<Relation>, "'intersects'"),
     ) -> ZDBQuery {
         let datetime_range: DateTimeRange<Timestamp> = DateTimeRange {
             lt,
@@ -101,12 +101,12 @@ mod dsl {
     #[pg_extern(immutable, parallel_safe, name = "datetime_range")]
     fn datetime_range_timestamp_with_timezone(
         field: &str,
-        lt: Option<default!(TimestampWithTimeZone, NULL)>,
-        gt: Option<default!(TimestampWithTimeZone, NULL)>,
-        lte: Option<default!(TimestampWithTimeZone, NULL)>,
-        gte: Option<default!(TimestampWithTimeZone, NULL)>,
-        boost: Option<default!(f32, NULL)>,
-        relation: Option<default!(Relation, "'intersects'")>,
+        lt: default!(Option<TimestampWithTimeZone>, NULL),
+        gt: default!(Option<TimestampWithTimeZone>, NULL),
+        lte: default!(Option<TimestampWithTimeZone>, NULL),
+        gte: default!(Option<TimestampWithTimeZone>, NULL),
+        boost: default!(Option<f32>, NULL),
+        relation: default!(Option<Relation>, "'intersects'"),
     ) -> ZDBQuery {
         let datetime_range: DateTimeRange<TimestampWithTimeZone> = DateTimeRange {
             lt,
@@ -122,12 +122,12 @@ mod dsl {
     #[pg_extern(immutable, parallel_safe, name = "datetime_range")]
     fn datetime_range_time_with_timezone(
         field: &str,
-        lt: Option<default!(TimeWithTimeZone, NULL)>,
-        gt: Option<default!(TimeWithTimeZone, NULL)>,
-        lte: Option<default!(TimeWithTimeZone, NULL)>,
-        gte: Option<default!(TimeWithTimeZone, NULL)>,
-        boost: Option<default!(f32, NULL)>,
-        relation: Option<default!(Relation, "'intersects'")>,
+        lt: default!(Option<TimeWithTimeZone>, NULL),
+        gt: default!(Option<TimeWithTimeZone>, NULL),
+        lte: default!(Option<TimeWithTimeZone>, NULL),
+        gte: default!(Option<TimeWithTimeZone>, NULL),
+        boost: default!(Option<f32>, NULL),
+        relation: default!(Option<Relation>, "'intersects'"),
     ) -> ZDBQuery {
         let datetime_range: DateTimeRange<TimeWithTimeZone> = DateTimeRange {
             lt,

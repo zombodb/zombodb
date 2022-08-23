@@ -11,7 +11,7 @@ fn histogram(
     query: ZDBQuery,
     interval: f64,
     min_doc_count: default!(i32, 0),
-) -> impl std::iter::Iterator<Item = (name!(term, Numeric), name!(doc_count, i64))> {
+) -> TableIterator<(name!(term, Numeric), name!(doc_count, i64))> {
     #[derive(Deserialize, Serialize)]
     struct BucketEntry {
         doc_count: i64,
@@ -44,8 +44,8 @@ fn histogram(
         .execute()
         .expect("failed to execute aggregate search");
 
-    result
+    TableIterator::new(result
         .buckets
         .into_iter()
-        .map(|entry| (entry.key, entry.doc_count))
+        .map(|entry| (entry.key, entry.doc_count)))
 }

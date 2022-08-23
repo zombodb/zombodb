@@ -11,8 +11,7 @@ fn ip_range(
     field: &str,
     query: ZDBQuery,
     range_array: Json,
-) -> impl std::iter::Iterator<
-    Item = (
+) -> TableIterator<(
         name!(key, String),
         name!(from, Option<Inet>),
         name!(to, Option<Inet>),
@@ -52,12 +51,12 @@ fn ip_range(
         .execute()
         .expect("failed to execute aggregate search");
 
-    result.buckets.into_iter().map(|entry| {
+    TableIterator::new(result.buckets.into_iter().map(|entry| {
         (
             json_to_string(entry.key).unwrap(),
             entry.from,
             entry.to,
             entry.doc_count,
         )
-    })
+    }))
 }
