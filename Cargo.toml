@@ -6,6 +6,9 @@ edition = "2018"
 build = "build.rs"
 readme = "README.md"
 license = "LICENSE.md"
+documentation = "https://zombodb.github.io/zombodb/index.html"
+repository = "https://github.com/zombodb/zombodb"
+keywords = ["database", "postgres", "postgresql", "extension", "elasticsearch", "fulltext", "pgx"]
 
 [lib]
 crate-type = [ "cdylib" ]
