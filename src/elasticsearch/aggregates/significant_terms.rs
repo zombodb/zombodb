@@ -56,12 +56,12 @@ fn significant_terms(
         .execute()
         .expect("failed to execute aggregate search");
 
-    result.buckets.into_iter().map(|entry| {
+    TableIterator::new(result.buckets.into_iter().map(|entry| {
         (
             json_to_string(entry.key),
             entry.doc_count,
             entry.score,
             entry.bg_count,
         )
-    })
+    }))
 }

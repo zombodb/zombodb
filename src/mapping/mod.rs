@@ -47,7 +47,7 @@ pub fn categorize_tupdesc<'a>(
                         typmod.into_datum().unwrap(),
                     )
                 };
-                let json = unsafe { Json::from_datum(datum, false, typoid.value()) }
+                let json = unsafe { Json::from_datum(datum, false) }
                     .expect("failed to version a type to json");
                 builder.add_json_value(name, json.0);
             })
@@ -74,7 +74,7 @@ pub fn categorize_tupdesc<'a>(
                                     builder.add_bool_array(
                                         name,
                                         unsafe {
-                                            Vec::<Option<bool>>::from_datum(datum, false, oid)
+                                            Vec::<Option<bool>>::from_datum(datum, false)
                                         }
                                         .unwrap(),
                                     )
@@ -83,7 +83,7 @@ pub fn categorize_tupdesc<'a>(
                                 Box::new(|builder, name, datum, oid| {
                                     builder.add_bool(
                                         name,
-                                        unsafe { bool::from_datum(datum, false, oid) }.unwrap(),
+                                        unsafe { bool::from_datum(datum, false) }.unwrap(),
                                     )
                                 })
                             }
@@ -94,7 +94,7 @@ pub fn categorize_tupdesc<'a>(
                                     builder.add_i16_array(
                                         name,
                                         unsafe {
-                                            Vec::<Option<i16>>::from_datum(datum, false, oid)
+                                            Vec::<Option<i16>>::from_datum(datum, false)
                                         }
                                         .unwrap(),
                                     )
@@ -103,7 +103,7 @@ pub fn categorize_tupdesc<'a>(
                                 Box::new(|builder, name, datum, oid| {
                                     builder.add_i16(
                                         name,
-                                        unsafe { i16::from_datum(datum, false, oid) }.unwrap(),
+                                        unsafe { i16::from_datum(datum, false) }.unwrap(),
                                     )
                                 })
                             }
@@ -114,7 +114,7 @@ pub fn categorize_tupdesc<'a>(
                                     builder.add_i32_array(
                                         name,
                                         unsafe {
-                                            Vec::<Option<i32>>::from_datum(datum, false, oid)
+                                            Vec::<Option<i32>>::from_datum(datum, false)
                                         }
                                         .unwrap(),
                                     )
@@ -123,7 +123,7 @@ pub fn categorize_tupdesc<'a>(
                                 Box::new(|builder, name, datum, oid| {
                                     builder.add_i32(
                                         name,
-                                        unsafe { i32::from_datum(datum, false, oid) }.unwrap(),
+                                        unsafe { i32::from_datum(datum, false) }.unwrap(),
                                     )
                                 })
                             }
@@ -134,7 +134,7 @@ pub fn categorize_tupdesc<'a>(
                                     builder.add_i64_array(
                                         name,
                                         unsafe {
-                                            Vec::<Option<i64>>::from_datum(datum, false, oid)
+                                            Vec::<Option<i64>>::from_datum(datum, false)
                                         }
                                         .unwrap(),
                                     )
@@ -154,7 +154,7 @@ pub fn categorize_tupdesc<'a>(
                                     builder.add_u32_array(
                                         name,
                                         unsafe {
-                                            Vec::<Option<u32>>::from_datum(datum, false, oid)
+                                            Vec::<Option<u32>>::from_datum(datum, false)
                                         }
                                         .unwrap(),
                                     )
@@ -163,7 +163,7 @@ pub fn categorize_tupdesc<'a>(
                                 Box::new(|builder, name, datum, oid| {
                                     builder.add_u32(
                                         name,
-                                        unsafe { u32::from_datum(datum, false, oid) }.unwrap(),
+                                        unsafe { u32::from_datum(datum, false) }.unwrap(),
                                     )
                                 })
                             }
@@ -174,7 +174,7 @@ pub fn categorize_tupdesc<'a>(
                                     builder.add_f32_array(
                                         name,
                                         unsafe {
-                                            Vec::<Option<f32>>::from_datum(datum, false, oid)
+                                            Vec::<Option<f32>>::from_datum(datum, false)
                                         }
                                         .unwrap(),
                                     )
@@ -183,7 +183,7 @@ pub fn categorize_tupdesc<'a>(
                                 Box::new(|builder, name, datum, oid| {
                                     builder.add_f32(
                                         name,
-                                        unsafe { f32::from_datum(datum, false, oid) }.unwrap(),
+                                        unsafe { f32::from_datum(datum, false) }.unwrap(),
                                     )
                                 })
                             }
@@ -194,7 +194,7 @@ pub fn categorize_tupdesc<'a>(
                                     builder.add_f64_array(
                                         name,
                                         unsafe {
-                                            Vec::<Option<f64>>::from_datum(datum, false, oid)
+                                            Vec::<Option<f64>>::from_datum(datum, false)
                                         }
                                         .unwrap(),
                                     )
@@ -203,7 +203,7 @@ pub fn categorize_tupdesc<'a>(
                                 Box::new(|builder, name, datum, oid| {
                                     builder.add_f64(
                                         name,
-                                        unsafe { f64::from_datum(datum, false, oid) }.unwrap(),
+                                        unsafe { f64::from_datum(datum, false) }.unwrap(),
                                     )
                                 })
                             }
@@ -214,7 +214,7 @@ pub fn categorize_tupdesc<'a>(
                                     builder.add_time_array(
                                         name,
                                         unsafe {
-                                            Vec::<Option<Time>>::from_datum(datum, false, oid)
+                                            Vec::<Option<Time>>::from_datum(datum, false)
                                         }
                                         .unwrap(),
                                     )
@@ -223,7 +223,7 @@ pub fn categorize_tupdesc<'a>(
                                 Box::new(|builder, name, datum, oid| {
                                     builder.add_time(
                                         name,
-                                        unsafe { Time::from_datum(datum, false, oid) }.unwrap(),
+                                        unsafe { Time::from_datum(datum, false) }.unwrap(),
                                     )
                                 })
                             }
@@ -235,7 +235,7 @@ pub fn categorize_tupdesc<'a>(
                                         name,
                                         unsafe {
                                             Vec::<Option<TimeWithTimeZone>>::from_datum(
-                                                datum, false, oid,
+                                                datum, false,
                                             )
                                         }
                                         .unwrap(),
@@ -245,7 +245,7 @@ pub fn categorize_tupdesc<'a>(
                                 Box::new(|builder, name, datum, oid| {
                                     builder.add_time_with_time_zone(
                                         name,
-                                        unsafe { TimeWithTimeZone::from_datum(datum, false, oid) }
+                                        unsafe { TimeWithTimeZone::from_datum(datum, false) }
                                             .unwrap(),
                                     )
                                 })
@@ -257,7 +257,7 @@ pub fn categorize_tupdesc<'a>(
                                     builder.add_timestamp_array(
                                         name,
                                         unsafe {
-                                            Vec::<Option<Timestamp>>::from_datum(datum, false, oid)
+                                            Vec::<Option<Timestamp>>::from_datum(datum, false)
                                         }
                                         .unwrap(),
                                     )
@@ -266,7 +266,7 @@ pub fn categorize_tupdesc<'a>(
                                 Box::new(|builder, name, datum, oid| {
                                     builder.add_timestamp(
                                         name,
-                                        unsafe { Timestamp::from_datum(datum, false, oid) }
+                                        unsafe { Timestamp::from_datum(datum, false) }
                                             .unwrap(),
                                     )
                                 })
@@ -279,7 +279,7 @@ pub fn categorize_tupdesc<'a>(
                                         name,
                                         unsafe {
                                             Vec::<Option<TimestampWithTimeZone>>::from_datum(
-                                                datum, false, oid,
+                                                datum, false,
                                             )
                                         }
                                         .unwrap(),
@@ -290,7 +290,7 @@ pub fn categorize_tupdesc<'a>(
                                     builder.add_timestamp_with_time_zone(
                                         name,
                                         unsafe {
-                                            TimestampWithTimeZone::from_datum(datum, false, oid)
+                                            TimestampWithTimeZone::from_datum(datum, false)
                                         }
                                         .unwrap(),
                                     )
@@ -303,7 +303,7 @@ pub fn categorize_tupdesc<'a>(
                                     builder.add_date_array(
                                         name,
                                         unsafe {
-                                            Vec::<Option<Date>>::from_datum(datum, false, oid)
+                                            Vec::<Option<Date>>::from_datum(datum, false)
                                         }
                                         .unwrap(),
                                     )
@@ -312,7 +312,7 @@ pub fn categorize_tupdesc<'a>(
                                 Box::new(|builder, name, datum, oid| {
                                     builder.add_date(
                                         name,
-                                        unsafe { Date::from_datum(datum, false, oid) }.unwrap(),
+                                        unsafe { Date::from_datum(datum, false) }.unwrap(),
                                     )
                                 })
                             }
@@ -327,7 +327,7 @@ pub fn categorize_tupdesc<'a>(
                                         name,
                                         unsafe {
                                             Vec::<Option<pgx::JsonString>>::from_datum(
-                                                datum, false, oid,
+                                                datum, false,
                                             )
                                         }
                                         .unwrap(),
@@ -337,7 +337,7 @@ pub fn categorize_tupdesc<'a>(
                                 Box::new(|builder, name, datum, oid| {
                                     builder.add_json_string(
                                         name,
-                                        unsafe { pgx::JsonString::from_datum(datum, false, oid) }
+                                        unsafe { pgx::JsonString::from_datum(datum, false) }
                                             .unwrap(),
                                     )
                                 })
@@ -349,7 +349,7 @@ pub fn categorize_tupdesc<'a>(
                                     builder.add_jsonb_array(
                                         name,
                                         unsafe {
-                                            Vec::<Option<JsonB>>::from_datum(datum, false, oid)
+                                            Vec::<Option<JsonB>>::from_datum(datum, false)
                                         }
                                         .unwrap(),
                                     )
@@ -358,7 +358,7 @@ pub fn categorize_tupdesc<'a>(
                                 Box::new(|builder, name, datum, oid| {
                                     builder.add_jsonb(
                                         name,
-                                        unsafe { JsonB::from_datum(datum, false, oid) }.unwrap(),
+                                        unsafe { JsonB::from_datum(datum, false) }.unwrap(),
                                     )
                                 })
                             }
@@ -399,7 +399,7 @@ pub fn categorize_tupdesc<'a>(
                                         typoid.into_datum().unwrap(),
                                         typmod.into_datum().unwrap(),
                                     );
-                                    JsonB::from_datum(datum, false, pg_sys::JSONBOID).unwrap().0
+                                    JsonB::from_datum(datum, false).unwrap().0
                                 }
                             }
                         },
@@ -473,7 +473,7 @@ fn handle_as_generic_string<'a>(
     if is_array {
         Box::new(move |builder, name, datum, _oid| {
             let array: Array<pg_sys::Datum> =
-                unsafe { Array::from_datum(datum, false, base_type_oid).unwrap() };
+                unsafe { Array::from_datum(datum, false).unwrap() };
 
             // build up a vec of each element as a string
             let mut values = Vec::with_capacity(array.len());
@@ -482,7 +482,7 @@ fn handle_as_generic_string<'a>(
                 if let Some(element_datum) = e {
                     if base_type_oid == pg_sys::TEXTOID || base_type_oid == pg_sys::VARCHAROID {
                         values.push(Some(
-                            unsafe { String::from_datum(element_datum, false, base_type_oid) }
+                            unsafe { String::from_datum(element_datum, false) }
                                 .unwrap(),
                         ));
                     } else {

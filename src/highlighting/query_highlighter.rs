@@ -431,9 +431,9 @@ fn highlight_document_internal(
     )
     .expect("failed to parse query");
 
-    QueryHighligther::new(&index, document, &used_fields, query)
+    TableIterator::new(QueryHighligther::new(&index, document, &used_fields, query)
         .highlight()
-        .into_iter()
+        .into_iter())
 }
 
 #[cfg(any(test, feature = "pg_test"))]

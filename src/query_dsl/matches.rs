@@ -215,7 +215,7 @@ mod dsl {
         query: &str,
         boost: default!(Option<f32>, NULL),
         slop: default!(Option<i32>, NULL),
-        analyzer: default!(&Option<str>, NULL),
+        analyzer: default!(Option<&str>, NULL),
         zero_terms_query: default!(Option<ZeroTermsQuery>, NULL),
     ) -> ZDBQuery {
         let match_phrase = MatchPhrase {

@@ -41,7 +41,7 @@ fn debug_query(
 
     let tree = format!("{:#?}", query);
 
-    TableIterator::new([(
+    TableIterator::new(vec![(
         sqlformat::format(
             &format!("{}", query),
             &sqlformat::QueryParams::default(),
@@ -50,7 +50,7 @@ fn debug_query(
         .replace(" :\"", ":\""),
         used_fields.into_iter().map(|v| v.into()).collect(),
         format!("{}", tree),
-    )])
+    )].into_iter())
 }
 
 pub fn expr_to_dsl(

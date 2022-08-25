@@ -45,7 +45,7 @@ mod dsl {
     }
 
     #[inline]
-    fn make_terms_dsl<T: serde::Serialize + FromDatum>(field: &str, values: Array<T>) -> ZDBQuery {
+    fn make_terms_dsl<T: serde::Serialize + FromDatum>(field: &str, values: VariadicArray<T>) -> ZDBQuery {
         ZDBQuery::new_with_query_dsl(json! {
             {
                 "terms": {

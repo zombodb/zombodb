@@ -51,12 +51,12 @@ fn range(
         .execute()
         .expect("failed to execute aggregate search");
 
-    result.buckets.into_iter().map(|entry| {
+    TableIterator::new(result.buckets.into_iter().map(|entry| {
         (
             json_to_string(entry.key).unwrap(),
             entry.from,
             entry.to,
             entry.doc_count,
         )
-    })
+    }))
 }

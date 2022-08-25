@@ -10,13 +10,13 @@ fn query(index: PgRelation, query: ZDBQuery) -> SetOfIterator<'static, pg_sys::I
         .execute()
         .unwrap_or_else(|e| panic!("{}", e));
 
-    result
+    SetOfIterator::new(result
         .into_iter()
         .map(|(_score, ctid, _fields, _highlights)| {
             let mut tid = pg_sys::ItemPointerData::default();
             u64_to_item_pointer(ctid, &mut tid);
             tid
-        })
+        }))
 }
 
 #[pg_extern(

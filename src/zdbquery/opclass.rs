@@ -24,7 +24,7 @@ fn anyelement_cmpfunc(
     let tid = if element.oid() == pg_sys::TIDOID {
         // use the ItemPointerData passed into us as the first argument
         Some(item_pointer_to_u64(
-            unsafe { pg_sys::ItemPointerData::from_datum(element.datum(), false, element.oid()) }
+            unsafe { pg_sys::ItemPointerData::from_datum(element.datum(), element.oid()) }
                 .unwrap(),
         ))
     } else {
@@ -167,7 +167,6 @@ fn restrict(
                     let zdbquery: ZDBQuery = ZDBQuery::from_datum(
                         rconst.constvalue,
                         rconst.constisnull,
-                        rconst.consttype,
                     )
                     .expect("rhs of ==> is NULL");
 
