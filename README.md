@@ -1,5 +1,7 @@
 [![logo](logo.png)](https://www.zombodb.com/) 
-###### Making Postgres and Elasticsearch work together like it's 2021
+
+> Making Postgres and Elasticsearch work together like it's 2021
+
 ![cargo test --all](https://github.com/zombodb/zombodb/workflows/cargo%20pgx%20test%20pgXX/badge.svg)
 [![Twitter Follow](https://img.shields.io/twitter/follow/zombodb.svg?style=flat)](https://twitter.com/zombodb)
 
@@ -18,18 +20,20 @@ ZomboDB allows you to use the power and scalability of Elasticsearch directly fr
 
 ## Quick Links
 
- - [Installation from Binaries](BINARY-INSTALLATION.md) ([sponsors only](https://github.com/sponsors/eeeebbbbrrrr))
- - [Installation from Source](SOURCE-INSTALLATION.md) (everyone)
- - [Getting Started Tutorial](TUTORIAL.md)
- - [Important Things to Know](THINGS-TO-KNOW.md)
- - [Creating Indexes](CREATE-INDEX.md)
- - [Query DSL](QUERY-DSL.md)
- - [Aggregations](AGGREGATIONS.md), [Scoring and Highlighting](SCORING-HIGHLIGHTING.md)
- - [SQL Functions](SQL-FUNCTIONS.md)
- - [Configuration Settings](CONFIGURATION-SETTINGS.md), [Index Management](INDEX-MANAGEMENT.md)
- - [Type Mapping](TYPE-MAPPING.md)
- - [Elasticsearch _cat API](CAT-API.md)
- - [VACUUM Support](VACUUM.md)
+ - [Zombodb Documentation](https://zombodb.github.io/zombodb)
+   - [Installation from Binaries](docs/src/administration/binary-installation.md) ([sponsors only](https://github.com/sponsors/eeeebbbbrrrr))
+   - [Installation from Source](docs/src/administration/source-installation.md) (everyone)
+ - [Getting Started Tutorial](docs/src/getting-started.md)
+ - [Important Things to Know](docs/src/internals/important-things-to-know.md)
+ - [Creating Indexes](docs/src/administration/creating-a-zombodb-index.md)
+ - [Query DSL](docs/src/usage/elasticsearch-dsl-queries.md)
+ - [Aggregations](docs/src/usage/aggregations.md), 
+ - [Scoring](docs/src/usage/scoring.md), [Highlighting](docs/src/usage/highlighting.md)
+ - [SQL Functions](docs/src/usage/using-sql-functions.md)
+ - [Configuration Settings](docs/src/administration/configuration.md), [Index Management](docs/src/administration/index-management.md)
+ - [Type Mapping](docs/src/internals/type-mapping.md)
+ - [Elasticsearch _cat API](docs/src/usage/elasticsearch-cat-api.md)
+ - [VACUUM Support](docs/src/administration/vacuum-support.md)
 
  
 ## Features
@@ -39,20 +43,20 @@ ZomboDB allows you to use the power and scalability of Elasticsearch directly fr
  - Works with current Elasticsearch releases (no plugins required)
  - Query using
     - Elasticsearch's [Query String Syntax](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-syntax) via `dsl.query_string()`
-    - ZQL -- [ZomboDB's custom query language](ZQL.md)
+    - ZQL -- [ZomboDB's custom query language](docs/src/usage/zql-queries.md)
     - Raw Elasticsearch QueryDSL JSON
-    - ZomboDB's type-safe [query builder SQL syntax](QUERY-DSL.md)
+    - ZomboDB's type-safe [query builder SQL syntax](docs/src/usage/elasticsearch-dsl-queries.md)
     - Any combination of the above, even in combination with standard SQL
- - [Scoring and Highlighting Support](SCORING-HIGHLIGHTING.md)
- - [Support for all Elasticsearch aggregations](AGGREGATIONS.md)
+ - [Scoring and Highlighting Support](docs/src/usage/scoring.md)
+ - [Support for all Elasticsearch aggregations](docs/src/usage/aggregations.md)
  - Automatic Elasticsearch Mapping Generation
     - Ability to map custom domains
     - Per-field custom mappings
     - `json/jsonb` automatically mapped as dynamic nested objects
     - Supports full set of [Elasticsearch language analyzers](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-lang-analyzer.html)
-    - Supports [Elasticsearch's Similarity Module](TYPE-MAPPING.md#similarity-module-support) 
+    - Supports [Elasticsearch's Similarity Module](docs/src/internals/type-mapping.md#similarity-module-support) 
  - Hot-Standby compatible
- - Support for indexing & searching [PostGIS `geometry` and `geography` types](POSTGIS-SUPPORT.md)
+ - Support for indexing & searching [PostGIS `geometry` and `geography` types](docs/src/usage/postgis-support.md)
 
 
 ## Current Limitations
@@ -67,11 +71,10 @@ These limitations may be addressed in future versions of ZomboDB.
 
 ## System Requirements
  
- Product      | Version 
----           | ---      
-Postgres      | 10.x, 11.x, 12.x, 13.x
-Elasticsearch | 7.x
-
+| Product       | Version                |
+|---------------|------------------------|
+| Postgres      | 10.x, 11.x, 12.x, 13.x |
+| Elasticsearch | 7.x                    |
 
 ## Sponsorship and Downloads
 
@@ -86,7 +89,7 @@ Please do the same if you sponsor a tier that provides access to ZomboDB's priva
 
 ## Quick Overview
 
-Note that this is just a quick overview.  Please read the [getting started tutorial](TUTORIAL.md) for more details.
+Note that this is just a quick overview.  Please read the [getting started tutorial](docs/src/getting-started.md) for more details.
 
 Create the extension:
 
@@ -157,7 +160,7 @@ Commercial support for all versions of ZomboDB is available by [contacting Zombo
 
 The name is an homage to zombo.com and its long history of continuous self-affirmation.
 
-Historically, ZomboDB began in 2013 by Technology Concepts & Design, Inc as a closed-source effort to provide transaction safe text-search on top of Postgres tables. While Postgres' "tsearch" features are useful, they're not necessarily adequate for 200 column-wide tables with 100M rows, each containing large text content.
+Historically, ZomboDB began in 2013 by [Technology Concepts & Design, Inc](https://github.com/tcdi) as a closed-source effort to provide transaction safe text-search on top of Postgres tables. While Postgres' "tsearch" features are useful, they're not necessarily adequate for 200 column-wide tables with 100M rows, each containing large text content.
 
 Initially designed on-top of Postgres' Foreign Data Wrapper API, ZomboDB quickly evolved into an index type so that queries are MVCC-safe and standard SQL can be used to query and manage indices.
 

@@ -91,7 +91,7 @@ Lets COPY some data into this table before we move on to creating a ZomboDB inde
 
 ```sql
 tutorial=# 
-COPY products FROM PROGRAM 'curl https://raw.githubusercontent.com/zombodb/zombodb/master/TUTORIAL-data.dmp';
+COPY products FROM PROGRAM 'curl https://raw.githubusercontent.com/zombodb/zombodb/master/docs/src/TUTORIAL-data.dmp';
 COPY 4
 tutorial=#
 ```
@@ -178,7 +178,7 @@ tutorial=#
 tutorial=# 
 ```
 
-From here, it's just a matter of coming up with a full-text query to answer your question.  See the [Query Syntax documentation](./usage/zql-queries.md) or the [DSL Query Builder documentation](./usage/generating-queries.md) for details on what the full-text query syntax can do.
+From here, it's just a matter of coming up with a full-text query to answer your question.  See the [Query Syntax documentation](./usage/zql-queries.md) or the [DSL Query Builder documentation](./usage/elasticsearch-dsl-queries.md) for details on what the full-text query syntax can do.
 
 
 ## Summary

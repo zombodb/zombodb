@@ -1,4 +1,4 @@
-# Configuration Settings
+# Configuration
 
 ZomboDB provides a number of configuration settings that affect how it operates.
 
@@ -136,7 +136,7 @@ Indicates if you have the ZomboDB Search Accelerator installed on your backing E
 cluster.
 
 If you do, ZomboDB is able to highly optimize certain queries, especially those that perform
-[cross-index joins](./usage/cross-index-joins.md).
+cross-index joins, see [Index Options](../usage/index-options.md).
 
 
 

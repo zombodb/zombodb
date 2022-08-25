@@ -1,1 +1,0 @@
-# ElasticSearch _cat API

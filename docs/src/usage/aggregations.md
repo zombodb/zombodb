@@ -1,4 +1,4 @@
-# Aggregate Functions
+# Aggregations
 
 ZomboDB exposes nearly all of Elasticsearch's aggregates as type-checked SQL functions that return tables and discreet values, as opposed to json blobs.
 

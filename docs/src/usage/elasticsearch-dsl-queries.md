@@ -1,4 +1,4 @@
-# ElasticSearch QueryDSL
+# ElasticSearch DSL Queries
 
 ZomboDB supports a few different ways to generate Elasticsearch-compatible queries.  You can use Elasticsearch's query string syntax, directly generate its QueryDSL in JSON form, or use ZomboDB's SQL builder API which closely mirrors Elasticsearch's QueryDSL.
 
