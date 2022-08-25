@@ -148,7 +148,7 @@ In order to ensure the ZomboDB index is used, we'll be making use of a custom op
 
 If the query isn't valid json (as shown below), then it is automatically considered to be an Elasticsearch [Query String Syntax](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-syntax) query.
 
-Building Elasticsearch QueryDSL can be complicated, but ZomboDB provides an entire set of [SQL-based builder functions](/usage/elasticsearch-dsl-queries.md) to make this process simple and type-safe.
+Building Elasticsearch QueryDSL can be complicated, but ZomboDB provides an entire set of [SQL-based builder functions](usage/elasticsearch-dsl-queries.md) to make this process simple and type-safe.
 
 A typical query might be:
 
@@ -178,7 +178,7 @@ tutorial=#
 tutorial=# 
 ```
 
-From here, it's just a matter of coming up with a full-text query to answer your question.  See the [Query Syntax documentation](./usage/zql-queries.md) or the [DSL Query Builder documentation](./usage/elasticsearch-dsl-queries.md) for details on what the full-text query syntax can do.
+From here, it's just a matter of coming up with a full-text query to answer your question.  See the [Query Syntax documentation](usage/zql-queries.md) or the [DSL Query Builder documentation](./usage/elasticsearch-dsl-queries.md) for details on what the full-text query syntax can do.
 
 
 ## Summary

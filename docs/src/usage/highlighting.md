@@ -2,7 +2,7 @@
 
 Similar to [scoring support](./scoring.md), ZomboDB can returning highlighted fragments from fields that support it (typically text fields that use an analyzer).  The function is called `zdb.highlight(tid, fieldname [, json_highlight_descriptor]) RETURNS text[]`.
 
-Using the [tutorial](TUTORIAL.md) database, an example of highlighting is:
+Using the [tutorial](../getting-started.md) database, an example of highlighting is:
 
 ```sql
 tutorial=# 

@@ -8,32 +8,33 @@ This document attempts to explain how ZomboDB maps Postgres data types to Elasti
 
 These are the default mappings:
 
-Postgres Type | Elasticsearch JSON Mapping Definition                                                            
---- | ---
- `bytea`                                 | `{"type": "binary"}`
- `boolean`                               | `{"type": "boolean"}`
- `smallint`                              | `{"type": "short"}`
- `integer`                               | `{"type": "integer"}`
- `bigint`                                | `{"type": "long"}`
- `real`                                  | `{"type": "float"}`
- `double precision`                      | `{"type": "double"}`
- `character varying`                     | `{"type": "keyword", "copy_to": "zdb_all", "normalizer": "lowercase", "ignore_above": 10922}`
- `text`                                  | `{"type": "text", "copy_to": "zdb_all", "analyzer": "zdb_standard", "fielddata": true}`
- `time without time zone`                | `{"type": "date", "format": "HH:mm:ss.SSSSSS", "copy_to": "zdb_all"}`
- `time with time zone`                   | `{"type": "date", "format": "HH:mm:ss.SSSSSSZZ", "copy_to": "zdb_all"}`
- `date`                                  | `{"type": "date", "copy_to": "zdb_all"}`
- `timestamp without time zone`           | `{"type": "date", "copy_to": "zdb_all"}`
- `timestamp with time zone`              | `{"type": "date", "copy_to": "zdb_all"}`
- `json`                                  | `{"type": "nested", "include_in_parent": true}`
- `jsonb`                                 | `{"type": "nested", "include_in_parent": true}`
- `inet`                                  | `{"type": "ip", "copy_to": "zdb_all"}`
- `point`                                 | `{"type": "geo_point"}`
- `zdb.fulltext`                          | `{"type": "text", "copy_to": "zdb_all", "analyzer": "zdb_standard"}`
- `zdb.fulltext_with_shingles`            | `{"type": "text", "copy_to": "zdb_all", "analyzer": "fulltext_with_shingles", "search_analyzer": "fulltext_with_shingles_search"}`
- `geography` (from postgis)              | `{"type": "geo_shape"}`
- `geometry` (from postgis)               | `{"type": "geo_shape"}`
- `geography(Point, x)` (from postgis)    | `{"type": "geo_point"}`
- `geometry(Point, x)` (from postgis)     | `{"type": "geo_point"}`
+| Postgres Type                        | Elasticsearch JSON Mapping Definition                                                                                              |
+|--------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
+| `bytea`                              | `{"type": "binary"}`                                                                                                               |
+| `boolean`                            | `{"type": "boolean"}`                                                                                                              |
+| `smallint`                           | `{"type": "short"}`                                                                                                                |
+| `integer`                            | `{"type": "integer"}`                                                                                                              |
+| `bigint`                             | `{"type": "long"}`                                                                                                                 |
+| `real`                               | `{"type": "float"}`                                                                                                                |
+| `double precision`                   | `{"type": "double"}`                                                                                                               |
+| `character varying`                  | `{"type": "keyword", "copy_to": "zdb_all", "normalizer": "lowercase", "ignore_above": 10922}`                                      |
+| `text`                               | `{"type": "text", "copy_to": "zdb_all", "analyzer": "zdb_standard", "fielddata": true}`                                            |
+| `time without time zone`             | `{"type": "date", "format": "HH:mm:ss.SSSSSS", "copy_to": "zdb_all"}`                                                              |
+| `time with time zone`                | `{"type": "date", "format": "HH:mm:ss.SSSSSSZZ", "copy_to": "zdb_all"}`                                                            |
+| `date`                               | `{"type": "date", "copy_to": "zdb_all"}`                                                                                           |
+| `timestamp without time zone`        | `{"type": "date", "copy_to": "zdb_all"}`                                                                                           |
+| `timestamp with time zone`           | `{"type": "date", "copy_to": "zdb_all"}`                                                                                           |
+| `json`                               | `{"type": "nested", "include_in_parent": true}`                                                                                    |
+| `jsonb`                              | `{"type": "nested", "include_in_parent": true}`                                                                                    |
+| `inet`                               | `{"type": "ip", "copy_to": "zdb_all"}`                                                                                             |
+| `point`                              | `{"type": "geo_point"}`                                                                                                            |
+| `zdb.fulltext`                       | `{"type": "text", "copy_to": "zdb_all", "analyzer": "zdb_standard"}`                                                               |
+| `zdb.fulltext_with_shingles`         | `{"type": "text", "copy_to": "zdb_all", "analyzer": "fulltext_with_shingles", "search_analyzer": "fulltext_with_shingles_search"}` |
+| `geography` (from postgis)           | `{"type": "geo_shape"}`                                                                                                            |
+| `geometry` (from postgis)            | `{"type": "geo_shape"}`                                                                                                            |
+| `geography(Point, x)` (from postgis) | `{"type": "geo_point"}`                                                                                                            |
+| `geometry(Point, x)` (from postgis)  | `{"type": "geo_point"}`                                                                                                            |
+
 Some things to note from the above:
 
 - Columns of type `bytea` are automatically encoded as `base64` for proper storage by Elasticsearch

@@ -452,7 +452,10 @@ A multi-bucket value source based aggregation that enables the user to define a 
 FUNCTION zdb.significant_terms(
 	index regclass,
 	field text,
-	query zdbquery) 
+    query zdbquery, 
+    include text DEFAULT '.*'::text, 
+    size_limit integer DEFAULT 2147483647, 
+    min_doc_count integer DEFAULT 3)
 RETURNS TABLE (
 	term text,
 	doc_count bigint,
@@ -558,19 +561,21 @@ A multi-value metrics aggregation that computes stats over numeric values extrac
 
 ---
 
-```FUNCTION zdb_tally(
-    index_name regclass, 
-    fieldname text 
-    [, is_nested boolean], 
+```sql
+FUNCTION zdb.tally(
+    index regclass, 
+    field_name text,
+    [ is_nested bool],
     stem text, 
-    query zdbquery, 
-    max_terms bigint, 
-    sort_order zdb_tally_order 
-    [, shard_size int DEFAULT 0]) 
-RETURNS SET OF zdb_tally_response
+    query ZDBQuery, 
+    size_limit integer DEFAULT '2147483647', 
+    order_by TermsOrderBy DEFAULT 'count', 
+    shard_size integer DEFAULT '2147483647', 
+    count_nulls bool DEFAULT 'true'
+) RETURNS TABLE (term text, count bigint)
 ```
 
-`index_name`:  The name of the a ZomboDB index to query  
+`index_name`:  The name of the ZomboDB index to query  
 `fieldname`: The name of a field from which to derive terms  
 `is_nested`: Optional argument to indicate that the terms should only come from matching nested object sub-elements.  Default is `false`    
 `stem`:  a Regular expression by which to filter returned terms, or a date interval if the specified `fieldname` is a date or timestamp    
@@ -578,15 +583,17 @@ RETURNS SET OF zdb_tally_response
 `max_terms`: maximum number of terms to return.  A value of zero means "all terms".
 `sort_order`: how to sort the terms.  one of `'count'`, `'term'`, `'reverse_count'`, `'reverse_term'`  
 `shard_size`: optional parameter that tells Elasticsearch how many terms to return from each shard.  Default is zero, which means all terms  
+`count_nulls`: should a row containing the count of NULL (ie, missing) values be included in the results? 
 
 This function provides direct access to Elasticsearch's [terms aggregate](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-terms-aggregation.html) and cannot
 be used with fields of type `fulltext`.  The results are MVCC-safe.  Returned terms are forced to upper-case.
 
-If a stem is not specified, no results will be returned.  
+If a stem is not specified, no results will be returned. To match all terms, use a stem of `^.*`
 
-To match all terms: `^.*`
+The `order_by` parameter defaults to `count`, which sorts documents by the occurrence count, largest to smallest. A
+value of `reverse_count` will sort them smallest to largest.
 
-If the specifield `fieldname` is a date/timestamp, then one of the following values are allowed for aggregating values 
+If the specified `fieldname` is a date/timestamp, then one of the following values are allowed for aggregating values
 into histogram buckets of the specified interval: `year, quarter, month, week, day, hour, minute, second`.  In all cases, 
 an optional offset value can be specified.  For example:  `week:-1d` will offset the dates by one day so that the first 
 day of the week will be considered to be Sunday (instead of the default of Monday).
@@ -594,7 +601,7 @@ day of the week will be considered to be Sunday (instead of the default of Monda
 Example:
 
 ```sql
-SELECT * FROM zdb_tally('products', 'keywords', '^.*', 'base* or distance', 5000, 'term');
+SELECT * FROM zdb.tally('products', 'keywords', '^.*', 'base* or distance', 5000, 'term');
 
     term      | count 
 >---------------+-------
@@ -653,7 +660,7 @@ returns:
 
 
 ```sql
-CREATE TYPE terms_order AS ENUM (
+CREATE TYPE TermsOrderBy AS ENUM (
 	'count',
 	'term',
 	'reverse_count',
@@ -663,7 +670,7 @@ FUNCTION zdb.terms(
 	field text,
 	query zdbquery,
 	size_limit bigint DEFAULT 0,
-	order_by terms_order DEFAULT 'count') 
+	order_by TermsOrderBy DEFAULT 'count') 
 RETURNS TABLE (
 	term text,
 	doc_count bigint)
@@ -673,7 +680,14 @@ https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregati
 
 A multi-bucket value source based aggregation where buckets are dynamically built - one per unique value.
 
----
+Note that the `order_by` argument defines how to sort the results:
+
+- `'count'` (ascending),
+- `'reverse_count'` (ascending),
+- `'term'` (ascending),
+- `'reverse_term'` (descending)
+
+______________________________________________________________________
 
 ```sql
 FUNCTION zdb.terms_array(
@@ -681,7 +695,7 @@ FUNCTION zdb.terms_array(
 	field text,
 	query zdbquery,
 	size_limit bigint DEFAULT 0,
-	order_by terms_order DEFAULT 'count') 
+	order_by TermsOrderBy DEFAULT 'count') 
 RETURNS text[]
 ```
 
@@ -695,7 +709,7 @@ FUNCTION zdb.terms_two_level(
 	first_field text,
 	second_field text,
 	query zdbquery,
-	order_by terms_order DEFAULT 'count',
+	order_by TwoLevelTermsOrderBy DEFAULT 'count',
 	size bigint DEFAULT 0) 
 RETURNS TABLE (
 	first_term text,
