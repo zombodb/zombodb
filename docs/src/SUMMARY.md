@@ -10,10 +10,10 @@
 - [Using SQL functions](./usage/using-sql-functions.md)
 - [Scoring](./usage/scoring.md)
 - [Highlighting](./usage/highlighting.md)
-- [Cross-index joins](./usage/cross-index-joins.md)
+- [Index Options](./usage/index-options.md)
 - [Aggregations](./usage/aggregations.md)
 - [Aggregate Builder API](./usage/aggregate-builder-api.md)
-- [ElasticSearch _cat API](./usage/_cat-api_.md)
+- [ElasticSearch _cat API](./usage/elasticsearch-cat-api.md)
 - [PostGIS Support](./usage/postgis-support.md)
 
 # Administration
@@ -23,7 +23,7 @@
 - [Configuration](./administration/configuration.md)
 - [Index Management](./administration/index-management.md)
 - [Creating a ZomboDB Index in Postgres](./usage/creating-a-zombodb-index.md)
-
+- [Vacuum Support](./administration/vacuum-support.md)
 
 # Internals
 

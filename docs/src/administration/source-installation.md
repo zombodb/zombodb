@@ -1,4 +1,4 @@
-# ZomboDB Source Installation Instructions
+# Source Installation
 
 > Note: If you're a [sponsor](https://github.com/sponsors/eeeebbbbrrrr), you might want to also read the [binary installation](/administration/binary-installation.html) documentation.
 

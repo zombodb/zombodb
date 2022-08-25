@@ -1,6 +1,6 @@
-# _cat API
+# ElasticSearch _cat API
 
-ZomboDB exposes all of the Elasticsearch `_cat/` API endpoints as a set of typed views.  For the endpoints that include index names, only the indices that are managed by ZomboDB, from the current database, are included.
+ZomboDB exposes the Elasticsearch `_cat/` API endpoints as a set of typed views.  For the endpoints that include index names, only the indices that are managed by ZomboDB, from the current database, are included.
 
 The cat API views also support ZomboDB indices from multiple Elasticsearch clusters (ie, indices have different `url` parameters).
 

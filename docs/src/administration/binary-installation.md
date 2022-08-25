@@ -1,9 +1,9 @@
-# ZomboDB Installation Instructions
+# Binary Installation
 
 ZomboDB is a 100% native Postgres extension.  Additionally, ZomboDB is available as binary `.deb` and `.rpm` packages to
 [sponsors](https://github.com/sponsors/eeeebbbbrrrr) for popular Linux distributions.  As such, installation is fairly straightforward.
 
-If you instead prefer to install ZomboDB from source, please read the [SOURCE-INSTALLATION.md] documentation.
+If you instead prefer to install ZomboDB from source, please read the [source installation documentation](source-installation.md).
 
 
 ## Prerequisites
@@ -29,7 +29,7 @@ $ dpkg -i zombodb_ubuntu-focal_pg10-3000.0.0-alpha1_amd64.deb
 
 ### Installation on MacOS
 
-Please see the [source installation documentation](SOURCE-INSTALLATION.md).
+Please see the [source installation documentation](source-installation.md).
 
 
 ## `postgresql.conf` Settings to Consider
@@ -40,7 +40,7 @@ You might also consider setting `zdb.default_elasticsearch_url`.
 
 Both of these values can be set per index, so they're not strictly necessary to set in `postgresql.conf`.
 
-Make sure to read about ZomboDB's [configuration settings](CONFIGURATION-SETTINGS.md) and its [index options](INDEX-MANAGEMENT.md#with--options).
+Make sure to read about ZomboDB's [configuration settings](configuration.md) and its [index options](index-management.md#with--options).
 
 ## Verifying Installation
 

@@ -1,4 +1,4 @@
-# VACUUM Support
+# VACUUM
 
 ZomboDB indices fully interoperate with Postgres (auto)VACUUM facilities, and keeping ZomboDB indicies vacuumed is
 important for maintaining a high level of search performance.

@@ -1,6 +1,6 @@
 # Index Options
 
-As the [Index Management](/administration/index-management.md) documentation indicates, ZomboDB supports a set of custom advanced-use options for defining how an index relates to other indexes.
+As the [Index Management](/administration/index-management.md) documentation indicates, ZomboDB supports a set of custom advanced-use options for defining how an index relates to other indexes.  This effectively will allow a cross-index join.
 
 
 ## Index Links

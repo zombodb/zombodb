@@ -1,3 +1,5 @@
+# Creating a Zombodb Index
+
 ## CREATE INDEX
 
 This document explains the various methods you can use to create a ZomboDB index.
