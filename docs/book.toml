@@ -4,9 +4,19 @@ language = "en"
 multilingual = false
 src = "src"
 
-# https://rust-lang.github.io/mdBook/format/configuration/renderers.html#html-renderer-options
+[build]
+build-dir = "build"
+
 [output.html]
-additional-css = ["zombo.css", "zombo-highlight.css"]
-# theme = "zombo"
-default-theme = "zombo"
 curly-quotes = true
+git-repository-url = "https://github.com/zombodb/zombodb/tree/docs/docs/"
+edit-url-template = "https://github.com/zombodb/zombodb/edit/docs/docs/{path}"
+
+[output.html.search]
+limit-results = 20
+use-boolean-and = true
+boost-title = 2
+boost-hierarchy = 2
+boost-paragraph = 1
+expand = true
+heading-split-level = 2
