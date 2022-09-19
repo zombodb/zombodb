@@ -143,7 +143,7 @@ pub fn categorize_tupdesc<'a>(
                                 Box::new(|builder, name, datum, oid| {
                                     builder.add_i64(
                                         name,
-                                        unsafe { i64::from_datum(datum, false, oid) }.unwrap(),
+                                        unsafe { i64::from_datum(datum, false) }.unwrap(),
                                     )
                                 })
                             }

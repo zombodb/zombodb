@@ -50,7 +50,7 @@ fn zdb_update_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
                 .expect("failed to queue index update command");
         }
 
-        trigdata.tg_newtuple as pg_sys::Datum
+        trigdata.tg_newtuple.into()
     }
 }
 
@@ -101,7 +101,7 @@ fn zdb_delete_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
                 .expect("failed to queue index delete command");
         }
 
-        trigdata.tg_trigtuple as pg_sys::Datum
+        trigdata.tg_trigtuple.into()
     }
 }
 
