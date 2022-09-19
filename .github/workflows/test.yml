@@ -53,7 +53,7 @@ jobs:
 
       # install cargo-pgx
     - name: install cargo-pgx
-      run: cargo install cargo-pgx
+      run: cargo install cargo-pgx --git https://github.com/tcdi/pgx --branch "new-sql-type-mapping" --force --locked
 
     # initialize pgx
     - name: cargo pgx init
