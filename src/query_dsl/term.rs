@@ -853,7 +853,7 @@ mod tests {
     }
 
     #[pg_test]
-    fn test_term_timestamp_with_timezone_with_milliseconds_and_with_boost() {
+    fn test_term_timestamp_with_timezone_with_milliseconds_and_boost() {
         let zdbquery = Spi::get_one::<ZDBQuery>(
             "SELECT dsl.term('fieldname', CAST('2019-09-15 12:59:35.567 -0700' AS timestamp), 42.0 );",
         )

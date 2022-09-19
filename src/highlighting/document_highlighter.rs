@@ -1753,7 +1753,7 @@ mod tests {
 
     #[pg_test]
     #[initialize(es = true)]
-    fn test_highlighter_proximity_four_with_inorder_and_not_inorder_doubles_far_apart() {
+    fn test_highlight_prox4_with_ord_and_non_ord_doubles_far_apart() {
         let title = "highlight_proximity_four_with_inorder_and_not_inorder_double";
         start_table_and_index(title);
         let search_string = "now is the time of the year for all good men to rise up and come to the aid of their country.";
