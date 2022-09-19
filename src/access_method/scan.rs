@@ -60,12 +60,12 @@ pub extern "C" fn amrescan(
     let nkeys = nkeys as usize;
     let keys = unsafe { std::slice::from_raw_parts(keys as *const pg_sys::ScanKeyData, nkeys) };
     let mut query =
-        unsafe { ZDBQuery::from_datum(keys[0].sk_argument, false).unwrap() };
+        unsafe { ZDBQuery::from_datum(keys[0].sk_argument, false, state.zdbregtype).unwrap() };
 
     // AND multiple keys together as a "bool": {"must":[....]} query
     for key in keys[1..nkeys].iter() {
         query = crate::query_dsl::bool::dsl::binary_and(query, unsafe {
-            ZDBQuery::from_datum(key.sk_argument, false).unwrap()
+            ZDBQuery::from_datum(key.sk_argument, false, state.zdbregtype).unwrap()
         });
     }
 
