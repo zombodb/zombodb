@@ -130,10 +130,8 @@ pub mod dsl {
         )))
     }
 
-    // NB: we use the `variadic!()` macro here so that we can call this function
-    // from other rust code with a Vec<Option<ZDBQuery>>
     #[pg_extern(immutable, parallel_safe)]
-    pub fn and(queries: variadic!(Vec<Option<ZDBQuery>>)) -> ZDBQuery {
+    pub fn and(queries: Vec<Option<ZDBQuery>>) -> ZDBQuery {
         ZDBQuery::new_with_query_clause(ZDBQueryClause::bool(
             Some(
                 queries
