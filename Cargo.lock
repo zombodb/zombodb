@@ -1214,6 +1214,7 @@ dependencies = [
 [[package]]
 name = "pgx"
 version = "0.5.0-beta.0"
+source = "git+https://github.com/tcdi/pgx?branch=new-sql-type-mapping#dc4f46bba336b5b705026807c2adb5d362a1bc1f"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -1242,6 +1243,7 @@ dependencies = [
 [[package]]
 name = "pgx-macros"
 version = "0.5.0-beta.0"
+source = "git+https://github.com/tcdi/pgx?branch=new-sql-type-mapping#dc4f46bba336b5b705026807c2adb5d362a1bc1f"
 dependencies = [
  "pgx-utils",
  "proc-macro2",
@@ -1253,6 +1255,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-config"
 version = "0.5.0-beta.0"
+source = "git+https://github.com/tcdi/pgx?branch=new-sql-type-mapping#dc4f46bba336b5b705026807c2adb5d362a1bc1f"
 dependencies = [
  "dirs",
  "eyre",
@@ -1268,6 +1271,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-sys"
 version = "0.5.0-beta.0"
+source = "git+https://github.com/tcdi/pgx?branch=new-sql-type-mapping#dc4f46bba336b5b705026807c2adb5d362a1bc1f"
 dependencies = [
  "bindgen",
  "build-deps",
@@ -1291,6 +1295,7 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.5.0-beta.0"
+source = "git+https://github.com/tcdi/pgx?branch=new-sql-type-mapping#dc4f46bba336b5b705026807c2adb5d362a1bc1f"
 dependencies = [
  "eyre",
  "libc",
@@ -1312,6 +1317,7 @@ dependencies = [
 [[package]]
 name = "pgx-utils"
 version = "0.5.0-beta.0"
+source = "git+https://github.com/tcdi/pgx?branch=new-sql-type-mapping#dc4f46bba336b5b705026807c2adb5d362a1bc1f"
 dependencies = [
  "atty",
  "convert_case",
