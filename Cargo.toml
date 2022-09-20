@@ -68,4 +68,8 @@ codegen-units = 1
 pgx = { git = "https://github.com/tcdi/pgx", branch = "new-sql-type-mapping" }
 pgx-macros = { git = "https://github.com/tcdi/pgx", branch = "new-sql-type-mapping" }
 pgx-tests = { git = "https://github.com/tcdi/pgx", branch = "new-sql-type-mapping" }
-pgx-utils = { git = "https://github.com/tcdi/pgx", branch = "new-sql-type-mapping" }
+pgx-utils =  { git = "https://github.com/tcdi/pgx", branch = "new-sql-type-mapping" }
+# pgx = { path = "../../tcdi/pgx/pgx" }
+# pgx-macros =  { path = "../../tcdi/pgx/pgx-macros" }
+# pgx-tests =  { path = "../../tcdi/pgx/pgx-tests" }
+# pgx-utils =  { path = "../../tcdi/pgx/pgx-utils" }
