@@ -12,9 +12,9 @@ comprehensive query language and SQL functions enable new and creative ways to q
 
 From a technical perspective, ZomboDB is a 100% native Postgres extension written in Rust with [PGX].
 ZomboDB uses Postgres's Index Access Method API to directly manage and optimize ZomboDB's specialized indices.
-As a native Postgres index type, ZomboDB allows you to `CREATE INDEX ... USING zombodb` on your existing Postgres
-tables. At that point, ZomboDB takes over and fully manages the remote Elasticsearch index and guarantees
-transactionally-correct text-search query results.
+As a native Postgres index type, ZomboDB allows you to `CREATE INDEX ... USING zombodb` on your existing Postgres tables.
+At that point, ZomboDB takes over and fully manages the remote Elasticsearch index,
+guaranteeing transactionally-correct text-search query results.
 
 ZomboDB is fully compatible with all of Postgres's query plan types and most SQL commands such as `CREATE INDEX`, `COPY`,
 `INSERT`, `UPDATE`, `DELETE`, `SELECT`, `ALTER`, `DROP`, `REINDEX`, `(auto)VACUUM`, etc.
