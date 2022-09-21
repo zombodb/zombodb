@@ -10,8 +10,9 @@
 ZomboDB brings powerful text-search and analytics features to Postgres by using Elasticsearch as an index type. Its
 comprehensive query language and SQL functions enable new and creative ways to query your relational data.
 
-From a technical perspective, ZomboDB is a 100% native Postgres extension that implements Postgres's Index Access Method
-API. As a native Postgres index type, ZomboDB allows you to `CREATE INDEX ... USING zombodb` on your existing Postgres
+From a technical perspective, ZomboDB is a 100% native Postgres extension written in Rust with [PGX].
+ZomboDB uses Postgres's Index Access Method API to directly manage and optimize ZomboDB's specialized indices.
+As a native Postgres index type, ZomboDB allows you to `CREATE INDEX ... USING zombodb` on your existing Postgres
 tables. At that point, ZomboDB takes over and fully manages the remote Elasticsearch index and guarantees
 transactionally-correct text-search query results.
 
@@ -182,4 +183,5 @@ Unless required by applicable law or agreed to in writing, software distributed 
 "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 language governing permissions and limitations under the License.
 
+[pgx]: https://github.com/tcdi/pgx
 [postgres's full-text search]: https://www.postgresql.org/docs/current/textsearch-intro.html
