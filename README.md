@@ -10,12 +10,12 @@
 ZomboDB brings powerful text-search and analytics features to Postgres by using Elasticsearch as an index type. Its
 comprehensive query language and SQL functions enable new and creative ways to query your relational data.
 
-From a technical perspective, ZomboDB is a 100% native Postgres extension that implements Postgres' Index Access Method
+From a technical perspective, ZomboDB is a 100% native Postgres extension that implements Postgres's Index Access Method
 API. As a native Postgres index type, ZomboDB allows you to `CREATE INDEX ... USING zombodb` on your existing Postgres
 tables. At that point, ZomboDB takes over and fully manages the remote Elasticsearch index and guarantees
 transactionally-correct text-search query results.
 
-ZomboDB is fully compatible with all of Postgres' query plan types and most SQL commands such as `CREATE INDEX`, `COPY`,
+ZomboDB is fully compatible with all of Postgres's query plan types and most SQL commands such as `CREATE INDEX`, `COPY`,
 `INSERT`, `UPDATE`, `DELETE`, `SELECT`, `ALTER`, `DROP`, `REINDEX`, `(auto)VACUUM`, etc.
 
 It doesn’t matter if you’re using an Elasticsearch cloud provider or managing your own cluster -- ZomboDB communicates
@@ -154,10 +154,10 @@ SELECT *
 The name is an homage to zombo.com and its long history of continuous self-affirmation.
 
 Historically, ZomboDB began in 2013 by Technology Concepts & Design, Inc as a closed-source effort to provide
-transaction-safe text-search on top of Postgres tables. While Postgres' "tsearch" features are useful, they're not
+transaction-safe text-search on top of Postgres tables. While Postgres's "tsearch" features are useful, they're not
 necessarily adequate for 200 column-wide tables with 100M rows, each containing large text content.
 
-Initially designed on-top of Postgres' Foreign Data Wrapper API, ZomboDB quickly evolved into an index type so that
+Initially designed on-top of Postgres's Foreign Data Wrapper API, ZomboDB quickly evolved into an index type so that
 queries are MVCC-safe and standard SQL can be used to query and manage indices.
 
 Elasticsearch was chosen as the backing search index because of its horizontal scaling abilities, performance, and
