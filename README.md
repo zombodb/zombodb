@@ -147,7 +147,7 @@ SELECT *
 - https://www.zombodb.com
 - Google Group: zombodb@googlegroups.com
 - Twitter: [@zombodb](https://twitter.com/zombodb/)
-- via Github Issues and Pull Requests
+- via GitHub Issues and Pull Requests
 - https://www.zombodb.com/services/ or info@zombodb.com for commercial support
 
 ## History
