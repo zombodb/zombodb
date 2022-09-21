@@ -73,7 +73,7 @@ multiple data-access code paths -- ZomboDB does it all for you.
 ## Current Limitations
 
 - Only one ZomboDB index per table
-- ZomboDB indexes with predicates (ie, [partial indexes](https://www.postgresql.org/docs/10/indexes-partial.html)) are
+- ZomboDB indexes with predicates (i.e., [partial indexes](https://www.postgresql.org/docs/10/indexes-partial.html)) are
   not supported
 - `CREATE INDEX CONCURRENTLY` is not supported
 
