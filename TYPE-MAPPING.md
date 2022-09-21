@@ -1,11 +1,11 @@
 # Type Mapping
 
-ZomboDB provides a set of default Postgres\<-->Elasticsearch type mappings for Postgres' common data types. ZomboDB also
+ZomboDB provides a set of default Postgres\<-->Elasticsearch type mappings for Postgres's common data types. ZomboDB also
 includes a complete set of custom Postgres DOMAINs that represent all of the foreign languages that Elasticsearch
 supports.
 
 This document attempts to explain how ZomboDB maps Postgres data types to Elasticsearch data types, how they're analyzed
-(if at all), and how these things can be controlled through a combination of Postgres' type system and ZomboDB-specific
+(if at all), and how these things can be controlled through a combination of Postgres's type system and ZomboDB-specific
 functions.
 
 ## Common Data Types
@@ -39,6 +39,7 @@ Postgres Type | Elasticsearch JSON Mapping Definition
 `geometry(Point, x)` _(from postgis)_ | `{"type": "geo_point"}`
 
 Some things to note from the above:
+
 - Columns of type `bytea` are automatically encoded as `base64` for proper storage by Elasticsearch
 - Columns of type `character varying (varchar)` are **not** analyzed by Elasticsearch. They're indexed as whole values,
   but are converted to lowercase
@@ -62,7 +63,7 @@ wildcard support.
 
 ## Language-specific DOMAIN types
 
-As noted earlier, ZomboDB provide support for all of Elasticsearch's language analyzers, exposed as Postgres DOMAINs.
+As noted earlier, ZomboDB provides support for all of Elasticsearch's [language analyzers], exposed as Postgres DOMAINs.
 This allows you to create tables with columns of type `portuguese` or `thai`, for example. The complete set of language
 domains is:
 
@@ -73,16 +74,14 @@ hindi, hungarian, indonesian, irish, italian, latvian, norwegian, persian,
 portuguese, romanian, russian, sorani, spanish, swedish, turkish, thai
 ```
 
-More details on how Elasticsearch analyzes each of these can be found in its
-[language analyzers](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-lang-analyzer.html)
-documentation.
+More details on how Elasticsearch analyzes each of these can be found in its [language analyzer documentation][language analyzers].
 
 # Defining Custom Analyzers, Filters, Normalizers, Type Mappings
 
 ZomboDB provides a set of SQL-level functions that allow you to define custom analyzer chains, filters, normalizers,
 along with custom type mappings.
 
-These are designed to be used with Postgres' `CREATE DOMAIN` command where the domain name exactly matches the analyzer
+These are designed to be used with Postgres's `CREATE DOMAIN` command where the domain name exactly matches the analyzer
 name.
 
 ## Analysis Definition Functions
@@ -91,8 +90,7 @@ name.
 FUNCTION zdb.define_analyzer(name text, definition json)
 ```
 
-Allows for the definition of Elasticsearch
-[custom analyzers](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-custom-analyzer.html).
+Allows for the definition of Elasticsearch [custom analyzers].
 Depending on the complexity of the analyzer you need to define, you'll likely first need to define custom filters or
 tokenizers, as described below.
 
@@ -111,8 +109,7 @@ ______________________________________________________________________
 FUNCTION zdb.define_filter(name text, definition json)
 ```
 
-Allows for the definition of a custom Elasticsearch
-[token filter](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-tokenfilters.html).
+Allows for the definition of a custom Elasticsearch [token filter].
 
 ______________________________________________________________________
 
@@ -120,8 +117,7 @@ ______________________________________________________________________
 FUNCTION zdb.define_char_filter(name text, definition json) 
 ```
 
-Allows for the definition of a custom Elasticsearch
-[character filter](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-charfilters.html).
+Allows for the definition of a custom Elasticsearch [character filter].
 
 ______________________________________________________________________
 
@@ -129,8 +125,7 @@ ______________________________________________________________________
 FUNCTION zdb.define_tokenizer(name text, definition json)
 ```
 
-Allows for the definition of a custom Elasticsearch
-[tokenizer](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-tokenizers.html).
+Allows for the definition of a custom Elasticsearch [tokenizer].
 
 ______________________________________________________________________
 
@@ -138,8 +133,7 @@ ______________________________________________________________________
 FUNCTION zdb.define_normalizer(name text, definition json) 
 ```
 
-Allows for the definition of a custom Elasticsearch
-[normalizer](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-normalizers.html).
+Allows for the definition of a custom Elasticsearch [normalizer].
 
 ______________________________________________________________________
 
@@ -175,10 +169,8 @@ you don't need to create and manage custom DOMAIN types.
 FUNCTION zdb.define_field_mapping(table_name regclass, field_name text, definition json) 
 ```
 
-If you need to define a field mapping for a specific field in a specific table, this is the function to use. You can
-specify any
-[custom mapping definition json](https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-params.html)
-that is supported by Elasticsearch.
+If you need to define a field mapping for a specific field in a specific table, this is the function to use.
+You can specify any [custom mapping definition json] that is supported by Elasticsearch.
 
 Creating or changing a field mapping requires a `REINDEX` of the specified table.
 
@@ -189,7 +181,7 @@ FUNCTION zdb.define_es_only_field(table_name regclass, field_name text, definiti
 ```
 
 If you want a custom field that only exists in the Elasticsearch index (perhaps as a target to the mapping
-[`copy_to`](https://www.elastic.co/guide/en/elasticsearch/reference/current/copy-to.html) property, you can use this.
+[`copy_to`] property), you can use this.
 
 Any field you create here can be searched and used with aggregates, but won't be SELECT-able by Postgres.
 
@@ -337,14 +329,14 @@ In short, ZomboDB disables Elasticsearch's `_all` field and instead configures i
 default, all non-numeric field types are added to the `zdb_all` field.
 
 ZomboDB does this to maintain compatability between Elasticsearch 5 and Elasticsearch 6, where
-[ES 6 deprecates the `_all` field](https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-all-field.html).
+[ES 6 deprecates the `_all` field]. <!-- ZomboDB does not advertise support for ES 5|6? -->
 
 # Custom JSON Conversion
 
-In general ZomboDB uses the equivalent of Postgres' `to_json()` function to convert individual columns to JSON when
+In general ZomboDB uses the equivalent of Postgres's `to_json()` function to convert individual columns to JSON when
 indexing.\
 However, ZomboDB does provide the ability to provide custom json conversion functions for any data type, and
-it installs custom conversion functions for Postgres' `point` type along with PostGIS' `geometry` and `geography` types.
+it installs custom conversion functions for Postgres's `point` type along with PostGIS' `geometry` and `geography` types.
 
 ```sql
 FUNCTION zdb.define_type_conversion(
@@ -401,9 +393,7 @@ SELECT * FROM test WHERE test ==> dsl.nested('data', dsl.term('data.title', 'thi
 
 # Similarity Module Support
 
-ZomboDB supports
-[Elasticsearch's "Similarity Module"](https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules-similarity.html))
-in a manner similar to the above.
+ZomboDB supports [Elasticsearch's similarity module] in a manner similar to the above.
 
 This allows you to define different similarity algorithms and apply them to individual field mappings.
 
@@ -443,3 +433,14 @@ SELECT zdb.define_field_mapping('test', 'data', '
 
 CREATE INDEX idxtest ON test USING zombodb ((test.*));
 ```
+
+[character filter]: https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-charfilters.html
+[custom analyzers]: https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-custom-analyzer.html
+[custom mapping definition json]: https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-params.html
+[elasticsearch 6 deprecates the `_all` field]: https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-all-field.html
+[elasticsearch's similarity module]: TYPE-MAPPING.md#similarity-module-support
+[language analyzers]: https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-lang-analyzer.html
+[normalizer]: https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-normalizers.html
+[token filter]: https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-tokenfilters.html
+[tokenizer]: https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-tokenizers.html
+[`copy_to`]: https://www.elastic.co/guide/en/elasticsearch/reference/current/copy-to.html
