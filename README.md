@@ -51,9 +51,7 @@ multiple data-access code paths -- ZomboDB does it all for you.
 - Managed and queried via standard SQL
 - Works with current Elasticsearch releases (no plugins required)
 - Query using
-  - Elasticsearch's
-    [Query String Syntax](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-syntax)
-    via `dsl.query_string()`
+  - [Elasticsearch's query string syntax] via `dsl.query_string()`
   - ZQL -- [ZomboDB's custom query language](ZQL.md)
   - Raw Elasticsearch QueryDSL JSON
   - ZomboDB's type-safe [query builder SQL syntax](QUERY-BUILDER-API.md)
@@ -64,16 +62,15 @@ multiple data-access code paths -- ZomboDB does it all for you.
   - Ability to map custom domains
   - Per-field custom mappings
   - `json/jsonb` automatically mapped as dynamic nested objects
-  - Supports full set of
-    [Elasticsearch language analyzers](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-lang-analyzer.html)
-  - Supports [Elasticsearch's Similarity Module](TYPE-MAPPING.md#similarity-module-support)
+  - Supports the full set of [Elasticsearch language analyzers]
+  - Supports [Elasticsearch's similarity module]
 - Hot-Standby compatible
 - Support for indexing and searching [PostGIS `geometry` and `geography` types](POSTGIS-SUPPORT.md)
 
 ## Current Limitations
 
 - Only one ZomboDB index per table
-- ZomboDB indexes with predicates (i.e., [partial indexes](https://www.postgresql.org/docs/10/indexes-partial.html)) are
+- ZomboDB indexes with predicates (i.e., [partial indexes]) are
   not supported
 - `CREATE INDEX CONCURRENTLY` is not supported
 
@@ -183,5 +180,9 @@ Unless required by applicable law or agreed to in writing, software distributed 
 "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 language governing permissions and limitations under the License.
 
+[elasticsearch language analyzers]: https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-lang-analyzer.html
+[elasticsearch's query string syntax]: https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-syntax
+[elasticsearch's similarity module]: TYPE-MAPPING.md#similarity-module-support
+[partial indexes]: https://www.postgresql.org/docs/10/indexes-partial.html
 [pgx]: https://github.com/tcdi/pgx
 [postgres's full-text search]: https://www.postgresql.org/docs/current/textsearch-intro.html
