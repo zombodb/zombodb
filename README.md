@@ -68,7 +68,7 @@ multiple data-access code paths -- ZomboDB does it all for you.
     [Elasticsearch language analyzers](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-lang-analyzer.html)
   - Supports [Elasticsearch's Similarity Module](TYPE-MAPPING.md#similarity-module-support)
 - Hot-Standby compatible
-- Support for indexing & searching [PostGIS `geometry` and `geography` types](POSTGIS-SUPPORT.md)
+- Support for indexing and searching [PostGIS `geometry` and `geography` types](POSTGIS-SUPPORT.md)
 
 ## Current Limitations
 
