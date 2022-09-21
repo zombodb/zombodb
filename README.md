@@ -64,7 +64,7 @@ multiple data-access code paths -- ZomboDB does it all for you.
   - `json/jsonb` automatically mapped as dynamic nested objects
   - Supports the full set of [Elasticsearch language analyzers]
   - Supports [Elasticsearch's similarity module]
-- Hot-Standby compatible
+- [Hot standby] compatible
 - Support for indexing and searching [PostGIS `geometry` and `geography` types](POSTGIS-SUPPORT.md)
 
 ## Current Limitations
@@ -183,6 +183,7 @@ language governing permissions and limitations under the License.
 [elasticsearch language analyzers]: https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-lang-analyzer.html
 [elasticsearch's query string syntax]: https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-syntax
 [elasticsearch's similarity module]: TYPE-MAPPING.md#similarity-module-support
+[hot standby]: https://www.postgresql.org/docs/current/hot-standby.html
 [partial indexes]: https://www.postgresql.org/docs/10/indexes-partial.html
 [pgx]: https://github.com/tcdi/pgx
 [postgres's full-text search]: https://www.postgresql.org/docs/current/textsearch-intro.html
