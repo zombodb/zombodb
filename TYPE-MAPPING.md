@@ -437,7 +437,7 @@ CREATE INDEX idxtest ON test USING zombodb ((test.*));
 [character filter]: https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-charfilters.html
 [custom analyzers]: https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-custom-analyzer.html
 [custom mapping definition json]: https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-params.html
-[elasticsearch 6 deprecates the `_all` field]: https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-all-field.html
+[es 6 deprecates the `_all` field]: https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-all-field.html
 [elasticsearch's similarity module]: TYPE-MAPPING.md#similarity-module-support
 [language analyzers]: https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-lang-analyzer.html
 [normalizer]: https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-normalizers.html
