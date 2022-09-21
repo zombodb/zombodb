@@ -157,7 +157,7 @@ Historically, ZomboDB began in 2013 by Technology Concepts & Design, Inc as a cl
 transaction-safe text-search on top of Postgres tables. While [Postgres's full-text search] features are useful, they're not
 necessarily adequate for 200 column-wide tables with 100M rows, each containing large text content.
 
-Initially designed on-top of Postgres's Foreign Data Wrapper API, ZomboDB quickly evolved into an index type so that
+Initially built on Postgres's Foreign Data Wrapper API, ZomboDB quickly evolved into an index type so that
 queries are MVCC-safe and standard SQL can be used to query and manage indices.
 
 Elasticsearch was chosen as the backing search index because of its horizontal scaling abilities, performance, and
