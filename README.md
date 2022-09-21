@@ -154,7 +154,7 @@ SELECT *
 The name is an homage to zombo.com and its long history of continuous self-affirmation.
 
 Historically, ZomboDB began in 2013 by Technology Concepts & Design, Inc as a closed-source effort to provide
-transaction-safe text-search on top of Postgres tables. While Postgres's "tsearch" features are useful, they're not
+transaction-safe text-search on top of Postgres tables. While [Postgres's full-text search] features are useful, they're not
 necessarily adequate for 200 column-wide tables with 100M rows, each containing large text content.
 
 Initially designed on-top of Postgres's Foreign Data Wrapper API, ZomboDB quickly evolved into an index type so that
@@ -180,3 +180,5 @@ http://www.apache.org/licenses/LICENSE-2.0
 Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an
 "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 language governing permissions and limitations under the License.
+
+[postgres's full-text search]: https://www.postgresql.org/docs/current/textsearch-intro.html
