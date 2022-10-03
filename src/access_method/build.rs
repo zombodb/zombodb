@@ -304,7 +304,8 @@ unsafe fn decon_row<'a>(
     attributes: &'a [CategorizedAttribute<'a>],
     row: pg_sys::Datum,
 ) -> impl std::iter::Iterator<Item = Option<(&'a CategorizedAttribute<'a>, pg_sys::Datum)>> + 'a {
-    let td = pg_sys::pg_detoast_datum(row.ptr_cast::<pg_sys::varlena>()) as pg_sys::HeapTupleHeader;
+    let td =
+        pg_sys::pg_detoast_datum(row.cast_mut_ptr::<pg_sys::varlena>()) as pg_sys::HeapTupleHeader;
     let mut tmptup = pg_sys::HeapTupleData {
         t_len: varsize(td as *mut pg_sys::varlena) as u32,
         t_self: Default::default(),
