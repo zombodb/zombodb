@@ -1,7 +1,7 @@
 [package]
 name = "zombodb"
 description = "Making Postgres and Elasticsearch work together like it's 2022"
-version = "3000.1.2"
+version = "3000.1.3"
 edition = "2018"
 build = "build.rs"
 readme = "README.md"
@@ -21,9 +21,9 @@ pg_test = [ ]
 
 [dependencies]
 byteorder = "1.4.3"
-chrono = "0.4.19"
-crossbeam-channel = "0.5.5"
-dashmap = "5.3.4"
+chrono = "0.4.22"
+crossbeam-channel = "0.5.6"
+dashmap = "5.4.0"
 humantime = "2.1.0"
 indexmap = "1.9.1"
 lalrpop-util = "0.19.8"
@@ -34,15 +34,15 @@ num_cpus = "1.13.1"
 pgx = "0.5.0-beta.1"
 pgx-macros = "0.5.0-beta.1"
 rayon = "1.5.3"
-regex = "1.5.6"
+regex = "1.6.0"
 rustc-hash = "1.1.0"
-serde = { version = "1.0.137", features = [ "derive" ] }
-serde_json = { version = "1.0.81", features = [ "preserve_order" ] }
+serde = { version = "1.0.145", features = [ "derive" ] }
+serde_json = { version = "1.0.85", features = [ "preserve_order" ] }
 serde_cbor = "0.11.2"
 sqlformat = "0.2.0"
-unicode-segmentation = "1.9.0"
-ureq = { version = "2.4.0", features = [ "json" ] }
-url = "2.2.2"
+unicode-segmentation = "1.10.0"
+ureq = { version = "2.5.0", features = [ "json" ] }
+url = "2.3.1"
 
 [build-dependencies]
 lalrpop = { version = "0.19.8", features = [ "lexer" ] }
@@ -50,7 +50,7 @@ built = { version = "0.5.1", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
 pgx-tests = "0.5.0-beta.1"
-libc = "0.2.126"
+libc = "0.2.134"
 
 [profile.dev]
 panic = "unwind"
@@ -63,13 +63,3 @@ opt-level = 3
 lto = "fat"
 codegen-units = 1
 
-
-[patch.crates-io]
-# pgx = { git = "https://github.com/tcdi/pgx", branch = "new-sql-type-mapping" }
-# pgx-macros = { git = "https://github.com/tcdi/pgx", branch = "new-sql-type-mapping" }
-# pgx-tests = { git = "https://github.com/tcdi/pgx", branch = "new-sql-type-mapping" }
-# pgx-utils =  { git = "https://github.com/tcdi/pgx", branch = "new-sql-type-mapping" }
-# pgx = { path = "../../tcdi/pgx/pgx" }
-# pgx-macros =  { path = "../../tcdi/pgx/pgx-macros" }
-# pgx-tests =  { path = "../../tcdi/pgx/pgx-tests" }
-# pgx-utils =  { path = "../../tcdi/pgx/pgx-utils" }
