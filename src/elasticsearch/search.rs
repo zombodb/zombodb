@@ -3,7 +3,7 @@ use crate::gucs::ZDB_ACCELERATOR;
 use crate::utils::read_vlong;
 use crate::zdbquery::mvcc::apply_visibility_clause;
 use crate::zdbquery::ZDBPreparedQuery;
-use pgx::{warning, PgBuiltInOids};
+use pgx::PgBuiltInOids;
 use serde::*;
 use serde_json::*;
 use std::collections::HashMap;
