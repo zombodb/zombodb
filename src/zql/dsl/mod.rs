@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use pgx::*;
+use pgx::{prelude::*, *};
 use serde_json::json;
 
 use crate::access_method::options::ZDBIndexOptions;
@@ -41,16 +41,19 @@ fn debug_query(
 
     let tree = format!("{:#?}", query);
 
-    TableIterator::new(vec![(
-        sqlformat::format(
-            &format!("{}", query),
-            &sqlformat::QueryParams::default(),
-            sqlformat::FormatOptions::default(),
-        )
-        .replace(" :\"", ":\""),
-        used_fields.into_iter().map(|v| v.into()).collect(),
-        format!("{}", tree),
-    )].into_iter())
+    TableIterator::new(
+        vec![(
+            sqlformat::format(
+                &format!("{}", query),
+                &sqlformat::QueryParams::default(),
+                sqlformat::FormatOptions::default(),
+            )
+            .replace(" :\"", ":\""),
+            used_fields.into_iter().map(|v| v.into()).collect(),
+            format!("{}", tree),
+        )]
+        .into_iter(),
+    )
 }
 
 pub fn expr_to_dsl(

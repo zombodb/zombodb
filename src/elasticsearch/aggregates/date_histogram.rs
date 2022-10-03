@@ -1,7 +1,7 @@
 use crate::elasticsearch::aggregates::date_histogram::pg_catalog::*;
 use crate::elasticsearch::Elasticsearch;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgx::{prelude::*, *};
 use serde::*;
 use serde_json::*;
 
@@ -29,14 +29,17 @@ fn date_histogram(
     field: &str,
     query: ZDBQuery,
     calendar_interval: default!(Option<CalendarInterval>, NULL),
-    fixed_interval:default!( Option<&str>, NULL),
+    fixed_interval: default!(Option<&str>, NULL),
     time_zone: default!(&str, "'+00:00'"),
     format: default!(&str, "'yyyy-MM-dd'"),
-) -> TableIterator<'static, (
+) -> TableIterator<
+    'static,
+    (
         name!(key_as_string, String),
         name!(term, i64),
         name!(doc_count, i64),
-    )> {
+    ),
+> {
     #[derive(Deserialize, Serialize)]
     struct BucketEntry {
         key_as_string: String,
@@ -91,8 +94,10 @@ fn date_histogram(
         .execute()
         .expect("failed to execute aggregate search");
 
-    TableIterator::new(result
-        .buckets
-        .into_iter()
-        .map(|entry| (entry.key_as_string, entry.key, entry.doc_count)))
+    TableIterator::new(
+        result
+            .buckets
+            .into_iter()
+            .map(|entry| (entry.key_as_string, entry.key, entry.doc_count)),
+    )
 }

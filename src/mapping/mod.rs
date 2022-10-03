@@ -235,7 +235,7 @@ pub fn categorize_tupdesc<'a>(
                                         name,
                                         unsafe {
                                             Vec::<Option<TimeWithTimeZone>>::from_datum(
-                                                datum, false, oid
+                                                datum, false, oid,
                                             )
                                         }
                                         .unwrap(),
@@ -327,7 +327,7 @@ pub fn categorize_tupdesc<'a>(
                                         name,
                                         unsafe {
                                             Vec::<Option<pgx::JsonString>>::from_datum(
-                                                datum, false, oid
+                                                datum, false, oid,
                                             )
                                         }
                                         .unwrap(),

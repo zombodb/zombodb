@@ -1,7 +1,7 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::utils::json_to_string;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgx::{prelude::*, *};
 use serde::*;
 use serde_json::*;
 
@@ -12,12 +12,11 @@ fn ip_range(
     query: ZDBQuery,
     range_array: Json,
 ) -> TableIterator<(
-        name!(key, String),
-        name!(from, Option<Inet>),
-        name!(to, Option<Inet>),
-        name!(doc_count, i64),
-    ),
-> {
+    name!(key, String),
+    name!(from, Option<Inet>),
+    name!(to, Option<Inet>),
+    name!(doc_count, i64),
+)> {
     #[derive(Deserialize, Serialize)]
     struct IPRangesAggData {
         buckets: Vec<BucketEntry>,

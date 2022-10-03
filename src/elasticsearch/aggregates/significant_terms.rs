@@ -1,7 +1,7 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::utils::json_to_string;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgx::{prelude::*, *};
 use serde::*;
 use serde_json::*;
 
@@ -13,7 +13,9 @@ fn significant_terms(
     include: default!(Option<&str>, "'.*'"),
     size_limit: default!(Option<i32>, 2147483647),
     min_doc_count: default!(Option<i32>, 3),
-) -> TableIterator<'static, (
+) -> TableIterator<
+    'static,
+    (
         name!(term, Option<String>),
         name!(doc_count, i64),
         name!(score, f32),

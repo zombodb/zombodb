@@ -1,7 +1,7 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::utils::json_to_string;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgx::{prelude::*, *};
 use serde::*;
 use serde_json::*;
 
@@ -12,7 +12,9 @@ fn significant_terms_two_level(
     field_second: &str,
     query: ZDBQuery,
     size_limit: default!(Option<i32>, "2147483647"),
-) -> TableIterator<'static, (
+) -> TableIterator<
+    'static,
+    (
         name!(term_one, Option<String>),
         name!(term_two, Option<String>),
         name!(doc_count, i64),

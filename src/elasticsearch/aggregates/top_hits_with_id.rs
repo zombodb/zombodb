@@ -1,6 +1,6 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgx::{prelude::*, *};
 use serde::*;
 use serde_json::*;
 
@@ -50,9 +50,11 @@ fn top_hits_with_id(
         .execute()
         .expect("failed to execute aggregate search");
 
-    TableIterator::new(result
-        .hits
-        .hits
-        .into_iter()
-        .map(|entry| (entry._id, entry._score, Json(entry._source))))
+    TableIterator::new(
+        result
+            .hits
+            .hits
+            .into_iter()
+            .map(|entry| (entry._id, entry._score, Json(entry._source))),
+    )
 }

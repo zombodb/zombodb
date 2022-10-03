@@ -1,7 +1,7 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::zdbquery::mvcc::apply_visibility_clause;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgx::{prelude::*, *};
 use serde::*;
 use serde_json::*;
 use std::collections::HashMap;
@@ -47,8 +47,10 @@ fn filters(
         .execute()
         .expect("failed to execute aggregate search");
 
-    TableIterator::new(result
-        .buckets
-        .into_iter()
-        .map(|entry| (entry.0, entry.1.doc_count)))
+    TableIterator::new(
+        result
+            .buckets
+            .into_iter()
+            .map(|entry| (entry.0, entry.1.doc_count)),
+    )
 }

@@ -2,7 +2,7 @@ use crate::elasticsearch::aggregates::terms_two_level::pg_catalog::TwoLevelTerms
 use crate::elasticsearch::Elasticsearch;
 use crate::utils::json_to_string;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgx::{prelude::*, *};
 use serde::*;
 use serde_json::*;
 
@@ -31,7 +31,9 @@ fn terms_two_level(
     query: ZDBQuery,
     order_by: default!(Option<TwoLevelTermsOrderBy>, "'count'"),
     size_limit: default!(Option<i32>, 2147483647),
-) -> TableIterator<'static, (
+) -> TableIterator<
+    'static,
+    (
         name!(term_one, Option<String>),
         name!(term_two, Option<String>),
         name!(doc_count, i64),

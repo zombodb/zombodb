@@ -1,7 +1,7 @@
 use crate::highlighting::document_highlighter::*;
 use crate::utils::find_zdb_index;
 use crate::zql::ast::{Expr, IndexLink, QualifiedField, Term};
-use pgx::*;
+use pgx::{prelude::*, *};
 use pgx::{JsonB, PgRelation};
 use std::collections::{HashMap, HashSet};
 
@@ -373,15 +373,15 @@ fn highlight_document_jsonb(
     document: JsonB,
     query_string: &'static str,
 ) -> TableIterator<(
-        name!(field_name, String),
-        name!(array_index, i32),
-        name!(term, String),
-        name!(type, String),
-        name!(position, i32),
-        name!(start_offset, i64),
-        name!(end_offset, i64),
-        name!(query_clause, String),
-    )> {
+    name!(field_name, String),
+    name!(array_index, i32),
+    name!(term, String),
+    name!(type, String),
+    name!(position, i32),
+    name!(start_offset, i64),
+    name!(end_offset, i64),
+    name!(query_clause, String),
+)> {
     highlight_document_internal(index, document.0, query_string)
 }
 
@@ -391,15 +391,15 @@ fn highlight_document_json(
     document: Json,
     query_string: &'static str,
 ) -> TableIterator<(
-        name!(field_name, String),
-        name!(array_index, i32),
-        name!(term, String),
-        name!(type, String),
-        name!(position, i32),
-        name!(start_offset, i64),
-        name!(end_offset, i64),
-        name!(query_clause, String),
-    )> {
+    name!(field_name, String),
+    name!(array_index, i32),
+    name!(term, String),
+    name!(type, String),
+    name!(position, i32),
+    name!(start_offset, i64),
+    name!(end_offset, i64),
+    name!(query_clause, String),
+)> {
     highlight_document_internal(index, document.0, query_string)
 }
 
@@ -408,15 +408,15 @@ fn highlight_document_internal(
     document: serde_json::Value,
     query_string: &'static str,
 ) -> TableIterator<(
-        name!(field_name, String),
-        name!(array_index, i32),
-        name!(term, String),
-        name!(type, String),
-        name!(position, i32),
-        name!(start_offset, i64),
-        name!(end_offset, i64),
-        name!(query_clause, String),
-    )> {
+    name!(field_name, String),
+    name!(array_index, i32),
+    name!(term, String),
+    name!(type, String),
+    name!(position, i32),
+    name!(start_offset, i64),
+    name!(end_offset, i64),
+    name!(query_clause, String),
+)> {
     // select * from zdb.highlight_document('idxbeer', '{"subject":"free beer", "authoremail":"Christi l nicolay"}', '!!subject:beer or subject:fr?? and authoremail:(christi, nicolay)') order by field_name, position;
     let mut used_fields = HashSet::new();
     let (index, options) = find_zdb_index(&index).expect("unable to find ZomboDB index");
@@ -431,9 +431,11 @@ fn highlight_document_internal(
     )
     .expect("failed to parse query");
 
-    TableIterator::new(QueryHighligther::new(&index, document, &used_fields, query)
-        .highlight()
-        .into_iter())
+    TableIterator::new(
+        QueryHighligther::new(&index, document, &used_fields, query)
+            .highlight()
+            .into_iter(),
+    )
 }
 
 #[cfg(any(test, feature = "pg_test"))]

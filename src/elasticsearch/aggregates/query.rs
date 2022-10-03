@@ -1,6 +1,6 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgx::{prelude::*, *};
 
 #[pg_extern(immutable, parallel_safe)]
 fn query(index: PgRelation, query: ZDBQuery) -> SetOfIterator<'static, pg_sys::ItemPointerData> {
@@ -10,13 +10,15 @@ fn query(index: PgRelation, query: ZDBQuery) -> SetOfIterator<'static, pg_sys::I
         .execute()
         .unwrap_or_else(|e| panic!("{}", e));
 
-    SetOfIterator::new(result
-        .into_iter()
-        .map(|(_score, ctid, _fields, _highlights)| {
-            let mut tid = pg_sys::ItemPointerData::default();
-            u64_to_item_pointer(ctid, &mut tid);
-            tid
-        }))
+    SetOfIterator::new(
+        result
+            .into_iter()
+            .map(|(_score, ctid, _fields, _highlights)| {
+                let mut tid = pg_sys::ItemPointerData::default();
+                u64_to_item_pointer(ctid, &mut tid);
+                tid
+            }),
+    )
 }
 
 #[pg_extern(
@@ -28,6 +30,9 @@ fn query(index: PgRelation, query: ZDBQuery) -> SetOfIterator<'static, pg_sys::I
             IMMUTABLE STRICT ROWS 2500 LANGUAGE c AS 'MODULE_PATHNAME', 'query_raw_wrapper';
     "
 )]
-fn query_raw(index: PgRelation, query: ZDBQuery) -> SetOfIterator<'static, pg_sys::ItemPointerData> {
+fn query_raw(
+    index: PgRelation,
+    query: ZDBQuery,
+) -> SetOfIterator<'static, pg_sys::ItemPointerData> {
     self::query(index, query)
 }

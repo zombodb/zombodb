@@ -5,7 +5,7 @@ use crate::utils::{
 };
 use crate::zdbquery::ZDBQuery;
 use chrono::{TimeZone, Utc};
-use pgx::*;
+use pgx::{prelude::*, *};
 use serde::*;
 use serde_json::*;
 use std::collections::HashMap;
@@ -326,29 +326,31 @@ fn tally(
         None
     };
 
-    TableIterator::new(nulls
-        .into_iter()
-        .chain(terms.buckets.into_iter().map(|entry| {
-            match entry.key_as_string {
-                Some(key) => (Some(key), entry.doc_count),
-                None => {
-                    let mut key = json_to_string(entry.key);
+    TableIterator::new(
+        nulls
+            .into_iter()
+            .chain(terms.buckets.into_iter().map(|entry| {
+                match entry.key_as_string {
+                    Some(key) => (Some(key), entry.doc_count),
+                    None => {
+                        let mut key = json_to_string(entry.key);
 
-                    if is_raw_date_field && key.is_some() && !is_date_field {
-                        // convert raw date field values into a human-readable string
-                        let epoch =
-                            i64::from_str(&key.unwrap()).expect("date value not in epoch form");
-                        let utc = Utc.timestamp_millis(epoch);
-                        key = Some(utc.to_string());
+                        if is_raw_date_field && key.is_some() && !is_date_field {
+                            // convert raw date field values into a human-readable string
+                            let epoch =
+                                i64::from_str(&key.unwrap()).expect("date value not in epoch form");
+                            let utc = Utc.timestamp_millis(epoch);
+                            key = Some(utc.to_string());
+                        }
+
+                        (key, entry.doc_count)
                     }
-
-                    (key, entry.doc_count)
                 }
-            }
-        }))
-        .map(|(key, doc_count)| (key, doc_count as i64))
-        .collect::<Vec<_>>()
-        .into_iter())
+            }))
+            .map(|(key, doc_count)| (key, doc_count as i64))
+            .collect::<Vec<_>>()
+            .into_iter(),
+    )
 }
 
 // need to hand-write the DDL for this b/c naming this function "terms_array"

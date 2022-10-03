@@ -3,8 +3,7 @@ use crate::elasticsearch::Elasticsearch;
 use crate::zql::ast::{IndexLink, ProximityPart, QualifiedField};
 use crate::zql::ast::{ProximityTerm, Term};
 use levenshtein::*;
-use pgx::PgRelation;
-use pgx::*;
+use pgx::{prelude::*, PgRelation};
 use regex::Regex;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
@@ -559,7 +558,9 @@ fn highlight_term(
     field_name: &str,
     text: &str,
     token_to_highlight: String,
-) -> TableIterator<'static, (
+) -> TableIterator<
+    'static,
+    (
         name!(field_name, String),
         name!(term, String),
         name!(type, String),
@@ -596,7 +597,9 @@ fn highlight_phrase(
     field_name: &str,
     text: &str,
     tokens_to_highlight: &str,
-) -> TableIterator<'static, (
+) -> TableIterator<
+    'static,
+    (
         name!(field_name, String),
         name!(term, String),
         name!(type, String),
@@ -633,7 +636,9 @@ fn highlight_wildcard(
     field_name: &str,
     text: &str,
     token_to_highlight: &str,
-) -> TableIterator<'static, (
+) -> TableIterator<
+    'static,
+    (
         name!(field_name, String),
         name!(term, String),
         name!(type, String),
@@ -670,7 +675,9 @@ fn highlight_regex(
     field_name: &str,
     text: &str,
     token_to_highlight: &str,
-) -> TableIterator<'static, (
+) -> TableIterator<
+    'static,
+    (
         name!(field_name, String),
         name!(term, String),
         name!(type, String),
@@ -708,7 +715,9 @@ fn highlight_fuzzy(
     text: &str,
     token_to_highlight: &str,
     prefix: i32,
-) -> TableIterator<'static, (
+) -> TableIterator<
+    'static,
+    (
         name!(field_name, String),
         name!(term, String),
         name!(type, String),
@@ -749,14 +758,17 @@ fn highlight_proximity(
     field_name: &str,
     text: &str,
     prox_clause: Vec<Option<ProximityPart>>,
-) -> TableIterator<'static, (
+) -> TableIterator<
+    'static,
+    (
         name!(field_name, String),
         name!(term, String),
         name!(type, String),
         name!(position, i32),
         name!(start_offset, i64),
         name!(end_offset, i64),
-    )> {
+    ),
+> {
     let prox_clause = prox_clause
         .into_iter()
         .map(|e| e.unwrap())

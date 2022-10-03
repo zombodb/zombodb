@@ -1,5 +1,5 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
-use pgx::*;
+use pgx::{prelude::*, *};
 use serde::*;
 use serde_json::*;
 
@@ -120,7 +120,9 @@ fn analyze_text(
     index: PgRelation,
     analyzer: &str,
     text: &str,
-) -> TableIterator<'static, (
+) -> TableIterator<
+    'static,
+    (
         name!(type, String),
         name!(token, String),
         name!(position, i32),
@@ -138,7 +140,9 @@ pub(crate) fn analyze_with_field(
     index: PgRelation,
     field: &str,
     text: &str,
-) -> TableIterator<'static, (
+) -> TableIterator<
+    'static,
+    (
         name!(type, String),
         name!(token, String),
         name!(position, i32),
@@ -160,7 +164,9 @@ fn analyze_custom(
     normalizer: default!(Option<&str>, NULL),
     filter: default!(Option<Array<&str>>, NULL),
     char_filter: default!(Option<Array<&str>>, NULL),
-) -> TableIterator<'static, (
+) -> TableIterator<
+    'static,
+    (
         name!(type, String),
         name!(token, String),
         name!(position, i32),
@@ -182,7 +188,9 @@ fn analyze_custom(
 
 fn elasticsearch_request_return(
     request: ElasticsearchAnalyzerRequest,
-) -> TableIterator<'static, (
+) -> TableIterator<
+    'static,
+    (
         name!(type, String),
         name!(token, String),
         name!(position, i32),
@@ -190,20 +198,22 @@ fn elasticsearch_request_return(
         name!(end_offset, i64),
     ),
 > {
-    TableIterator::new(request
-        .execute()
-        .expect("failed to execute Analyze search")
-        .tokens
-        .into_iter()
-        .map(|entry| {
-            (
-                entry.type_,
-                entry.token,
-                entry.position,
-                entry.start_offset,
-                entry.end_offset,
-            )
-        }))
+    TableIterator::new(
+        request
+            .execute()
+            .expect("failed to execute Analyze search")
+            .tokens
+            .into_iter()
+            .map(|entry| {
+                (
+                    entry.type_,
+                    entry.token,
+                    entry.position,
+                    entry.start_offset,
+                    entry.end_offset,
+                )
+            }),
+    )
 }
 
 #[cfg(any(test, feature = "pg_test"))]

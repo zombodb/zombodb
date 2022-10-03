@@ -1,7 +1,7 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::utils::json_to_string;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgx::{prelude::*, *};
 use serde::*;
 use serde_json::*;
 
@@ -12,14 +12,13 @@ fn date_range(
     query: ZDBQuery,
     date_range_array: Json,
 ) -> TableIterator<(
-        name!(key, String),
-        name!(from, Option<Numeric>),
-        name!(from_as_string, Option<String>),
-        name!(to, Option<Numeric>),
-        name!(to_as_string, Option<String>),
-        name!(doc_count, i64),
-    ),
-> {
+    name!(key, String),
+    name!(from, Option<Numeric>),
+    name!(from_as_string, Option<String>),
+    name!(to, Option<Numeric>),
+    name!(to_as_string, Option<String>),
+    name!(doc_count, i64),
+)> {
     #[derive(Deserialize, Serialize)]
     struct DateRangesAggData {
         buckets: Vec<BucketEntry>,

@@ -1,7 +1,7 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::utils::json_to_string;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgx::{prelude::*, *};
 use serde::*;
 use serde_json::*;
 
@@ -12,12 +12,11 @@ fn range(
     query: ZDBQuery,
     range_array: Json,
 ) -> TableIterator<(
-        name!(key, String),
-        name!(from, Option<Numeric>),
-        name!(to, Option<Numeric>),
-        name!(doc_count, i64),
-    ),
-> {
+    name!(key, String),
+    name!(from, Option<Numeric>),
+    name!(to, Option<Numeric>),
+    name!(doc_count, i64),
+)> {
     #[derive(Deserialize, Serialize)]
     struct RangesAggData {
         buckets: Vec<BucketEntry>,

@@ -1,6 +1,6 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgx::{prelude::*, *};
 use serde::*;
 use serde_json::*;
 
@@ -9,7 +9,9 @@ fn matrix_stats(
     index: PgRelation,
     fields: Array<&str>,
     query: ZDBQuery,
-) -> TableIterator<'static, (
+) -> TableIterator<
+    'static,
+    (
         name!(term, String),
         name!(count, i64),
         name!(mean, Numeric),

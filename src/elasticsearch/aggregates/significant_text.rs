@@ -1,7 +1,7 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::utils::json_to_string;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgx::{prelude::*, *};
 use serde::*;
 use serde_json::*;
 
@@ -13,12 +13,11 @@ fn significant_text(
     size: default!(i32, 10),
     filter_duplicate_text: default!(Option<bool>, true),
 ) -> TableIterator<(
-        name!(term, Option<String>),
-        name!(doc_count, i64),
-        name!(score, f64),
-        name!(bg_count, i64),
-    ),
-> {
+    name!(term, Option<String>),
+    name!(doc_count, i64),
+    name!(score, f64),
+    name!(bg_count, i64),
+)> {
     #[derive(Deserialize, Serialize)]
     struct BucketEntry {
         doc_count: i64,
@@ -65,16 +64,18 @@ fn significant_text(
         .execute()
         .expect("failed to execute aggregate search");
 
-    TableIterator::new(result
-        .significant_keywords
-        .buckets
-        .into_iter()
-        .map(|entry| {
-            (
-                json_to_string(entry.key),
-                entry.doc_count,
-                entry.score,
-                entry.bg_count,
-            )
-        }))
+    TableIterator::new(
+        result
+            .significant_keywords
+            .buckets
+            .into_iter()
+            .map(|entry| {
+                (
+                    json_to_string(entry.key),
+                    entry.doc_count,
+                    entry.score,
+                    entry.bg_count,
+                )
+            }),
+    )
 }

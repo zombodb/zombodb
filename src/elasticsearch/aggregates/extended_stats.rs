@@ -1,6 +1,6 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgx::{prelude::*, *};
 use serde::*;
 use serde_json::*;
 
@@ -11,18 +11,17 @@ fn extended_stats(
     query: ZDBQuery,
     sigma: default!(i64, 0),
 ) -> TableIterator<(
-        name!(count, i64),
-        name!(min, Numeric),
-        name!(max, Numeric),
-        name!(avg, Numeric),
-        name!(sum, Numeric),
-        name!(sum_of_squares, Numeric),
-        name!(variance, Numeric),
-        name!(std_deviation, Numeric),
-        name!(upper, Numeric),
-        name!(lower, Numeric),
-    ),
-> {
+    name!(count, i64),
+    name!(min, Numeric),
+    name!(max, Numeric),
+    name!(avg, Numeric),
+    name!(sum, Numeric),
+    name!(sum_of_squares, Numeric),
+    name!(variance, Numeric),
+    name!(std_deviation, Numeric),
+    name!(upper, Numeric),
+    name!(lower, Numeric),
+)> {
     #[derive(Deserialize, Serialize)]
     struct ExtendedStatsAggData {
         count: i64,
@@ -62,17 +61,19 @@ fn extended_stats(
         .execute()
         .expect("failed to execute aggregate search");
 
-    TableIterator::new(vec![(
-        result.count,
-        result.min,
-        result.max,
-        result.avg,
-        result.sum,
-        result.sum_of_squares,
-        result.variance,
-        result.std_deviation,
-        result.std_deviation_bounds.upper,
-        result.std_deviation_bounds.lower,
-    )]
-    .into_iter())
+    TableIterator::new(
+        vec![(
+            result.count,
+            result.min,
+            result.max,
+            result.avg,
+            result.sum,
+            result.sum_of_squares,
+            result.variance,
+            result.std_deviation,
+            result.std_deviation_bounds.upper,
+            result.std_deviation_bounds.lower,
+        )]
+        .into_iter(),
+    )
 }
