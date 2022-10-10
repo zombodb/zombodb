@@ -5,13 +5,13 @@ use pgx::*;
 use pgx::{JsonB, PgRelation};
 use std::collections::{HashMap, HashSet};
 
-struct QueryHighligther<'a> {
+struct QueryHighlighter<'a> {
     query: Expr<'a>,
     highlighters: HashMap<String, Vec<DocumentHighlighter<'a>>>,
     index: &'a PgRelation,
 }
 
-impl<'a> QueryHighligther<'a> {
+impl<'a> QueryHighlighter<'a> {
     pub fn new(
         index: &'a PgRelation,
         mut document: serde_json::Value,
@@ -41,7 +41,7 @@ impl<'a> QueryHighligther<'a> {
             }
         });
 
-        QueryHighligther {
+        QueryHighlighter {
             highlighters,
             query,
             index,
@@ -252,7 +252,7 @@ impl<'a> QueryHighligther<'a> {
             Term::String(s, _) => {
                 if let Some(entries) = highlighter.highlight_token_scan(s, eval) {
                     cnt = entries.len();
-                    QueryHighligther::process_entries(expr, &field, entries, highlights);
+                    QueryHighlighter::process_entries(expr, &field, entries, highlights);
                 }
             }
             _ => panic!("cannot highlight using scans for {}", expr),
@@ -277,7 +277,7 @@ impl<'a> QueryHighligther<'a> {
             Term::String(s, _) => {
                 if let Some(entries) = highlighter.highlight_token(s) {
                     cnt = entries.len();
-                    QueryHighligther::process_entries(expr, &field, entries, highlights);
+                    QueryHighlighter::process_entries(expr, &field, entries, highlights);
                 }
             }
             Term::Phrase(s, _) | Term::PhraseWithWildcard(s, _) | Term::PhrasePrefix(s, _) => {
@@ -286,29 +286,29 @@ impl<'a> QueryHighligther<'a> {
                 {
                     // try to highlight the phrase
                     cnt = entries.len();
-                    QueryHighligther::process_entries(expr, &field, entries, highlights);
+                    QueryHighlighter::process_entries(expr, &field, entries, highlights);
                 } else if let Some(entries) = highlighter.highlight_token(s) {
                     // that didn't work, so try to highlight the phrase as if it were a single token
                     cnt = entries.len();
-                    QueryHighligther::process_entries(expr, &field, entries, highlights);
+                    QueryHighlighter::process_entries(expr, &field, entries, highlights);
                 }
             }
             Term::Wildcard(s, _) | Term::Prefix(s, _) => {
                 if let Some(entries) = highlighter.highlight_wildcard(s) {
                     cnt = entries.len();
-                    QueryHighligther::process_entries(expr, &field, entries, highlights);
+                    QueryHighlighter::process_entries(expr, &field, entries, highlights);
                 }
             }
             Term::Regex(r, _) => {
                 if let Some(entries) = highlighter.highlight_regex(r) {
                     cnt = entries.len();
-                    QueryHighligther::process_entries(expr, &field, entries, highlights);
+                    QueryHighlighter::process_entries(expr, &field, entries, highlights);
                 }
             }
             Term::Fuzzy(s, d, _) => {
                 if let Some(entries) = highlighter.highlight_fuzzy(s, *d) {
                     cnt = entries.len();
-                    QueryHighligther::process_entries(expr, &field, entries, highlights);
+                    QueryHighlighter::process_entries(expr, &field, entries, highlights);
                 }
             }
             Term::Range(_, _, _) => {
@@ -318,7 +318,7 @@ impl<'a> QueryHighligther<'a> {
             Term::ProximityChain(v) => {
                 if let Some(entries) = highlighter.highlight_proximity(v) {
                     cnt = entries.len();
-                    QueryHighligther::process_entries(expr, &field, entries, highlights);
+                    QueryHighlighter::process_entries(expr, &field, entries, highlights);
                 }
             }
 
@@ -326,7 +326,7 @@ impl<'a> QueryHighligther<'a> {
                 for t in v {
                     if let Some(entries) = highlighter.highlight_term(t) {
                         cnt += entries.len();
-                        QueryHighligther::process_entries(expr, &field, entries, highlights);
+                        QueryHighlighter::process_entries(expr, &field, entries, highlights);
                     }
                 }
             }
@@ -342,7 +342,7 @@ impl<'a> QueryHighligther<'a> {
                 for t in term_vec {
                     if let Some(entries) = highlighter.highlight_term(&t) {
                         cnt = entries.len() + cnt;
-                        QueryHighligther::process_entries(expr, &field, entries, highlights);
+                        QueryHighlighter::process_entries(expr, &field, entries, highlights);
                     }
                 }
             }
@@ -437,7 +437,7 @@ fn highlight_document_internal(
     )
     .expect("failed to parse query");
 
-    QueryHighligther::new(&index, document, &used_fields, query)
+    QueryHighlighter::new(&index, document, &used_fields, query)
         .highlight()
         .into_iter()
 }
@@ -445,7 +445,7 @@ fn highlight_document_internal(
 #[cfg(any(test, feature = "pg_test"))]
 #[pgx_macros::pg_schema]
 mod tests {
-    use crate::highlighting::query_highlighter::QueryHighligther;
+    use crate::highlighting::query_highlighter::QueryHighlighter;
     use crate::zql::ast::Expr;
     use pgx::*;
     use serde_json::*;
@@ -780,7 +780,7 @@ mod tests {
            name!(end_offset, i64),
            name!(query_clause, String),
         */
-        QueryHighligther::new(&relation, document, &used_fields, query)
+        QueryHighlighter::new(&relation, document, &used_fields, query)
             .highlight()
             .into_iter()
             .map(
