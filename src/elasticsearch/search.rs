@@ -65,7 +65,7 @@ pub struct Shards {
     failures: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct ElasticsearchSearchResponse {
     #[serde(skip)]
     elasticsearch: Option<Elasticsearch>,
@@ -315,7 +315,7 @@ impl ElasticsearchSearchRequest {
         should_sort_hits: bool,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
         let mut url = String::new();
-        url.push_str(elasticsearch.options.url());
+        url.push_str(&elasticsearch.options.url());
         url.push_str("_search/scroll");
         url.push_str("?filter_path=");
         if track_scores {

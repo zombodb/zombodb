@@ -72,7 +72,7 @@ pub mod pg_catalog {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Elasticsearch {
     options: ZDBIndexOptions,
 }
@@ -390,7 +390,7 @@ impl Elasticsearch {
         ElasticsearchGetSettingsRequest::new(self)
     }
 
-    pub fn url(&self) -> &str {
+    pub fn url(&self) -> String {
         self.options.url()
     }
 
@@ -410,7 +410,7 @@ impl Elasticsearch {
         self.options.alias()
     }
 
-    pub fn type_name(&self) -> &str {
+    pub fn type_name(&self) -> String {
         self.options.type_name()
     }
 

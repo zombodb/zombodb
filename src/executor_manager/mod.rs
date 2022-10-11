@@ -28,6 +28,7 @@ pub struct QueryState {
         (pg_sys::Oid, (pg_sys::BlockNumber, pg_sys::OffsetNumber)),
         HashMap<String, Vec<String>>,
     >,
+    zdb_index_lookup: HashMap<pg_sys::Oid, pg_sys::Oid>,
 }
 
 impl Default for QueryState {
@@ -35,6 +36,7 @@ impl Default for QueryState {
         QueryState {
             scores: HashMap::new(),
             highlights: HashMap::new(),
+            zdb_index_lookup: Default::default(),
         }
     }
 }
@@ -110,7 +112,7 @@ impl QueryState {
     }
 
     pub fn lookup_index_for_first_field(
-        &self,
+        &mut self,
         query_desc: *mut pg_sys::QueryDesc,
         fcinfo: pg_sys::FunctionCallInfo,
     ) -> Option<pg_sys::Oid> {
@@ -139,11 +141,18 @@ impl QueryState {
                 let rentry = pg_sys::rt_fetch(var.varnosyn, rtable);
                 let heap_oid = rentry.as_ref().unwrap().relid;
 
+                if let Some(index_oid) = self.zdb_index_lookup.get(&heap_oid) {
+                    return Some(*index_oid);
+                }
+
                 match find_zdb_index(&PgRelation::with_lock(
                     heap_oid,
                     pg_sys::AccessShareLock as pg_sys::LOCKMODE,
                 )) {
-                    Ok((index, _)) => Some(index.oid()),
+                    Ok((index, _)) => {
+                        self.zdb_index_lookup.insert(heap_oid, index.oid());
+                        Some(index.oid())
+                    }
                     Err(_) => None,
                 }
             } else if is_a(first_arg, pg_sys::NodeTag_T_FuncExpr) {
@@ -358,14 +367,16 @@ impl<'a> ExecutorManager<'a> {
 
         let tupdesc_map = self.tuple_descriptors.as_mut().unwrap();
         let tupdesc = tupdesc_map.entry(relid).or_insert_with(|| {
-            let indexrel = unsafe { PgRelation::open(relid) };
+            let indexrel =
+                PgRelation::with_lock(relid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
             lookup_zdb_index_tupdesc(&indexrel)
         });
 
         let bulk_map = self.bulk_requests.as_mut().unwrap();
         let xids = &self.xids;
         bulk_map.entry(relid).or_insert_with(move || {
-            let indexrel = unsafe { PgRelation::open(relid) };
+            let indexrel =
+                PgRelation::with_lock(relid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
             let elasticsearch = Elasticsearch::new(&indexrel);
             let attributes = categorize_tupdesc(tupdesc, &indexrel.heap_relation().unwrap(), None);
 

@@ -24,6 +24,28 @@ LIMIT 1;
 
 $$;
 
+CREATE OR REPLACE FUNCTION zdb.get_highlight_analysis_info(index_name regclass, field text)
+    RETURNS TABLE
+            (
+                type             text,
+                normalizer       text,
+                index_tokenizer  text,
+                search_tokenizer text
+            )
+    LANGUAGE sql
+AS
+$$
+WITH mapping AS (SELECT jsonb_extract_path(
+                                zdb.index_mapping(index_name),
+                                VARIADIC ARRAY [zdb.index_name(index_name), 'mappings', 'properties'] ||
+                                         string_to_array(replace(field, '.', '.properties.'), '.')) AS mapping)
+SELECT mapping ->> 'type'                                        AS type,
+       mapping ->> 'normalizer'                                  AS normalizer,
+       mapping ->> 'analyzer'        AS index_analyzer,
+       mapping ->> 'search_analyzer' AS search_analyzer
+FROM mapping;
+$$;
+
 CREATE OR REPLACE FUNCTION zdb.get_null_copy_to_fields(index regclass) RETURNS TABLE(field_name text, mapping jsonb)
     IMMUTABLE STRICT PARALLEL SAFE
     LANGUAGE sql AS
