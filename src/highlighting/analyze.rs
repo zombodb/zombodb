@@ -20,7 +20,7 @@ fn tokenize<'a>(input: &'a str) -> Box<dyn Iterator<Item = AnalyzedToken<'a>> + 
                 let token = token.cow_to_lowercase();
                 let len = token.len();
                 AnalyzedToken {
-                    token: token.into(),
+                    token,
                     position,
                     start,
                     end: start + len,
