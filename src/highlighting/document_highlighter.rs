@@ -295,6 +295,7 @@ impl<'a> DocumentHighlighter<'a> {
                     };
 
                 for (token, entry) in results {
+                    pgx::check_for_interrupts!();
                     self.lookup.entry(token).or_default().push(entry);
                 }
                 self.data_type = Some(DataType::String);
@@ -623,6 +624,7 @@ impl<'a> DocumentHighlighter<'a> {
     ) -> Option<HighlightMatches<'a>> {
         let mut matches = Vec::new();
         for highlights in words {
+            pgx::check_for_interrupts!();
             if order && distance == 0 && starting_point.len() == 1 {
                 let start = starting_point.get(0).unwrap() + distance + 1;
                 if let Ok(idx) = highlights.binary_search_by(|(_, e)| e.position.cmp(&start)) {
@@ -632,12 +634,14 @@ impl<'a> DocumentHighlighter<'a> {
                 for e in highlights.iter().filter(|e| e.1.array_index == array_index) {
                     if order {
                         for point in &starting_point {
+                            pgx::check_for_interrupts!();
                             if *point < e.1.position && e.1.position - point <= distance + 1 {
                                 matches.push(*e);
                             }
                         }
                     } else {
                         for point in &starting_point {
+                            pgx::check_for_interrupts!();
                             if (*point as i32 - e.1.position as i32).abs() <= distance as i32 + 1 {
                                 matches.push(*e);
                             }
