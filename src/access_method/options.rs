@@ -141,7 +141,7 @@ impl ZDBIndexOptionsInternal {
         }
     }
 
-    fn url(&self) -> String {
+    fn url(&self, my_oid: pg_sys::Oid) -> String {
         let url = self.get_str(self.url_offset, || DEFAULT_URL.to_owned());
 
         if url == DEFAULT_URL {
@@ -149,6 +149,14 @@ impl ZDBIndexOptionsInternal {
             // in either case above, lets use the setting from postgresql.conf
             if ZDB_DEFAULT_ELASTICSEARCH_URL.get().is_some() {
                 ZDB_DEFAULT_ELASTICSEARCH_URL.get().unwrap()
+            } else if self.shadow_index {
+                // go find the url for this shadow index
+                // it's the url of the non-shadow zdb index
+                let (index, _) = find_zdb_index(unsafe { &PgRelation::open(my_oid) }).expect(
+                    &format!("failed to lookup non-shadow index for oid={}", my_oid),
+                );
+                let options = ZDBIndexOptions::from_relation(&index);
+                options.url()
             } else {
                 // the user hasn't provided one
                 panic!("Must set zdb.default_elasticsearch_url");
@@ -356,7 +364,7 @@ impl ZDBIndexOptions {
     }
 
     pub fn url(&self) -> String {
-        self.internal().url()
+        self.internal().url(self.oid)
     }
 
     pub fn type_name(&self) -> String {
