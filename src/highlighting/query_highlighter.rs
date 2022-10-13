@@ -97,10 +97,10 @@ impl QueryHighlighter {
                 !QueryHighlighter::walk_expression(e.as_ref(), highlights, highlighters)
             }
 
-            Expr::WithList(v) | Expr::AndList(v) => {
+            Expr::AndList(v) => {
                 let mut did_highlight = false;
-
                 let mut tmp_highlights = HashMap::new();
+
                 for e in v {
                     did_highlight =
                         QueryHighlighter::walk_expression(e, &mut tmp_highlights, highlighters);
@@ -111,6 +111,62 @@ impl QueryHighlighter {
 
                 if did_highlight {
                     highlights.extend(tmp_highlights);
+                }
+
+                did_highlight
+            }
+
+            Expr::WithList(v) => {
+                let mut did_highlight = false;
+                let mut tmp_highlights = HashMap::new();
+                let mut array_indexes = HashSet::new();
+
+                for e in v {
+                    let mut matches = HashMap::new();
+                    did_highlight =
+                        QueryHighlighter::walk_expression(e, &mut matches, highlighters);
+                    if !did_highlight {
+                        break;
+                    }
+
+                    if array_indexes.is_empty() {
+                        // keep all the array_index values from all matched TokenEntries
+                        array_indexes.extend(
+                            matches
+                                .values()
+                                .map(|matches| matches.iter())
+                                .flatten()
+                                .map(|e| e.1.array_index),
+                        );
+                    } else {
+                        // keep only the existing array_indexes that are also found in the matched TokenEntries
+                        array_indexes.retain(|i| {
+                            for m in matches.values() {
+                                for (_, e) in m {
+                                    if e.array_index == *i {
+                                        return true;
+                                    }
+                                }
+                            }
+                            return false;
+                        });
+                    }
+
+                    // just remember all the highlights
+                    tmp_highlights.extend(matches);
+                }
+
+                if did_highlight {
+                    // filter the tmp_highlights by those that belong to our refined set of array_indexes
+                    // and remember that final set as our known set of highlights
+                    highlights.extend(tmp_highlights.into_iter().filter_map(|mut e| {
+                        e.1.retain(|e| array_indexes.contains(&e.1.array_index));
+                        if e.1.is_empty() {
+                            None
+                        } else {
+                            Some(e)
+                        }
+                    }));
                 }
 
                 did_highlight

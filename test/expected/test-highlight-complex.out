@@ -44,3 +44,13 @@ order by field_name, array_index, start_offset;
  comment_text.id.high |           0 | 42    | <UNSIGNED_INT> |        1 |            0 |          0 | comment_text.id.high="42"
 (4 rows)
 
+select *
+from zdb.highlight_document('so_comments',
+                            '{"comment_text": { "first": ["eric ridge", "david"], "last": "ridge", "id":{"low":0, "high":42}}}'::jsonb,
+                            'comment_text.first = "eric r*" with comment_text.first:"david", comment_text.id.high = 42')
+order by field_name, array_index, start_offset;
+      field_name      | array_index | term |      type      | position | start_offset | end_offset |       query_clause        
+----------------------+-------------+------+----------------+----------+--------------+------------+---------------------------
+ comment_text.id.high |           0 | 42   | <UNSIGNED_INT> |        1 |            0 |          0 | comment_text.id.high="42"
+(1 row)
+
