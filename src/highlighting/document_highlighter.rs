@@ -620,31 +620,25 @@ impl<'a> DocumentHighlighter<'a> {
         distance: u32,
         order: bool,
         starting_point: Vec<u32>,
-        array_index: u32,
+        _array_index: u32, // NB:  Pretty sure we don't need to care about the array_index for proximity clauses
     ) -> Option<HighlightMatches<'a>> {
         let mut matches = Vec::new();
         for highlights in words {
-            pgx::check_for_interrupts!();
-            if order && distance == 0 && starting_point.len() == 1 {
-                let start = starting_point.get(0).unwrap() + distance + 1;
-                if let Ok(idx) = highlights.binary_search_by(|(_, e)| e.position.cmp(&start)) {
-                    matches.push(*highlights.get(idx).unwrap());
-                }
-            } else {
-                for e in highlights.iter().filter(|e| e.1.array_index == array_index) {
-                    if order {
-                        for point in &starting_point {
-                            pgx::check_for_interrupts!();
-                            if *point < e.1.position && e.1.position - point <= distance + 1 {
-                                matches.push(*e);
-                            }
-                        }
-                    } else {
-                        for point in &starting_point {
-                            pgx::check_for_interrupts!();
-                            if (*point as i32 - e.1.position as i32).abs() <= distance as i32 + 1 {
-                                matches.push(*e);
-                            }
+            for start in &starting_point {
+                let start = *start;
+                let range = if order {
+                    start + 1..=start + 1 + distance
+                } else {
+                    (start as i64 - 1 - distance as i64).max(1) as u32..=start + 1 + distance
+                };
+
+                for point in range {
+                    if point != start {
+                        if let Ok(idx) =
+                            highlights.binary_search_by(|(_, entry)| entry.position.cmp(&point))
+                        {
+                            let e = highlights.get(idx).unwrap();
+                            matches.push(*e);
                         }
                     }
                 }
