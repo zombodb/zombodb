@@ -1,8 +1,26 @@
+use crate::elasticsearch::Elasticsearch;
 use crate::json::builder::JsonBuilder;
-use crate::utils::type_is_domain;
+use crate::utils::{find_zdb_index, lookup_zdb_index_tupdesc, type_is_domain};
 use pgx::*;
 use serde_json::*;
 use std::collections::HashMap;
+
+#[pg_extern]
+fn reapply_mapping(index_relation: PgRelation) -> bool {
+    let (index_relation, _) = find_zdb_index(&index_relation).expect("couldn't find ZomboDB index");
+    let tupdesc = lookup_zdb_index_tupdesc(&index_relation);
+    let heap_relation = index_relation
+        .heap_relation()
+        .expect("no heap relation for index!");
+    let mut mapping = generate_default_mapping(&heap_relation);
+    let _ = categorize_tupdesc(&tupdesc, &heap_relation, Some(&mut mapping));
+
+    let es = Elasticsearch::new(&index_relation);
+    es.put_mapping(serde_json::to_value(&mapping).expect("failed to serialize mapping to json"))
+        .execute()
+        .expect("failed to update index mapping");
+    true
+}
 
 type ConversionFunc<'a> = dyn Fn(&mut JsonBuilder<'a>, &'a str, pg_sys::Datum, pg_sys::Oid);
 pub struct CategorizedAttribute<'a> {
