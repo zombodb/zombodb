@@ -22,6 +22,7 @@ pg_test = [ ]
 [dependencies]
 byteorder = "1.4.3"
 chrono = "0.4.22"
+cow-utils = "0.1.2"
 crossbeam-channel = "0.5.6"
 dashmap = "5.4.0"
 humantime = "2.1.0"
@@ -37,7 +38,7 @@ rayon = "1.5.3"
 regex = "1.6.0"
 rustc-hash = "1.1.0"
 serde = { version = "1.0.145", features = [ "derive" ] }
-serde_json = { version = "1.0.85", features = [ "preserve_order" ] }
+serde_json = { version = "1.0.86", features = [ "preserve_order" ] }
 serde_cbor = "0.11.2"
 sqlformat = "0.2.0"
 unicode-segmentation = "1.10.0"
@@ -50,7 +51,7 @@ built = { version = "0.5.1", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
 pgx-tests = "0.4.5"
-libc = "0.2.134"
+libc = "0.2.135"
 
 [profile.dev]
 panic = "unwind"
@@ -62,4 +63,8 @@ panic = "unwind"
 opt-level = 3
 lto = "fat"
 codegen-units = 1
+debug = 0
 
+[profile.dev.build-override]
+opt-level = 3
+debug = 0

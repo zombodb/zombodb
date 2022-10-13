@@ -146,7 +146,7 @@ fn restrict(
             if heaprel_id == pg_sys::InvalidOid {
                 heap_relation = None;
             } else {
-                heap_relation = Some(PgRelation::open(heaprel_id));
+                heap_relation = Some(PgRelation::with_lock(heaprel_id, pg_sys::AccessShareLock as pg_sys::LOCKMODE));
             }
 
             // free the ldata struct
