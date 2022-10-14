@@ -2,7 +2,7 @@ use crate::elasticsearch::Elasticsearch;
 use crate::utils::json_to_string;
 use crate::zdbquery::mvcc::apply_visibility_clause;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgx::{prelude::*, *};
 use serde::*;
 use serde_json::*;
 use std::collections::HashMap;
@@ -12,7 +12,7 @@ fn adjacency_matrix(
     index: PgRelation,
     labels: Array<&str>,
     filters: Array<ZDBQuery>,
-) -> impl std::iter::Iterator<Item = (name!(term, Option<String>), name!(doc_count, i64))> {
+) -> TableIterator<'static, (name!(term, Option<String>), name!(doc_count, i64))> {
     let elasticsearch = Elasticsearch::new(&index);
 
     #[derive(Deserialize, Serialize)]
@@ -49,10 +49,12 @@ fn adjacency_matrix(
         .execute()
         .expect("failed to execute aggregate search");
 
-    result
-        .buckets
-        .into_iter()
-        .map(|entry| (json_to_string(entry.key), entry.doc_count))
+    TableIterator::new(
+        result
+            .buckets
+            .into_iter()
+            .map(|entry| (json_to_string(entry.key), entry.doc_count)),
+    )
 }
 
 extension_sql!(

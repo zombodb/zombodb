@@ -13,7 +13,7 @@ fn range_agg(
     aggregate_name: &str,
     field: &str,
     ranges: Vec<Json>,
-    children: Option<default!(Vec<JsonB>, NULL)>,
+    children: default!(Option<Vec<JsonB>>, NULL),
 ) -> JsonB {
     JsonB(json! {
         {

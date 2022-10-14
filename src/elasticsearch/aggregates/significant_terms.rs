@@ -1,7 +1,7 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::utils::json_to_string;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgx::{prelude::*, *};
 use serde::*;
 use serde_json::*;
 
@@ -10,11 +10,12 @@ fn significant_terms(
     index: PgRelation,
     field: &str,
     query: ZDBQuery,
-    include: Option<default!(&str, "'.*'")>,
-    size_limit: Option<default!(i32, 2147483647)>,
-    min_doc_count: Option<default!(i32, 3)>,
-) -> impl std::iter::Iterator<
-    Item = (
+    include: default!(Option<&str>, "'.*'"),
+    size_limit: default!(Option<i32>, 2147483647),
+    min_doc_count: default!(Option<i32>, 3),
+) -> TableIterator<
+    'static,
+    (
         name!(term, Option<String>),
         name!(doc_count, i64),
         name!(score, f32),
@@ -57,12 +58,12 @@ fn significant_terms(
         .execute()
         .expect("failed to execute aggregate search");
 
-    result.buckets.into_iter().map(|entry| {
+    TableIterator::new(result.buckets.into_iter().map(|entry| {
         (
             json_to_string(entry.key),
             entry.doc_count,
             entry.score,
             entry.bg_count,
         )
-    })
+    }))
 }

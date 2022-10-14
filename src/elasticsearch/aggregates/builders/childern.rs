@@ -11,7 +11,7 @@ use serde_json::*;
 fn children_agg(
     aggregate_name: &str,
     join_type: &str,
-    children: Option<default!(Vec<JsonB>, NULL)>,
+    children: default!(Option<Vec<JsonB>>, NULL),
 ) -> JsonB {
     JsonB(json! {
         {

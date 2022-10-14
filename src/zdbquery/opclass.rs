@@ -24,8 +24,7 @@ fn anyelement_cmpfunc(
     let tid = if element.oid() == pg_sys::TIDOID {
         // use the ItemPointerData passed into us as the first argument
         Some(item_pointer_to_u64(
-            unsafe { pg_sys::ItemPointerData::from_datum(element.datum(), false, element.oid()) }
-                .unwrap(),
+            unsafe { pg_sys::ItemPointerData::from_datum(element.datum(), false) }.unwrap(),
         ))
     } else {
         panic!(
@@ -146,7 +145,10 @@ fn restrict(
             if heaprel_id == pg_sys::InvalidOid {
                 heap_relation = None;
             } else {
-                heap_relation = Some(PgRelation::with_lock(heaprel_id, pg_sys::AccessShareLock as pg_sys::LOCKMODE));
+                heap_relation = Some(PgRelation::with_lock(
+                    heaprel_id,
+                    pg_sys::AccessShareLock as pg_sys::LOCKMODE,
+                ));
             }
 
             // free the ldata struct
@@ -164,12 +166,9 @@ fn restrict(
                 if pg_sys::type_is_array(rconst.consttype) {
                     count_estimate = ZDB_DEFAULT_ROW_ESTIMATE.get() as u64;
                 } else {
-                    let zdbquery: ZDBQuery = ZDBQuery::from_datum(
-                        rconst.constvalue,
-                        rconst.constisnull,
-                        rconst.consttype,
-                    )
-                    .expect("rhs of ==> is NULL");
+                    let zdbquery: ZDBQuery =
+                        ZDBQuery::from_datum(rconst.constvalue, rconst.constisnull)
+                            .expect("rhs of ==> is NULL");
 
                     let estimate = zdbquery
                         .row_estimate()

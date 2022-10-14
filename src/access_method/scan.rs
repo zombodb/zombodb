@@ -5,7 +5,6 @@ use crate::zdbquery::ZDBQuery;
 use pgx::*;
 
 struct ZDBScanState {
-    zdbregtype: pg_sys::Oid,
     index_oid: pg_sys::Oid,
     iterator: *mut SearchResponseIntoIter,
 }
@@ -24,13 +23,6 @@ pub extern "C" fn ambeginscan(
         ))
     };
     let state = ZDBScanState {
-        zdbregtype: unsafe {
-            direct_function_call::<pg_sys::Oid>(
-                pg_sys::to_regtype,
-                vec!["pg_catalog.zdbquery".into_datum()],
-            )
-            .expect("failed to lookup type oid for pg_catalog.zdbquery")
-        },
         index_oid: unsafe { (*index_relation).rd_id },
         iterator: std::ptr::null_mut(),
     };
@@ -59,13 +51,12 @@ pub extern "C" fn amrescan(
         unsafe { (scan.opaque as *mut ZDBScanState).as_mut() }.expect("no scandesc state");
     let nkeys = nkeys as usize;
     let keys = unsafe { std::slice::from_raw_parts(keys as *const pg_sys::ScanKeyData, nkeys) };
-    let mut query =
-        unsafe { ZDBQuery::from_datum(keys[0].sk_argument, false, state.zdbregtype).unwrap() };
+    let mut query = unsafe { ZDBQuery::from_datum(keys[0].sk_argument, false).unwrap() };
 
     // AND multiple keys together as a "bool": {"must":[....]} query
     for key in keys[1..nkeys].iter() {
         query = crate::query_dsl::bool::dsl::binary_and(query, unsafe {
-            ZDBQuery::from_datum(key.sk_argument, false, state.zdbregtype).unwrap()
+            ZDBQuery::from_datum(key.sk_argument, false).unwrap()
         });
     }
 

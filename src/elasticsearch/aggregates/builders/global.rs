@@ -8,7 +8,7 @@ use pgx::*;
 use serde_json::*;
 
 #[pg_extern(immutable, parallel_safe)]
-fn global_agg(aggregate_name: &str, children: Option<default!(Vec<JsonB>, NULL)>) -> JsonB {
+fn global_agg(aggregate_name: &str, children: default!(Option<Vec<JsonB>>, NULL)) -> JsonB {
     JsonB(json! {
         {
             aggregate_name: {
