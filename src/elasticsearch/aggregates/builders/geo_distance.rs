@@ -24,8 +24,8 @@ fn geo_distance_agg(
     field: &str,
     origin: &str,
     range: Vec<Json>,
-    unit: Option<default!(&str, NULL)>,
-    keyed: Option<default!(bool, NULL)>,
+    unit: default!(Option<&str>, NULL),
+    keyed: default!(Option<bool>, NULL),
 ) -> JsonB {
     let geo_distance = GeoDistance {
         field,

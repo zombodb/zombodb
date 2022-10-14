@@ -36,11 +36,11 @@ pub mod dsl {
     #[pg_extern(immutable, parallel_safe, name = "range")]
     pub fn range_str(
         field: &str,
-        lt: Option<default!(&str, NULL)>,
-        gt: Option<default!(&str, NULL)>,
-        lte: Option<default!(&str, NULL)>,
-        gte: Option<default!(&str, NULL)>,
-        boost: Option<default!(f32, NULL)>,
+        lt: default!(Option<&str>, NULL),
+        gt: default!(Option<&str>, NULL),
+        lte: default!(Option<&str>, NULL),
+        gte: default!(Option<&str>, NULL),
+        boost: default!(Option<f32>, NULL),
     ) -> ZDBQuery {
         let range_str = RangeStr {
             lt,
@@ -61,11 +61,11 @@ pub mod dsl {
     #[pg_extern(immutable, parallel_safe, name = "range")]
     pub fn range_numeric(
         field: &str,
-        lt: Option<default!(i64, NULL)>,
-        gt: Option<default!(i64, NULL)>,
-        lte: Option<default!(i64, NULL)>,
-        gte: Option<default!(i64, NULL)>,
-        boost: Option<default!(f32, NULL)>,
+        lt: default!(Option<i64>, NULL),
+        gt: default!(Option<i64>, NULL),
+        lte: default!(Option<i64>, NULL),
+        gte: default!(Option<i64>, NULL),
+        boost: default!(Option<f32>, NULL),
     ) -> ZDBQuery {
         let range_numbers = RangeNumber {
             lt,

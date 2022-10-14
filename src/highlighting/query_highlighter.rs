@@ -1,7 +1,7 @@
 use crate::highlighting::document_highlighter::*;
 use crate::utils::find_zdb_index;
 use crate::zql::ast::{Expr, IndexLink, QualifiedField, Term};
-use pgx::*;
+use pgx::{prelude::*, *};
 use pgx::{JsonB, PgRelation};
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
@@ -444,57 +444,54 @@ impl QueryHighlighter {
 }
 
 #[pg_extern(immutable, parallel_safe, name = "highlight_document")]
-fn highlight_document_jsonb<'a>(
+fn highlight_document_jsonb(
     index: PgRelation,
     document: JsonB,
-    query_string: &'a str,
+    query_string: &str,
     dedup_results: default!(bool, true),
-) -> impl Iterator<
-    Item = (
-        name!(field_name, String),
-        name!(array_index, i32),
-        name!(term, String),
-        name!(type, String),
-        name!(position, i32),
-        name!(start_offset, i64),
-        name!(end_offset, i64),
-        name!(query_clause, String),
-    ),
-> + 'a {
+) -> TableIterator<(
+    name!(field_name, String),
+    name!(array_index, i32),
+    name!(term, String),
+    name!(type, String),
+    name!(position, i32),
+    name!(start_offset, i64),
+    name!(end_offset, i64),
+    name!(query_clause, String),
+)> {
     let (expr, used_fields) = make_expr(&index, query_string);
     highlight_document_internal(index, &document.0, &expr, &used_fields, dedup_results)
 }
 
 #[pg_extern(immutable, parallel_safe, name = "highlight_document")]
-fn highlight_document_json<'a>(
+fn highlight_document_json(
     index: PgRelation,
     document: Json,
-    query_string: &'a str,
+    query_string: &str,
     dedup_results: default!(bool, true),
-) -> impl Iterator<
-    Item = (
-        name!(field_name, String),
-        name!(array_index, i32),
-        name!(term, String),
-        name!(type, String),
-        name!(position, i32),
-        name!(start_offset, i64),
-        name!(end_offset, i64),
-        name!(query_clause, String),
-    ),
-> + 'a {
+) -> TableIterator<(
+    name!(field_name, String),
+    name!(array_index, i32),
+    name!(term, String),
+    name!(type, String),
+    name!(position, i32),
+    name!(start_offset, i64),
+    name!(end_offset, i64),
+    name!(query_clause, String),
+)> {
     let (expr, used_fields) = make_expr(&index, query_string);
     highlight_document_internal(index, &document.0, &expr, &used_fields, dedup_results)
 }
 
 fn highlight_document_internal<'a>(
     index: PgRelation,
-    document: &'a serde_json::Value,
-    query: &Expr<'a>,
-    used_fields: &HashSet<&'a str>,
+    document: &serde_json::Value,
+    query: &Expr,
+    used_fields: &HashSet<&str>,
     dedup_results: bool,
-) -> impl Iterator<
-    Item = (
+) -> TableIterator<
+    'a,
+    (
         name!(field_name, String),
         name!(array_index, i32),
         name!(term, String),
@@ -536,7 +533,7 @@ fn highlight_document_internal<'a>(
     } else {
         Box::new(iter.collect::<Vec<_>>().into_iter())
     };
-    iter
+    TableIterator::new(iter)
 }
 
 fn make_expr<'a>(index: &PgRelation, query_string: &'a str) -> (Expr<'a>, HashSet<&'a str>) {

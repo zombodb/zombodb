@@ -28,10 +28,10 @@ struct DiversifiedSampler {
 #[pg_extern(immutable, parallel_safe)]
 fn diversified_sampler_agg(
     aggregate_name: &str,
-    shard_size: Option<default!(i64, NULL)>,
-    max_docs_per_value: Option<default!(i64, NULL)>,
-    execution_hint: Option<default!(ExecutionHint, NULL)>,
-    children: Option<default!(Vec<JsonB>, NULL)>,
+    shard_size: default!(Option<i64>, NULL),
+    max_docs_per_value: default!(Option<i64>, NULL),
+    execution_hint: default!(Option<ExecutionHint>, NULL),
+    children: default!(Option<Vec<JsonB>>, NULL),
 ) -> JsonB {
     let diversified_sampler = DiversifiedSampler {
         shard_size,

@@ -1,6 +1,6 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgx::{prelude::*, *};
 use serde::*;
 use serde_json::*;
 
@@ -9,15 +9,13 @@ fn stats(
     index: PgRelation,
     field: &str,
     query: ZDBQuery,
-) -> impl std::iter::Iterator<
-    Item = (
-        name!(count, i64),
-        name!(min, Numeric),
-        name!(max, Numeric),
-        name!(avg, Numeric),
-        name!(sum, Numeric),
-    ),
-> {
+) -> TableIterator<(
+    name!(count, i64),
+    name!(min, Numeric),
+    name!(max, Numeric),
+    name!(avg, Numeric),
+    name!(sum, Numeric),
+)> {
     #[derive(Deserialize, Serialize)]
     struct StatsAggData {
         count: i64,
@@ -46,5 +44,7 @@ fn stats(
         .execute()
         .expect("failed to execute aggregate search");
 
-    vec![(result.count, result.min, result.max, result.avg, result.sum)].into_iter()
+    TableIterator::new(
+        vec![(result.count, result.min, result.max, result.avg, result.sum)].into_iter(),
+    )
 }

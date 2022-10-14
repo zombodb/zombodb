@@ -81,7 +81,7 @@ mod dsl {
     }
 
     #[pg_extern(immutable, parallel_safe)]
-    fn geo_polygon(field: &str, points: variadic!(Array<pg_sys::Point>)) -> ZDBQuery {
+    fn geo_polygon(field: &str, points: Array<pg_sys::Point>) -> ZDBQuery {
         let points_json = point_array_to_json(points);
         ZDBQuery::new_with_query_dsl(json! {
             {
