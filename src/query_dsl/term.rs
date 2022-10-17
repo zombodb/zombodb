@@ -5,6 +5,7 @@
 
 #[pgx_macros::pg_schema]
 mod dsl {
+    use crate::misc::timestamp_support::ZDBTimestamp;
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
     use serde::*;
@@ -123,7 +124,10 @@ mod dsl {
         value: Timestamp,
         boost: default!(Option<f32>, NULL),
     ) -> ZDBQuery {
-        let term: Term<Timestamp> = Term { value, boost };
+        let term: Term<ZDBTimestamp> = Term {
+            value: value.into(),
+            boost,
+        };
         make_term_dsl(field, term)
     }
 

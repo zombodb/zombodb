@@ -14,6 +14,8 @@ mod pg_catalog {
 
 #[pgx_macros::pg_schema]
 mod dsl {
+    use crate::misc::timestamp_support::ZDBTimestamp;
+    use crate::misc::timestamp_support::ZDBTimestampWithTimeZone;
     use crate::query_dsl::datetime_range::pg_catalog::*;
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
@@ -87,11 +89,11 @@ mod dsl {
         boost: default!(Option<f32>, NULL),
         relation: default!(Option<Relation>, "'intersects'"),
     ) -> ZDBQuery {
-        let datetime_range: DateTimeRange<Timestamp> = DateTimeRange {
-            lt,
-            lte,
-            gt,
-            gte,
+        let datetime_range: DateTimeRange<ZDBTimestamp> = DateTimeRange {
+            lt: lt.map(|ts| ts.into()),
+            lte: lte.map(|ts| ts.into()),
+            gt: gt.map(|ts| ts.into()),
+            gte: gte.map(|ts| ts.into()),
             boost,
             relation,
         };
@@ -108,11 +110,11 @@ mod dsl {
         boost: default!(Option<f32>, NULL),
         relation: default!(Option<Relation>, "'intersects'"),
     ) -> ZDBQuery {
-        let datetime_range: DateTimeRange<TimestampWithTimeZone> = DateTimeRange {
-            lt,
-            lte,
-            gt,
-            gte,
+        let datetime_range: DateTimeRange<ZDBTimestampWithTimeZone> = DateTimeRange {
+            lt: lt.map(|tsz| tsz.into()),
+            lte: lte.map(|tsz| tsz.into()),
+            gt: gt.map(|tsz| tsz.into()),
+            gte: gte.map(|tsz| tsz.into()),
             boost,
             relation,
         };
