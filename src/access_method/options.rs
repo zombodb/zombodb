@@ -7,6 +7,7 @@ use crate::zql::{parse_field_lists, INDEX_LINK_PARSER};
 use lazy_static::*;
 use memoffset::*;
 use pgx::pg_sys::AsPgCStr;
+use pgx::prelude::*;
 use pgx::*;
 use std::collections::{HashMap, HashSet};
 use std::ffi::CStr;
@@ -48,6 +49,7 @@ impl RefreshInterval {
     }
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
 struct ZDBIndexOptionsInternal {
     /* varlena header (do not touch directly!) */
@@ -108,13 +110,39 @@ impl ZDBIndexOptionsInternal {
             ops.nested_object_date_detection = false;
             ops.nested_object_numeric_detection = false;
             ops.include_source = true;
+            unsafe {
+                set_varsize(
+                    ops.as_ptr().cast(),
+                    std::mem::size_of::<ZDBIndexOptionsInternal>() as i32,
+                );
+            }
             ops.into_pg_boxed()
         } else {
             unsafe { PgBox::from_pg(relation.rd_options as *mut ZDBIndexOptionsInternal) }
         }
     }
 
-    fn url(&self) -> String {
+    fn into_bytes(options: PgBox<ZDBIndexOptionsInternal>) -> Vec<u8> {
+        unsafe {
+            let ptr = options.as_ptr().cast::<u8>();
+            let varsize = varsize(ptr.cast());
+            let mut bytes = Vec::with_capacity(varsize);
+            std::ptr::copy(ptr, bytes.as_mut_ptr(), varsize);
+            bytes.set_len(varsize);
+            bytes
+        }
+    }
+    fn copy_to(
+        options: &PgBox<ZDBIndexOptionsInternal>,
+        mut memcxt: PgMemoryContexts,
+    ) -> PgBox<ZDBIndexOptionsInternal> {
+        unsafe {
+            let ptr = options.as_ptr();
+            PgBox::from_pg(memcxt.copy_ptr_into(ptr.cast(), varsize(ptr.cast())))
+        }
+    }
+
+    fn url(&self, my_oid: pg_sys::Oid) -> String {
         let url = self.get_str(self.url_offset, || DEFAULT_URL.to_owned());
 
         if url == DEFAULT_URL {
@@ -122,6 +150,14 @@ impl ZDBIndexOptionsInternal {
             // in either case above, lets use the setting from postgresql.conf
             if ZDB_DEFAULT_ELASTICSEARCH_URL.get().is_some() {
                 ZDB_DEFAULT_ELASTICSEARCH_URL.get().unwrap()
+            } else if self.shadow_index {
+                // go find the url for this shadow index
+                // it's the url of the non-shadow zdb index
+                let (index, _) = find_zdb_index(unsafe { &PgRelation::open(my_oid) }).expect(
+                    &format!("failed to lookup non-shadow index for oid={}", my_oid),
+                );
+                let options = ZDBIndexOptions::from_relation(&index);
+                options.url()
             } else {
                 // the user hasn't provided one
                 panic!("Must set zdb.default_elasticsearch_url");
@@ -239,42 +275,21 @@ impl ZDBIndexOptionsInternal {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone)]
 pub struct ZDBIndexOptions {
+    internal: Vec<u8>,
     oid: pg_sys::Oid,
-    url: String,
-    type_name: String,
-    refresh_interval: RefreshInterval,
-    max_result_window: i32,
-    nested_fields_limit: i32,
-    nested_objects_limit: i32,
-    total_field_limit: i32,
-    max_terms_count: i32,
-    max_analyze_token_count: i32,
     alias: String,
     uuid: String,
-    translog_durability: String,
-    links: Option<Vec<String>>,
-    field_lists: Option<HashMap<String, Vec<QualifiedField>>>,
-    shadow_index: bool,
-
-    optimize_after: i32,
-    compression_level: i32,
-    shards: i32,
-    replicas: i32,
-    bulk_concurrency: i32,
-    batch_size: i32,
-    llapi: bool,
-
-    nested_object_date_detection: bool,
-    nested_object_numeric_detection: bool,
-    nested_object_text_mapping: serde_json::Value,
-
-    include_source: bool,
+    options: Option<Vec<String>>,
 }
 
 #[allow(dead_code)]
 impl ZDBIndexOptions {
+    pub fn is_shadow_index_fast(relation: &PgRelation) -> bool {
+        ZDBIndexOptionsInternal::from_relation(&relation).shadow_index
+    }
+
     pub fn from_relation(relation: &PgRelation) -> ZDBIndexOptions {
         let (relation, options) = find_zdb_index(relation).unwrap();
         ZDBIndexOptions::from_relation_no_lookup(&relation, options)
@@ -284,36 +299,28 @@ impl ZDBIndexOptions {
         relation: &PgRelation,
         options: Option<Vec<String>>,
     ) -> ZDBIndexOptions {
-        let internal = ZDBIndexOptionsInternal::from_relation(&relation);
         let heap_relation = relation.heap_relation().expect("not an index");
+        let internal = ZDBIndexOptionsInternal::from_relation(&relation);
+        let alias = internal.alias(&heap_relation, relation);
+        let uuid = internal.uuid(&heap_relation, relation);
+        let options = options.map_or_else(|| internal.links(), |v| Some(v));
+
         ZDBIndexOptions {
+            internal: ZDBIndexOptionsInternal::into_bytes(internal),
             oid: relation.oid(),
-            url: internal.url(),
-            type_name: internal.type_name(),
-            refresh_interval: internal.refresh_interval(),
-            max_result_window: internal.max_result_window,
-            nested_fields_limit: internal.nested_fields_limit,
-            nested_objects_limit: internal.nested_objects_limit,
-            total_field_limit: internal.total_fields_limit,
-            max_terms_count: internal.max_terms_count,
-            max_analyze_token_count: internal.max_analyze_token_count,
-            alias: internal.alias(&heap_relation, &relation),
-            uuid: internal.uuid(&heap_relation, &relation),
-            links: options.map_or_else(|| internal.links(), |v| Some(v)),
-            field_lists: internal.field_lists(),
-            shadow_index: internal.shadow_index,
-            compression_level: internal.compression_level,
-            shards: internal.shards,
-            replicas: internal.replicas,
-            bulk_concurrency: internal.bulk_concurrency,
-            batch_size: internal.batch_size,
-            optimize_after: internal.optimize_after,
-            translog_durability: internal.translog_durability(),
-            llapi: internal.llapi,
-            nested_object_date_detection: internal.nested_object_date_detection,
-            nested_object_numeric_detection: internal.nested_object_numeric_detection,
-            nested_object_text_mapping: internal.nested_object_text_mapping(),
-            include_source: internal.include_source,
+            alias,
+            uuid,
+            options,
+        }
+    }
+
+    #[inline(always)]
+    fn internal(&self) -> &ZDBIndexOptionsInternal {
+        let ptr = self.internal.as_ptr();
+        unsafe {
+            (ptr as *const _ as *const ZDBIndexOptionsInternal)
+                .as_ref()
+                .unwrap()
         }
     }
 
@@ -330,67 +337,67 @@ impl ZDBIndexOptions {
     }
 
     pub fn optimize_after(&self) -> i32 {
-        self.optimize_after
+        self.internal().optimize_after
     }
 
     pub fn compression_level(&self) -> i32 {
-        self.compression_level
+        self.internal().compression_level
     }
 
     pub fn shards(&self) -> i32 {
-        self.shards
+        self.internal().shards
     }
 
     pub fn replicas(&self) -> i32 {
-        self.replicas
+        self.internal().replicas
     }
 
     pub fn bulk_concurrency(&self) -> i32 {
-        self.bulk_concurrency
+        self.internal().bulk_concurrency
     }
 
     pub fn batch_size(&self) -> i32 {
-        self.batch_size
+        self.internal().batch_size
     }
 
     pub fn llapi(&self) -> bool {
-        self.llapi
+        self.internal().llapi
     }
 
-    pub fn url(&self) -> &str {
-        &self.url
+    pub fn url(&self) -> String {
+        self.internal().url(self.oid)
     }
 
-    pub fn type_name(&self) -> &str {
-        &self.type_name
+    pub fn type_name(&self) -> String {
+        self.internal().type_name()
     }
 
     pub fn refresh_interval(&self) -> RefreshInterval {
-        self.refresh_interval.clone()
+        self.internal().refresh_interval()
     }
 
     pub fn max_result_window(&self) -> i32 {
-        self.max_result_window
+        self.internal().max_result_window
     }
 
     pub fn nested_fields_limit(&self) -> i32 {
-        self.nested_fields_limit
+        self.internal().nested_fields_limit
     }
 
     pub fn nested_objects_limit(&self) -> i32 {
-        self.nested_objects_limit
+        self.internal().nested_objects_limit
     }
 
     pub fn total_fields_limit(&self) -> i32 {
-        self.total_field_limit
+        self.internal().total_fields_limit
     }
 
     pub fn max_terms_count(&self) -> i32 {
-        self.max_terms_count
+        self.internal().max_terms_count
     }
 
     pub fn max_analyze_token_count(&self) -> i32 {
-        self.max_analyze_token_count
+        self.internal().max_analyze_token_count
     }
 
     pub fn alias(&self) -> &str {
@@ -405,39 +412,36 @@ impl ZDBIndexOptions {
         &self.uuid
     }
 
-    pub fn translog_durability(&self) -> &str {
-        &self.translog_durability
+    pub fn translog_durability(&self) -> String {
+        self.internal().translog_durability()
     }
 
     pub fn links(&self) -> &Option<Vec<String>> {
-        &self.links
+        &self.options
     }
 
     pub fn field_lists(&self) -> HashMap<String, Vec<QualifiedField>> {
-        match &self.field_lists {
-            Some(field_lists) => field_lists.clone(),
-            None => HashMap::new(),
-        }
+        self.internal().field_lists().unwrap_or_default()
     }
 
     pub fn is_shadow_index(&self) -> bool {
-        self.shadow_index
+        self.internal().shadow_index
     }
 
     pub fn nested_object_date_detection(&self) -> bool {
-        self.nested_object_date_detection
+        self.internal().nested_object_date_detection
     }
 
     pub fn nested_object_numeric_detection(&self) -> bool {
-        self.nested_object_numeric_detection
+        self.internal().nested_object_numeric_detection
     }
 
-    pub fn nested_object_text_mapping(&self) -> &serde_json::Value {
-        &self.nested_object_text_mapping
+    pub fn nested_object_text_mapping(&self) -> serde_json::Value {
+        self.internal().nested_object_text_mapping()
     }
 
     pub fn include_source(&self) -> bool {
-        self.include_source
+        self.internal().include_source
     }
 }
 
@@ -529,11 +533,13 @@ pub(crate) fn index_options(index_relation: PgRelation) -> Option<Vec<String>> {
 #[pg_extern(volatile, parallel_safe)]
 fn index_field_lists(
     index_relation: PgRelation,
-) -> impl std::iter::Iterator<Item = (name!(fieldname, String), name!(fields, Vec<String>))> {
-    ZDBIndexOptions::from_relation(&index_relation)
-        .field_lists()
-        .into_iter()
-        .map(|(k, v)| (k, v.into_iter().map(|f| f.field_name()).collect()))
+) -> TableIterator<'static, (name!(fieldname, String), name!(fields, Vec<String>))> {
+    TableIterator::new(
+        ZDBIndexOptions::from_relation(&index_relation)
+            .field_lists()
+            .into_iter()
+            .map(|(k, v)| (k, v.into_iter().map(|f| f.field_name()).collect())),
+    )
 }
 
 #[pg_extern(volatile, parallel_safe)]
@@ -1263,7 +1269,7 @@ mod tests {
         assert_eq!(options.optimize_after(), DEFAULT_OPTIMIZE_AFTER);
         assert_eq!(options.llapi(), false);
         assert_eq!(options.translog_durability(), "async");
-        assert_eq!(options.links, None);
+        assert_eq!(options.links(), &None);
     }
 
     #[pg_test]

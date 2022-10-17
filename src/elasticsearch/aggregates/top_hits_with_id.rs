@@ -1,5 +1,6 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::zdbquery::ZDBQuery;
+use pgx::prelude::*;
 use pgx::*;
 use serde::*;
 use serde_json::*;
@@ -10,7 +11,7 @@ fn top_hits_with_id(
     fields: Array<&str>,
     query: ZDBQuery,
     size_limit: i64,
-) -> impl std::iter::Iterator<Item = (name!(id, String), name!(score, f64), name!(source, Json))> {
+) -> TableIterator<'static, (name!(id, String), name!(score, f64), name!(source, Json))> {
     #[derive(Deserialize, Serialize)]
     struct TopHitsWithIdAggData {
         hits: Hits,
@@ -50,9 +51,11 @@ fn top_hits_with_id(
         .execute()
         .expect("failed to execute aggregate search");
 
-    result
-        .hits
-        .hits
-        .into_iter()
-        .map(|entry| (entry._id, entry._score, Json(entry._source)))
+    TableIterator::new(
+        result
+            .hits
+            .hits
+            .into_iter()
+            .map(|entry| (entry._id, entry._score, Json(entry._source))),
+    )
 }

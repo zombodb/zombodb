@@ -10,12 +10,13 @@
 ZomboDB brings powerful text-search and analytics features to Postgres by using Elasticsearch as an index type. Its
 comprehensive query language and SQL functions enable new and creative ways to query your relational data.
 
-From a technical perspective, ZomboDB is a 100% native Postgres extension that implements Postgres' Index Access Method
-API. As a native Postgres index type, ZomboDB allows you to `CREATE INDEX ... USING zombodb` on your existing Postgres
-tables. At that point, ZomboDB takes over and fully manages the remote Elasticsearch index and guarantees
-transactionally-correct text-search query results.
+From a technical perspective, ZomboDB is a 100% native Postgres extension written in Rust with [PGX].
+ZomboDB uses Postgres's Index Access Method API to directly manage and optimize ZomboDB's specialized indices.
+As a native Postgres index type, ZomboDB allows you to `CREATE INDEX ... USING zombodb` on your existing Postgres tables.
+At that point, ZomboDB takes over and fully manages the remote Elasticsearch index,
+guaranteeing transactionally-correct text-search query results.
 
-ZomboDB is fully compatible with all of Postgres' query plan types and most SQL commands such as `CREATE INDEX`, `COPY`,
+ZomboDB is fully compatible with all of Postgres's query plan types and most SQL commands such as `CREATE INDEX`, `COPY`,
 `INSERT`, `UPDATE`, `DELETE`, `SELECT`, `ALTER`, `DROP`, `REINDEX`, `(auto)VACUUM`, etc.
 
 It doesn’t matter if you’re using an Elasticsearch cloud provider or managing your own cluster -- ZomboDB communicates
@@ -50,9 +51,7 @@ multiple data-access code paths -- ZomboDB does it all for you.
 - Managed and queried via standard SQL
 - Works with current Elasticsearch releases (no plugins required)
 - Query using
-  - Elasticsearch's
-    [Query String Syntax](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-syntax)
-    via `dsl.query_string()`
+  - [Elasticsearch's query string syntax] via `dsl.query_string()`
   - ZQL -- [ZomboDB's custom query language](ZQL.md)
   - Raw Elasticsearch QueryDSL JSON
   - ZomboDB's type-safe [query builder SQL syntax](QUERY-BUILDER-API.md)
@@ -63,16 +62,15 @@ multiple data-access code paths -- ZomboDB does it all for you.
   - Ability to map custom domains
   - Per-field custom mappings
   - `json/jsonb` automatically mapped as dynamic nested objects
-  - Supports full set of
-    [Elasticsearch language analyzers](https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-lang-analyzer.html)
-  - Supports [Elasticsearch's Similarity Module](TYPE-MAPPING.md#similarity-module-support)
-- Hot-Standby compatible
-- Support for indexing & searching [PostGIS `geometry` and `geography` types](POSTGIS-SUPPORT.md)
+  - Supports the full set of [Elasticsearch language analyzers]
+  - Supports [Elasticsearch's similarity module]
+- [Hot standby] compatible
+- Support for indexing and searching [PostGIS `geometry` and `geography` types](POSTGIS-SUPPORT.md)
 
 ## Current Limitations
 
 - Only one ZomboDB index per table
-- ZomboDB indexes with predicates (ie, [partial indexes](https://www.postgresql.org/docs/10/indexes-partial.html)) are
+- ZomboDB indexes with predicates (i.e., [partial indexes]) are
   not supported
 - `CREATE INDEX CONCURRENTLY` is not supported
 
@@ -80,10 +78,10 @@ These limitations may be addressed in future versions of ZomboDB.
 
 ## System Requirements
 
-| Product       | Version                |
-| ------------- | ---------------------- |
-| Postgres      | 10.x, 11.x, 12.x, 13.x |
-| Elasticsearch | 7.x                    |
+| Product       | Version                      |
+| ------------- | ---------------------------- |
+| Postgres      | 10.x, 11.x, 12.x, 13.x, 14.x |
+| Elasticsearch | >=7.10                       |
 
 ## Sponsorship and Downloads
 
@@ -146,18 +144,19 @@ SELECT *
 - https://www.zombodb.com
 - Google Group: zombodb@googlegroups.com
 - Twitter: [@zombodb](https://twitter.com/zombodb/)
-- via Github Issues and Pull Requests
+- via GitHub Issues and Pull Requests
 - https://www.zombodb.com/services/ or info@zombodb.com for commercial support
 
 ## History
 
 The name is an homage to zombo.com and its long history of continuous self-affirmation.
 
-Historically, ZomboDB began in 2013 by Technology Concepts & Design, Inc as a closed-source effort to provide
-transaction safe text-search on top of Postgres tables. While Postgres' "tsearch" features are useful, they're not
-necessarily adequate for 200 column-wide tables with 100M rows, each containing large text content.
+Historically, ZomboDB began in 2013 by Technology Concepts & Design, Inc
+as a closed-source effort to provide transaction-safe text-search on top of Postgres tables.
+While [Postgres's full-text search] features are useful,
+they're not necessarily adequate for 200-column-wide tables with 100 million rows, each containing large text content.
 
-Initially designed on-top of Postgres' Foreign Data Wrapper API, ZomboDB quickly evolved into an index type so that
+Initially built on Postgres's Foreign Data Wrapper API, ZomboDB quickly evolved into an index type so that
 queries are MVCC-safe and standard SQL can be used to query and manage indices.
 
 Elasticsearch was chosen as the backing search index because of its horizontal scaling abilities, performance, and
@@ -180,3 +179,11 @@ http://www.apache.org/licenses/LICENSE-2.0
 Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an
 "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 language governing permissions and limitations under the License.
+
+[elasticsearch language analyzers]: https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-lang-analyzer.html
+[elasticsearch's query string syntax]: https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-syntax
+[elasticsearch's similarity module]: TYPE-MAPPING.md#similarity-module-support
+[hot standby]: https://www.postgresql.org/docs/current/hot-standby.html
+[partial indexes]: https://www.postgresql.org/docs/10/indexes-partial.html
+[pgx]: https://github.com/tcdi/pgx
+[postgres's full-text search]: https://www.postgresql.org/docs/current/textsearch-intro.html

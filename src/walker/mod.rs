@@ -5,6 +5,7 @@ pub struct PlanWalker {
     zdbquery_oid: pg_sys::Oid,
     zdb_score_oid: pg_sys::Oid,
     zdb_highlight_oid: pg_sys::Oid,
+    zdb_highlight_all_fields_oid: pg_sys::Oid,
     zdb_anyelement_cmp_func_oid: pg_sys::Oid,
     zdb_want_score_oid: pg_sys::Oid,
     zdb_want_highlight_oid: pg_sys::Oid,
@@ -32,6 +33,11 @@ impl PlanWalker {
             zdb_highlight_oid: lookup_function(
                 vec!["zdb", "highlight"],
                 Some(vec![pg_sys::TIDOID, pg_sys::TEXTOID, pg_sys::JSONOID]),
+            )
+            .unwrap_or(pg_sys::InvalidOid),
+            zdb_highlight_all_fields_oid: lookup_function(
+                vec!["zdb", "highlight_all_fields"],
+                Some(vec![pg_sys::TIDOID, pg_sys::JSONOID]),
             )
             .unwrap_or(pg_sys::InvalidOid),
             zdb_anyelement_cmp_func_oid: lookup_function(
@@ -126,7 +132,9 @@ unsafe extern "C" fn plan_walker(node: *mut pg_sys::Node, context_ptr: void_mut_
             } else {
                 panic!("zdb.score() can only be used as a target entry or as a sort");
             }
-        } else if func_expr.funcid == context.zdb_highlight_oid {
+        } else if func_expr.funcid == context.zdb_highlight_oid
+            || func_expr.funcid == context.zdb_highlight_all_fields_oid
+        {
             // if context.in_te > 0 {
             context.highlight_definitions.push(func_expr.as_ptr());
             // } else {
@@ -196,17 +204,30 @@ unsafe extern "C" fn rewrite_walker(node: *mut pg_sys::Node, context_ptr: void_m
 
                             let definition = PgBox::from_pg(*definition);
                             let definition_args = PgList::from_pg(definition.args);
+                            let highlight_all_fields =
+                                definition.funcid == context.zdb_highlight_all_fields_oid;
 
-                            func_args.push(
+                            func_args.push(if highlight_all_fields {
+                                let mut asteriskConstNode =
+                                    PgBox::<pg_sys::Const>::alloc_node(pg_sys::NodeTag_T_Const);
+
+                                asteriskConstNode.consttype = pg_sys::TEXTOID;
+                                asteriskConstNode.constlen = 1;
+                                asteriskConstNode.constvalue =
+                                    pgx::rust_str_to_text_p("*").into_datum().unwrap();
+
+                                asteriskConstNode.into_pg() as *mut pg_sys::Node
+                            } else {
                                 definition_args
                                     .get_ptr(1)
                                     .expect("no field name for zdb.highlight()")
-                                    as *mut pg_sys::Node,
-                            );
+                            });
 
                             // if we have a highlight definition we'll use it, if not, that's
                             // okay too as "want_highlight()" has a default for that argument
-                            if let Some(definition_json) = definition_args.get_ptr(2) {
+                            if let Some(definition_json) =
+                                definition_args.get_ptr(if highlight_all_fields { 1 } else { 2 })
+                            {
                                 func_args.push(definition_json as *mut pg_sys::Node);
                             }
 

@@ -1,6 +1,7 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::zdbquery::mvcc::apply_visibility_clause;
 use crate::zdbquery::ZDBQuery;
+use pgx::prelude::*;
 use pgx::*;
 use serde::*;
 use serde_json::*;
@@ -11,7 +12,7 @@ fn filters(
     index: PgRelation,
     labels: Array<&str>,
     filters: Array<ZDBQuery>,
-) -> impl std::iter::Iterator<Item = (name!(term, String), name!(doc_count, i64))> {
+) -> TableIterator<'static, (name!(term, String), name!(doc_count, i64))> {
     let elasticsearch = Elasticsearch::new(&index);
 
     #[derive(Deserialize, Serialize)]
@@ -47,8 +48,10 @@ fn filters(
         .execute()
         .expect("failed to execute aggregate search");
 
-    result
-        .buckets
-        .into_iter()
-        .map(|entry| (entry.0, entry.1.doc_count))
+    TableIterator::new(
+        result
+            .buckets
+            .into_iter()
+            .map(|entry| (entry.0, entry.1.doc_count)),
+    )
 }

@@ -379,7 +379,7 @@ VALUES ('time without time zone', '{
   "fields": {
     "date": {
       "type": "date",
-      "format": "HH:mm:ss.S||HH:mm:ss.SS||HH:mm:ss.SSS||HH:mm:ss.SSSS||HH:mm:ss.SSSSS||HH:mm:ss.SSSSSS"
+      "format": "HH:mm||HH:mm:ss||HH:mm:ss.S||HH:mm:ss.SS||HH:mm:ss.SSS||HH:mm:ss.SSSS||HH:mm:ss.SSSSS||HH:mm:ss.SSSSSS"
     }
   }
 }', true) ON CONFLICT (type_name) DO UPDATE SET definition = excluded.definition;
@@ -391,7 +391,7 @@ VALUES ('time with time zone', '{
   "fields": {
     "date": {
       "type": "date",
-      "format": "HH:mm:ss.SX||HH:mm:ss.SSX||HH:mm:ss.SSSX||HH:mm:ss.SSSSX||HH:mm:ss.SSSSSX||HH:mm:ss.SSSSSSX"
+      "format": "HH:mmX||HH:mm:ssX||HH:mm:ss.SX||HH:mm:ss.SSX||HH:mm:ss.SSSX||HH:mm:ss.SSSSX||HH:mm:ss.SSSSSX||HH:mm:ss.SSSSSSX"
     }
   }
 }

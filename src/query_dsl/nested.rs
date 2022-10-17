@@ -25,7 +25,7 @@ mod dsl {
         path: String,
         query: ZDBQuery,
         score_mode: default!(ScoreMode, "'avg'"),
-        ignore_unmapped: Option<default!(bool, NULL)>,
+        ignore_unmapped: default!(Option<bool>, NULL),
     ) -> ZDBQuery {
         ZDBQuery::new_with_query_clause(ZDBQueryClause::nested(
             path,

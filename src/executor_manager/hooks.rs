@@ -80,7 +80,7 @@ impl PgHooks for ZDBHooks {
                     completion_tag,
                 );
             }
-            let rel = unsafe { PgRelation::open(relid) };
+            let rel = PgRelation::with_lock(relid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
             let prev_options = get_index_options_for_relation(&rel);
             drop(rel);
 
@@ -137,7 +137,10 @@ impl PgHooks for ZDBHooks {
                     );
 
                     if relid != pg_sys::InvalidOid {
-                        let rel = PgRelation::open(relid);
+                        let rel = PgRelation::with_lock(
+                            relid,
+                            pg_sys::AccessShareLock as pg_sys::LOCKMODE,
+                        );
                         Some(get_index_options_for_relation(&rel))
                     } else {
                         None

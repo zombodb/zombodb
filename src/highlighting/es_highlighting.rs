@@ -43,25 +43,25 @@ mod pg_catalog {
 
 #[pg_extern(parallel_safe, immutable)]
 fn highlight(
-    highlight_type: Option<default!(HighlightType, NULL)>,
-    require_field_match: Option<default!(bool, false)>,
-    number_of_fragments: Option<default!(i32, NULL)>,
-    highlight_query: Option<default!(ZDBQuery, NULL)>,
-    pre_tags: Option<default!(Vec<Option<String>>, NULL)>,
-    post_tags: Option<default!(Vec<Option<String>>, NULL)>,
-    tags_schema: Option<default!(String, NULL)>,
-    no_match_size: Option<default!(i32, NULL)>,
-    fragmenter: Option<default!(FragmenterType, NULL)>,
-    fragment_size: Option<default!(i32, NULL)>,
-    fragment_offset: Option<default!(i32, NULL)>,
-    force_source: Option<default!(bool, true)>,
-    encoder: Option<default!(EncoderType, NULL)>,
-    boundary_scanner_locale: Option<default!(String, NULL)>,
-    boundary_scan_max: Option<default!(i32, NULL)>,
-    boundary_chars: Option<default!(String, NULL)>,
-    phrase_limit: Option<default!(i32, NULL)>,
-    matched_fields: Option<default!(bool, NULL)>,
-    order: Option<default!(String, NULL)>,
+    highlight_type: default!(Option<HighlightType>, NULL),
+    require_field_match: default!(Option<bool>, false),
+    number_of_fragments: default!(Option<i32>, NULL),
+    highlight_query: default!(Option<ZDBQuery>, NULL),
+    pre_tags: default!(Option<Vec<Option<String>>>, NULL),
+    post_tags: default!(Option<Vec<Option<String>>>, NULL),
+    tags_schema: default!(Option<String>, NULL),
+    no_match_size: default!(Option<i32>, NULL),
+    fragmenter: default!(Option<FragmenterType>, NULL),
+    fragment_size: default!(Option<i32>, NULL),
+    fragment_offset: default!(Option<i32>, NULL),
+    force_source: default!(Option<bool>, true),
+    encoder: default!(Option<EncoderType>, NULL),
+    boundary_scanner_locale: default!(Option<String>, NULL),
+    boundary_scan_max: default!(Option<i32>, NULL),
+    boundary_chars: default!(Option<String>, NULL),
+    phrase_limit: default!(Option<i32>, NULL),
+    matched_fields: default!(Option<bool>, NULL),
+    order: default!(Option<String>, NULL),
 ) -> Json {
     #[derive(Serialize)]
     struct Highlight {
@@ -157,6 +157,28 @@ fn highlight_field(
             Some(result)
         }
         None => None,
+    }
+}
+
+#[pg_extern(parallel_safe, immutable, requires = [ highlighting::es_highlighting::highlight, ])]
+fn highlight_all_fields(
+    ctid: pg_sys::ItemPointerData,
+    _highlight_definition: default!(Json, "zdb.highlight()"),
+    fcinfo: pg_sys::FunctionCallInfo,
+) -> Json {
+    let highlights = match get_executor_manager().peek_query_state() {
+        Some((query_desc, query_state)) => {
+            match query_state.lookup_index_for_first_field(*query_desc, fcinfo) {
+                Some(heap_oid) => query_state.get_highlights(heap_oid, ctid),
+                None => None,
+            }
+        }
+        None => None,
+    };
+
+    match highlights {
+        Some(highlights) => Json(json!(highlights)),
+        None => Json(json!(null)),
     }
 }
 

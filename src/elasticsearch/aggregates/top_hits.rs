@@ -1,5 +1,6 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::zdbquery::ZDBQuery;
+use pgx::prelude::*;
 use pgx::*;
 use serde::*;
 use serde_json::*;
@@ -10,8 +11,9 @@ fn top_hits(
     fields: Array<&str>,
     query: ZDBQuery,
     size_limit: i64,
-) -> impl std::iter::Iterator<
-    Item = (
+) -> TableIterator<
+    'static,
+    (
         name!(id, pg_sys::ItemPointerData),
         name!(score, f64),
         name!(source, Json),
@@ -64,5 +66,5 @@ fn top_hits(
         u64_to_item_pointer(id, &mut tid);
         result_hits.push((tid, hits._score, Json(hits._source)))
     }
-    result_hits.into_iter()
+    TableIterator::new(result_hits.into_iter())
 }

@@ -181,6 +181,19 @@ SELECT * FROM zdb_get_index_field_lists('idxsome_index');
 ______________________________________________________________________
 
 ```sql
+FUNCTION zdb.reapply_mapping(index regclass) RETURNS bool
+```
+
+If you make a manual change to one of the underlying type mapping definitions (or related analyzer definition)
+in, for example, the `zdb.type_mappings` table, you can use this function to push those changes out to Elasticsearch
+for a specific index.
+
+If for some reason the overall mapping change is not compatible with the index's existing mapping you'll need
+to instead issue a `REINDEX INDEX` command.
+
+______________________________________________________________________
+
+```sql
 FUNCTION zdb.index_mapping(index regclass) RETURNS jsonb
 ```
 

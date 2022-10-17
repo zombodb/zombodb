@@ -129,3 +129,32 @@ Which results in:
  0.224636 | {"A <b>wooden</b> container that will eventually rot away.  Put stuff it in (but not a cat)."} | A wooden container that will eventually rot away.  Put stuff it in (but not a cat).
 (2 rows)
 ```
+
+Akin to the `zdb.highlight()` function there is also `zdb.highlight_all_fields()`, which works the same but takes no "field name" argument. 
+Its definition is:
+
+```sql
+FUNCTION zdb.highlight_all_fields(
+    "ctid" tid,
+    "_highlight_definition" json DEFAULT zdb.highlight()
+) RETURNS json
+```
+
+And using a similar example to above, returns the following:
+
+```sql
+# SELECT zdb.score(ctid),
+         zdb.highlight_all_fields(ctid, zdb.highlight(pre_tags=>'{<b>}', post_tags=>'{</b>}')),
+         long_description
+  FROM products
+  WHERE products ==> 'wooden person or box'
+  ORDER BY score desc;
+-[ RECORD 1 ]--------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+score                | 0.5753641724586487
+highlight_all_fields | {"long_description":["Throw it at a <b>person</b> with a big <b>wooden</b> stick and hope they don't hit it"],"zdb_all":["Throw it at a <b>person</b> with a big <b>wooden</b> stick and hope they don't hit it"]}
+long_description     | Throw it at a person with a big wooden stick and hope they don't hit it
+-[ RECORD 2 ]--------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+score                | 0.4520718455314636
+highlight_all_fields | {"long_description":["A <b>wooden</b> container that will eventually rot away.  Put stuff it in (but not a cat)."],"zdb_all":["<b>wooden</b>","<b>box</b>","<b>Box</b>","A <b>wooden</b> container that will eventually rot away.  Put stuff it in (but not a cat).","Just an empty <b>box</b> made of wood"],"keywords":["<b>wooden</b>","<b>box</b>"],"short_summary":["Just an empty <b>box</b> made of wood"],"name":["<b>Box</b>"]}
+long_description     | A wooden container that will eventually rot away.  Put stuff it in (but not a cat).
+```

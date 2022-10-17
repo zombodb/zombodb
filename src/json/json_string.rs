@@ -1,4 +1,5 @@
-use pgx::{Date, FromDatum, Json, JsonB, Time, TimeWithTimeZone, Timestamp, TimestampWithTimeZone};
+use crate::misc::timestamp_support::{ZDBTimestamp, ZDBTimestampWithTimeZone};
+use pgx::{Date, Json, JsonB, Time, TimeWithTimeZone, Timestamp, TimestampWithTimeZone};
 use serde_json::json;
 
 pub trait JsonString: Send + Sync {
@@ -82,7 +83,21 @@ impl JsonString for Timestamp {
     }
 }
 
+impl JsonString for ZDBTimestamp {
+    #[inline]
+    fn push_json(&self, target: &mut Vec<u8>) {
+        serde_json::to_writer(target, self).ok();
+    }
+}
+
 impl JsonString for TimestampWithTimeZone {
+    #[inline]
+    fn push_json(&self, target: &mut Vec<u8>) {
+        serde_json::to_writer(target, self).ok();
+    }
+}
+
+impl JsonString for ZDBTimestampWithTimeZone {
     #[inline]
     fn push_json(&self, target: &mut Vec<u8>) {
         serde_json::to_writer(target, self).ok();
@@ -133,7 +148,7 @@ impl JsonString for pgx::JsonString {
 
 impl<T> JsonString for Vec<Option<T>>
 where
-    T: FromDatum + JsonString,
+    T: JsonString,
 {
     #[inline]
     fn push_json(&self, target: &mut Vec<u8>) {

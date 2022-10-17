@@ -1,4 +1,5 @@
 use crate::json::json_string::JsonString;
+use crate::misc::timestamp_support::{ZDBTimestamp, ZDBTimestampWithTimeZone};
 use pgx::{Date, JsonB, Time, TimeWithTimeZone, Timestamp, TimestampWithTimeZone};
 
 #[derive(Debug)]
@@ -14,8 +15,8 @@ enum JsonBuilderValue {
     f64(f64),
     time(Time),
     time_with_time_zone(TimeWithTimeZone),
-    timestamp(Timestamp),
-    timestamp_with_time_zone(TimestampWithTimeZone),
+    timestamp(ZDBTimestamp),
+    timestamp_with_time_zone(ZDBTimestampWithTimeZone),
     date(Date),
     string(String),
     json_string(pgx::JsonString),
@@ -31,8 +32,8 @@ enum JsonBuilderValue {
     f64_array(Vec<Option<f64>>),
     time_array(Vec<Option<Time>>),
     time_with_time_zone_array(Vec<Option<TimeWithTimeZone>>),
-    timestamp_array(Vec<Option<Timestamp>>),
-    timestamp_with_time_zone_array(Vec<Option<TimestampWithTimeZone>>),
+    timestamp_array(Vec<Option<ZDBTimestamp>>),
+    timestamp_with_time_zone_array(Vec<Option<ZDBTimestampWithTimeZone>>),
     date_array(Vec<Option<Date>>),
     string_array(Vec<Option<String>>),
     json_string_array(Vec<Option<pgx::JsonString>>),
@@ -105,13 +106,15 @@ impl<'a> JsonBuilder<'a> {
     #[inline]
     pub fn add_timestamp(&mut self, attname: &'a str, value: Timestamp) {
         self.values
-            .push((attname, JsonBuilderValue::timestamp(value)));
+            .push((attname, JsonBuilderValue::timestamp(value.into())));
     }
 
     #[inline]
     pub fn add_timestamp_with_time_zone(&mut self, attname: &'a str, value: TimestampWithTimeZone) {
-        self.values
-            .push((attname, JsonBuilderValue::timestamp_with_time_zone(value)));
+        self.values.push((
+            attname,
+            JsonBuilderValue::timestamp_with_time_zone(value.into()),
+        ));
     }
 
     #[inline]
@@ -201,8 +204,18 @@ impl<'a> JsonBuilder<'a> {
 
     #[inline]
     pub fn add_timestamp_array(&mut self, attname: &'a str, value: Vec<Option<Timestamp>>) {
-        self.values
-            .push((attname, JsonBuilderValue::timestamp_array(value)));
+        self.values.push((
+            attname,
+            JsonBuilderValue::timestamp_array(
+                value
+                    .into_iter()
+                    .map(|ts| match ts {
+                        Some(ts) => Some(ts.into()),
+                        None => None,
+                    })
+                    .collect(),
+            ),
+        ));
     }
 
     #[inline]
@@ -213,7 +226,15 @@ impl<'a> JsonBuilder<'a> {
     ) {
         self.values.push((
             attname,
-            JsonBuilderValue::timestamp_with_time_zone_array(value),
+            JsonBuilderValue::timestamp_with_time_zone_array(
+                value
+                    .into_iter()
+                    .map(|tsz| match tsz {
+                        Some(ts) => Some(ts.into()),
+                        None => None,
+                    })
+                    .collect(),
+            ),
         ));
     }
 

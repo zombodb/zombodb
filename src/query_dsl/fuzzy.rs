@@ -24,11 +24,11 @@ mod dsl {
     pub fn fuzzy(
         field: &str,
         value: &str,
-        boost: Option<default!(f32, NULL)>,
-        fuzziness: Option<default!(i32, NULL)>,
-        prefix_length: Option<default!(i64, NULL)>,
-        max_expansions: Option<default!(i64, 50)>,
-        transpositions: Option<default!(bool, NULL)>,
+        boost: default!(Option<f32>, NULL),
+        fuzziness: default!(Option<i32>, NULL),
+        prefix_length: default!(Option<i64>, NULL),
+        max_expansions: default!(Option<i64>, 50),
+        transpositions: default!(Option<bool>, NULL),
     ) -> ZDBQuery {
         let fuzzy_object = Fuzzy {
             value,

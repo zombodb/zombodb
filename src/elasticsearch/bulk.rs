@@ -252,11 +252,14 @@ impl ElasticsearchBulkRequest {
     ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand>> {
         self.handler.check_for_error();
 
-        self.handler.queue_command(BulkRequestCommand::Update {
-            ctid: item_pointer_to_u64(ctid),
-            cmax,
-            xmax,
-        })
+        let ctid = item_pointer_to_u64(ctid);
+        let command = BulkRequestCommand::Update { ctid, cmax, xmax };
+        if self.handler.in_flight.contains(&ctid) {
+            self.handler.deferred.push(command);
+            Ok(())
+        } else {
+            self.handler.queue_command(command)
+        }
     }
 
     pub fn transaction_in_progress(

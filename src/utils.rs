@@ -13,8 +13,7 @@ pub fn count_non_shadow_zdb_indices(
     let mut cnt = 0;
     for index in heap_relation.indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
         if index.oid() != current_index.oid() && is_zdb_index(&index) {
-            let options = ZDBIndexOptions::from_relation_no_lookup(&index, None);
-            if !options.is_shadow_index() {
+            if !ZDBIndexOptions::is_shadow_index_fast(&index) {
                 cnt += 1;
             }
         }
@@ -114,10 +113,16 @@ pub fn find_zdb_index(
                 }
             }
         } else {
-            for index in any_relation.indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
-                if is_non_shadow_zdb_index(&index) {
-                    return Ok((index.to_owned(), None));
-                }
+            let indices =
+                PgList::<pg_sys::Oid>::from_pg(pg_sys::RelationGetIndexList(any_relation.as_ptr()));
+            let zdb_index = indices
+                .iter_oid()
+                .filter(|oid| *oid != pg_sys::InvalidOid)
+                .map(|oid| PgRelation::with_lock(oid, pg_sys::AccessShareLock as pg_sys::LOCKMODE))
+                .find(|rel| is_non_shadow_zdb_index(rel));
+
+            if let Some(idx) = zdb_index {
+                return Ok((idx, None));
             }
         }
     }
@@ -132,8 +137,7 @@ fn find_zdb_shadow_index(table: &PgRelation, funcid: pg_sys::Oid) -> PgRelation 
     unsafe {
         for index in table.indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
             if is_zdb_index(&index) {
-                let options = ZDBIndexOptions::from_relation_no_lookup(&index, None);
-                if options.is_shadow_index() {
+                if ZDBIndexOptions::is_shadow_index_fast(&index) {
                     let exprs = PgList::<pg_sys::Expr>::from_pg(
                         pg_sys::RelationGetIndexExpressions(index.as_ptr()),
                     );
@@ -185,9 +189,7 @@ pub fn is_non_shadow_zdb_index(index: &PgRelation) -> bool {
     } else {
         let indam = unsafe { PgBox::from_pg(routine) };
         if indam.amvalidate == Some(crate::access_method::amvalidate) {
-            let options = ZDBIndexOptions::from_relation_no_lookup(index, None);
-
-            return !options.is_shadow_index();
+            return !ZDBIndexOptions::is_shadow_index_fast(index);
         }
 
         false
@@ -288,6 +290,19 @@ pub fn get_index_analyzer(index: &PgRelation, field: &str) -> String {
         ],
     )
     .expect("search analyzer was null")
+}
+
+pub fn get_highlight_analysis_info(
+    index: &PgRelation,
+    field: &str,
+) -> (Option<String>, Option<String>, Option<String>) {
+    Spi::get_three_with_args(
+        "SELECT * FROM zdb.get_highlight_analysis_info($1, $2);",
+        vec![
+            (PgBuiltInOids::OIDOID.oid(), index.oid().into_datum()),
+            (PgBuiltInOids::TEXTOID.oid(), field.into_datum()),
+        ],
+    )
 }
 
 pub fn get_null_copy_to_fields(index: &PgRelation) -> Vec<String> {

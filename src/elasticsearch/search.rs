@@ -65,7 +65,7 @@ pub struct Shards {
     failures: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct ElasticsearchSearchResponse {
     #[serde(skip)]
     elasticsearch: Option<Elasticsearch>,
@@ -157,8 +157,15 @@ impl ElasticsearchSearchRequest {
         url.push_str(&format!("&docvalue_fields={}", docvalue_fields.join(",")));
 
         // do we need to track scores?
-        let track_scores =
-            query.want_score() || query.limit().is_some() || query.min_score().is_some();
+        //
+        // we only want to if the user told us explicitly, if there's a dsl.limit() but no dsl.sort() in the quer,
+        // or if the user wants to limit by a minimum score (dsl.min_score())
+        //
+        // for the case of a `dsl.limit()` and no `dsl.score()`, we do want to generate scores as we'll
+        // then sort the results by score desc, which will give us a "TOP N"-style result
+        let track_scores = query.want_score()
+            || (query.limit().is_some() && query.sort_json().is_none())
+            || query.min_score().is_some();
 
         if track_scores {
             url.push_str(&format!("&filter_path={}", SEARCH_FILTER_PATH));
@@ -315,7 +322,7 @@ impl ElasticsearchSearchRequest {
         should_sort_hits: bool,
     ) -> std::result::Result<ElasticsearchSearchResponse, ElasticsearchError> {
         let mut url = String::new();
-        url.push_str(elasticsearch.options.url());
+        url.push_str(&elasticsearch.options.url());
         url.push_str("_search/scroll");
         url.push_str("?filter_path=");
         if track_scores {

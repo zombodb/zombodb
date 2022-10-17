@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use pgx::prelude::*;
 use pgx::*;
 use serde_json::json;
 
@@ -23,11 +24,11 @@ fn dump_query(index: PgRelation, query: ZDBQuery) -> String {
 fn debug_query(
     index: PgRelation,
     query: &str,
-) -> (
+) -> TableIterator<(
     name!(normalized_query, String),
     name!(used_fields, Vec<String>),
     name!(ast, String),
-) {
+)> {
     let mut used_fields = HashSet::new();
     let query = Expr::from_str(
         &index,
@@ -41,15 +42,18 @@ fn debug_query(
 
     let tree = format!("{:#?}", query);
 
-    (
-        sqlformat::format(
-            &format!("{}", query),
-            &sqlformat::QueryParams::default(),
-            sqlformat::FormatOptions::default(),
-        )
-        .replace(" :\"", ":\""),
-        used_fields.into_iter().map(|v| v.into()).collect(),
-        format!("{}", tree),
+    TableIterator::new(
+        vec![(
+            sqlformat::format(
+                &format!("{}", query),
+                &sqlformat::QueryParams::default(),
+                sqlformat::FormatOptions::default(),
+            )
+            .replace(" :\"", ":\""),
+            used_fields.into_iter().map(|v| v.into()).collect(),
+            format!("{}", tree),
+        )]
+        .into_iter(),
     )
 }
 

@@ -6,8 +6,7 @@ use lalrpop_util::ParseError;
 use pgx::PgRelation;
 use serde::{Deserialize, Serialize};
 
-pub use pg_catalog::ProximityPart;
-pub use pg_catalog::ProximityTerm;
+pub use pg_catalog::{ProximityPart, ProximityTerm};
 
 use crate::access_method::options::ZDBIndexOptions;
 use crate::utils::{find_zdb_index, get_null_copy_to_fields};
@@ -385,7 +384,15 @@ impl ProximityTerm {
 
                     for token in tokens {
                         let token = ProximityTerm::replace_substitutions(&token);
-                        let term = Term::maybe_make_wildcard_or_regex(None, &token, b);
+                        let mut term = Term::maybe_make_wildcard_or_regex(None, &token, b);
+
+                        // we wouldn't expect Term::maybe_make_wildcard_or_regex() to return a phrase
+                        // as its input token has already been run through Elasticsearch's analysis
+                        // and we're dealing with individual tokens, even if the tokens might otherwise
+                        // look like a phrase to us
+                        if let Term::Phrase(s, b) = term {
+                            term = Term::String(s, b);
+                        }
                         terms.push(ProximityTerm::from_term(&term));
                     }
 
