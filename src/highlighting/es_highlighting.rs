@@ -160,6 +160,28 @@ fn highlight_field(
     }
 }
 
+#[pg_extern(parallel_safe, immutable, name = "highlight", requires = [ highlighting::es_highlighting::highlight, ])]
+fn highlight_all_fields(
+    ctid: pg_sys::ItemPointerData,
+    _highlight_definition: default!(Json, "zdb.highlight()"),
+    fcinfo: pg_sys::FunctionCallInfo,
+) -> Json {
+    let highlights = match get_executor_manager().peek_query_state() {
+        Some((query_desc, query_state)) => {
+            match query_state.lookup_index_for_first_field(*query_desc, fcinfo) {
+                Some(heap_oid) => query_state.get_highlights(heap_oid, ctid),
+                None => None,
+            }
+        }
+        None => None,
+    };
+
+    match highlights {
+        Some(highlights) => Json(json!(highlights)),
+        None => Json(json!(null)),
+    }
+}
+
 #[pg_extern(parallel_safe, immutable, requires = [ highlighting::es_highlighting::highlight, ])]
 fn want_highlight(
     mut query: ZDBQuery,
