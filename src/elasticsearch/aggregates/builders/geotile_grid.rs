@@ -24,10 +24,10 @@ struct GeogridGrid<'a> {
 fn geogrid_grid_agg(
     aggregate_name: &str,
     field: &str,
-    precision: Option<default!(i16, NULL)>,
-    bounds: Option<default!(&str, NULL)>,
-    size: Option<default!(i64, NULL)>,
-    shard_size: Option<default!(i64, NULL)>,
+    precision: default!(Option<i16>, NULL),
+    bounds: default!(Option<&str>, NULL),
+    size: default!(Option<i64>, NULL),
+    shard_size: default!(Option<i64>, NULL),
 ) -> JsonB {
     let geogrid_grid = GeogridGrid {
         field,

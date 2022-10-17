@@ -4,6 +4,7 @@ use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::time::Duration;
 
 struct State {
     es_started: bool,
@@ -71,7 +72,7 @@ fn monitor_es(mut es: Command) {
         for line in reader.lines() {
             let line = line.expect("failed to read Elasticsearch stdout line");
 
-            if line.ends_with("started") {
+            if line.contains("Cluster health status changed") && line.contains("to [GREEN]") {
                 // Elasticsearch has started
                 sender.send(pid).expect("failed to send start notification");
             }
@@ -85,8 +86,8 @@ fn monitor_es(mut es: Command) {
     });
 
     let pid = receiver
-        .recv()
-        .expect("failed to receive Elasticsearch startup notification");
+        .recv_timeout(Duration::from_secs(90))
+        .expect("failed to receive Elasticsearch startup notification after 90s");
     add_shutdown_hook(move || unsafe {
         libc::kill(pid as libc::pid_t, libc::SIGTERM);
     });

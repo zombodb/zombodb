@@ -1,7 +1,7 @@
 use crate::access_method::options::ZDBIndexOptions;
 use crate::elasticsearch::{Elasticsearch, ElasticsearchBulkRequest};
 use crate::gucs::ZDB_LOG_LEVEL;
-use crate::query_dsl::bool::dsl::{and, noteq};
+use crate::query_dsl::bool::dsl::{and_vec, noteq};
 use crate::query_dsl::range::dsl::range_numeric;
 use crate::query_dsl::terms_lookup::dsl::terms_lookup;
 use crate::zdbquery::ZDBQuery;
@@ -332,7 +332,7 @@ fn delete_by_xmin(
 ///     dsl.terms_lookup('zdb_xmin', zdb.index_name(index), type, 'zdb_aborted_xids', 'zdb_aborted_xids')
 /// );
 fn vac_by_xmin(es_index_name: &str, xmin: i64) -> ZDBQuery {
-    and(vec![
+    and_vec(vec![
         Some(range_numeric(
             "zdb_xmin",
             Some(xmin),
@@ -358,7 +358,7 @@ fn vac_by_xmin(es_index_name: &str, xmin: i64) -> ZDBQuery {
 ///     dsl.noteq(dsl.terms_lookup('zdb_xmax', zdb.index_name(index), type, 'zdb_aborted_xids', 'zdb_aborted_xids'))
 /// );
 fn vac_by_xmax(es_index_name: &str, xmax: i64) -> ZDBQuery {
-    and(vec![
+    and_vec(vec![
         Some(range_numeric(
             "zdb_xmax",
             Some(xmax),
@@ -384,7 +384,7 @@ fn vac_by_xmax(es_index_name: &str, xmax: i64) -> ZDBQuery {
 ///    dsl.terms_lookup('zdb_xmax', zdb.index_name(index), type, 'zdb_aborted_xids', 'zdb_aborted_xids')
 /// );
 fn vac_by_aborted_xmax(es_index_name: &str, xmax: i64) -> ZDBQuery {
-    and(vec![
+    and_vec(vec![
         Some(range_numeric(
             "zdb_xmax",
             Some(xmax),

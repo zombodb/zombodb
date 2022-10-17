@@ -34,9 +34,9 @@ fn auto_date_histogram_agg(
     aggregate_name: &str,
     field: &str,
     buckets: i64,
-    format: Option<default!(&str, NULL)>,
-    minimum_interval: Option<default!(Intervals, NULL)>,
-    missing: Option<default!(&str, NULL)>,
+    format: default!(Option<&str>, NULL),
+    minimum_interval: default!(Option<Intervals>, NULL),
+    missing: default!(Option<&str>, NULL),
 ) -> JsonB {
     let adh = AutoDateHistogram {
         field,

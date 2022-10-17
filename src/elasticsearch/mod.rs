@@ -531,8 +531,8 @@ fn request(
     index: PgRelation,
     endpoint: &str,
     method: default!(ArbitraryRequestType, "'GET'"),
-    post_data: Option<default!(JsonB, NULL)>,
-    null_on_error: Option<default!(bool, false)>,
+    post_data: default!(Option<JsonB>, NULL),
+    null_on_error: default!(Option<bool>, false),
 ) -> Option<String> {
     let es = Elasticsearch::new(&index);
     match es.arbitrary_request(method, endpoint, post_data.map_or(None, |v| Some(v.0))) {

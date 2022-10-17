@@ -1,7 +1,7 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
 use crate::zdbquery::mvcc::apply_visibility_clause;
 use crate::zdbquery::{ZDBPreparedQuery, ZDBQuery};
-use pgx::*;
+use pgx::{prelude::*, *};
 use serde::*;
 use serde_json::*;
 
@@ -90,8 +90,9 @@ fn suggest_terms(
     field_name: String,
     suggest: String,
     query: ZDBQuery,
-) -> impl std::iter::Iterator<
-    Item = (
+) -> TableIterator<
+    'static,
+    (
         name!(term, String),
         name!(offset, i64),
         name!(length, i64),
@@ -108,21 +109,23 @@ fn suggest_terms(
         .execute()
         .expect("failed to suggest terms");
 
-    results
-        .iter()
-        .map(|terms| {
-            terms.options.iter().map(move |opts| {
-                (
-                    terms.text.clone(),
-                    terms.offset as i64,
-                    terms.length as i64,
-                    opts.text.clone(),
-                    opts.score,
-                    opts.freq as i64,
-                )
+    TableIterator::new(
+        results
+            .iter()
+            .map(|terms| {
+                terms.options.iter().map(move |opts| {
+                    (
+                        terms.text.clone(),
+                        terms.offset as i64,
+                        terms.length as i64,
+                        opts.text.clone(),
+                        opts.score,
+                        opts.freq as i64,
+                    )
+                })
             })
-        })
-        .flatten()
-        .collect::<Vec<_>>()
-        .into_iter()
+            .flatten()
+            .collect::<Vec<_>>()
+            .into_iter(),
+    )
 }

@@ -1,6 +1,6 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgx::{prelude::*, *};
 use serde::*;
 use serde_json::*;
 
@@ -9,8 +9,8 @@ fn percentiles(
     index: PgRelation,
     field: &str,
     query: ZDBQuery,
-    percents: Option<default!(Json, NULL)>,
-) -> impl std::iter::Iterator<Item = (name!(key, f64), name!(value, Numeric))> {
+    percents: default!(Option<Json>, NULL),
+) -> TableIterator<(name!(key, f64), name!(value, Numeric))> {
     #[derive(Deserialize, Serialize)]
     struct Entry {
         key: f64,
@@ -53,8 +53,10 @@ fn percentiles(
         .execute()
         .expect("failed to execute aggregate search");
 
-    result
-        .values
-        .into_iter()
-        .map(|entry| (entry.key, entry.value))
+    TableIterator::new(
+        result
+            .values
+            .into_iter()
+            .map(|entry| (entry.key, entry.value)),
+    )
 }
