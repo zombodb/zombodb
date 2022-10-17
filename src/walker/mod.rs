@@ -36,7 +36,7 @@ impl PlanWalker {
             )
             .unwrap_or(pg_sys::InvalidOid),
             zdb_highlight_all_fields_oid: lookup_function(
-                vec!["zdb", "highlight"],
+                vec!["zdb", "highlight_all_fields"],
                 Some(vec![pg_sys::TIDOID, pg_sys::JSONOID]),
             )
             .unwrap_or(pg_sys::InvalidOid),
@@ -214,7 +214,7 @@ unsafe extern "C" fn rewrite_walker(node: *mut pg_sys::Node, context_ptr: void_m
                                 asteriskConstNode.consttype = pg_sys::TEXTOID;
                                 asteriskConstNode.constlen = 1;
                                 asteriskConstNode.constvalue =
-                                    pgx::rust_str_to_text_p("*").as_ptr() as pg_sys::Datum;
+                                    pgx::rust_str_to_text_p("*").into_datum().unwrap();
 
                                 asteriskConstNode.into_pg() as *mut pg_sys::Node
                             } else {

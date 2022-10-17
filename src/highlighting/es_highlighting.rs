@@ -160,7 +160,7 @@ fn highlight_field(
     }
 }
 
-#[pg_extern(parallel_safe, immutable, name = "highlight", requires = [ highlighting::es_highlighting::highlight, ])]
+#[pg_extern(parallel_safe, immutable, requires = [ highlighting::es_highlighting::highlight, ])]
 fn highlight_all_fields(
     ctid: pg_sys::ItemPointerData,
     _highlight_definition: default!(Json, "zdb.highlight()"),
