@@ -6,8 +6,7 @@ use lalrpop_util::ParseError;
 use pgx::PgRelation;
 use serde::{Deserialize, Serialize};
 
-pub use pg_catalog::ProximityPart;
-pub use pg_catalog::ProximityTerm;
+pub use pg_catalog::{ProximityPart, ProximityTerm};
 
 use crate::access_method::options::ZDBIndexOptions;
 use crate::utils::{find_zdb_index, get_null_copy_to_fields};

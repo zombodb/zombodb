@@ -2,7 +2,8 @@ use crate::elasticsearch::aggregates::terms_two_level::pg_catalog::TwoLevelTerms
 use crate::elasticsearch::Elasticsearch;
 use crate::utils::json_to_string;
 use crate::zdbquery::ZDBQuery;
-use pgx::{prelude::*, *};
+use pgx::prelude::*;
+use pgx::*;
 use serde::*;
 use serde_json::*;
 

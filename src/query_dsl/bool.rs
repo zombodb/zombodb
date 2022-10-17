@@ -168,7 +168,6 @@ pub mod dsl {
         ))
     }
 
-
     #[pg_extern(immutable, parallel_safe)]
     fn or(queries: VariadicArray<ZDBQuery>) -> ZDBQuery {
         ZDBQuery::new_with_query_clause(ZDBQueryClause::bool(

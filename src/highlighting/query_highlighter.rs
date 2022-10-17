@@ -1,8 +1,8 @@
 use crate::highlighting::document_highlighter::*;
 use crate::utils::find_zdb_index;
 use crate::zql::ast::{Expr, IndexLink, QualifiedField, Term};
-use pgx::{prelude::*, *};
-use pgx::{JsonB, PgRelation};
+use pgx::prelude::*;
+use pgx::{JsonB, PgRelation, *};
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 

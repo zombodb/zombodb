@@ -2,8 +2,7 @@ use lazy_static::*;
 use pgx_tests::add_shutdown_hook;
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 struct State {

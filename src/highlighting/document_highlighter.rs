@@ -1,10 +1,10 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::highlighting::analyze::AnalyzedToken;
 use crate::utils::get_highlight_analysis_info;
-use crate::zql::ast::{IndexLink, ProximityPart, QualifiedField};
-use crate::zql::ast::{ProximityTerm, Term};
+use crate::zql::ast::{IndexLink, ProximityPart, ProximityTerm, QualifiedField, Term};
 use levenshtein::*;
-use pgx::{prelude::*, PgRelation};
+use pgx::prelude::*;
+use pgx::PgRelation;
 use regex::Regex;
 use serde_json::Value;
 use std::borrow::Cow;

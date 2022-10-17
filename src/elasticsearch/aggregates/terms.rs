@@ -5,7 +5,8 @@ use crate::utils::{
 };
 use crate::zdbquery::ZDBQuery;
 use chrono::{TimeZone, Utc};
-use pgx::{prelude::*, *};
+use pgx::prelude::*;
+use pgx::*;
 use serde::*;
 use serde_json::*;
 use std::collections::HashMap;

@@ -14,8 +14,7 @@ mod pg_catalog {
 
 #[pgx_macros::pg_schema]
 mod dsl {
-    use crate::misc::timestamp_support::ZDBTimestamp;
-    use crate::misc::timestamp_support::ZDBTimestampWithTimeZone;
+    use crate::misc::timestamp_support::{ZDBTimestamp, ZDBTimestampWithTimeZone};
     use crate::query_dsl::datetime_range::pg_catalog::*;
     use crate::zdbquery::ZDBQuery;
     use pgx::*;

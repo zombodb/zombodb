@@ -1,7 +1,8 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
 use crate::zdbquery::mvcc::apply_visibility_clause;
 use crate::zdbquery::{ZDBPreparedQuery, ZDBQuery};
-use pgx::{prelude::*, *};
+use pgx::prelude::*;
+use pgx::*;
 use serde::*;
 use serde_json::*;
 

@@ -100,7 +100,8 @@ impl QueryState {
         heap_oid: pg_sys::Oid,
         ctid: pg_sys::ItemPointerData,
     ) -> Option<&HashMap<String, Vec<String>>> {
-        self.highlights.get(&(heap_oid, item_pointer_get_both(ctid)))
+        self.highlights
+            .get(&(heap_oid, item_pointer_get_both(ctid)))
     }
 
     pub fn get_highlight(

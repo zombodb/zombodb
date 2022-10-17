@@ -1,5 +1,6 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
-use pgx::{prelude::*, *};
+use pgx::prelude::*;
+use pgx::*;
 use serde::*;
 use serde_json::*;
 
