@@ -5,6 +5,8 @@ If you're a [sponsor](https://github.com/sponsors/eeeebbbbrrrr) you might want t
 
 ## Prerequisites
 
+- A unix style host machine (eg ubuntu, macOS) since the build processes (including the docker-build-system) have dependencies on unix
+
 - Postgres 10.x, 11.x, 12.x, or 13.x installed (probably from your package manager), including the "-server" package
 
 - A toolchain capable of building Postgres:
@@ -50,7 +52,7 @@ Updating ZomboDB from sources will simply require a `git pull`, another `make cl
 
 ## Building Binary Artifacts with Docker
 
-If you have a proper Docker installation you can simply run:
+If you have a proper Docker installation on a you can simply run:
 
 ```shell script
 $ cd docker-build-system
