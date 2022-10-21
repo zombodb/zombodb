@@ -2507,7 +2507,7 @@ dependencies = [
 
 [[package]]
 name = "zombodb"
-version = "3000.1.4"
+version = "3000.1.5"
 dependencies = [
  "built",
  "byteorder",
