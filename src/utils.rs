@@ -57,7 +57,13 @@ fn get_heap_relation_from_var(
         )
     }
 
-    let rte = unsafe { PgBox::from_pg(pg_sys::rt_fetch(var.varno, view_def.rtable)) };
+    use std::convert::TryInto;
+    let rte = unsafe {
+        PgBox::from_pg(pg_sys::rt_fetch(
+            var.varno.try_into().unwrap(),
+            view_def.rtable,
+        ))
+    };
     return PgRelation::with_lock(rte.relid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
 }
 
@@ -166,7 +172,7 @@ fn find_zdb_shadow_index(table: &PgRelation, funcid: pg_sys::Oid) -> PgRelation 
 pub fn is_zdb_index(index: &PgRelation) -> bool {
     #[cfg(any(feature = "pg10", feature = "pg11"))]
     let routine = index.rd_amroutine;
-    #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14"))]
+    #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14", feature = "pg15"))]
     let routine = index.rd_indam;
 
     if routine.is_null() {
@@ -181,7 +187,7 @@ pub fn is_zdb_index(index: &PgRelation) -> bool {
 pub fn is_non_shadow_zdb_index(index: &PgRelation) -> bool {
     #[cfg(any(feature = "pg10", feature = "pg11"))]
     let routine = index.rd_amroutine;
-    #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14"))]
+    #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14", feature = "pg15"))]
     let routine = index.rd_indam;
 
     if routine.is_null() {

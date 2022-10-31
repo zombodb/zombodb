@@ -130,6 +130,15 @@ unsafe fn maybe_find_hot_root(
             &mut buf,
         );
 
+        #[cfg(any(feature = "pg15"))]
+        let found_tuple = pg_sys::heap_fetch(
+            (*trigdata).tg_relation,
+            pg_sys::GetTransactionSnapshot(),
+            trigdata.tg_trigtuple,
+            &mut buf,
+            false,
+        );
+
         if found_tuple {
             let mut root_offsets: [pg_sys::OffsetNumber; MaxOffsetNumber as usize] =
                 [0; MaxOffsetNumber as usize];

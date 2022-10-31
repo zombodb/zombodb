@@ -126,7 +126,8 @@ impl PgHooks for ZDBHooks {
                         feature = "pg11",
                         feature = "pg12",
                         feature = "pg13",
-                        feature = "pg14"
+                        feature = "pg14",
+                        feature = "pg15"
                     ))]
                     let relid = pg_sys::RangeVarGetRelidExtended(
                         rename.relation,

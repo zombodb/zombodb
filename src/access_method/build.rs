@@ -181,7 +181,7 @@ pub unsafe extern "C" fn aminsert(
     aminsert_internal(index_relation, values, heap_tid)
 }
 
-#[cfg(any(feature = "pg14"))]
+#[cfg(any(feature = "pg14", feature = "pg15"))]
 #[pg_guard]
 pub unsafe extern "C" fn aminsert(
     index_relation: pg_sys::Relation,
@@ -238,7 +238,7 @@ unsafe extern "C" fn build_callback(
     build_callback_internal(htup.t_self, values, state);
 }
 
-#[cfg(any(feature = "pg13", feature = "pg14"))]
+#[cfg(any(feature = "pg13", feature = "pg14", feature = "pg15"))]
 #[pg_guard]
 unsafe extern "C" fn build_callback(
     _index: pg_sys::Relation,

@@ -1173,8 +1173,7 @@ dependencies = [
 [[package]]
 name = "pgx"
 version = "0.5.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f58b9addd0e22dd8a288414d28680dfca9b5d3304da1b29cc0fc24e65a1af026"
+source = "git+https://github.com/tcdi/pgx?branch=develop#3e1a8e28427ee10dca4b71d5c807ee4dd57e232a"
 dependencies = [
  "atomic-traits",
  "bitflags",
@@ -1203,8 +1202,7 @@ dependencies = [
 [[package]]
 name = "pgx-macros"
 version = "0.5.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da7eb8e41b10375bcef714474ca58a6cc049640dd167d7783db308b703c44a14"
+source = "git+https://github.com/tcdi/pgx?branch=develop#3e1a8e28427ee10dca4b71d5c807ee4dd57e232a"
 dependencies = [
  "pgx-utils",
  "proc-macro2",
@@ -1216,8 +1214,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-config"
 version = "0.5.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78fb4764144e366314eae67fd7aa1801e51790172c62eb7731a6d5ff36036ae4"
+source = "git+https://github.com/tcdi/pgx?branch=develop#3e1a8e28427ee10dca4b71d5c807ee4dd57e232a"
 dependencies = [
  "dirs",
  "eyre",
@@ -1232,8 +1229,7 @@ dependencies = [
 [[package]]
 name = "pgx-pg-sys"
 version = "0.5.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5116a27961f08337961cfb9e7be73c809e68c1001e9b205b9584ecd744471bb"
+source = "git+https://github.com/tcdi/pgx?branch=develop#3e1a8e28427ee10dca4b71d5c807ee4dd57e232a"
 dependencies = [
  "bindgen",
  "eyre",
@@ -1253,8 +1249,7 @@ dependencies = [
 [[package]]
 name = "pgx-tests"
 version = "0.5.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce250496208c64c546f614d604208edea4b447edd17873a90283e5ac4b9de594"
+source = "git+https://github.com/tcdi/pgx?branch=develop#3e1a8e28427ee10dca4b71d5c807ee4dd57e232a"
 dependencies = [
  "eyre",
  "libc",
@@ -1276,8 +1271,7 @@ dependencies = [
 [[package]]
 name = "pgx-utils"
 version = "0.5.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a866f68ab3fcc7cc38a0b121581f2939deebddde1bae396b1e03498d4d82315e"
+source = "git+https://github.com/tcdi/pgx?branch=develop#3e1a8e28427ee10dca4b71d5c807ee4dd57e232a"
 dependencies = [
  "atty",
  "convert_case",
@@ -2507,7 +2501,7 @@ dependencies = [
 
 [[package]]
 name = "zombodb"
-version = "3000.1.4"
+version = "3000.1.5"
 dependencies = [
  "built",
  "byteorder",
