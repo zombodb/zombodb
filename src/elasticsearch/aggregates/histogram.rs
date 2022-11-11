@@ -12,11 +12,11 @@ fn histogram(
     query: ZDBQuery,
     interval: f64,
     min_doc_count: default!(i32, 0),
-) -> TableIterator<(name!(term, Numeric), name!(doc_count, i64))> {
+) -> TableIterator<(name!(term, AnyNumeric), name!(doc_count, i64))> {
     #[derive(Deserialize, Serialize)]
     struct BucketEntry {
         doc_count: i64,
-        key: Numeric,
+        key: AnyNumeric,
     }
 
     #[derive(Deserialize, Serialize)]

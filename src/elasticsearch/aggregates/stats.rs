@@ -12,18 +12,18 @@ fn stats(
     query: ZDBQuery,
 ) -> TableIterator<(
     name!(count, i64),
-    name!(min, Numeric),
-    name!(max, Numeric),
-    name!(avg, Numeric),
-    name!(sum, Numeric),
+    name!(min, AnyNumeric),
+    name!(max, AnyNumeric),
+    name!(avg, AnyNumeric),
+    name!(sum, AnyNumeric),
 )> {
     #[derive(Deserialize, Serialize)]
     struct StatsAggData {
         count: i64,
-        min: Numeric,
-        max: Numeric,
-        avg: Numeric,
-        sum: Numeric,
+        min: AnyNumeric,
+        max: AnyNumeric,
+        avg: AnyNumeric,
+        sum: AnyNumeric,
     }
 
     let (prepared_query, index) = query.prepare(&index, Some(field.into()));

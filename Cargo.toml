@@ -12,7 +12,6 @@ crate-type = [ "cdylib" ]
 
 [features]
 default = [ "pg14" ]
-pg10 = [ "pgx/pg10", "pgx-tests/pg10" ]
 pg11 = [ "pgx/pg11", "pgx-tests/pg11" ]
 pg12 = [ "pgx/pg12", "pgx-tests/pg12" ]
 pg13 = [ "pgx/pg13", "pgx-tests/pg13" ]
@@ -33,8 +32,10 @@ lazy_static = "1.4.0"
 levenshtein = "1.0.5"
 memoffset = "0.6.5"
 num_cpus = "1.13.1"
-pgx = { git = "https://github.com/tcdi/pgx", branch = "develop" }
-pgx-macros = { git = "https://github.com/tcdi/pgx", branch = "develop" }
+#pgx = { git = "https://github.com/tcdi/pgx", branch = "develop" }
+pgx = { path = "../pgx/pgx" }
+#pgx-macros = { git = "https://github.com/tcdi/pgx", branch = "develop" }
+pgx-macros = { path = "../pgx/pgx-macros" }
 rayon = "1.5.3"
 regex = "1.6.0"
 rustc-hash = "1.1.0"
@@ -63,10 +64,17 @@ opt-level = 0
 [profile.release]
 panic = "unwind"
 opt-level = 3
-lto = "fat"
-codegen-units = 1
+lto = "thin"
 debug = 0
 
 [profile.dev.build-override]
 opt-level = 3
+debug = 0
+
+[profile.artifacts]
+inherits = "release"
+panic = "unwind"
+opt-level = 3
+lto = "fat"
+codegen-units = 1
 debug = 0

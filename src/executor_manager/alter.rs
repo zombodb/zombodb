@@ -11,7 +11,7 @@ pub fn get_index_options_for_relation(relation: &PgRelation) -> Vec<ZDBIndexOpti
     let mut options = Vec::new();
 
     if relation.is_table() || relation.is_matview() {
-        for index in relation.indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
+        for index in relation.indices(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
             if is_zdb_index(&index) {
                 options.push(ZDBIndexOptions::from_relation(&index));
             }

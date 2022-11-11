@@ -28,7 +28,11 @@ impl ZDBLogLevel {
     }
 
     pub fn log(self, message: &str) {
-        elog(self.log_level(), message)
+        pgx::ereport!(
+            self.log_level(),
+            pgx::PgSqlErrorCode::ERRCODE_SUCCESSFUL_COMPLETION,
+            message
+        )
     }
 }
 

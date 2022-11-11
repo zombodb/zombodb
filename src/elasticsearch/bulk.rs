@@ -5,6 +5,7 @@ use crate::gucs::ZDB_LOG_LEVEL;
 use crate::json::builder::JsonBuilder;
 use crossbeam_channel::{RecvTimeoutError, SendTimeoutError};
 use dashmap::DashSet;
+use pgx::pg_sys::elog::interrupt_pending;
 use pgx::*;
 use rustc_hash::FxHasher;
 use serde::{Deserialize, Serialize};
@@ -796,7 +797,9 @@ impl Handler {
 
                     // we'll loop around and try again
                     command = full_command;
-                    check_for_interrupts!();
+                    if interrupt_pending() {
+                        panic!("detected interrupt from Postgres");
+                    }
                 }
 
                 // the channel is disconnected, so return an error
@@ -1018,7 +1021,7 @@ impl Handler {
 
         if interrupt_pending() {
             self.terminate();
-            check_for_interrupts!();
+            panic!("detected interrupt from Postgres");
         }
     }
 }
