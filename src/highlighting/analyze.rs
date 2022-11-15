@@ -1,7 +1,7 @@
 use cow_utils::*;
 use std::borrow::Cow;
 use std::iter::Peekable;
-use unicode_segmentation::{UnicodeSegmentation, UnicodeWordIndices, UnicodeWords};
+use unicode_segmentation::{UnicodeSegmentation, UnicodeWordIndices};
 
 pub struct AnalyzedToken<'a> {
     pub token: Cow<'a, str>,
@@ -88,10 +88,8 @@ impl<'a> Iterator for FulltextWithShingles<'a> {
 
 /// Returns character-offsets of words in UTF16 encoded text.
 ///
-/// That is, if you have an array of bytes returned from, say,
-/// the Java function `String.getBytes("UTF16")`, then these
-/// indices would be valid for that array (it's a bit odd,
-/// yeah).
+/// That is, if you have a UTF16-encoded Java `char[]` array, then these
+/// indices would be valid for that array (it's a bit odd, yeah).
 pub struct Utf16WordIndices<'a> {
     pos: usize,
     last_end: usize,
