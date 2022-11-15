@@ -1,7 +1,7 @@
 use cow_utils::*;
 use std::borrow::Cow;
 use std::iter::Peekable;
-use unicode_segmentation::UnicodeSegmentation;
+use unicode_segmentation::{UnicodeSegmentation, UnicodeWordIndices, UnicodeWords};
 
 pub struct AnalyzedToken<'a> {
     pub token: Cow<'a, str>,
@@ -12,22 +12,20 @@ pub struct AnalyzedToken<'a> {
 }
 
 fn tokenize<'a>(input: &'a str) -> Box<dyn Iterator<Item = AnalyzedToken<'a>> + 'a> {
-    Box::new(
-        input
-            .unicode_word_indices()
-            .enumerate()
-            .map(|(position, (start, token))| {
-                let token = token.cow_to_lowercase();
-                let len = token.len();
-                AnalyzedToken {
-                    token,
-                    position,
-                    start,
-                    end: start + len,
-                    type_: "<ALPHANUM>",
-                }
-            }),
-    )
+    Box::new(Utf16WordIndices::new(input).into_iter().enumerate().map(
+        |(position, (byte_range, token))| {
+            let token = token.cow_to_lowercase();
+            let start = byte_range.start;
+            let end = byte_range.end;
+            AnalyzedToken {
+                token,
+                position,
+                start,
+                end,
+                type_: "<ALPHANUM>",
+            }
+        },
+    ))
 }
 
 pub fn standard(input: &str) -> Standard {
@@ -87,3 +85,58 @@ impl<'a> Iterator for FulltextWithShingles<'a> {
         }
     }
 }
+
+/// Returns character-offsets of words in UTF16 encoded text.
+///
+/// That is, if you have an array of bytes returned from, say,
+/// the Java function `String.getBytes("UTF16")`, then these
+/// indices would be valid for that array (it's a bit odd,
+/// yeah).
+pub struct Utf16WordIndices<'a> {
+    pos: usize,
+    last_end: usize,
+    text: &'a str,
+    word_indices: UnicodeWordIndices<'a>,
+}
+
+impl<'a> Utf16WordIndices<'a> {
+    #[inline]
+    pub fn new(s: &'a str) -> Self {
+        Self {
+            pos: 0,
+            last_end: 0,
+            text: s,
+            word_indices: s.unicode_word_indices(),
+        }
+    }
+}
+
+impl<'a> Iterator for Utf16WordIndices<'a> {
+    type Item = (std::ops::Range<usize>, &'a str);
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        let (i, text) = self.word_indices.next()?;
+        if i != self.last_end {
+            let skipped = self.text[self.last_end..i].encode_utf16().count();
+            self.pos += skipped;
+        }
+        let start = self.pos;
+        let len = text.encode_utf16().count();
+        self.pos += len;
+        self.last_end = i + text.len();
+        Some(((start)..(self.pos), text))
+    }
+}
+
+// // the indices yielded by `Utf16WordByteIndices` are valid for this Vec.
+// // Which is a bit weird, but matches `String.getBytes("UTF16")` (maybe?
+// // unsure about what endianness that returns).
+// pub fn utf16le_bytes(s: &str) -> Vec<u8> {
+//     s.char_indices()
+//         .flat_map(|(i, c)| {
+//             s[i..(i + c.len_utf8())]
+//                 .encode_utf16()
+//                 .flat_map(|cu| cu.to_le_bytes())
+//         })
+//         .collect()
+// }
