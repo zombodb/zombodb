@@ -1,7 +1,7 @@
 [package]
 name = "zombodb"
 description = "Making Postgres and Elasticsearch work together like it's 2022"
-version = "3000.1.5"
+version = "3000.1.6"
 edition = "2018"
 build = "build.rs"
 readme = "README.md"
@@ -21,7 +21,7 @@ pg_test = [ ]
 
 [dependencies]
 byteorder = "1.4.3"
-chrono = "0.4.22"
+chrono = "0.4.23"
 cow-utils = "0.1.2"
 crossbeam-channel = "0.5.6"
 dashmap = "5.4.0"
@@ -30,18 +30,18 @@ indexmap = "1.9.1"
 lalrpop-util = "0.19.8"
 lazy_static = "1.4.0"
 levenshtein = "1.0.5"
-memoffset = "0.6.5"
-num_cpus = "1.13.1"
+memoffset = "0.7.1"
+num_cpus = "1.14.0"
 pgx = "0.5.6"
 pgx-macros = "0.5.6"
 rayon = "1.5.3"
-regex = "1.6.0"
+regex = "1.7.0"
 rustc-hash = "1.1.0"
 serde = { version = "1.0.147", features = [ "derive" ] }
 serde_json = { version = "1.0.87", features = [ "preserve_order" ] }
 serde_cbor = "0.11.2"
 sqlformat = "0.2.0"
-time = "0.3.15"
+time = "0.3.17"
 unicode-segmentation = "1.10.0"
 ureq = { version = "2.5.0", features = [ "json" ] }
 url = "2.3.1"
@@ -52,7 +52,7 @@ built = { version = "0.5.1", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
 pgx-tests = "0.5.6"
-libc = "0.2.135"
+libc = "0.2.137"
 
 [profile.dev]
 panic = "unwind"
