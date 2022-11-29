@@ -13,10 +13,12 @@ pub unsafe extern "C" fn amcostestimate(
 ) {
     let path = path.as_ref().expect("path argument is NULL");
     let indexinfo = path.indexinfo.as_ref().expect("indexinfo in path is NULL");
-    let index_relation = PgRelation::with_lock(
-        indexinfo.indexoid,
-        pg_sys::AccessShareLock as pg_sys::LOCKMODE,
-    );
+    let index_relation = unsafe {
+        PgRelation::with_lock(
+            indexinfo.indexoid,
+            pg_sys::AccessShareLock as pg_sys::LOCKMODE,
+        )
+    };
     let heap_relation = index_relation
         .heap_relation()
         .expect("failed to get heap relation for index");

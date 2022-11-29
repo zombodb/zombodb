@@ -64,7 +64,9 @@ fn get_heap_relation_from_var(
             view_def.rtable,
         ))
     };
-    return PgRelation::with_lock(rte.relid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
+    return unsafe {
+        PgRelation::with_lock(rte.relid, pg_sys::AccessShareLock as pg_sys::LOCKMODE)
+    };
 }
 
 pub fn find_zdb_index(

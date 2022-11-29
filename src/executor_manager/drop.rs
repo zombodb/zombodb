@@ -66,7 +66,8 @@ fn drop_index_oids(mut table: SpiTupleTable) {
         let oid = table
             .get_one::<pg_sys::Oid>()
             .expect("returned index oid is NULL");
-        let index = PgRelation::with_lock(oid, pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE);
+        let index =
+            unsafe { PgRelation::with_lock(oid, pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE) };
         drop_index(&index);
     }
 }

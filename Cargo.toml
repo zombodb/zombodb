@@ -32,10 +32,10 @@ lazy_static = "1.4.0"
 levenshtein = "1.0.5"
 memoffset = "0.6.5"
 num_cpus = "1.13.1"
-#pgx = { git = "https://github.com/tcdi/pgx", branch = "develop" }
-pgx = { path = "../pgx/pgx" }
-#pgx-macros = { git = "https://github.com/tcdi/pgx", branch = "develop" }
-pgx-macros = { path = "../pgx/pgx-macros" }
+pgx = { git = "https://github.com/tcdi/pgx", branch = "develop" }
+#pgx = { path = "../pgx/pgx" }
+pgx-macros = { git = "https://github.com/tcdi/pgx", branch = "develop" }
+#pgx-macros = { path = "../pgx/pgx-macros" }
 rayon = "1.5.3"
 regex = "1.6.0"
 rustc-hash = "1.1.0"

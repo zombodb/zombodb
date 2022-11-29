@@ -403,6 +403,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "cstr_core"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd98742e4fdca832d40cab219dc2e3048de17d873248f83f17df47c1bea70956"
+dependencies = [
+ "cty",
+ "memchr",
+]
+
+[[package]]
+name = "cty"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b365fabc795046672053e29c954733ec3b05e4be654ab130fe8f1f94d7051f35"
+
+[[package]]
 name = "cxx"
 version = "1.0.81"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1147,46 +1163,20 @@ dependencies = [
 
 [[package]]
 name = "pgx"
-version = "0.5.6"
+version = "0.6.0-alpha.2"
+source = "git+https://github.com/tcdi/pgx?branch=develop#f70a7519ddf1baa20636773a1fcb427de7afb9a5"
 dependencies = [
  "atomic-traits",
  "bitflags",
  "bitvec",
+ "cstr_core",
  "eyre",
  "heapless",
  "libc",
  "once_cell",
- "pgx-macros 0.5.6",
- "pgx-pg-sys 0.5.6",
- "pgx-utils 0.5.6",
- "quote",
- "seahash",
- "seq-macro",
- "serde",
- "serde_cbor",
- "serde_json",
- "thiserror",
- "time 0.3.17",
- "tracing",
- "tracing-error",
- "uuid",
-]
-
-[[package]]
-name = "pgx"
-version = "0.5.6"
-source = "git+https://github.com/tcdi/pgx?branch=develop#20a2f9758dac3d1f59d65ad613709193eaf4040b"
-dependencies = [
- "atomic-traits",
- "bitflags",
- "bitvec",
- "eyre",
- "heapless",
- "libc",
- "once_cell",
- "pgx-macros 0.5.6 (git+https://github.com/tcdi/pgx?branch=develop)",
- "pgx-pg-sys 0.5.6 (git+https://github.com/tcdi/pgx?branch=develop)",
- "pgx-utils 0.5.6 (git+https://github.com/tcdi/pgx?branch=develop)",
+ "pgx-macros",
+ "pgx-pg-sys",
+ "pgx-utils",
  "quote",
  "seahash",
  "seq-macro",
@@ -1202,21 +1192,10 @@ dependencies = [
 
 [[package]]
 name = "pgx-macros"
-version = "0.5.6"
+version = "0.6.0-alpha.2"
+source = "git+https://github.com/tcdi/pgx?branch=develop#f70a7519ddf1baa20636773a1fcb427de7afb9a5"
 dependencies = [
- "pgx-utils 0.5.6",
- "proc-macro2",
- "quote",
- "syn",
- "unescape",
-]
-
-[[package]]
-name = "pgx-macros"
-version = "0.5.6"
-source = "git+https://github.com/tcdi/pgx?branch=develop#20a2f9758dac3d1f59d65ad613709193eaf4040b"
-dependencies = [
- "pgx-utils 0.5.6 (git+https://github.com/tcdi/pgx?branch=develop)",
+ "pgx-utils",
  "proc-macro2",
  "quote",
  "syn",
@@ -1225,22 +1204,8 @@ dependencies = [
 
 [[package]]
 name = "pgx-pg-config"
-version = "0.5.6"
-dependencies = [
- "dirs",
- "eyre",
- "owo-colors",
- "serde",
- "serde_derive",
- "serde_json",
- "toml",
- "url",
-]
-
-[[package]]
-name = "pgx-pg-config"
-version = "0.5.6"
-source = "git+https://github.com/tcdi/pgx?branch=develop#20a2f9758dac3d1f59d65ad613709193eaf4040b"
+version = "0.6.0-alpha.2"
+source = "git+https://github.com/tcdi/pgx?branch=develop#f70a7519ddf1baa20636773a1fcb427de7afb9a5"
 dependencies = [
  "dirs",
  "eyre",
@@ -1254,37 +1219,17 @@ dependencies = [
 
 [[package]]
 name = "pgx-pg-sys"
-version = "0.5.6"
+version = "0.6.0-alpha.2"
+source = "git+https://github.com/tcdi/pgx?branch=develop#f70a7519ddf1baa20636773a1fcb427de7afb9a5"
 dependencies = [
  "bindgen",
  "eyre",
  "libc",
  "memoffset",
  "once_cell",
- "pgx-macros 0.5.6",
- "pgx-pg-config 0.5.6",
- "pgx-utils 0.5.6",
- "proc-macro2",
- "quote",
- "rayon",
- "shlex",
- "sptr",
- "syn",
-]
-
-[[package]]
-name = "pgx-pg-sys"
-version = "0.5.6"
-source = "git+https://github.com/tcdi/pgx?branch=develop#20a2f9758dac3d1f59d65ad613709193eaf4040b"
-dependencies = [
- "bindgen",
- "eyre",
- "libc",
- "memoffset",
- "once_cell",
- "pgx-macros 0.5.6 (git+https://github.com/tcdi/pgx?branch=develop)",
- "pgx-pg-config 0.5.6 (git+https://github.com/tcdi/pgx?branch=develop)",
- "pgx-utils 0.5.6 (git+https://github.com/tcdi/pgx?branch=develop)",
+ "pgx-macros",
+ "pgx-pg-config",
+ "pgx-utils",
  "proc-macro2",
  "quote",
  "rayon",
@@ -1295,55 +1240,33 @@ dependencies = [
 
 [[package]]
 name = "pgx-tests"
-version = "0.5.6"
-source = "git+https://github.com/tcdi/pgx?branch=develop#20a2f9758dac3d1f59d65ad613709193eaf4040b"
+version = "0.6.0-alpha.2"
+source = "git+https://github.com/tcdi/pgx?branch=develop#f70a7519ddf1baa20636773a1fcb427de7afb9a5"
 dependencies = [
  "eyre",
  "libc",
  "once_cell",
  "owo-colors",
- "pgx 0.5.6 (git+https://github.com/tcdi/pgx?branch=develop)",
- "pgx-macros 0.5.6 (git+https://github.com/tcdi/pgx?branch=develop)",
- "pgx-pg-config 0.5.6 (git+https://github.com/tcdi/pgx?branch=develop)",
- "pgx-utils 0.5.6 (git+https://github.com/tcdi/pgx?branch=develop)",
+ "pgx",
+ "pgx-macros",
+ "pgx-pg-config",
+ "pgx-utils",
  "postgres",
  "regex",
  "serde",
  "serde_json",
- "shutdown_hooks",
  "thiserror",
  "time 0.3.17",
 ]
 
 [[package]]
 name = "pgx-utils"
-version = "0.5.6"
+version = "0.6.0-alpha.2"
+source = "git+https://github.com/tcdi/pgx?branch=develop#f70a7519ddf1baa20636773a1fcb427de7afb9a5"
 dependencies = [
  "atty",
  "convert_case",
- "eyre",
- "petgraph",
- "proc-macro2",
- "quote",
- "regex",
- "seq-macro",
- "serde",
- "serde_derive",
- "serde_json",
- "syn",
- "tracing",
- "tracing-error",
- "tracing-subscriber",
- "unescape",
-]
-
-[[package]]
-name = "pgx-utils"
-version = "0.5.6"
-source = "git+https://github.com/tcdi/pgx?branch=develop#20a2f9758dac3d1f59d65ad613709193eaf4040b"
-dependencies = [
- "atty",
- "convert_case",
+ "cstr_core",
  "eyre",
  "petgraph",
  "proc-macro2",
@@ -1791,9 +1714,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.87"
+version = "1.0.89"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ce777b7b150d76b9cf60d28b55f5847135a003f7d7350c6be7a773508ce7d45"
+checksum = "020ff22c755c2ed3f8cf162dbb41a7268d934702f3ed3631656ea597e08fc3db"
 dependencies = [
  "indexmap",
  "itoa",
@@ -1826,12 +1749,6 @@ name = "shlex"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43b2853a4d09f215c24cc5489c992ce46052d359b5109343cbafbf26bc62f8a3"
-
-[[package]]
-name = "shutdown_hooks"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6057adedbec913419c92996f395ba69931acbd50b7d56955394cd3f7bedbfa45"
 
 [[package]]
 name = "siphasher"
@@ -2295,9 +2212,9 @@ dependencies = [
 
 [[package]]
 name = "uuid"
-version = "1.2.1"
+version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "feb41e78f93363bb2df8b0e86a2ca30eed7806ea16ea0c790d757cf93f79be83"
+checksum = "422ee0de9031b5b948b97a8fc04e3aa35230001a722ddd27943e0be31564ce4c"
 dependencies = [
  "getrandom",
 ]
@@ -2552,8 +2469,8 @@ dependencies = [
  "libc",
  "memoffset",
  "num_cpus",
- "pgx 0.5.6",
- "pgx-macros 0.5.6",
+ "pgx",
+ "pgx-macros",
  "pgx-tests",
  "rayon",
  "regex",
