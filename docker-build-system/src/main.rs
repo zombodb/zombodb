@@ -32,7 +32,7 @@ macro_rules! handle_result {
 
 }
 
-static PGVERS: &[u16; 5] = &[10, 11, 12, 13, 14];
+static PGVERS: &[u16; 5] = &[11, 12, 13, 14, 15];
 
 fn do_exit() {
     // best effort to kill the docker process
@@ -147,7 +147,14 @@ fn main() -> Result<(), std::io::Error> {
 
                         let start = std::time::Instant::now();
                         handle_result!(
-                            docker_run(&image, *pgver, &repodir, &builddir, &artifactdir, &pgx_version),
+                            docker_run(
+                                &image,
+                                *pgver,
+                                &repodir,
+                                &builddir,
+                                &artifactdir,
+                                &pgx_version
+                            ),
                             "Failed to compile {} for {}",
                             image,
                             pgver
@@ -183,7 +190,14 @@ fn main() -> Result<(), std::io::Error> {
                     .for_each(|pgver| {
                         let start = std::time::Instant::now();
                         handle_result!(
-                            docker_run(&image, *pgver, &repodir, &builddir, &artifactdir, &pgx_version),
+                            docker_run(
+                                &image,
+                                *pgver,
+                                &repodir,
+                                &builddir,
+                                &artifactdir,
+                                &pgx_version
+                            ),
                             "Failed to compile {} for {}",
                             image,
                             pgver
@@ -214,10 +228,7 @@ fn remove_dir(dir: &PathBuf) {
     }
 }
 
-fn docker_build(
-    base_image: &str,
-    pgver: Option<u16>,
-) -> Result<String, std::io::Error> {
+fn docker_build(base_image: &str, pgver: Option<u16>) -> Result<String, std::io::Error> {
     let image_name = format!(
         "{}{}",
         base_image,
