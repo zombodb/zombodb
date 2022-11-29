@@ -85,8 +85,8 @@ fn monitor_es(mut es: Command) {
     });
 
     let pid = receiver
-        .recv_timeout(Duration::from_secs(90))
-        .expect("failed to receive Elasticsearch startup notification after 90s");
+        .recv_timeout(Duration::from_secs(300))
+        .expect("failed to receive Elasticsearch startup notification after 5 minutes");
     add_shutdown_hook(move || unsafe {
         libc::kill(pid as libc::pid_t, libc::SIGTERM);
     });

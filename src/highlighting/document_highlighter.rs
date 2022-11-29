@@ -234,7 +234,9 @@ impl<'a> DocumentHighlighter<'a> {
                         ),
 
                         (Some(analyzer), _)
-                            if analyzer == "standard" || analyzer == "zdb_standard" =>
+                            if analyzer == "standard"
+                                || analyzer == "zdb_standard"
+                                || analyzer == "fulltext" =>
                         {
                             Box::new(
                                 crate::highlighting::analyze::standard(&s)

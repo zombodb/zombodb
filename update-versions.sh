@@ -12,13 +12,11 @@ set -x
 HEAD=$(git rev-parse HEAD)
 VERSION=$1
 
-cargo release --manifest-path ./docker-build-system/Cargo.toml --no-publish --no-push --no-tag --no-dev-version ${VERSION} || exit 1
-cargo release --manifest-path ./Cargo.toml --no-publish --no-push --no-tag --no-dev-version ${VERSION} || exit 1
+cargo release version $1 --execute || exit 1
+cd docker-build-system
+   cargo release version $1 --execute || exit 1
+cd ..
 
-git reset --soft ${HEAD} || exit 1 
-git reset HEAD || exit 1
-pwd
-sed -i '' -e "s/^version = .*$/version = \"${VERSION}\"/" Cargo.toml || exit 1
 sed -i '' -e "s/^default_version = .*$/default_version = '${VERSION}'/" zombodb.control || exit 1
 
 
