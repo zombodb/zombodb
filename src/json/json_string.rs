@@ -1,6 +1,11 @@
-use crate::misc::timestamp_support::{ZDBTimestamp, ZDBTimestampWithTimeZone};
-use pgx::{Date, Json, JsonB, Time, TimeWithTimeZone, Timestamp, TimestampWithTimeZone};
+use std::io::Write;
+
+use pgx::{Json, JsonB};
 use serde_json::json;
+
+use crate::misc::timestamp_support::{
+    ZDBDate, ZDBTime, ZDBTimeWithTimeZone, ZDBTimestamp, ZDBTimestampWithTimeZone,
+};
 
 pub trait JsonString: Send + Sync {
     fn push_json(&self, target: &mut Vec<u8>);
@@ -62,35 +67,21 @@ impl JsonString for bool {
     }
 }
 
-impl JsonString for Time {
+impl JsonString for ZDBTime {
     #[inline]
     fn push_json(&self, target: &mut Vec<u8>) {
-        serde_json::to_writer(target, self).ok();
+        target.write(&self.0.as_bytes()).ok();
     }
 }
 
-impl JsonString for TimeWithTimeZone {
+impl JsonString for ZDBTimeWithTimeZone {
     #[inline]
     fn push_json(&self, target: &mut Vec<u8>) {
-        serde_json::to_writer(target, self).ok();
-    }
-}
-
-impl JsonString for Timestamp {
-    #[inline]
-    fn push_json(&self, target: &mut Vec<u8>) {
-        serde_json::to_writer(target, self).ok();
+        target.write(&self.0.as_bytes()).ok();
     }
 }
 
 impl JsonString for ZDBTimestamp {
-    #[inline]
-    fn push_json(&self, target: &mut Vec<u8>) {
-        serde_json::to_writer(target, self).ok();
-    }
-}
-
-impl JsonString for TimestampWithTimeZone {
     #[inline]
     fn push_json(&self, target: &mut Vec<u8>) {
         serde_json::to_writer(target, self).ok();
@@ -104,10 +95,10 @@ impl JsonString for ZDBTimestampWithTimeZone {
     }
 }
 
-impl JsonString for Date {
+impl JsonString for ZDBDate {
     #[inline]
     fn push_json(&self, target: &mut Vec<u8>) {
-        serde_json::to_writer(target, self).ok();
+        target.write(&self.0.as_bytes()).ok();
     }
 }
 

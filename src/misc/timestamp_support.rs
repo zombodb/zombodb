@@ -8,6 +8,18 @@ pub struct ZDBTimestamp(time::PrimitiveDateTime);
 
 #[derive(Debug)]
 #[repr(transparent)]
+pub struct ZDBTime(pub String);
+
+#[derive(Debug)]
+#[repr(transparent)]
+pub struct ZDBTimeWithTimeZone(pub String);
+
+#[derive(Debug)]
+#[repr(transparent)]
+pub struct ZDBDate(pub String);
+
+#[derive(Debug)]
+#[repr(transparent)]
 pub struct ZDBTimestampWithTimeZone(time::OffsetDateTime);
 
 impl From<Timestamp> for ZDBTimestamp {
