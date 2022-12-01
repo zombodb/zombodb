@@ -11,7 +11,7 @@ pub fn count_non_shadow_zdb_indices(
     current_index: &PgRelation,
 ) -> usize {
     let mut cnt = 0;
-    for index in heap_relation.indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
+    for index in heap_relation.indices(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
         if index.oid() != current_index.oid() && is_zdb_index(&index) {
             if !ZDBIndexOptions::is_shadow_index_fast(&index) {
                 cnt += 1;
@@ -57,8 +57,16 @@ fn get_heap_relation_from_var(
         )
     }
 
-    let rte = unsafe { PgBox::from_pg(pg_sys::rt_fetch(var.varno, view_def.rtable)) };
-    return PgRelation::with_lock(rte.relid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
+    use std::convert::TryInto;
+    let rte = unsafe {
+        PgBox::from_pg(pg_sys::rt_fetch(
+            var.varno.try_into().unwrap(),
+            view_def.rtable,
+        ))
+    };
+    return unsafe {
+        PgRelation::with_lock(rte.relid, pg_sys::AccessShareLock as pg_sys::LOCKMODE)
+    };
 }
 
 pub fn find_zdb_index(
@@ -73,7 +81,7 @@ pub fn find_zdb_index(
             for index in any_relation
                 .heap_relation()
                 .expect("not an index")
-                .indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE)
+                .indices(pg_sys::AccessShareLock as pg_sys::LOCKMODE)
             {
                 if is_non_shadow_zdb_index(&index) {
                     return Ok((index, options.links().clone()));
@@ -135,7 +143,7 @@ pub fn find_zdb_index(
 
 fn find_zdb_shadow_index(table: &PgRelation, funcid: pg_sys::Oid) -> PgRelation {
     unsafe {
-        for index in table.indicies(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
+        for index in table.indices(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
             if is_zdb_index(&index) {
                 if ZDBIndexOptions::is_shadow_index_fast(&index) {
                     let exprs = PgList::<pg_sys::Expr>::from_pg(
@@ -166,7 +174,7 @@ fn find_zdb_shadow_index(table: &PgRelation, funcid: pg_sys::Oid) -> PgRelation 
 pub fn is_zdb_index(index: &PgRelation) -> bool {
     #[cfg(any(feature = "pg10", feature = "pg11"))]
     let routine = index.rd_amroutine;
-    #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14"))]
+    #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14", feature = "pg15"))]
     let routine = index.rd_indam;
 
     if routine.is_null() {
@@ -181,7 +189,7 @@ pub fn is_zdb_index(index: &PgRelation) -> bool {
 pub fn is_non_shadow_zdb_index(index: &PgRelation) -> bool {
     #[cfg(any(feature = "pg10", feature = "pg11"))]
     let routine = index.rd_amroutine;
-    #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14"))]
+    #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14", feature = "pg15"))]
     let routine = index.rd_indam;
 
     if routine.is_null() {

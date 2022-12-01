@@ -80,7 +80,9 @@ impl PgHooks for ZDBHooks {
                     completion_tag,
                 );
             }
-            let rel = PgRelation::with_lock(relid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
+            let rel = unsafe {
+                PgRelation::with_lock(relid, pg_sys::AccessShareLock as pg_sys::LOCKMODE)
+            };
             let prev_options = get_index_options_for_relation(&rel);
             drop(rel);
 
@@ -126,7 +128,8 @@ impl PgHooks for ZDBHooks {
                         feature = "pg11",
                         feature = "pg12",
                         feature = "pg13",
-                        feature = "pg14"
+                        feature = "pg14",
+                        feature = "pg15"
                     ))]
                     let relid = pg_sys::RangeVarGetRelidExtended(
                         rename.relation,

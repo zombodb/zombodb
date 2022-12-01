@@ -11,11 +11,11 @@ fn percentiles(
     field: &str,
     query: ZDBQuery,
     percents: default!(Option<Json>, NULL),
-) -> TableIterator<(name!(key, f64), name!(value, Numeric))> {
+) -> TableIterator<(name!(key, f64), name!(value, AnyNumeric))> {
     #[derive(Deserialize, Serialize)]
     struct Entry {
         key: f64,
-        value: Numeric,
+        value: AnyNumeric,
     }
 
     #[derive(Deserialize, Serialize)]

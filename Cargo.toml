@@ -12,11 +12,11 @@ crate-type = [ "cdylib" ]
 
 [features]
 default = [ "pg14" ]
-pg10 = [ "pgx/pg10", "pgx-tests/pg10" ]
 pg11 = [ "pgx/pg11", "pgx-tests/pg11" ]
 pg12 = [ "pgx/pg12", "pgx-tests/pg12" ]
 pg13 = [ "pgx/pg13", "pgx-tests/pg13" ]
 pg14 = [ "pgx/pg14", "pgx-tests/pg14" ]
+pg15 = [ "pgx/pg15", "pgx-tests/pg15" ]
 pg_test = [ ]
 
 [dependencies]
@@ -32,8 +32,8 @@ lazy_static = "1.4.0"
 levenshtein = "1.0.5"
 memoffset = "0.7.1"
 num_cpus = "1.14.0"
-pgx = "0.5.6"
-pgx-macros = "0.5.6"
+pgx = { git = "https://github.com/tcdi/pgx", branch = "develop" }
+pgx-macros = { git = "https://github.com/tcdi/pgx", branch = "develop" }
 rayon = "1.5.3"
 regex = "1.7.0"
 rustc-hash = "1.1.0"
@@ -51,7 +51,7 @@ lalrpop = { version = "0.19.8", features = [ "lexer" ] }
 built = { version = "0.5.1", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
-pgx-tests = "0.5.6"
+pgx-tests = { git = "https://github.com/tcdi/pgx", branch = "develop" }
 libc = "0.2.137"
 
 [profile.dev]
@@ -62,10 +62,17 @@ opt-level = 0
 [profile.release]
 panic = "unwind"
 opt-level = 3
-lto = "fat"
-codegen-units = 1
+lto = "thin"
 debug = 0
 
 [profile.dev.build-override]
 opt-level = 3
+debug = 0
+
+[profile.artifacts]
+inherits = "release"
+panic = "unwind"
+opt-level = 3
+lto = "fat"
+codegen-units = 1
 debug = 0

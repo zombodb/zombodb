@@ -11,11 +11,11 @@ fn percentile_ranks(
     field: &str,
     query: ZDBQuery,
     values: Json,
-) -> TableIterator<(name!(key, f64), name!(value, Numeric))> {
+) -> TableIterator<(name!(key, f64), name!(value, AnyNumeric))> {
     #[derive(Deserialize, Serialize)]
     struct Entry {
         key: f64,
-        value: Numeric,
+        value: AnyNumeric,
     }
 
     #[derive(Deserialize, Serialize)]

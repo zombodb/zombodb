@@ -13,33 +13,33 @@ fn extended_stats(
     sigma: default!(i64, 0),
 ) -> TableIterator<(
     name!(count, i64),
-    name!(min, Numeric),
-    name!(max, Numeric),
-    name!(avg, Numeric),
-    name!(sum, Numeric),
-    name!(sum_of_squares, Numeric),
-    name!(variance, Numeric),
-    name!(std_deviation, Numeric),
-    name!(upper, Numeric),
-    name!(lower, Numeric),
+    name!(min, AnyNumeric),
+    name!(max, AnyNumeric),
+    name!(avg, AnyNumeric),
+    name!(sum, AnyNumeric),
+    name!(sum_of_squares, AnyNumeric),
+    name!(variance, AnyNumeric),
+    name!(std_deviation, AnyNumeric),
+    name!(upper, AnyNumeric),
+    name!(lower, AnyNumeric),
 )> {
     #[derive(Deserialize, Serialize)]
     struct ExtendedStatsAggData {
         count: i64,
-        min: Numeric,
-        max: Numeric,
-        avg: Numeric,
-        sum: Numeric,
-        sum_of_squares: Numeric,
-        variance: Numeric,
-        std_deviation: Numeric,
+        min: AnyNumeric,
+        max: AnyNumeric,
+        avg: AnyNumeric,
+        sum: AnyNumeric,
+        sum_of_squares: AnyNumeric,
+        variance: AnyNumeric,
+        std_deviation: AnyNumeric,
         std_deviation_bounds: StdDeviationBounds,
     }
 
     #[derive(Deserialize, Serialize)]
     struct StdDeviationBounds {
-        upper: Numeric,
-        lower: Numeric,
+        upper: AnyNumeric,
+        lower: AnyNumeric,
     }
 
     let (prepared_query, index) = query.prepare(&index, Some(field.into()));

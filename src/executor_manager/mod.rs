@@ -146,7 +146,7 @@ impl QueryState {
                 let var = PgBox::from_pg(first_arg as *mut pg_sys::Var);
                 #[cfg(any(feature = "pg10", feature = "pg11", feature = "pg12"))]
                 let rentry = pg_sys::rt_fetch(var.varnoold, rtable);
-                #[cfg(any(feature = "pg13", feature = "pg14"))]
+                #[cfg(any(feature = "pg13", feature = "pg14", feature = "pg15"))]
                 let rentry = pg_sys::rt_fetch(var.varnosyn, rtable);
                 let heap_oid = rentry.as_ref().unwrap().relid;
 
@@ -376,16 +376,18 @@ impl<'a> ExecutorManager<'a> {
 
         let tupdesc_map = self.tuple_descriptors.as_mut().unwrap();
         let tupdesc = tupdesc_map.entry(relid).or_insert_with(|| {
-            let indexrel =
-                PgRelation::with_lock(relid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
+            let indexrel = unsafe {
+                PgRelation::with_lock(relid, pg_sys::AccessShareLock as pg_sys::LOCKMODE)
+            };
             lookup_zdb_index_tupdesc(&indexrel)
         });
 
         let bulk_map = self.bulk_requests.as_mut().unwrap();
         let xids = &self.xids;
         bulk_map.entry(relid).or_insert_with(move || {
-            let indexrel =
-                PgRelation::with_lock(relid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
+            let indexrel = unsafe {
+                PgRelation::with_lock(relid, pg_sys::AccessShareLock as pg_sys::LOCKMODE)
+            };
             let elasticsearch = Elasticsearch::new(&indexrel);
             let attributes = categorize_tupdesc(tupdesc, &indexrel.heap_relation().unwrap(), None);
 

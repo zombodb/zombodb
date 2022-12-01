@@ -5,6 +5,7 @@ use crate::gucs::ZDB_LOG_LEVEL;
 use crate::json::builder::JsonBuilder;
 use crossbeam_channel::{RecvTimeoutError, SendTimeoutError};
 use dashmap::DashSet;
+use pgx::pg_sys::elog::interrupt_pending;
 use pgx::*;
 use rustc_hash::FxHasher;
 use serde::{Deserialize, Serialize};
@@ -13,6 +14,7 @@ use std::any::Any;
 use std::collections::HashSet;
 use std::hash::BuildHasherDefault;
 use std::io::{Error, ErrorKind, Write};
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
@@ -796,7 +798,9 @@ impl Handler {
 
                     // we'll loop around and try again
                     command = full_command;
-                    check_for_interrupts!();
+                    if interrupt_pending() {
+                        panic!("detected interrupt from Postgres");
+                    }
                 }
 
                 // the channel is disconnected, so return an error
@@ -884,52 +888,74 @@ impl Handler {
                         "{}/_bulk?format=cbor&filter_path={}",
                         base_url, BULK_FILTER_PATH
                     );
-                    if let Err(e) = Elasticsearch::execute_request(
-                        Elasticsearch::client()
-                            .post(&url)
-                            .set("content-type", "application/json"),
-                        &mut reader,
-                        |body| {
-                            #[derive(Serialize, Deserialize, Debug)]
-                            struct ErrorObject {
-                                reason: String,
-                            }
 
-                            #[derive(Serialize, Deserialize, Debug)]
-                            struct BulkResponse {
-                                error: Option<ErrorObject>,
-                                errors: Option<bool>,
-                                items: Option<Vec<Value>>,
-                            }
-
-                            // NB:  this is stupid that ES forces us to parse the response for requests
-                            // that contain an error, but here we are
-                            let result: serde_cbor::Result<BulkResponse> =
-                                serde_cbor::from_reader(body);
-                            match result {
-                                // result deserialized okay, lets see if it's what we need
-                                Ok(response) => {
-                                    if !response.errors.unwrap_or(false) && response.error.is_none()
-                                    {
-                                        successful_requests.fetch_add(1, Ordering::SeqCst);
-                                        Ok(())
-                                    } else {
-                                        // yup, the response contains an error
-                                        Err(ElasticsearchError(
-                                            Some(200), // but it was given to us as a 200 OK, otherwise we wouldn't be here at all
-                                            match serde_json::to_string(&response) {
-                                                Ok(s) => s,
-                                                Err(e) => format!("{:?}", e),
-                                            },
-                                        ))
-                                    }
+                    let response = catch_unwind(AssertUnwindSafe(|| {
+                        Elasticsearch::execute_request(
+                            Elasticsearch::client()
+                                .post(&url)
+                                .set("content-type", "application/json"),
+                            &mut reader,
+                            |body| {
+                                #[derive(Serialize, Deserialize, Debug)]
+                                struct ErrorObject {
+                                    reason: String,
                                 }
 
-                                // couldn't deserialize the result
-                                Err(e) => Err(ElasticsearchError(Some(200), format!("{:?}", e))),
-                            }
-                        },
-                    ) {
+                                #[derive(Serialize, Deserialize, Debug)]
+                                struct BulkResponse {
+                                    error: Option<ErrorObject>,
+                                    errors: Option<bool>,
+                                    items: Option<Vec<Value>>,
+                                }
+
+                                // NB:  this is stupid that ES forces us to parse the response for requests
+                                // that contain an error, but here we are
+                                let result: serde_cbor::Result<BulkResponse> =
+                                    serde_cbor::from_reader(body);
+                                match result {
+                                    // result deserialized okay, lets see if it's what we need
+                                    Ok(response) => {
+                                        if !response.errors.unwrap_or(false)
+                                            && response.error.is_none()
+                                        {
+                                            successful_requests.fetch_add(1, Ordering::SeqCst);
+                                            Ok(())
+                                        } else {
+                                            // yup, the response contains an error
+                                            Err(ElasticsearchError(
+                                                Some(200), // but it was given to us as a 200 OK, otherwise we wouldn't be here at all
+                                                match serde_json::to_string(&response) {
+                                                    Ok(s) => s,
+                                                    Err(e) => format!("{:?}", e),
+                                                },
+                                            ))
+                                        }
+                                    }
+
+                                    // couldn't deserialize the result
+                                    Err(e) => {
+                                        Err(ElasticsearchError(Some(200), format!("{:?}", e)))
+                                    }
+                                }
+                            },
+                        )
+                    }));
+
+                    let response = match response {
+                        Ok(response) => response,
+                        Err(e) => {
+                            // the machinery behind `Elasticsearch::execute_request()` caused a panic, and
+                            // we caught it.  So we're done.  Drop the receiver...
+                            drop(bulk_receiver);
+
+                            // ... and send the error back to the main thread
+                            terminated.store(true, Ordering::SeqCst);
+                            Handler::send_error(error, None, &format!("{:?}", downcast_err(e)));
+                            break;
+                        }
+                    };
+
+                    if let Err(e) = response {
                         // we received an error, so there's no need for any other active thread to expect
                         // to be able to use the receiver anymore
                         drop(bulk_receiver);
@@ -1018,7 +1044,7 @@ impl Handler {
 
         if interrupt_pending() {
             self.terminate();
-            check_for_interrupts!();
+            panic!("detected interrupt from Postgres");
         }
     }
 }

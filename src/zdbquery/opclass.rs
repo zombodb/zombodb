@@ -68,7 +68,7 @@ fn do_seqscan(query: ZDBQuery, index_oid: u32) -> HashSet<u64> {
                 item_pointer_to_u64(htup.as_ref().unwrap().t_self)
             };
 
-            #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14"))]
+            #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14", feature = "pg15"))]
             let tid = {
                 let slot = pg_sys::MakeSingleTupleTableSlot(
                     heap.as_ref().unwrap().rd_att,

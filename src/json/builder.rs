@@ -1,5 +1,7 @@
 use crate::json::json_string::JsonString;
-use crate::misc::timestamp_support::{ZDBTimestamp, ZDBTimestampWithTimeZone};
+use crate::misc::timestamp_support::{
+    ZDBDate, ZDBTime, ZDBTimeWithTimeZone, ZDBTimestamp, ZDBTimestampWithTimeZone,
+};
 use pgx::{Date, JsonB, Time, TimeWithTimeZone, Timestamp, TimestampWithTimeZone};
 
 #[derive(Debug)]
@@ -13,11 +15,11 @@ enum JsonBuilderValue {
     u64(u64),
     f32(f32),
     f64(f64),
-    time(Time),
-    time_with_time_zone(TimeWithTimeZone),
+    time(ZDBTime),
+    time_with_time_zone(ZDBTimeWithTimeZone),
     timestamp(ZDBTimestamp),
     timestamp_with_time_zone(ZDBTimestampWithTimeZone),
-    date(Date),
+    date(ZDBDate),
     string(String),
     json_string(pgx::JsonString),
     jsonb(JsonB),
@@ -30,11 +32,11 @@ enum JsonBuilderValue {
     u32_array(Vec<Option<u32>>),
     f32_array(Vec<Option<f32>>),
     f64_array(Vec<Option<f64>>),
-    time_array(Vec<Option<Time>>),
-    time_with_time_zone_array(Vec<Option<TimeWithTimeZone>>),
+    time_array(Vec<Option<ZDBTime>>),
+    time_with_time_zone_array(Vec<Option<ZDBTimeWithTimeZone>>),
     timestamp_array(Vec<Option<ZDBTimestamp>>),
     timestamp_with_time_zone_array(Vec<Option<ZDBTimestampWithTimeZone>>),
-    date_array(Vec<Option<Date>>),
+    date_array(Vec<Option<ZDBDate>>),
     string_array(Vec<Option<String>>),
     json_string_array(Vec<Option<pgx::JsonString>>),
     jsonb_array(Vec<Option<JsonB>>),
@@ -94,13 +96,20 @@ impl<'a> JsonBuilder<'a> {
 
     #[inline]
     pub fn add_time(&mut self, attname: &'a str, value: Time) {
-        self.values.push((attname, JsonBuilderValue::time(value)));
+        self.values.push((
+            attname,
+            JsonBuilderValue::time(ZDBTime(serde_json::to_string(&value).unwrap())),
+        ));
     }
 
     #[inline]
     pub fn add_time_with_time_zone(&mut self, attname: &'a str, value: TimeWithTimeZone) {
-        self.values
-            .push((attname, JsonBuilderValue::time_with_time_zone(value)));
+        self.values.push((
+            attname,
+            JsonBuilderValue::time_with_time_zone(ZDBTimeWithTimeZone(
+                serde_json::to_string(&value).unwrap(),
+            )),
+        ));
     }
 
     #[inline]
@@ -119,7 +128,10 @@ impl<'a> JsonBuilder<'a> {
 
     #[inline]
     pub fn add_date(&mut self, attname: &'a str, value: Date) {
-        self.values.push((attname, JsonBuilderValue::date(value)));
+        self.values.push((
+            attname,
+            JsonBuilderValue::date(ZDBDate(serde_json::to_string(&value).unwrap())),
+        ));
     }
 
     #[inline]
@@ -188,6 +200,10 @@ impl<'a> JsonBuilder<'a> {
 
     #[inline]
     pub fn add_time_array(&mut self, attname: &'a str, value: Vec<Option<Time>>) {
+        let value = value
+            .into_iter()
+            .map(|t| Some(ZDBTime(serde_json::to_string(&t).unwrap())))
+            .collect();
         self.values
             .push((attname, JsonBuilderValue::time_array(value)));
     }
@@ -198,6 +214,10 @@ impl<'a> JsonBuilder<'a> {
         attname: &'a str,
         value: Vec<Option<TimeWithTimeZone>>,
     ) {
+        let value = value
+            .into_iter()
+            .map(|t| Some(ZDBTimeWithTimeZone(serde_json::to_string(&t).unwrap())))
+            .collect();
         self.values
             .push((attname, JsonBuilderValue::time_with_time_zone_array(value)));
     }
@@ -240,6 +260,10 @@ impl<'a> JsonBuilder<'a> {
 
     #[inline]
     pub fn add_date_array(&mut self, attname: &'a str, value: Vec<Option<Date>>) {
+        let value = value
+            .into_iter()
+            .map(|t| Some(ZDBDate(serde_json::to_string(&t).unwrap())))
+            .collect();
         self.values
             .push((attname, JsonBuilderValue::date_array(value)));
     }

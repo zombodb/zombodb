@@ -14,9 +14,9 @@ fn date_range(
     date_range_array: Json,
 ) -> TableIterator<(
     name!(key, String),
-    name!(from, Option<Numeric>),
+    name!(from, Option<AnyNumeric>),
     name!(from_as_string, Option<String>),
-    name!(to, Option<Numeric>),
+    name!(to, Option<AnyNumeric>),
     name!(to_as_string, Option<String>),
     name!(doc_count, i64),
 )> {
@@ -28,9 +28,9 @@ fn date_range(
     #[derive(Deserialize, Serialize)]
     struct BucketEntry {
         key: serde_json::Value,
-        from: Option<Numeric>,
+        from: Option<AnyNumeric>,
         from_as_string: Option<String>,
-        to: Option<Numeric>,
+        to: Option<AnyNumeric>,
         to_as_string: Option<String>,
         doc_count: i64,
     }

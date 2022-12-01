@@ -305,10 +305,12 @@ impl Elasticsearch {
             } else {
                 let field = field.as_ref().unwrap();
                 // maybe it is nested, so lets go look
-                let index = PgRelation::with_lock(
-                    self.options.oid(),
-                    pg_sys::AccessShareLock as pg_sys::LOCKMODE,
-                );
+                let index = unsafe {
+                    PgRelation::with_lock(
+                        self.options.oid(),
+                        pg_sys::AccessShareLock as pg_sys::LOCKMODE,
+                    )
+                };
 
                 // get the full path, which is the full field name minus the last dotted part
                 let mut path = field.rsplitn(2, '.').collect::<Vec<&str>>();

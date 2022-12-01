@@ -5,10 +5,10 @@ use serde::*;
 use serde_json::*;
 
 #[pg_extern(immutable, parallel_safe)]
-fn sum(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
+fn sum(index: PgRelation, field: &str, query: ZDBQuery) -> AnyNumeric {
     #[derive(Deserialize, Serialize)]
     struct SumAggData {
-        value: Numeric,
+        value: AnyNumeric,
     }
 
     let (prepared_query, index) = query.prepare(&index, Some(field.into()));
@@ -34,10 +34,10 @@ fn sum(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
 }
 
 #[pg_extern(immutable, parallel_safe)]
-fn avg(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
+fn avg(index: PgRelation, field: &str, query: ZDBQuery) -> AnyNumeric {
     #[derive(Deserialize, Serialize)]
     struct AvgAggData {
-        value: Numeric,
+        value: AnyNumeric,
     }
 
     let (prepared_query, index) = query.prepare(&index, Some(field.into()));
@@ -63,10 +63,10 @@ fn avg(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
 }
 
 #[pg_extern(immutable, parallel_safe)]
-fn cardinality(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
+fn cardinality(index: PgRelation, field: &str, query: ZDBQuery) -> AnyNumeric {
     #[derive(Deserialize, Serialize)]
     struct CardinalityAggData {
-        value: Numeric,
+        value: AnyNumeric,
     }
 
     let (prepared_query, index) = query.prepare(&index, Some(field.into()));
@@ -92,10 +92,10 @@ fn cardinality(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
 }
 
 #[pg_extern(immutable, parallel_safe)]
-fn max(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
+fn max(index: PgRelation, field: &str, query: ZDBQuery) -> AnyNumeric {
     #[derive(Deserialize, Serialize)]
     struct MaxAggData {
-        value: Numeric,
+        value: AnyNumeric,
     }
 
     let (prepared_query, index) = query.prepare(&index, Some(field.into()));
@@ -121,10 +121,10 @@ fn max(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
 }
 
 #[pg_extern(immutable, parallel_safe)]
-fn min(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
+fn min(index: PgRelation, field: &str, query: ZDBQuery) -> AnyNumeric {
     #[derive(Deserialize, Serialize)]
     struct MinAggData {
-        value: Numeric,
+        value: AnyNumeric,
     }
 
     let (prepared_query, index) = query.prepare(&index, Some(field.into()));
@@ -150,10 +150,10 @@ fn min(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
 }
 
 #[pg_extern(immutable, parallel_safe)]
-fn missing(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
+fn missing(index: PgRelation, field: &str, query: ZDBQuery) -> AnyNumeric {
     #[derive(Deserialize, Serialize)]
     struct MissingAggData {
-        doc_count: Numeric,
+        doc_count: AnyNumeric,
     }
 
     let (prepared_query, index) = query.prepare(&index, Some(field.into()));
@@ -179,10 +179,10 @@ fn missing(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
 }
 
 #[pg_extern(immutable, parallel_safe)]
-fn value_count(index: PgRelation, field: &str, query: ZDBQuery) -> Numeric {
+fn value_count(index: PgRelation, field: &str, query: ZDBQuery) -> AnyNumeric {
     #[derive(Deserialize, Serialize)]
     struct ValueCountAggData {
-        value: Numeric,
+        value: AnyNumeric,
     }
 
     let (prepared_query, index) = query.prepare(&index, Some(field.into()));

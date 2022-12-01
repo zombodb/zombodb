@@ -14,8 +14,8 @@ fn range(
     range_array: Json,
 ) -> TableIterator<(
     name!(key, String),
-    name!(from, Option<Numeric>),
-    name!(to, Option<Numeric>),
+    name!(from, Option<AnyNumeric>),
+    name!(to, Option<AnyNumeric>),
     name!(doc_count, i64),
 )> {
     #[derive(Deserialize, Serialize)]
@@ -26,8 +26,8 @@ fn range(
     #[derive(Deserialize, Serialize)]
     struct BucketEntry {
         key: serde_json::Value,
-        from: Option<Numeric>,
-        to: Option<Numeric>,
+        from: Option<AnyNumeric>,
+        to: Option<AnyNumeric>,
         doc_count: i64,
     }
 
