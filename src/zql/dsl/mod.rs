@@ -11,7 +11,8 @@ use crate::utils::lookup_es_field_type;
 use crate::zdbquery::mvcc::build_visibility_clause;
 use crate::zdbquery::ZDBQuery;
 use crate::zql::ast::{
-    ComparisonOpcode, Expr, IndexLink, ProximityPart, ProximityTerm, QualifiedField, Term,
+    ComparisonOpcode, Expr, IndexLink, ProximityDistance, ProximityPart, ProximityTerm,
+    QualifiedField, Term,
 };
 
 #[pg_extern(immutable, parallel_safe)]
@@ -386,7 +387,7 @@ fn proximity_chain(field: &QualifiedField, parts: &Vec<ProximityPart>) -> serde_
         if part.words.len() == 1 {
             clauses.push((
                 eq(field, &part.words.get(0).unwrap().to_term(), true),
-                &part.distance,
+                part.distance,
             ));
         } else {
             let mut spans = Vec::new();
@@ -398,19 +399,22 @@ fn proximity_chain(field: &QualifiedField, parts: &Vec<ProximityPart>) -> serde_
                 json! {
                     { "span_or": { "clauses": spans } }
                 },
-                &part.distance,
+                part.distance,
             ));
         }
     }
 
     let mut span_near = None;
     let mut clauses = clauses.into_iter();
+    let mut prev_distance = ProximityDistance::default();
     while let Some((clause, distance)) = clauses.next() {
-        let distance = distance.unwrap_or_default();
-        let span = if let Some((next_clause, _)) = clauses.next() {
-            json! {
+        let mut distance = distance.unwrap_or(prev_distance);
+        let span = if let Some((next_clause, next_distance)) = clauses.next() {
+            let span = json! {
                 { "span_near": { "clauses": [ clause, next_clause ], "slop": distance.distance, "in_order": distance.in_order } }
-            }
+            };
+            distance = next_distance.unwrap_or_default();
+            span
         } else {
             clause
         };
@@ -422,6 +426,7 @@ fn proximity_chain(field: &QualifiedField, parts: &Vec<ProximityPart>) -> serde_
                 { "span_near": { "clauses": [ span_near, span ], "slop": distance.distance, "in_order": distance.in_order } }
             }
         });
+        prev_distance = distance;
     }
 
     span_near.expect("did not generate a span_near clause")

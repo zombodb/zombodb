@@ -69,6 +69,13 @@ fn rewrite_prox_term(field: &QualifiedField, prox_term: &mut ProximityTerm) {
         ProximityTerm::Prefix(s, b) => {
             *prox_term = ProximityTerm::make_proximity_chain(field, &s, *b)
         }
+        ProximityTerm::ProximityChain(v) => {
+            for part in v.iter_mut() {
+                for word in part.words.iter_mut() {
+                    rewrite_prox_term(field, word)
+                }
+            }
+        }
         _ => {}
     }
 }
