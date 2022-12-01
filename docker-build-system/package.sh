@@ -43,9 +43,14 @@ PG_CONFIG_DIR=$(dirname $(grep ${PGVER} ~/.pgx/config.toml | cut -f2 -d= | cut -
 export PATH=${PG_CONFIG_DIR}:${PATH}
 
 #
-# ensure cargo-pgx is the correct version
+# update Rust to the latest version
 #
-cargo install cargo-pgx --version $PGX_VERSION
+rustup update
+
+#
+# ensure cargo-pgx is the correct version and compiled with this Rust version
+#
+cargo install cargo-pgx --version $PGX_VERSION --force
 
 #
 # build the extension
