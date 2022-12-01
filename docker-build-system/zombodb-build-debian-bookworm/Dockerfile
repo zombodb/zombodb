@@ -35,6 +35,7 @@ RUN apt-get update -y --fix-missing
 
 RUN apt-get install -y git
 RUN apt-get install -y curl
+RUN apt-get update -y --fix-missing
 RUN apt-get install -y gcc make build-essential libz-dev zlib1g-dev strace libssl-dev pkg-config
 RUN apt-get update -y --fix-missing
 
