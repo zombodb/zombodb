@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-FROM debian:stretch
+FROM ubuntu:jammy
 
 LABEL maintainer="ZomboDB, LLC (zombodb@gmail.com)"
 
@@ -28,14 +28,14 @@ RUN useradd -m ${USER} --uid=${UID}
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -y -qq --fix-missing
 RUN apt-get install -y wget gnupg
-RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
+RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
 RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 RUN apt update
 RUN apt-get update -y --fix-missing
+RUN apt-get install -y curl
 
 RUN apt-get install -y git
-RUN apt-get install -y curl
-RUN apt-get install -y clang-7 llvm-7 gcc make build-essential libz-dev zlib1g-dev strace libssl-dev pkg-config
+RUN apt-get install -y clang-9 llvm-9 gcc make build-essential libz-dev zlib1g-dev strace libssl-dev pkg-config
 RUN apt-get update -y --fix-missing
 RUN apt-get install -y postgresql-11 postgresql-server-dev-11
 RUN apt-get install -y postgresql-12 postgresql-server-dev-12
@@ -44,7 +44,6 @@ RUN apt-get install -y postgresql-14 postgresql-server-dev-14
 RUN apt-get install -y postgresql-15 postgresql-server-dev-15
 RUN apt-get install -y ruby ruby-dev rubygems build-essential
 RUN gem install --no-document fpm
-
 
 USER ${UID}:${GID}
 WORKDIR /home/${USER}
