@@ -26,25 +26,19 @@ RUN useradd -m ${USER} --uid=${UID}
 
 
 ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get update -y -qq --fix-missing
-RUN apt-get install -y wget gnupg
+RUN apt-get update && apt-get install -y wget gnupg
 RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ bullseye-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
 RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
-RUN apt update
-RUN apt-get update -y --fix-missing
 
-RUN apt-get install -y git
-RUN apt-get install -y curl
-RUN apt-get update -y --fix-missing
-RUN apt-get install -y gcc make build-essential libz-dev zlib1g-dev strace libssl-dev pkg-config
-RUN apt-get update -y --fix-missing
+RUN apt-get update && apt-get install -y git curl
+RUN apt-get update && apt-get install -y gcc make build-essential libz-dev zlib1g-dev strace libssl-dev pkg-config
 
-RUN apt-get install -y postgresql-11 postgresql-server-dev-11
-RUN apt-get install -y postgresql-12 postgresql-server-dev-12
-RUN apt-get install -y postgresql-13 postgresql-server-dev-13
-RUN apt-get install -y postgresql-14 postgresql-server-dev-14
-RUN apt-get install -y postgresql-15 postgresql-server-dev-15
-RUN apt-get install -y ruby ruby-dev rubygems build-essential
+RUN apt-get update && apt-get install -y postgresql-11 postgresql-server-dev-11
+RUN apt-get update && apt-get install -y postgresql-12 postgresql-server-dev-12
+RUN apt-get update && apt-get install -y postgresql-13 postgresql-server-dev-13
+RUN apt-get update && apt-get install -y postgresql-14 postgresql-server-dev-14
+RUN apt-get update && apt-get install -y postgresql-15 postgresql-server-dev-15
+RUN apt-get update && apt-get install -y ruby ruby-dev rubygems build-essential
 RUN gem install --no-document fpm
 
 
