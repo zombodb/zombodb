@@ -27,8 +27,8 @@ RUN useradd -m ${USER} --uid=${UID}
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -y -qq --fix-missing
-RUN apt-get install -y wget gnupg lsb-release
-RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
+RUN apt-get install -y wget gnupg
+RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ kinetic-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
 RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 RUN apt update
 RUN apt-get update -y --fix-missing
