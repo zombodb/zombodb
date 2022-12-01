@@ -4,7 +4,7 @@ use crate::utils::{
     is_date_field, is_date_subfield, is_named_index_link, is_string_field, json_to_string,
 };
 use crate::zdbquery::ZDBQuery;
-use chrono::{TimeZone, Utc};
+use chrono::{LocalResult, TimeZone, Utc};
 use pgx::prelude::*;
 use pgx::*;
 use serde::*;
@@ -340,7 +340,10 @@ fn tally(
                             // convert raw date field values into a human-readable string
                             let epoch =
                                 i64::from_str(&key.unwrap()).expect("date value not in epoch form");
-                            let utc = Utc.timestamp_millis_opt(epoch);
+                            let utc = match Utc.timestamp_millis_opt(epoch) {
+                                LocalResult::Single(utc) => utc,
+                                _ => panic!("invalid millisecond timestamp value"),
+                            };
                             key = Some(utc.to_string());
                         }
 
