@@ -41,7 +41,11 @@ RUN apk add --no-cache \
 	musl-dev \
 	openssl-dev \
 	clang-libs \
-	tar
+	tar \
+    sudo
+
+RUN echo '%wheel ALL=(ALL) ALL' > /etc/sudoers.d/wheel
+RUN adduser ${USER} wheel
 
 RUN gem install --no-document fpm
 
