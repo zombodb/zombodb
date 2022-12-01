@@ -26,7 +26,7 @@ cow-utils = "0.1.2"
 crossbeam-channel = "0.5.6"
 dashmap = "5.4.0"
 humantime = "2.1.0"
-indexmap = "1.9.1"
+indexmap = "1.9.2"
 lalrpop-util = "0.19.8"
 lazy_static = "1.4.0"
 levenshtein = "1.0.5"
@@ -34,11 +34,11 @@ memoffset = "0.7.1"
 num_cpus = "1.14.0"
 pgx = "0.6.0"
 pgx-macros = "0.6.0"
-rayon = "1.5.3"
+rayon = "1.6.0"
 regex = "1.7.0"
 rustc-hash = "1.1.0"
-serde = { version = "1.0.147", features = [ "derive" ] }
-serde_json = { version = "1.0.87", features = [ "preserve_order" ] }
+serde = { version = "1.0.148", features = [ "derive" ] }
+serde_json = { version = "1.0.89", features = [ "preserve_order" ] }
 serde_cbor = "0.11.2"
 sqlformat = "0.2.0"
 time = "0.3.17"
