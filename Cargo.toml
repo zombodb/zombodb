@@ -59,20 +59,26 @@ panic = "unwind"
 debug = true
 opt-level = 0
 
-[profile.release]
-panic = "unwind"
-opt-level = 3
-lto = "thin"
-debug = 0
-
 [profile.dev.build-override]
 opt-level = 3
 debug = 0
 
-[profile.artifacts]
-inherits = "release"
+[profile.release]
 panic = "unwind"
 opt-level = 3
 lto = "fat"
 codegen-units = 1
 debug = 0
+#
+#panic = "unwind"
+#opt-level = 3
+#lto = "thin"
+#debug = 0
+#
+#[profile.artifacts]
+#inherits = "release"
+#panic = "unwind"
+#opt-level = 3
+#lto = "fat"
+#codegen-units = 1
+#debug = 0
