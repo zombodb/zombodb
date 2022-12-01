@@ -340,7 +340,7 @@ fn tally(
                             // convert raw date field values into a human-readable string
                             let epoch =
                                 i64::from_str(&key.unwrap()).expect("date value not in epoch form");
-                            let utc = Utc.timestamp_millis(epoch);
+                            let utc = Utc.timestamp_millis_opt(epoch);
                             key = Some(utc.to_string());
                         }
 
