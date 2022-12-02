@@ -53,7 +53,7 @@ rustup update || exit 1
 #
 # ensure cargo-pgx is the correct version and compiled with this Rust version
 #
-cargo install cargo-pgx --version $PGX_VERSION --force
+cargo install cargo-pgx --version $PGX_VERSION
 
 #
 # build the extension
