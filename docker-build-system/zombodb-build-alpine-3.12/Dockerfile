@@ -42,9 +42,6 @@ RUN apk add --no-cache \
 	openssl-dev \
 	clang-libs \
     clang-dev \
-    clang \
-    llvm \
-    sudo \
 	tar
 
 RUN gem install --no-document fpm
