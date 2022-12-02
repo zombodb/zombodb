@@ -382,6 +382,7 @@ fn handle_command_output<T>(
         log.push_str(&String::from_utf8_lossy(&output.stderr));
         Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, log))
     } else {
+        eprintln!("{}\n{}", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr));
         Ok(return_value.into())
     }
 }
