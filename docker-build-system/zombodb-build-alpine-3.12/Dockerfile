@@ -43,6 +43,7 @@ RUN apk add --no-cache \
 	clang-libs \
     clang \
     llvm \
+    sudo \
 	tar
 
 RUN gem install --no-document fpm
