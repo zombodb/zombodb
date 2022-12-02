@@ -41,6 +41,7 @@ RUN apk add --no-cache \
 	musl-dev \
 	openssl-dev \
 	clang-libs \
+    clang-dev \
     clang \
     llvm \
     sudo \
