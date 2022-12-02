@@ -49,7 +49,6 @@ whoami
 pwd
 ls -la
 rustup update || exit 1
-exit 1
 
 #
 # ensure cargo-pgx is the correct version and compiled with this Rust version
