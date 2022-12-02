@@ -51,4 +51,4 @@ RUN cargo pgx init \
 	--pg12=/usr/pgsql-12/bin/pg_config \
 	--pg13=/usr/pgsql-13/bin/pg_config \
 	--pg14=/usr/pgsql-14/bin/pg_config \
-	--pg15=/usr/pgsql-14/bin/pg_config
+	--pg15=/usr/pgsql-15/bin/pg_config
