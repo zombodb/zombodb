@@ -45,7 +45,7 @@ export PATH=${PG_CONFIG_DIR}:${PATH}
 #
 # update Rust to the latest version
 #
-sudo rustup update
+rustup update
 
 #
 # ensure cargo-pgx is the correct version and compiled with this Rust version
