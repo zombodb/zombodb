@@ -16,7 +16,7 @@ jobs:
 
     strategy:
       matrix:
-        version: [10, 11, 12, 13, 14]
+        version: [11, 12, 13, 14, 15]
         os: ["ubuntu-latest"]
 
     steps:
