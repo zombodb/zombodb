@@ -43,9 +43,9 @@ jobs:
 
     # download Elasticsearch
     - name: download Elasticsearch
-      run: curl -s https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${{ es_version }}-linux-x86_64.tar.gz | tar xzf -
+      run: curl -s https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${{ matrix.es_version }}-linux-x86_64.tar.gz | tar xzf -
     - name: rename Elasticsearch
-      run: mv elasticsearch-${{ es_version }} elasticsearch
+      run: mv elasticsearch-${{ matrix.es_version }} elasticsearch
 
     # update cargo indexes so we're sure we get the latest things from 'git' repo dependencies
     - name: cargo update
