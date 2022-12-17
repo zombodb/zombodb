@@ -1,4 +1,4 @@
-#[pgx_macros::pg_schema]
+#[pgx::pg_schema]
 mod pg_catalog {
     use pgx::*;
     use serde::*;
@@ -12,7 +12,7 @@ mod pg_catalog {
     }
 }
 
-#[pgx_macros::pg_schema]
+#[pgx::pg_schema]
 mod dsl {
     use crate::misc::timestamp_support::{ZDBTimestamp, ZDBTimestampWithTimeZone};
     use crate::query_dsl::datetime_range::pg_catalog::*;
@@ -157,7 +157,7 @@ mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx_macros::pg_schema]
+#[pgx::pg_schema]
 mod tests {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;

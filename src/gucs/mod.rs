@@ -90,7 +90,7 @@ pub fn init() {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx_macros::pg_schema]
+#[pgx::pg_schema]
 mod tests {
     use crate::gucs::{
         ZDBLogLevel, ZDB_DEFAULT_ELASTICSEARCH_URL, ZDB_DEFAULT_REPLICAS, ZDB_DEFAULT_ROW_ESTIMATE,

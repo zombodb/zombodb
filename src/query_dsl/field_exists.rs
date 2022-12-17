@@ -3,7 +3,7 @@
 //!
 //! Returns documents that contain an indexed value for a field.
 
-#[pgx_macros::pg_schema]
+#[pgx::pg_schema]
 mod dsl {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
@@ -22,7 +22,7 @@ mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx_macros::pg_schema]
+#[pgx::pg_schema]
 mod tests {
     use crate::query_dsl::field_exists::dsl::*;
     use pgx::*;

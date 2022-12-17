@@ -554,7 +554,7 @@ fn make_expr<'a>(index: &PgRelation, query_string: &'a str) -> (Expr<'a>, HashSe
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx_macros::pg_schema]
+#[pgx::pg_schema]
 mod tests {
     use crate::highlighting::query_highlighter::QueryHighlighter;
     use crate::zql::ast::Expr;

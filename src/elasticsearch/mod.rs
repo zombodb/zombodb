@@ -56,7 +56,7 @@ lazy_static! {
     static ref NUM_CPUS: usize = num_cpus::get();
 }
 
-#[pgx_macros::pg_schema]
+#[pgx::pg_schema]
 pub mod pg_catalog {
     use pgx::*;
     use serde::Serialize;

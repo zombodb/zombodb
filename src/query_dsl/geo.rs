@@ -1,7 +1,7 @@
 use pgx::*;
 use serde_json::json;
 
-#[pgx_macros::pg_schema]
+#[pgx::pg_schema]
 mod pg_catalog {
     use pgx::*;
     use serde::Serialize;
@@ -40,7 +40,7 @@ fn variadic_point_array_to_json(points: VariadicArray<pg_sys::Point>) -> Json {
     )
 }
 
-#[pgx_macros::pg_schema]
+#[pgx::pg_schema]
 mod dsl {
     use crate::query_dsl::geo::pg_catalog::{GeoBoundingBoxType, GeoShapeRelation};
     use crate::query_dsl::geo::variadic_point_array_to_json;

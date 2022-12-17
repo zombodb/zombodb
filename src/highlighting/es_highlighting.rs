@@ -5,7 +5,7 @@ use pgx::*;
 use serde::Serialize;
 use serde_json::*;
 
-#[pgx_macros::pg_schema]
+#[pgx::pg_schema]
 mod pg_catalog {
     use pgx::*;
     use serde::*;
