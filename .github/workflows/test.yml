@@ -10,14 +10,13 @@ jobs:
   test:
 
     runs-on: ${{ matrix.os }}
-    env:
-      ES_VERSION: "7.13.2"
     if: "!contains(github.event.head_commit.message, 'nogha')"
 
     strategy:
       matrix:
         version: [11, 12, 13, 14, 15]
         os: ["ubuntu-latest"]
+        es_version: ["7.13.2""]
 
     steps:
     - uses: actions/checkout@v2
@@ -44,9 +43,9 @@ jobs:
 
     # download Elasticsearch
     - name: download Elasticsearch
-      run: curl -s https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ES_VERSION}-linux-x86_64.tar.gz | tar xzf -
+      run: curl -s https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${{ es_version }}-linux-x86_64.tar.gz | tar xzf -
     - name: rename Elasticsearch
-      run: mv elasticsearch-${ES_VERSION} elasticsearch
+      run: mv elasticsearch-${{ es_version }} elasticsearch
 
     # update cargo indexes so we're sure we get the latest things from 'git' repo dependencies
     - name: cargo update
