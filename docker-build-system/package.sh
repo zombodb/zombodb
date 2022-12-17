@@ -58,7 +58,7 @@ cargo install cargo-pgx --version $PGX_VERSION
 #
 # build the extension
 #
-cargo pgx package || exit $?
+cargo pgx package --profile artifacts || exit $?
 
 #
 # cd into the package directory
