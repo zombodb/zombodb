@@ -261,7 +261,7 @@ unsafe extern "C" fn build_callback_internal(
 
     let state = (state as *mut BuildState).as_mut().unwrap();
 
-    let old_context = state.memcxt.set_as_current();
+    let mut old_context = state.memcxt.set_as_current();
 
     let values = std::slice::from_raw_parts(values, 1);
     let builder = row_to_json(values[0], &state.tupdesc, &state.attributes);
