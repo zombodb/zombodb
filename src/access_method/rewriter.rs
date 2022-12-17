@@ -55,6 +55,46 @@ pub fn rewrite_opexrs(plan: *mut pg_sys::PlannedStmt) {
                                 var.varoattno = -1;
                             }
                         }
+                    } else if is_a(expr as NodePtr, pg_sys::NodeTag_T_FuncExpr) {
+                        const C: &std::ffi::CStr =
+                            unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(b"c\0") };
+
+                        let mut funcexpr = PgBox::from_pg(expr as *mut pg_sys::FuncExpr);
+                        if context.replacements.contains(&funcexpr.funcresulttype) {
+                            let funcentry = pg_sys::SearchSysCache1(
+                                pg_sys::SysCacheIdentifier_PROCOID as _,
+                                funcexpr.funcid.into_datum().unwrap(),
+                            );
+                            let nargs =
+                                get_attr::<i16>(funcentry, pg_sys::Anum_pg_proc_pronargs).unwrap();
+                            if nargs == 1 {
+                                let lang = get_attr::<pg_sys::Oid>(
+                                    funcentry,
+                                    pg_sys::Anum_pg_proc_prolang,
+                                )
+                                .unwrap();
+                                if lang == pg_sys::get_language_oid(C.as_ptr(), false) {
+                                    let src =
+                                        get_attr::<String>(funcentry, pg_sys::Anum_pg_proc_prosrc)
+                                            .unwrap();
+                                    if src.trim() == "shadow_wrapper" {
+                                        funcexpr.funcresulttype = pg_sys::TIDOID;
+                                        let args = PgList::from_pg(funcexpr.args);
+                                        let first_arg = args.get_ptr(0).unwrap();
+                                        if is_a(first_arg, pg_sys::NodeTag_T_Var) {
+                                            if pg_sys::get_func_rettype(funcexpr.funcid)
+                                                == pg_sys::ANYELEMENTOID
+                                            {
+                                                let mut var =
+                                                    PgBox::<pg_sys::Var>::from_pg(first_arg.cast());
+                                                var.vartype = pg_sys::TIDOID;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            pg_sys::ReleaseSysCache(funcentry);
+                        }
                     }
                 }
             }
@@ -449,5 +489,20 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
         if !did_it {
             debug1!("unrecognized tag: {}", node.as_ref().unwrap().type_);
         }
+    }
+}
+
+fn get_attr<T: FromDatum>(entry: pg_sys::HeapTuple, attribute: u32) -> Option<T> {
+    unsafe {
+        // SAFETY:  SysCacheGetAttr will give us what we need to create a Datum of type T,
+        // and this PgProc type ensures we have a valid "arg_tup" pointer for the cache entry
+        let mut is_null = false;
+        let datum = pg_sys::SysCacheGetAttr(
+            pg_sys::SysCacheIdentifier_PROCOID as _,
+            entry,
+            attribute as _,
+            &mut is_null,
+        );
+        T::from_datum(datum, is_null)
     }
 }
