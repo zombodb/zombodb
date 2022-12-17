@@ -16,7 +16,7 @@ jobs:
       matrix:
         version: [11, 12, 13, 14, 15]
         os: ["ubuntu-latest"]
-        es_version: ["7.13.2""]
+        es_version: ["7.13.2"]
 
     steps:
     - uses: actions/checkout@v2
