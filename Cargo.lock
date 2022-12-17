@@ -2356,7 +2356,6 @@ dependencies = [
  "memoffset 0.7.1",
  "num_cpus",
  "pgx",
- "pgx-macros",
  "pgx-tests",
  "rayon",
  "regex",

@@ -3,7 +3,7 @@
 //!
 //!The most simple query, which matches all documents, giving them all a _score of 1.0
 
-#[pgx_macros::pg_schema]
+#[pgx::pg_schema]
 mod dsl {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
@@ -37,7 +37,7 @@ mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx_macros::pg_schema]
+#[pgx::pg_schema]
 mod tests {
     use crate::query_dsl::match_all::dsl::*;
     use crate::zdbquery::ZDBQuery;

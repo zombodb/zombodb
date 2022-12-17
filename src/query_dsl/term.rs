@@ -3,7 +3,7 @@
 //!
 //! Returns documents that contain an exact term in a provided field
 
-#[pgx_macros::pg_schema]
+#[pgx::pg_schema]
 mod dsl {
     use crate::misc::timestamp_support::ZDBTimestamp;
     use crate::zdbquery::ZDBQuery;
@@ -154,7 +154,7 @@ mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx_macros::pg_schema]
+#[pgx::pg_schema]
 mod tests {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;

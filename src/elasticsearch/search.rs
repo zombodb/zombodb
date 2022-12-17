@@ -706,7 +706,7 @@ impl IntoIterator for ElasticsearchSearchResponse {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx_macros::pg_schema]
+#[pgx::pg_schema]
 mod tests {
     use pgx::*;
 

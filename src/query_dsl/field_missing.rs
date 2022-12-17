@@ -3,7 +3,7 @@
 //!
 //! The following search returns documents that are missing an indexed value for the user field
 
-#[pgx_macros::pg_schema]
+#[pgx::pg_schema]
 mod dsl {
     use crate::zdbquery::{ZDBQuery, ZDBQueryClause};
     use pgx::*;
@@ -23,7 +23,7 @@ mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx_macros::pg_schema]
+#[pgx::pg_schema]
 mod tests {
     use crate::query_dsl::field_missing::dsl::*;
     use pgx::*;

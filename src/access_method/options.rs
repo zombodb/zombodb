@@ -1187,7 +1187,7 @@ pub unsafe fn init() {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx_macros::pg_schema]
+#[pgx::pg_schema]
 mod tests {
     use crate::access_method::options::{
         validate_translog_durability, validate_url, RefreshInterval, ZDBIndexOptions,

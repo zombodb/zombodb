@@ -3,7 +3,7 @@
 //!
 //!Span queries are low-level positional queries which provide expert control over the order and proximity of the specified terms
 
-#[pgx_macros::pg_schema]
+#[pgx::pg_schema]
 mod dsl {
     use crate::zdbquery::ZDBQuery;
     use pgx::*;
@@ -172,7 +172,7 @@ mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx_macros::pg_schema]
+#[pgx::pg_schema]
 mod tests {
     use crate::query_dsl::span::dsl::*;
     use crate::zdbquery::ZDBQuery;
