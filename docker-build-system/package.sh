@@ -64,7 +64,7 @@ cargo pgx package --debug || exit $?
 # cd into the package directory
 #
 ARTIFACTDIR=/artifacts
-BUILDDIR=/build/target/release/zombodb-pg${PGVER}
+BUILDDIR=/build/target/debug/zombodb-pg${PGVER}
 cd ${BUILDDIR} || exit $?
 
 # strip the binaries to make them smaller
