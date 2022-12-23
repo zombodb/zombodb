@@ -68,7 +68,7 @@ BUILDDIR=/build/target/debug/zombodb-pg${PGVER}
 cd ${BUILDDIR} || exit $?
 
 # strip the binaries to make them smaller
-find ./ -name "*.so" -exec strip {} \;
+# find ./ -name "*.so" -exec strip {} \;
 
 #
 # then use 'fpm' to build either a .deb, .rpm or .apk
