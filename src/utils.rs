@@ -96,6 +96,11 @@ pub fn find_zdb_index(
             for te in target_list.iter_ptr() {
                 let te = PgBox::from_pg(te);
 
+                if te.resname.is_null() {
+                    continue;
+                }
+
+
                 let resname = std::ffi::CStr::from_ptr(te.resname);
                 if resname.eq(std::ffi::CStr::from_bytes_with_nul_unchecked(ZDB_RESNAME)) {
                     if is_a(te.expr as *mut pg_sys::Node, pg_sys::NodeTag_T_Var) {
