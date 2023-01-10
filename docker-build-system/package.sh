@@ -95,8 +95,8 @@ elif [ "${PKG_FORMAT}" == "rpm" ]; then
 		-n zombodb-${PGVER} \
 		-v ${VERSION} \
 		--rpm-os linux \
-		-p ${ARTIFACTDIR}/zombodb_${OSNAME}_pg${PGVER}-${VERSION}_1.x86_64.rpm \
-		-a x86_64 \
+		-p ${ARTIFACTDIR}/zombodb_${OSNAME}_pg${PGVER}-${VERSION}.$(uname -m).rpm \
+		-a $(uname -m) \
 		. || exit 1
 
 elif [ "${PKG_FORMAT}" == "apk" ]; then
