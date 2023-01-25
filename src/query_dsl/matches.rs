@@ -303,7 +303,8 @@ mod tests {
                 'and'
             )",
         )
-        .expect("failed to get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -340,7 +341,8 @@ mod tests {
                 'match_query'
             )",
         )
-        .expect("failed to get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -369,7 +371,8 @@ mod tests {
                     'match_query'
                 )",
         )
-        .expect("failed to get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -412,7 +415,8 @@ mod tests {
                     'best_fields'
                 )",
         )
-        .expect("failed to get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -449,7 +453,8 @@ mod tests {
                 'match_phrase_prefix_query'
             )",
         )
-        .expect("failed to get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -480,7 +485,8 @@ mod tests {
                 'none'
             )",
         )
-        .expect("failed to get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -510,7 +516,8 @@ mod tests {
                 'match_phrase_query'
             )",
         )
-        .expect("failed to get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -540,7 +547,8 @@ mod tests {
                 'none'
             )",
         )
-        .expect("failed to get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -569,7 +577,8 @@ mod tests {
                 'phrase_query'
             )",
         )
-        .expect("failed to get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -599,7 +608,8 @@ mod tests {
                 'none'
             )",
         )
-        .expect("failed to get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(

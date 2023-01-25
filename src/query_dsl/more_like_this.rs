@@ -186,7 +186,8 @@ mod tests {
                 6
             )",
         )
-        .expect("failed to get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -222,7 +223,8 @@ mod tests {
                 'like_string'
             )",
         )
-        .expect("failed to get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -259,7 +261,8 @@ mod tests {
                 6
             )",
         )
-        .expect("failed to get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -295,7 +298,8 @@ mod tests {
                 Array['like_string uno', 'string like dos', 'like string three']
             )",
         )
-        .expect("failed to get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(

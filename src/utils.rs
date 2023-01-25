@@ -100,7 +100,6 @@ pub fn find_zdb_index(
                     continue;
                 }
 
-
                 let resname = std::ffi::CStr::from_ptr(te.resname);
                 if resname.eq(std::ffi::CStr::from_bytes_with_nul_unchecked(ZDB_RESNAME)) {
                     if is_a(te.expr as *mut pg_sys::Node, pg_sys::NodeTag_T_Var) {
@@ -171,7 +170,7 @@ fn find_zdb_shadow_index(table: &PgRelation, funcid: pg_sys::Oid) -> PgRelation 
     panic!(
         "no matching ZomboDB shadow index on {} for function OID {}",
         table.name(),
-        funcid
+        funcid.as_u32()
     );
 }
 
@@ -216,7 +215,9 @@ pub fn is_view(relation: &PgRelation) -> bool {
 }
 
 pub fn lookup_zdb_extension_oid() -> pg_sys::Oid {
-    match Spi::get_one::<pg_sys::Oid>("SELECT oid FROM pg_extension WHERE extname = 'zombodb';") {
+    match Spi::get_one::<pg_sys::Oid>("SELECT oid FROM pg_extension WHERE extname = 'zombodb';")
+        .expect("SPI failed")
+    {
         Some(oid) => oid,
         None => panic!("no zombodb pg_extension entry.  Is ZomboDB installed?"),
     }
@@ -237,13 +238,15 @@ pub fn lookup_zdb_index_tupdesc(indexrel: &PgRelation) -> PgTupleDesc<'static> {
 
     // lookup the tuple descriptor for the rowtype we're *indexing*, rather than
     // using the tuple descriptor for the index definition itself
-    PgMemoryContexts::TopTransactionContext.switch_to(|_| unsafe {
-        PgTupleDesc::from_pg_is_copy(pg_sys::lookup_rowtype_tupdesc_copy(typid, typmod))
-    })
+    unsafe {
+        PgMemoryContexts::TopTransactionContext.switch_to(|_| {
+            PgTupleDesc::from_pg_is_copy(pg_sys::lookup_rowtype_tupdesc_copy(typid, typmod))
+        })
+    }
 }
 
 pub fn lookup_all_zdb_index_oids() -> Option<Vec<pg_sys::Oid>> {
-    Spi::get_one("select array_agg(oid) from pg_class where relkind = 'i' and relam = (select oid from pg_am where amname = 'zombodb');")
+    Spi::get_one("select array_agg(oid) from pg_class where relkind = 'i' and relam = (select oid from pg_am where amname = 'zombodb');").expect("SPI failed")
 }
 
 pub fn lookup_function(
@@ -290,6 +293,7 @@ pub fn get_search_analyzer(index: &PgRelation, field: &str) -> String {
             (PgBuiltInOids::TEXTOID.oid(), field.into_datum()),
         ],
     )
+    .expect("SPI failed")
     .expect("search analyzer was null")
 }
 
@@ -302,6 +306,7 @@ pub fn get_index_analyzer(index: &PgRelation, field: &str) -> String {
             (PgBuiltInOids::TEXTOID.oid(), field.into_datum()),
         ],
     )
+    .expect("SPI failed")
     .expect("search analyzer was null")
 }
 
@@ -316,12 +321,12 @@ pub fn get_highlight_analysis_info(
             (PgBuiltInOids::TEXTOID.oid(), field.into_datum()),
         ],
     )
+    .expect("SPI failed")
 }
 
 pub fn get_null_copy_to_fields(index: &PgRelation) -> Vec<String> {
-    let mut fields = Vec::new();
-
     Spi::connect(|client| {
+        let mut fields = Vec::new();
         let mut results = client.select(
             "select * from zdb.get_null_copy_to_fields($1);",
             None,
@@ -329,16 +334,15 @@ pub fn get_null_copy_to_fields(index: &PgRelation) -> Vec<String> {
                 PgBuiltInOids::OIDOID.oid(),
                 index.oid().into_datum(),
             )]),
-        );
+        )?;
 
         while results.next().is_some() {
-            fields.push(results.get_one().expect("field name was null"))
+            fields.push(results.get_one()?.expect("field name was null"))
         }
 
-        Ok(Some(()))
-    });
-
-    fields
+        Ok::<_, spi::Error>(fields)
+    })
+    .expect("SPI failed")
 }
 
 pub fn is_string_field(index: &PgRelation, field: &str) -> bool {
@@ -380,8 +384,8 @@ pub fn lookup_es_field_type(index: &PgRelation, field: &str) -> String {
     sql.push_str(&format!(
         "select
         zdb.index_mapping({}::regclass)->zdb.index_name({}::regclass)->'mappings'->'properties'",
-        index.oid(),
-        index.oid()
+        index.oid().as_u32(),
+        index.oid().as_u32()
     ));
 
     for (idx, part) in field.split('.').enumerate() {
@@ -396,7 +400,7 @@ pub fn lookup_es_field_type(index: &PgRelation, field: &str) -> String {
     }
 
     sql.push_str("->>'type';");
-    Spi::get_one(&sql).unwrap_or_default()
+    Spi::get_one(&sql).expect("SPI failed").unwrap_or_default()
 }
 
 pub fn lookup_es_subfield_type(index: &PgRelation, field: &str) -> String {
@@ -405,8 +409,8 @@ pub fn lookup_es_subfield_type(index: &PgRelation, field: &str) -> String {
     sql.push_str(&format!(
         "select
         zdb.index_mapping({}::regclass)->zdb.index_name({}::regclass)->'mappings'->'properties'",
-        index.oid(),
-        index.oid()
+        index.oid().as_u32(),
+        index.oid().as_u32()
     ));
 
     for (idx, part) in field.split('.').enumerate() {
@@ -422,7 +426,7 @@ pub fn lookup_es_subfield_type(index: &PgRelation, field: &str) -> String {
 
     sql.push_str("->'fields'->'date'");
     sql.push_str("->>'type';");
-    Spi::get_one(&sql).unwrap_or_default()
+    Spi::get_one(&sql).expect("SPI failed").unwrap_or_default()
 }
 
 pub fn json_to_string(key: serde_json::Value) -> Option<String> {
@@ -443,7 +447,8 @@ pub fn type_is_domain(typoid: pg_sys::Oid) -> Option<(pg_sys::Oid, String)> {
     let (is_domain, base_type, name) = Spi::get_three_with_args::<bool, pg_sys::Oid, String>(
         "SELECT typtype = 'd', typbasetype, typname::text FROM pg_type WHERE oid = $1",
         vec![(PgBuiltInOids::OIDOID.oid(), typoid.into_datum())],
-    );
+    )
+    .expect("SPI failed");
 
     if is_domain.unwrap_or(false) {
         Some((base_type.unwrap(), name.unwrap()))

@@ -130,7 +130,8 @@ mod tests {
     #[pg_test]
     fn test_wildcard_with_default() {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.wildcard('fieldname', 't*t');")
-            .expect("didn't get SPI return value");
+            .expect("SPI failed")
+            .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -178,7 +179,8 @@ mod tests {
                 32
             )",
         )
-        .expect("failed to get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -220,8 +222,9 @@ mod tests {
 
     #[pg_test]
     fn test_script_without_default() {
-        let json_example =
-            Spi::get_one::<Json>(r#"  SELECT '{"json": "json_value"}'::json;  "#).unwrap();
+        let json_example = Spi::get_one::<Json>(r#"  SELECT '{"json": "json_value"}'::json;  "#)
+            .expect("SPI failed")
+            .unwrap();
         let zdbquery = script("script_source", Some(json_example), "totally_a_lang");
         let dsl = zdbquery.into_value();
 

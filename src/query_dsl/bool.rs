@@ -229,7 +229,7 @@ mod tests {
     fn test_bool_all_part_types() {
         let zdbquery = Spi::get_one::<ZDBQuery>(
             "SELECT dsl.bool(dsl.must('q1', 'q2', 'q3'),dsl.must_not('q4','q5'),dsl.should('q6','q7'),dsl.filter('q8','q9'))")
-            .expect("failed to get SPI result");
+            .expect("SPI failed").expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -300,7 +300,7 @@ mod tests {
     fn test_bool_without_filter() {
         let zdbquery = Spi::get_one::<ZDBQuery>(
             "SELECT dsl.bool(dsl.must('q1', 'q2', 'q3'),dsl.must_not('q4','q5'),dsl.should('q6','q7'))")
-            .expect("failed to get SPI result");
+            .expect("SPI failed").expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -359,7 +359,7 @@ mod tests {
     fn test_bool_with_must_twice() {
         let zdbquery = Spi::get_one::<ZDBQuery>(
             "SELECT dsl.bool(dsl.must('q1', 'q2'),dsl.must_not('q4','q5'),dsl.should('q6','q7'),dsl.must('q3'))")
-            .expect("failed to get SPI result");
+            .expect("SPI failed").expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -417,7 +417,8 @@ mod tests {
     #[pg_test]
     fn test_and() {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.and('q1', 'q2')")
-            .expect("failed to get SPI result");
+            .expect("SPI failed")
+            .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -446,7 +447,8 @@ mod tests {
     #[pg_test]
     fn test_or() {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.or('q1', 'q2')")
-            .expect("failed to get SPI result");
+            .expect("SPI failed")
+            .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -475,7 +477,8 @@ mod tests {
     #[pg_test]
     fn test_not() {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.not('q1', 'q2')")
-            .expect("failed to get SPI result");
+            .expect("SPI failed")
+            .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -504,7 +507,8 @@ mod tests {
     #[pg_test]
     fn test_binary_and() {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.binary_and(dsl.limit(10, 'a'), 'b');")
-            .expect("failed to get SPI result");
+            .expect("SPI failed")
+            .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(

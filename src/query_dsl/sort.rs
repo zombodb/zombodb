@@ -84,7 +84,8 @@ mod tests {
     #[pg_test]
     fn test_sort() {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.sort('the_field', 'asc', 'david')")
-            .expect("failed to get SPI result");
+            .expect("SPI failed")
+            .expect("SPI datum was NULL");
 
         assert_eq!(
             &serde_json::to_value(&zdbquery).unwrap(),
@@ -101,7 +102,8 @@ mod tests {
     fn test_sort_direct() {
         let zdbquery =
             Spi::get_one::<ZDBQuery>("SELECT dsl.sort_direct('{\"foo\": \"bar\"}', 'david')")
-                .expect("failed to get SPI result");
+                .expect("SPI failed")
+                .expect("SPI datum was NULL");
 
         assert_eq!(
             &serde_json::to_value(&zdbquery).unwrap(),
@@ -117,13 +119,14 @@ mod tests {
     #[pg_test]
     fn test_sort_sd_and_sort_many() {
         let zdbquery = Spi::get_one::<ZDBQuery>(
-            "SELECT dsl.sort_many('query', 
+            "SELECT dsl.sort_many('query',
                 dsl.sd('cat','asc','max'),
                 dsl.sd('dog','asc','min'),
                 dsl.sd('foo','desc','sum')
              )",
         )
-        .expect("failed to get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
 
         assert_eq!(
             &serde_json::to_value(&zdbquery).unwrap(),
@@ -143,13 +146,14 @@ mod tests {
     #[pg_test]
     fn test_sort_sd_nested_and_sort_many() {
         let zdbquery = Spi::get_one::<ZDBQuery>(
-            "SELECT dsl.sort_many('query', 
+            "SELECT dsl.sort_many('query',
                 dsl.sd_nested('cat', 'asc', 'a_path', dsl.term('fieldname','filter'), 'max'),
                 dsl.sd_nested('dog', 'asc', 'a_path', dsl.term('fieldname','filter'), 'min'),
                 dsl.sd_nested('foo', 'desc', 'a_path', dsl.term('fieldname','filter'), 'sum')
              )",
         )
-        .expect("failed to get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
 
         assert_eq!(
             &serde_json::to_value(&zdbquery).unwrap(),

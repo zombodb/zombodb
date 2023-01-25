@@ -369,7 +369,7 @@ pub fn categorize_tupdesc<'a>(
                         }
                     }
 
-                    PgOid::InvalidOid => {
+                    PgOid::Invalid => {
                         panic!("{} has a type oid of InvalidOid", attribute.name())
                     }
                 };
@@ -529,8 +529,8 @@ pub fn generate_default_mapping(heap_relation: &PgRelation) -> HashMap<String, s
 pub fn lookup_es_only_field_mappings(
     heap_relation: &PgRelation,
 ) -> Vec<(String, serde_json::Value)> {
-    let mut mappings = Vec::new();
     Spi::connect(|client| {
+        let mut mappings = Vec::new();
         let mut table = client.select("SELECT field_name, definition FROM zdb.mappings WHERE table_name = $1 and es_only = true",
                                       None,
                                       Some(
@@ -538,24 +538,23 @@ pub fn lookup_es_only_field_mappings(
                                               (PgOid::BuiltIn(PgBuiltInOids::OIDOID), heap_relation.clone().into_datum())
                                           ]
                                       )
-        );
+        )?;
 
         while table.next().is_some() {
-            let data = table.get_two::<String, JsonB>();
+            let data = table.get_two::<String, JsonB>()?;
             mappings.push((
                 data.0.expect("field_name is NULL"),
                 data.1.expect("mapping definition is NULL").0,
             ));
         }
 
-        Ok(Some(()))
-    });
-    mappings
+        Ok::<_, spi::Error>(mappings)
+    }).expect("SPI failed")
 }
 
 pub fn lookup_mappings(heap_relation: &PgRelation) -> HashMap<String, serde_json::Value> {
-    let mut mappings = HashMap::new();
     Spi::connect(|client| {
+        let mut mappings = HashMap::new();
         let mut table = client.select("SELECT field_name, definition FROM zdb.mappings WHERE table_name = $1 and es_only = false",
                                       None,
                                       Some(
@@ -563,17 +562,16 @@ pub fn lookup_mappings(heap_relation: &PgRelation) -> HashMap<String, serde_json
                                               (PgOid::BuiltIn(PgBuiltInOids::OIDOID), heap_relation.clone().into_datum())
                                           ]
                                       )
-        );
+        )?;
         while table.next().is_some() {
-            let data = table.get_two::<String, JsonB>();
+            let data = table.get_two::<String, JsonB>()?;
             mappings.insert(
                 data.0.expect("fieldname was null"),
                 data.1.expect("mapping definition was null").0,
             );
         }
-        Ok(Some(()))
-    });
-    mappings
+        Ok::<_, spi::Error>(mappings)
+    }).expect("SPI failed")
 }
 
 pub fn lookup_analysis_thing(table_name: &str) -> Value {
@@ -582,37 +580,39 @@ pub fn lookup_analysis_thing(table_name: &str) -> Value {
         "SELECT json_object_agg(name, definition) FROM zdb.{};",
         table_name
     )) {
-        Some(json) => json.0,
-        None => json! {{}},
+        Ok(Some(json)) => json.0,
+        Ok(None) | Err(_) => json! {{}},
     }
 }
 
 fn lookup_type_mapping(typoid: PgOid) -> Option<(Option<serde_json::Value>, Option<pg_sys::Oid>)> {
-    let mut json = None;
-    let mut regproc = None;
-
-    Spi::connect(|client| {
+    let (json, regproc) = Spi::connect(|client| {
         let table = client
             .select(
-                "SELECT definition, funcid FROM zdb.type_mappings WHERE type_name = $1;",
+                "SELECT definition, funcid::oid FROM zdb.type_mappings WHERE type_name = $1;",
                 None,
                 Some(vec![(
                     PgOid::BuiltIn(PgBuiltInOids::REGPROCOID),
                     typoid.clone().into_datum(),
                 )]),
-            )
+            )?
             .first();
 
-        let values = table.get_two::<JsonB, pg_sys::Oid>();
-        json = if values.0.is_some() {
+        if table.is_empty() {
+            return Ok((None, None));
+        }
+
+        let values = table.get_two::<JsonB, pg_sys::Oid>()?;
+        let json = if values.0.is_some() {
             Some(values.0.unwrap().0)
         } else {
             None
         };
-        regproc = if values.1.is_some() { values.1 } else { None };
+        let regproc = if values.1.is_some() { values.1 } else { None };
 
-        Ok(Some(()))
-    });
+        Ok::<_, spi::Error>((json, regproc))
+    })
+    .expect("SPI failed");
 
     if json.is_none() && regproc.is_none() {
         None
@@ -622,21 +622,21 @@ fn lookup_type_mapping(typoid: PgOid) -> Option<(Option<serde_json::Value>, Opti
 }
 
 fn lookup_type_conversions() -> HashMap<pg_sys::Oid, pg_sys::Oid> {
-    let mut cache = HashMap::new();
     Spi::connect(|client| {
+        let mut cache = HashMap::new();
         let mut table = client.select(
-            "SELECT typeoid, funcoid FROM zdb.type_conversions",
+            "SELECT typeoid::oid, funcoid::oid FROM zdb.type_conversions",
             None,
             None,
-        );
+        )?;
         while table.next().is_some() {
-            let (typeoid, funcoid) = table.get_two::<pg_sys::Oid, pg_sys::Oid>();
+            let (typeoid, funcoid) = table.get_two::<pg_sys::Oid, pg_sys::Oid>()?;
             cache.insert(typeoid.unwrap(), funcoid.unwrap());
         }
 
-        Ok(Some(()))
-    });
-    cache
+        Ok::<_, spi::Error>(cache)
+    })
+    .expect("SPI failed")
 }
 
 #[cfg(any(test, feature = "pg_test"))]
@@ -649,10 +649,10 @@ mod tests {
 
     #[pg_test]
     #[initialize(es = true)]
-    unsafe fn test_generate_mapping() {
-        Spi::run("CREATE TABLE test (id serial8, title text, name varchar);");
-        Spi::run("CREATE INDEX idxtest ON test USING zombodb ((test.*)) WITH (url='http://localhost:19200/')");
-        let index_id = Spi::get_one::<pg_sys::Oid>("SELECT 'idxtest'::regclass;")
+    unsafe fn test_generate_mapping() -> spi::Result<()> {
+        Spi::run("CREATE TABLE test (id serial8, title text, name varchar);")?;
+        Spi::run("CREATE INDEX idxtest ON test USING zombodb ((test.*)) WITH (url='http://localhost:19200/')")?;
+        let index_id = Spi::get_one::<pg_sys::Oid>("SELECT 'idxtest'::regclass::oid;")?
             .expect("failed to get idxtest oid from SPI");
         let index = PgRelation::from_pg(pg_sys::RelationIdGetRelation(index_id));
         let tupdesc = lookup_zdb_index_tupdesc(&index);
@@ -708,5 +708,7 @@ mod tests {
             }))
             .unwrap()
         );
+
+        Ok(())
     }
 }

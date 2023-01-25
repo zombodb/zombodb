@@ -38,6 +38,7 @@ mod tests {
     fn test_terms_array_with_integers() {
         let zdbquery =
             Spi::get_one::<ZDBQuery>("SELECT dsl.terms_array('some_field', ARRAY[1, 2, 3])")
+                .expect("SPI failed")
                 .expect("SPI result failed");
 
         assert_eq!(
@@ -54,6 +55,7 @@ mod tests {
     fn test_terms_array_with_strings() {
         let zdbquery =
             Spi::get_one::<ZDBQuery>("SELECT dsl.terms_array('some_field', ARRAY['a', 'b', 'c'])")
+                .expect("SPI failed")
                 .expect("SPI result failed");
 
         assert_eq!(
@@ -71,6 +73,7 @@ mod tests {
         let zdbquery = Spi::get_one::<ZDBQuery>(
             "SELECT dsl.terms_array('some_field', ARRAY['true', 'true', 'false'])",
         )
+        .expect("SPI failed")
         .expect("SPI result failed");
 
         assert_eq!(
@@ -88,6 +91,7 @@ mod tests {
         let zdbquery = Spi::get_one::<ZDBQuery>(
             "SELECT dsl.terms_array('some_field', ARRAY['4.2', '5.6', '6.9'])",
         )
+        .expect("SPI failed")
         .expect("SPI result failed");
 
         assert_eq!(

@@ -45,8 +45,8 @@ pub static ZDB_ACCELERATOR: GucSetting<bool> = GucSetting::new(false);
 
 pub fn init() {
     GucRegistry::define_bool_guc("zdb.ignore_visibility",
-                                 "Should queries honor visibility rules?", 
-                                 "By default, all Elasticsearch search requests apply a MVCC snapshot visibility filter.  Disabling this might provide a slight performance boost at the expense of correct results", 
+                                 "Should queries honor visibility rules?",
+                                 "By default, all Elasticsearch search requests apply a MVCC snapshot visibility filter.  Disabling this might provide a slight performance boost at the expense of correct results",
                                  &ZDB_IGNORE_VISIBILITY,
                                  GucContext::Userset);
 
@@ -113,23 +113,26 @@ mod tests {
     }
 
     #[pg_test]
-    fn test_default_row_estimate() {
+    fn test_default_row_estimate() -> spi::Result<()> {
         assert_eq!(ZDB_DEFAULT_ROW_ESTIMATE.get(), 2500);
-        Spi::run("SET zdb.default_row_estimate TO 42");
+        Spi::run("SET zdb.default_row_estimate TO 42")?;
         assert_eq!(ZDB_DEFAULT_ROW_ESTIMATE.get(), 42);
+        Ok(())
     }
 
     #[pg_test]
-    fn test_ignore_visibility() {
+    fn test_ignore_visibility() -> spi::Result<()> {
         assert_eq!(ZDB_IGNORE_VISIBILITY.get(), false);
-        Spi::run("SET zdb.ignore_visibility TO true");
+        Spi::run("SET zdb.ignore_visibility TO true")?;
         assert_eq!(ZDB_IGNORE_VISIBILITY.get(), true);
+        Ok(())
     }
 
     #[pg_test]
-    fn test_log_level() {
+    fn test_log_level() -> spi::Result<()> {
         assert_eq!(ZDB_LOG_LEVEL.get(), ZDBLogLevel::Debug);
-        Spi::run("SET zdb.log_level to 'info'");
+        Spi::run("SET zdb.log_level to 'info'")?;
         assert_eq!(ZDB_LOG_LEVEL.get(), ZDBLogLevel::Info);
+        Ok(())
     }
 }

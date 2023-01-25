@@ -155,7 +155,8 @@ mod tests {
                 'time zoned'
             )",
         )
-        .expect("failed to get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -197,7 +198,8 @@ mod tests {
                 'query default string'
             )",
         )
-        .expect("failed to get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(

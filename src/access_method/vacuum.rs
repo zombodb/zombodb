@@ -15,7 +15,7 @@ pub extern "C" fn ambulkdelete(
     _callback: pg_sys::IndexBulkDeleteCallback,
     _callback_state: *mut ::std::os::raw::c_void,
 ) -> *mut pg_sys::IndexBulkDeleteResult {
-    let result = PgBox::<pg_sys::IndexBulkDeleteResult>::alloc0();
+    let result = unsafe { PgBox::<pg_sys::IndexBulkDeleteResult>::alloc0() };
     let info = unsafe { PgBox::from_pg(info) };
     let index_relation = unsafe { PgRelation::from_pg(info.index) };
 
@@ -114,7 +114,7 @@ pub extern "C" fn amvacuumcleanup(
     info: *mut pg_sys::IndexVacuumInfo,
     stats: *mut pg_sys::IndexBulkDeleteResult,
 ) -> *mut pg_sys::IndexBulkDeleteResult {
-    let result = PgBox::<pg_sys::IndexBulkDeleteResult>::alloc0();
+    let result = unsafe { PgBox::<pg_sys::IndexBulkDeleteResult>::alloc0() };
     let info = unsafe { PgBox::from_pg(info) };
     let index_relation = unsafe { PgRelation::from_pg(info.index) };
 

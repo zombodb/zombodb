@@ -917,13 +917,13 @@ mod tests {
             )"#,
             tablename,
         );
-        Spi::run(create_table);
+        Spi::run(create_table).expect("SPI failed");
         let create_index = &format!(
             "CREATE INDEX {index} ON {table} USING zombodb (({table}.*))",
             index = indexname,
             table = tablename
         );
-        Spi::run(create_index);
+        Spi::run(create_index).expect("SPI failed");
 
         unsafe { PgRelation::open_with_name(&indexname).expect("failed to open index relation") }
     }
