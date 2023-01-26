@@ -712,116 +712,123 @@ mod tests {
 
     #[pg_test]
     #[initialize(es = true)]
-    fn test_limit_none() {
-        Spi::run("CREATE TABLE test_limit AS SELECT * FROM generate_series(1, 10001);");
-        Spi::run("CREATE INDEX idxtest_limit ON test_limit USING zombodb ((test_limit.*));");
+    fn test_limit_none() -> spi::Result<()> {
+        Spi::run("CREATE TABLE test_limit AS SELECT * FROM generate_series(1, 10001);")?;
+        Spi::run("CREATE INDEX idxtest_limit ON test_limit USING zombodb ((test_limit.*));")?;
         let count = Spi::get_one::<i64>(
             "SELECT count(*) FROM test_limit WHERE test_limit ==> dsl.match_all(); ",
-        )
-        .expect("failed to get SPI result");
+        )?
+        .expect("SPI datum was NULL");
         assert_eq!(count, 10_001);
+        Ok(())
     }
 
     #[pg_test]
     #[initialize(es = true)]
-    fn test_limit_exact() {
-        Spi::run("CREATE TABLE test_limit AS SELECT * FROM generate_series(1, 10001);");
-        Spi::run("CREATE INDEX idxtest_limit ON test_limit USING zombodb ((test_limit.*));");
+    fn test_limit_exact() -> spi::Result<()> {
+        Spi::run("CREATE TABLE test_limit AS SELECT * FROM generate_series(1, 10001);")?;
+        Spi::run("CREATE INDEX idxtest_limit ON test_limit USING zombodb ((test_limit.*));")?;
         let count = Spi::get_one::<i64>(
             "SELECT count(*) FROM test_limit WHERE test_limit ==> dsl.limit(10001, dsl.match_all()); ",
-        )
-        .expect("failed to get SPI result");
+        )?
+        .expect("SPI datum was NULL");
         assert_eq!(count, 10001);
+        Ok(())
     }
 
     #[pg_test]
     #[initialize(es = true)]
-    fn test_limit_10() {
-        Spi::run("CREATE TABLE test_limit AS SELECT * FROM generate_series(1, 10001);");
-        Spi::run("CREATE INDEX idxtest_limit ON test_limit USING zombodb ((test_limit.*));");
+    fn test_limit_10() -> spi::Result<()> {
+        Spi::run("CREATE TABLE test_limit AS SELECT * FROM generate_series(1, 10001);")?;
+        Spi::run("CREATE INDEX idxtest_limit ON test_limit USING zombodb ((test_limit.*));")?;
         let count = Spi::get_one::<i64>(
             "SELECT count(*) FROM test_limit WHERE test_limit ==> dsl.limit(10, dsl.match_all()); ",
-        )
-        .expect("failed to get SPI result");
+        )?
+        .expect("SPI datum was NULL");
         assert_eq!(count, 10);
+        Ok(())
     }
 
     #[pg_test]
     #[initialize(es = true)]
-    fn test_limit_0() {
-        Spi::run("CREATE TABLE test_limit AS SELECT * FROM generate_series(1, 10001);");
-        Spi::run("CREATE INDEX idxtest_limit ON test_limit USING zombodb ((test_limit.*));");
+    fn test_limit_0() -> spi::Result<()> {
+        Spi::run("CREATE TABLE test_limit AS SELECT * FROM generate_series(1, 10001);")?;
+        Spi::run("CREATE INDEX idxtest_limit ON test_limit USING zombodb ((test_limit.*));")?;
         let count = Spi::get_one::<i64>(
             "SELECT count(*) FROM test_limit WHERE test_limit ==> dsl.limit(0, dsl.match_all()); ",
-        )
-        .expect("failed to get SPI result");
+        )?
+        .expect("SPI datum was NULL");
         assert_eq!(count, 0);
+        Ok(())
     }
 
     #[pg_test(error = "limit must be positive")]
     #[initialize(es = true)]
-    fn test_limit_negative() {
-        Spi::run("CREATE TABLE test_limit AS SELECT * FROM generate_series(1, 10001);");
-        Spi::run("CREATE INDEX idxtest_limit ON test_limit USING zombodb ((test_limit.*));");
+    fn test_limit_negative() -> spi::Result<()> {
+        Spi::run("CREATE TABLE test_limit AS SELECT * FROM generate_series(1, 10001);")?;
+        Spi::run("CREATE INDEX idxtest_limit ON test_limit USING zombodb ((test_limit.*));")?;
         let count = Spi::get_one::<i64>(
             "SELECT count(*) FROM test_limit WHERE test_limit ==> dsl.limit(-1, dsl.match_all()); ",
-        )
-        .expect("failed to get SPI result");
-        panic!("executed a search with a negative limit.  count={}", count);
+        )?
+        .expect("SPI datum was NULL");
+        panic!("executed a search with a negative limit.  count={}", count)
     }
 
     #[pg_test]
     #[initialize(es = true)]
-    fn test_sort_desc() {
-        Spi::run("CREATE TABLE test_sort AS SELECT * FROM generate_series(1, 100);");
-        Spi::run("CREATE INDEX idxtest_sort ON test_sort USING zombodb ((test_sort.*));");
+    fn test_sort_desc() -> spi::Result<()> {
+        Spi::run("CREATE TABLE test_sort AS SELECT * FROM generate_series(1, 100);")?;
+        Spi::run("CREATE INDEX idxtest_sort ON test_sort USING zombodb ((test_sort.*));")?;
         Spi::connect(|client| {
-            let mut table = client.select("SELECT * FROM test_sort WHERE test_sort ==> dsl.sort('generate_series', 'desc', dsl.match_all());", None, None).first();
+            let mut table = client.select("SELECT * FROM test_sort WHERE test_sort ==> dsl.sort('generate_series', 'desc', dsl.match_all());", None, None)?.first();
 
-            let mut previous = table.get_one::<i64>().unwrap();
+            let mut previous = table.get_one::<i64>()?.unwrap();
             while table.next().is_some() {
-                let current = table.get_datum::<i64>(1).expect("value was NULL");
+                let current = table.get::<i64>(1)?.expect("value was NULL");
 
                 assert!(current < previous);
                 previous = current;
             }
-            Ok(Some(()))
-        });
+            Ok(())
+        })
     }
 
     #[pg_test]
     #[initialize(es = true)]
-    fn test_min_score_cutoff() {
-        Spi::run("CREATE TABLE test_minscore AS SELECT * FROM generate_series(1, 100);");
+    fn test_min_score_cutoff() -> spi::Result<()> {
+        Spi::run("CREATE TABLE test_minscore AS SELECT * FROM generate_series(1, 100);")?;
         Spi::run(
             "CREATE INDEX idxtest_minscore ON test_minscore USING zombodb ((test_minscore.*));",
-        );
+        )?;
         let count = Spi::get_one::<i64>(
             "SELECT count(*) FROM test_minscore WHERE test_minscore ==> dsl.min_score(2, dsl.match_all()); ",
-        )
-            .expect("failed to get SPI result");
+        )?
+            .expect("SPI datum was NULL");
         assert_eq!(count, 0);
+        Ok(())
     }
 
     #[pg_test]
     #[initialize(es = true)]
-    fn test_offset_scan() {
-        Spi::run("CREATE TABLE test_offset AS SELECT * FROM generate_series(1, 100);");
-        Spi::run("CREATE INDEX idxtest_offset ON test_offset USING zombodb ((test_offset.*));");
+    fn test_offset_scan() -> spi::Result<()> {
+        Spi::run("CREATE TABLE test_offset AS SELECT * FROM generate_series(1, 100);")?;
+        Spi::run("CREATE INDEX idxtest_offset ON test_offset USING zombodb ((test_offset.*));")?;
         let count = Spi::get_one::<i64>(
             "SELECT * FROM test_offset WHERE test_offset ==> dsl.sort('generate_series', 'asc', dsl.offset(10, dsl.match_all()));"
-        )
-            .expect("failed to get SPI result");
+        )?
+            .expect("SPI datum was NULL");
         assert_eq!(count, 11);
+        Ok(())
     }
 
     #[pg_test]
     #[initialize(es = true)]
-    fn test_offset_overflow() {
-        Spi::run("CREATE TABLE test_offset AS SELECT * FROM generate_series(1, 100);");
-        Spi::run("CREATE INDEX idxtest_offset ON test_offset USING zombodb ((test_offset.*));");
+    fn test_offset_overflow() -> spi::Result<()> {
+        Spi::run("CREATE TABLE test_offset AS SELECT * FROM generate_series(1, 100);")?;
+        Spi::run("CREATE INDEX idxtest_offset ON test_offset USING zombodb ((test_offset.*));")?;
         assert!(Spi::get_one::<i64>(
             "SELECT * FROM test_offset WHERE test_offset ==> dsl.sort('generate_series', 'asc', dsl.offset(1000, dsl.match_all()));"
-        ).is_none());
+        ).is_err());
+        Ok(())
     }
 }

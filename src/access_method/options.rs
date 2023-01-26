@@ -94,7 +94,7 @@ impl ZDBIndexOptionsInternal {
             panic!("'{}' is not a ZomboDB index", relation.name())
         } else if relation.rd_options.is_null() {
             // use defaults
-            let mut ops = PgBox::<ZDBIndexOptionsInternal>::alloc0();
+            let mut ops = unsafe { PgBox::<ZDBIndexOptionsInternal>::alloc0() };
             ops.compression_level = DEFAULT_COMPRESSION_LEVEL;
             ops.shards = DEFAULT_SHARDS;
             ops.replicas = ZDB_DEFAULT_REPLICAS.get();
@@ -153,9 +153,11 @@ impl ZDBIndexOptionsInternal {
             } else if self.shadow_index {
                 // go find the url for this shadow index
                 // it's the url of the non-shadow zdb index
-                let (index, _) = find_zdb_index(unsafe { &PgRelation::open(my_oid) }).expect(
-                    &format!("failed to lookup non-shadow index for oid={}", my_oid),
-                );
+                let (index, _) =
+                    find_zdb_index(unsafe { &PgRelation::open(my_oid) }).expect(&format!(
+                        "failed to lookup non-shadow index for oid={}",
+                        my_oid.as_u32()
+                    ));
                 let options = ZDBIndexOptions::from_relation(&index);
                 options.url()
             } else {
@@ -201,7 +203,7 @@ impl ZDBIndexOptionsInternal {
                 .unwrap(),
                 heaprel.name(),
                 indexrel.name(),
-                indexrel.oid()
+                indexrel.oid().as_u32()
             )
         })
     }
@@ -210,10 +212,10 @@ impl ZDBIndexOptionsInternal {
         self.get_str(self.uuid_offset, || {
             format!(
                 "{}.{}.{}.{}",
-                unsafe { pg_sys::MyDatabaseId },
-                indexrel.namespace_oid(),
-                heaprel.oid(),
-                indexrel.oid(),
+                unsafe { pg_sys::MyDatabaseId }.as_u32(),
+                indexrel.namespace_oid().as_u32(),
+                heaprel.oid().as_u32(),
+                indexrel.oid().as_u32(),
             )
         })
     }
@@ -452,11 +454,11 @@ impl ZDBIndexOptions {
     no_guard,
     sql = r#"
         -- we don't want any SQL generated for the "shadow" function, but we do want its '_wrapper' symbol
-        -- exported so that shadow indexes can reference it using whatever argument type they want    
+        -- exported so that shadow indexes can reference it using whatever argument type they want
     "#
 )]
 fn shadow(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
-    pg_getarg_datum_raw(fcinfo, 0)
+    unsafe { pg_getarg_datum_raw(fcinfo, 0) }
 }
 
 #[pg_extern(volatile, parallel_safe)]
@@ -1233,24 +1235,24 @@ mod tests {
 
     #[pg_test]
     #[initialize(es = true)]
-    unsafe fn test_index_options() {
+    unsafe fn test_index_options() -> spi::Result<()> {
         let uuid = 42424242;
         Spi::run(&format!(
-            "CREATE TABLE test();  
-        CREATE INDEX idxtest 
-                  ON test 
-               USING zombodb ((test.*)) 
-                WITH (url='http://localhost:19200/', 
-                      type_name='test_type_name', 
-                      alias='test_alias', 
-                      uuid='{}', 
+            "CREATE TABLE test();
+        CREATE INDEX idxtest
+                  ON test
+               USING zombodb ((test.*))
+                WITH (url='http://localhost:19200/',
+                      type_name='test_type_name',
+                      alias='test_alias',
+                      uuid='{}',
                       refresh_interval='5s',
                       translog_durability='async');",
             uuid
-        ));
+        ))?;
 
-        let index_oid = Spi::get_one::<pg_sys::Oid>("SELECT 'idxtest'::regclass::oid")
-            .expect("failed to get SPI result");
+        let index_oid =
+            Spi::get_one::<pg_sys::Oid>("SELECT 'idxtest'::regclass::oid")?.expect("oid was null");
         let indexrel = PgRelation::from_pg(pg_sys::RelationIdGetRelation(index_oid));
         let options = ZDBIndexOptions::from_relation(&indexrel);
         assert_eq!(options.url(), "http://localhost:19200/");
@@ -1270,38 +1272,39 @@ mod tests {
         assert_eq!(options.llapi(), false);
         assert_eq!(options.translog_durability(), "async");
         assert_eq!(options.links(), &None);
+        Ok(())
     }
 
     #[pg_test]
     #[initialize(es = true)]
-    unsafe fn test_index_options_defaults() {
+    unsafe fn test_index_options_defaults() -> spi::Result<()> {
         Spi::run(
-            "CREATE TABLE test();  
-        CREATE INDEX idxtest 
-                  ON test 
+            "CREATE TABLE test();
+        CREATE INDEX idxtest
+                  ON test
                USING zombodb ((test.*)) WITH (url='http://localhost:19200/');",
-        );
+        )?;
 
-        let heap_oid = Spi::get_one::<pg_sys::Oid>("SELECT 'test'::regclass::oid")
-            .expect("failed to get SPI result");
-        let index_oid = Spi::get_one::<pg_sys::Oid>("SELECT 'idxtest'::regclass::oid")
-            .expect("failed to get SPI result");
+        let heap_oid = Spi::get_one::<pg_sys::Oid>("SELECT 'test'::regclass::oid")?
+            .expect("SPI datum was NULL");
+        let index_oid = Spi::get_one::<pg_sys::Oid>("SELECT 'idxtest'::regclass::oid")?
+            .expect("SPI datum was NULL");
         let heaprel = PgRelation::from_pg(pg_sys::RelationIdGetRelation(heap_oid));
         let indexrel = PgRelation::from_pg(pg_sys::RelationIdGetRelation(index_oid));
         let options = ZDBIndexOptions::from_relation(&indexrel);
         assert_eq!(options.type_name(), DEFAULT_TYPE_NAME);
         assert_eq!(
             &options.alias(),
-            &format!("pgx_tests.public.test.idxtest-{}", indexrel.oid())
+            &format!("pgx_tests.public.test.idxtest-{}", indexrel.oid().as_u32())
         );
         assert_eq!(
             &options.uuid(),
             &format!(
                 "{}.{}.{}.{}",
-                pg_sys::MyDatabaseId,
-                indexrel.namespace_oid(),
-                heaprel.oid(),
-                indexrel.oid()
+                pg_sys::MyDatabaseId.as_u32(),
+                indexrel.namespace_oid().as_u32(),
+                heaprel.oid().as_u32(),
+                indexrel.oid().as_u32()
             )
         );
         assert_eq!(options.refresh_interval(), RefreshInterval::Immediate);
@@ -1312,66 +1315,70 @@ mod tests {
         assert_eq!(options.batch_size(), DEFAULT_BATCH_SIZE);
         assert_eq!(options.optimize_after(), DEFAULT_OPTIMIZE_AFTER);
         assert_eq!(options.llapi(), false);
-        assert_eq!(options.translog_durability(), "request")
+        assert_eq!(options.translog_durability(), "request");
+        Ok(())
     }
 
     #[pg_test]
     #[initialize(es = true)]
-    unsafe fn test_index_name() {
+    unsafe fn test_index_name() -> spi::Result<()> {
         Spi::run(
-            "CREATE TABLE test();  
-        CREATE INDEX idxtest 
-                  ON test 
+            "CREATE TABLE test();
+        CREATE INDEX idxtest
+                  ON test
                USING zombodb ((test.*)) WITH (url='http://localhost:19200/');",
-        );
+        )?;
 
         let index_relation = PgRelation::open_with_name("idxtest").expect("no such relation");
         let options = ZDBIndexOptions::from_relation(&index_relation);
 
         assert_eq!(options.index_name(), options.uuid());
+        Ok(())
     }
 
     #[pg_test]
     #[initialize(es = true)]
-    unsafe fn test_index_url() {
+    unsafe fn test_index_url() -> spi::Result<()> {
         Spi::run(
-            "CREATE TABLE test();  
-        CREATE INDEX idxtest 
-                  ON test 
+            "CREATE TABLE test();
+        CREATE INDEX idxtest
+                  ON test
                USING zombodb ((test.*)) WITH (url='http://localhost:19200/');",
-        );
+        )?;
 
         let index_relation = PgRelation::open_with_name("idxtest").expect("no such relation");
         let options = ZDBIndexOptions::from_relation(&index_relation);
 
         assert_eq!(options.url(), "http://localhost:19200/");
+        Ok(())
     }
 
     #[pg_test]
     #[initialize(es = true)]
-    unsafe fn test_index_type_name() {
+    unsafe fn test_index_type_name() -> spi::Result<()> {
         Spi::run(
-            "CREATE TABLE test();  
-        CREATE INDEX idxtest 
-                  ON test 
+            "CREATE TABLE test();
+        CREATE INDEX idxtest
+                  ON test
                USING zombodb ((test.*)) WITH (url='http://localhost:19200/');",
-        );
+        )?;
 
         let index_relation = PgRelation::open_with_name("idxtest").expect("no such relation");
         let options = ZDBIndexOptions::from_relation(&index_relation);
 
         assert_eq!(options.type_name(), "doc");
+        Ok(())
     }
 
     #[pg_test]
     #[initialize(es = true)]
-    unsafe fn test_index_link_options() {
+    unsafe fn test_index_link_options() -> spi::Result<()> {
         Spi::run(
-            "CREATE TABLE test_link_options();  
+            "CREATE TABLE test_link_options();
         CREATE INDEX idxtest_link_options
                   ON test_link_options
                USING zombodb ((test_link_options.*)) WITH (options='id=<schema.table.index>other_id');",
-        );
+        )?;
 
         let index_relation =
             PgRelation::open_with_name("idxtest_link_options").expect("no such relation");
@@ -1381,17 +1388,18 @@ mod tests {
             options.links(),
             &Some(vec!["id=<schema.table.index>other_id".to_string()])
         );
+        Ok(())
     }
 
     #[pg_test]
     #[initialize(es = true)]
-    unsafe fn test_quoted_index_link_options_issue688() {
+    unsafe fn test_quoted_index_link_options_issue688() -> spi::Result<()> {
         Spi::run(
-            "CREATE TABLE test_link_options();  
+            "CREATE TABLE test_link_options();
         CREATE INDEX idxtest_link_options
                   ON test_link_options
                USING zombodb ((test_link_options.*)) WITH (options='id=<`schema.table.index`>other_id');",
-        );
+        )?;
 
         let index_relation =
             PgRelation::open_with_name("idxtest_link_options").expect("no such relation");
@@ -1402,6 +1410,7 @@ mod tests {
         let link_definition = links.first().unwrap();
         let link = IndexLink::parse(&link_definition);
         assert_eq!(link, IndexLink::parse("id=<schema.table.index>other_id"));
-        assert_eq!(link.qualified_index.schema, Some("schema".into()))
+        assert_eq!(link.qualified_index.schema, Some("schema".into()));
+        Ok(())
     }
 }

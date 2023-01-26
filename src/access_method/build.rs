@@ -41,7 +41,7 @@ pub extern "C" fn ambuild(
 
     if ZDBIndexOptions::from_relation_no_lookup(&index_relation, None).is_shadow_index() {
         // nothing for us to do for a shadow index
-        return PgBox::<pg_sys::IndexBuildResult>::alloc0().into_pg();
+        return unsafe { PgBox::<pg_sys::IndexBuildResult>::alloc0().into_pg() };
     }
 
     unsafe {
@@ -119,7 +119,7 @@ pub extern "C" fn ambuild(
         create_triggers(&index_relation);
     }
 
-    let mut result = PgBox::<pg_sys::IndexBuildResult>::alloc0();
+    let mut result = unsafe { PgBox::<pg_sys::IndexBuildResult>::alloc0() };
     result.heap_tuples = ntuples as f64;
     result.index_tuples = ntuples as f64;
 
@@ -309,7 +309,7 @@ unsafe fn decon_row<'a>(
     let mut tmptup = pg_sys::HeapTupleData {
         t_len: varsize(td as *mut pg_sys::varlena) as u32,
         t_self: Default::default(),
-        t_tableOid: 0,
+        t_tableOid: pg_sys::Oid::INVALID,
         t_data: td,
     };
 

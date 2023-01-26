@@ -62,7 +62,8 @@ mod tests {
     #[pg_test]
     fn test_match_all_with_default() {
         let zdbquery = Spi::get_one::<ZDBQuery>("SELECT dsl.match_all();")
-            .expect("didn't get SPI return value");
+            .expect("SPI failed")
+            .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(

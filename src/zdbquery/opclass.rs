@@ -41,7 +41,7 @@ fn anyelement_cmpfunc(
 }
 
 #[inline]
-fn do_seqscan(query: ZDBQuery, index_oid: u32) -> HashSet<u64> {
+fn do_seqscan(query: ZDBQuery, index_oid: pg_sys::Oid) -> HashSet<u64> {
     unsafe {
         let index = pg_sys::index_open(index_oid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
         let heap = pg_sys::relation_open(

@@ -176,7 +176,8 @@ mod tests {
             'contains'
               );",
         )
-        .expect("didn't get SPI return value");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -211,7 +212,8 @@ mod tests {
             'contains'
               );",
         )
-        .expect("didn't get SPI return value");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -246,7 +248,8 @@ mod tests {
             'contains'
               );",
         )
-        .expect("didn't get SPI return value");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -281,7 +284,8 @@ mod tests {
             'contains'
               );",
         )
-        .expect("didn't get SPI return value");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -316,7 +320,8 @@ mod tests {
             'contains'
               );",
         )
-        .expect("didn't get SPI return value");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -341,6 +346,7 @@ mod tests {
     #[pg_test(error = "function dsl.datetime_range(unknown) is not unique")]
     fn test_datetime_range_with_defaults() {
         Spi::get_one::<ZDBQuery>("SELECT dsl.datetime_range('fieldname');")
-            .expect("didn't get SPI return value");
+            .expect("SPI failed")
+            .expect("SPI datum was NULL");
     }
 }

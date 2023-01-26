@@ -326,14 +326,15 @@ mod tests {
     fn test_span_near_with_null() {
         let zdbquery = Spi::get_one::<ZDBQuery>(
             "SELECT dsl.span_near(
-                true, 
-                50, 
-                dsl.term('field1', 'value1'), 
-                dsl.term('field2', 'value2'), 
+                true,
+                50,
+                dsl.term('field1', 'value1'),
+                dsl.term('field2', 'value2'),
                 null /* this causes the error */
             )",
         )
-        .expect("failed to get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         zdbquery.limit(); //using this to prevent an warning that zdbquery is not used
     }
 
@@ -341,12 +342,13 @@ mod tests {
     fn test_span_near_with_null_inorder() {
         let zdbquery = Spi::get_one::<ZDBQuery>(
             "SELECT dsl.span_near(
-                null, 
-                50, 
-                dsl.term('field1', 'value1'), 
+                null,
+                50,
+                dsl.term('field1', 'value1'),
                 dsl.term('field2', 'value2')
             )",
-        );
+        )
+        .expect("SPI failed");
 
         assert!(zdbquery.is_none());
     }
@@ -355,13 +357,14 @@ mod tests {
     fn test_span_near_without_nulls() {
         let zdbquery = Spi::get_one::<ZDBQuery>(
             "SELECT dsl.span_near(
-                true, 
-                50, 
-                dsl.span_term('span_term_field1', 'span_term_value1'), 
+                true,
+                50,
+                dsl.span_term('span_term_field1', 'span_term_value1'),
                 dsl.span_term('span_term_field2', 'span_term_value2')
             )",
         )
-        .expect("failed to get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(
@@ -432,12 +435,13 @@ mod tests {
     fn test_span_or() {
         let zdbquery = Spi::get_one::<ZDBQuery>(
             "SELECT dsl.span_or(
-                    dsl.span_term('span_term_field1', 'span_term_value1'), 
+                    dsl.span_term('span_term_field1', 'span_term_value1'),
                     dsl.span_term('span_term_field2', 'span_term_value2'),
                     dsl.span_term('span_term_field3', 'span_term_value3')
             )",
         )
-        .expect("failed to get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
 
         assert_eq!(

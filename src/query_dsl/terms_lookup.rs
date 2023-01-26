@@ -99,7 +99,8 @@ mod tests {
     fn test_terms_lookup_with_default_routing() {
         let zdbquery =
             Spi::get_one::<ZDBQuery>("SELECT dsl.terms_lookup('field', 'index', 'id', 'path')")
-                .expect("failed to get SPI result");
+                .expect("SPI failed")
+                .expect("SPI datum was NULL");
 
         let dsl = zdbquery.into_value();
 

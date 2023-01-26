@@ -73,7 +73,8 @@ mod tests {
         let result = Spi::get_one::<ZDBQuery>(
             "SELECT dsl.terms('fieldname', 'one'::text, 'two', 'three', 'four');",
         )
-        .expect("didn't get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = result.into_value();
 
         assert_eq!(
@@ -93,7 +94,8 @@ mod tests {
     fn test_terms_bool() {
         let result =
             Spi::get_one::<ZDBQuery>("SELECT dsl.terms('fieldname', true::bool,false,true,true);")
-                .expect("didn't get SPI result");
+                .expect("SPI failed")
+                .expect("SPI datum was NULL");
         let dsl = result.into_value();
 
         assert_eq!(
@@ -119,7 +121,8 @@ mod tests {
             "SELECT dsl.terms('fieldname','{}'::smallint, {}, {});",
             min, zero, max
         ))
-        .expect("didn't get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = result.into_value();
 
         assert_eq!(
@@ -145,7 +148,8 @@ mod tests {
             "SELECT dsl.terms('fieldname', '{}'::integer, {}, {});",
             min, zero, max
         ))
-        .expect("didn't get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = result.into_value();
 
         assert_eq!(
@@ -171,7 +175,8 @@ mod tests {
             "SELECT dsl.terms('fieldname', '{}'::bigint, {}, {});",
             min, zero, max
         ))
-        .expect("didn't get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = result.into_value();
 
         assert_eq!(
@@ -199,7 +204,8 @@ mod tests {
             "SELECT dsl.terms('fieldname', '{}'::real, {}, {}, {},'{}');",
             ninf, min, zero, max, inf
         ))
-        .expect("didn't get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = result.into_value();
 
         assert_eq!(
@@ -227,7 +233,8 @@ mod tests {
             "SELECT dsl.terms('fieldname', '{}'::double precision, {}, {},{},'{}');",
             ninf, min, zero, max, inf
         ))
-        .expect("didn't get SPI result");
+        .expect("SPI failed")
+        .expect("SPI datum was NULL");
         let dsl = result.into_value();
 
         assert_eq!(
