@@ -219,14 +219,14 @@ fn tally(
         TermsOrderBy::reverse_term | TermsOrderBy::reverse_key => json! {{ "_key": "desc" }},
     };
 
-    let field_name = if is_date_subfield {
+    let field_name = if is_date_subfield && stem.is_none() {
         format!("{}.date", field_name)
     } else {
         field_name.into()
     };
     let body = Terms {
         field: field_name.clone(),
-        include: if is_raw_date_field || !is_string_field {
+        include: if !is_date_subfield && (is_raw_date_field || !is_string_field) {
             None
         } else {
             match stem {
@@ -336,7 +336,7 @@ fn tally(
                     None => {
                         let mut key = json_to_string(entry.key);
 
-                        if is_raw_date_field && key.is_some() && !is_date_field {
+                        if is_raw_date_field && key.is_some() && !is_date_field && stem.is_none() {
                             // convert raw date field values into a human-readable string
                             let epoch =
                                 i64::from_str(&key.unwrap()).expect("date value not in epoch form");
