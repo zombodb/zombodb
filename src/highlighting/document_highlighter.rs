@@ -541,7 +541,9 @@ impl<'a> DocumentHighlighter<'a> {
                     p,
                     ProximityTerm::to_terms(&p.words)
                         .into_iter()
-                        .filter_map(|t| self.highlight_term(&t))
+                        .filter_map(|t| {
+                            self.highlight_term(&t).map(|highlights| (highlights, matches!(t, Term::ProximityChain(_))))
+                        })
                         .collect::<Vec<_>>(),
                 )
             })
@@ -563,14 +565,14 @@ impl<'a> DocumentHighlighter<'a> {
                 possibilities.push((token, token_entry));
 
                 let mut iter = phrase2.iter().peekable();
-                while let Some(current) = iter.next() {
+                while let Some((current, _matches)) = iter.next() {
                     let next = match iter.peek() {
                         Some(next) => next,
                         None => break,
                     };
 
-                    let distance = current.0.distance.as_ref().map_or(0, |v| v.distance);
-                    let order = current.0.distance.as_ref().map_or(false, |v| v.in_order);
+                    let distance = current.distance.as_ref().map_or(0, |v| v.distance);
+                    let order = current.distance.as_ref().map_or(false, |v| v.in_order);
                     match self.look_for_match_ex(&next.1, distance, order, start, array_index) {
                         None => {
                             is_valid = false;
@@ -610,21 +612,21 @@ impl<'a> DocumentHighlighter<'a> {
     ) -> Option<HighlightMatches<'a>> {
         let words = words
             .into_iter()
-            .filter_map(|t| self.highlight_term(t))
+            .filter_map(|t| self.highlight_term(t).map(|highlights| (highlights, matches!(t, Term::ProximityChain(_)))))
             .collect::<Vec<_>>();
         self.look_for_match_ex(&words, distance, order, starting_point, array_index)
     }
 
     fn look_for_match_ex(
         &'a self,
-        words: &Vec<HighlightMatches<'a>>,
+        words: &Vec<(HighlightMatches<'a>, bool)>,
         distance: u32,
         order: bool,
         starting_point: Vec<u32>,
         _array_index: u32, // NB:  Pretty sure we don't need to care about the array_index for proximity clauses
     ) -> Option<HighlightMatches<'a>> {
         let mut matches = Vec::new();
-        for highlights in words {
+        for (highlights, is_prox_chain) in words {
             for start in &starting_point {
                 let start = *start;
                 let range = if order {
@@ -638,8 +640,13 @@ impl<'a> DocumentHighlighter<'a> {
                         if let Ok(idx) =
                             highlights.binary_search_by(|(_, entry)| entry.position.cmp(&point))
                         {
-                            let e = highlights.get(idx).unwrap();
-                            matches.push(*e);
+                            if *is_prox_chain {
+                                matches.extend(highlights);
+
+                            } else {
+                                let e = highlights.get(idx).unwrap();
+                                matches.push(*e);
+                            }
                         }
                     }
                 }
