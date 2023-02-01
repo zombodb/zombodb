@@ -17,6 +17,7 @@ cd docker-build-system
    cargo release version $1 --execute || exit 1
 cd ..
 
-sed -i '' -e "s/^default_version = .*$/default_version = '${VERSION}'/" zombodb.control || exit 1
+sed -i.bak -e "s/^default_version = .*$/default_version = '${VERSION}'/" zombodb.control || exit 1
+rm zombodb.control.bak
 
 
