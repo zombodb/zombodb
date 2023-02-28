@@ -11,22 +11,46 @@ SELECT * FROM issue792 WHERE issue792 ==> 't: ( "film" w/7 ("movies" w/7 "barbar
 -- The term "film" is not within 7 of "barbarian" but should highlight as part of nested group
 WITH highlights AS MATERIALIZED (SELECT (
     zdb.highlight_document('issue792'::regclass, json_build_object('t',t), 't: ( "film" w/7 ("movies" w/7 "barbarian"))'::TEXT)).* FROM issue792)
-SELECT * FROM highlights;
- field_name | array_index |  term  |    type    | position | start_offset | end_offset |               query_clause                
-------------+-------------+--------+------------+----------+--------------+------------+-------------------------------------------
- t          |           0 | film   | <ALPHANUM> |        4 |           21 |         25 | t:("film" W/7 ("movies" W/7 "barbarian"))
- t          |           0 | movies | <ALPHANUM> |       11 |           66 |         72 | t:("film" W/7 ("movies" W/7 "barbarian"))
-(2 rows)
+SELECT * FROM highlights order by position;
+ field_name | array_index |   term    |    type    | position | start_offset | end_offset |               query_clause                
+------------+-------------+-----------+------------+----------+--------------+------------+-------------------------------------------
+ t          |           0 | film      | <ALPHANUM> |        4 |           21 |         25 | t:("film" W/7 ("movies" W/7 "barbarian"))
+ t          |           0 | movies    | <ALPHANUM> |       11 |           66 |         72 | t:("film" W/7 ("movies" W/7 "barbarian"))
+ t          |           0 | barbarian | <ALPHANUM> |       18 |          119 |        128 | t:("film" W/7 ("movies" W/7 "barbarian"))
+(3 rows)
+
+-- The term "film" is not within 7 of "barbarian" and "queen" but should highlight as part of nested group
+WITH highlights AS MATERIALIZED (SELECT (
+    zdb.highlight_document('issue792'::regclass, json_build_object('t',t), 't: ( "film" w/7 ("movies" w/7 ("barbarian", "queen")))'::TEXT)).* FROM issue792)
+SELECT * FROM highlights order by position;
+ field_name | array_index |   term    |    type    | position | start_offset | end_offset |                    query_clause                     
+------------+-------------+-----------+------------+----------+--------------+------------+-----------------------------------------------------
+ t          |           0 | film      | <ALPHANUM> |        4 |           21 |         25 | t:("film" W/7 ("movies" W/7 ("barbarian","queen")))
+ t          |           0 | movies    | <ALPHANUM> |       11 |           66 |         72 | t:("film" W/7 ("movies" W/7 ("barbarian","queen")))
+ t          |           0 | barbarian | <ALPHANUM> |       18 |          119 |        128 | t:("film" W/7 ("movies" W/7 ("barbarian","queen")))
+ t          |           0 | queen     | <ALPHANUM> |       19 |          129 |        134 | t:("film" W/7 ("movies" W/7 ("barbarian","queen")))
+(4 rows)
+
+-- The term "movie" is within 6 of "barbarian" but not "queen" -- should not highlight "queen"
+WITH highlights AS MATERIALIZED (SELECT (
+    zdb.highlight_document('issue792'::regclass, json_build_object('t',t), 't: ( "film" w/7 ("movies" w/6 ("barbarian", "queen")))'::TEXT)).* FROM issue792)
+SELECT * FROM highlights order by position;
+ field_name | array_index |   term    |    type    | position | start_offset | end_offset |                    query_clause                     
+------------+-------------+-----------+------------+----------+--------------+------------+-----------------------------------------------------
+ t          |           0 | film      | <ALPHANUM> |        4 |           21 |         25 | t:("film" W/7 ("movies" W/6 ("barbarian","queen")))
+ t          |           0 | movies    | <ALPHANUM> |       11 |           66 |         72 | t:("film" W/7 ("movies" W/6 ("barbarian","queen")))
+ t          |           0 | barbarian | <ALPHANUM> |       18 |          119 |        128 | t:("film" W/7 ("movies" W/6 ("barbarian","queen")))
+(3 rows)
 
 -- Adjusted so that term "film" is within 25 of nested group and all three terms are highlighted
 WITH highlights AS MATERIALIZED (SELECT (
     zdb.highlight_document('issue792'::regclass, json_build_object('t',t), 't: ( "film" w/25 ("movies" w/7 "barbarian"))'::TEXT)).* FROM issue792)
-SELECT * FROM highlights;
+SELECT * FROM highlights order by position;
  field_name | array_index |   term    |    type    | position | start_offset | end_offset |                query_clause                
 ------------+-------------+-----------+------------+----------+--------------+------------+--------------------------------------------
- t          |           0 | barbarian | <ALPHANUM> |       18 |          119 |        128 | t:("film" W/25 ("movies" W/7 "barbarian"))
  t          |           0 | film      | <ALPHANUM> |        4 |           21 |         25 | t:("film" W/25 ("movies" W/7 "barbarian"))
  t          |           0 | movies    | <ALPHANUM> |       11 |           66 |         72 | t:("film" W/25 ("movies" W/7 "barbarian"))
+ t          |           0 | barbarian | <ALPHANUM> |       18 |          119 |        128 | t:("film" W/25 ("movies" W/7 "barbarian"))
 (3 rows)
 
 DROP TABLE issue792;
