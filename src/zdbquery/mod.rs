@@ -904,7 +904,7 @@ mod tests {
 
     #[pg_test]
     fn test_zdbquery_in_with_query_string() {
-        let input = pgx::cstr_core::CStr::from_bytes_with_nul(b"this is a test\0");
+        let input = std::ffi::CStr::from_bytes_with_nul(b"this is a test\0");
         let zdbquery = pg_catalog::zdbquery_in(input.ok());
         let json = serde_json::to_value(&zdbquery).unwrap();
 
@@ -916,7 +916,7 @@ mod tests {
 
     #[pg_test]
     fn test_zdbquery_in_with_query_dsl() {
-        let input = pgx::cstr_core::CStr::from_bytes_with_nul(b" {\"match_all\":{}} \0");
+        let input = std::ffi::CStr::from_bytes_with_nul(b" {\"match_all\":{}} \0");
         let zdbquery = pg_catalog::zdbquery_in(input.ok());
         let json = serde_json::to_value(&zdbquery).unwrap();
 
@@ -925,7 +925,7 @@ mod tests {
 
     #[pg_test]
     fn test_zdbquery_in_with_full_query() {
-        let input = pgx::cstr_core::CStr::from_bytes_with_nul(
+        let input = std::ffi::CStr::from_bytes_with_nul(
             b" {\"query_dsl\":{\"query_string\":{\"query\":\"this is a test\"}}} \0",
         );
         let zdbquery = pg_catalog::zdbquery_in(input.ok());
