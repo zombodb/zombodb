@@ -3,7 +3,6 @@ use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
 use crate::executor_manager::get_executor_manager;
 use crate::gucs::ZDB_LOG_LEVEL;
 use crate::json::builder::JsonBuilder;
-use crossbeam_channel::{RecvTimeoutError, SendTimeoutError};
 use dashmap::DashSet;
 use pgx::pg_sys::elog::interrupt_pending;
 use pgx::*;
@@ -19,6 +18,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
+use crossbeam::channel::{RecvTimeoutError, SendTimeoutError};
 
 #[derive(Debug)]
 pub enum BulkRequestCommand<'a> {
@@ -73,7 +73,7 @@ pub struct ElasticsearchBulkRequest {
     queue_size: usize,
     concurrency: usize,
     batch_size: usize,
-    error_receiver: crossbeam_channel::Receiver<BulkRequestError>,
+    error_receiver: crossbeam::channel::Receiver<BulkRequestError>,
 }
 
 impl Clone for ElasticsearchBulkRequest {
@@ -94,7 +94,7 @@ impl ElasticsearchBulkRequest {
         concurrency: usize,
         batch_size: usize,
     ) -> Self {
-        let (etx, erx) = crossbeam_channel::bounded(concurrency);
+        let (etx, erx) = crossbeam::channel::bounded(concurrency);
 
         ElasticsearchBulkRequest {
             handler: Handler::new(
@@ -209,7 +209,7 @@ impl ElasticsearchBulkRequest {
         xmin: u64,
         xmax: u64,
         builder: JsonBuilder<'static>,
-    ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand>> {
+    ) -> Result<(), crossbeam::channel::SendError<BulkRequestCommand>> {
         self.handler.check_for_error();
 
         let prior_update = self.handler.prior_update.take();
@@ -229,7 +229,7 @@ impl ElasticsearchBulkRequest {
         ctid: pg_sys::ItemPointerData,
         cmax: pg_sys::CommandId,
         xmax: u64,
-    ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand>> {
+    ) -> Result<(), crossbeam::channel::SendError<BulkRequestCommand>> {
         self.handler.check_for_error();
 
         if self.handler.prior_update.is_some() {
@@ -251,7 +251,7 @@ impl ElasticsearchBulkRequest {
         ctid: pg_sys::ItemPointerData,
         cmax: pg_sys::CommandId,
         xmax: u64,
-    ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand>> {
+    ) -> Result<(), crossbeam::channel::SendError<BulkRequestCommand>> {
         self.handler.check_for_error();
 
         let ctid = item_pointer_to_u64(ctid);
@@ -267,7 +267,7 @@ impl ElasticsearchBulkRequest {
     pub fn transaction_in_progress(
         &mut self,
         xid: pg_sys::TransactionId,
-    ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand>> {
+    ) -> Result<(), crossbeam::channel::SendError<BulkRequestCommand>> {
         self.handler.check_for_error();
 
         self.handler
@@ -279,7 +279,7 @@ impl ElasticsearchBulkRequest {
     pub fn transaction_committed(
         &mut self,
         xid: pg_sys::TransactionId,
-    ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand>> {
+    ) -> Result<(), crossbeam::channel::SendError<BulkRequestCommand>> {
         self.handler.check_for_error();
 
         // the transaction committed command needs to be the last command we send
@@ -300,7 +300,7 @@ impl ElasticsearchBulkRequest {
         &mut self,
         ctid: u64,
         xmin: u64,
-    ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand>> {
+    ) -> Result<(), crossbeam::channel::SendError<BulkRequestCommand>> {
         self.handler.check_for_error();
 
         self.handler
@@ -311,7 +311,7 @@ impl ElasticsearchBulkRequest {
         &mut self,
         ctid: u64,
         xmax: u64,
-    ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand>> {
+    ) -> Result<(), crossbeam::channel::SendError<BulkRequestCommand>> {
         self.handler.check_for_error();
 
         self.handler
@@ -322,7 +322,7 @@ impl ElasticsearchBulkRequest {
         &mut self,
         ctid: u64,
         xmax: u64,
-    ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand>> {
+    ) -> Result<(), crossbeam::channel::SendError<BulkRequestCommand>> {
         self.handler.check_for_error();
 
         self.handler
@@ -332,7 +332,7 @@ impl ElasticsearchBulkRequest {
     pub fn remove_aborted_xids(
         &mut self,
         xids: Vec<u64>,
-    ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand>> {
+    ) -> Result<(), crossbeam::channel::SendError<BulkRequestCommand>> {
         self.handler.check_for_error();
 
         if xids.is_empty() {
@@ -360,10 +360,10 @@ pub(crate) struct Handler {
     elasticsearch: Elasticsearch,
     concurrency: usize,
     batch_size: usize,
-    bulk_sender: Option<crossbeam_channel::Sender<BulkRequestCommand<'static>>>,
-    bulk_receiver: crossbeam_channel::Receiver<BulkRequestCommand<'static>>,
-    error_sender: crossbeam_channel::Sender<BulkRequestError>,
-    error_receiver: crossbeam_channel::Receiver<BulkRequestError>,
+    bulk_sender: Option<crossbeam::channel::Sender<BulkRequestCommand<'static>>>,
+    bulk_receiver: crossbeam::channel::Receiver<BulkRequestCommand<'static>>,
+    error_sender: crossbeam::channel::Sender<BulkRequestError>,
+    error_receiver: crossbeam::channel::Receiver<BulkRequestError>,
     current_xid: Option<pg_sys::TransactionId>,
 }
 
@@ -371,7 +371,7 @@ struct BulkReceiver<'a> {
     terminated: Arc<AtomicBool>,
     first: Option<BulkRequestCommand<'a>>,
     consumed: HashSet<u64>,
-    receiver: crossbeam_channel::Receiver<BulkRequestCommand<'a>>,
+    receiver: crossbeam::channel::Receiver<BulkRequestCommand<'a>>,
     bytes_out: usize,
     docs_out: usize,
     buffer: Vec<u8>,
@@ -693,10 +693,10 @@ impl Handler {
         _queue_size: usize,
         concurrency: usize,
         batch_size: usize,
-        error_sender: crossbeam_channel::Sender<BulkRequestError>,
-        error_receiver: &crossbeam_channel::Receiver<BulkRequestError>,
+        error_sender: crossbeam::channel::Sender<BulkRequestError>,
+        error_receiver: &crossbeam::channel::Receiver<BulkRequestError>,
     ) -> Self {
-        let (tx, rx) = crossbeam_channel::bounded(1000 * concurrency);
+        let (tx, rx) = crossbeam::channel::bounded(1000 * concurrency);
 
         Handler {
             when_started: Instant::now(),
@@ -722,7 +722,7 @@ impl Handler {
     pub fn queue_command(
         &mut self,
         command: BulkRequestCommand<'static>,
-    ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand<'static>>> {
+    ) -> Result<(), crossbeam::channel::SendError<BulkRequestCommand<'static>>> {
         self.queue_command_ex(command, false)
     }
 
@@ -730,7 +730,7 @@ impl Handler {
         &mut self,
         mut command: BulkRequestCommand<'static>,
         is_deferred: bool,
-    ) -> Result<(), crossbeam_channel::SendError<BulkRequestCommand<'static>>> {
+    ) -> Result<(), crossbeam::channel::SendError<BulkRequestCommand<'static>>> {
         if is_deferred == false && self.current_xid.is_none() {
             match &command {
                 BulkRequestCommand::Insert { .. } | BulkRequestCommand::Update { .. } => {
@@ -793,7 +793,7 @@ impl Handler {
 
                         // if there's not an error, we'll just return a generic error
                         // because we've been asked to terminate so there's no point in trying again
-                        return Err(crossbeam_channel::SendError(full_command));
+                        return Err(crossbeam::channel::SendError(full_command));
                     }
 
                     // we'll loop around and try again
@@ -805,7 +805,7 @@ impl Handler {
 
                 // the channel is disconnected, so return an error
                 SendTimeoutError::Disconnected(disconnected_command) => {
-                    return Err(crossbeam_channel::SendError(disconnected_command));
+                    return Err(crossbeam::channel::SendError(disconnected_command));
                 }
             }
         }
@@ -989,7 +989,7 @@ impl Handler {
     }
 
     fn send_error(
-        sender: crossbeam_channel::Sender<BulkRequestError>,
+        sender: crossbeam::channel::Sender<BulkRequestError>,
         code: Option<u16>,
         message: &str,
     ) {

@@ -23,14 +23,14 @@ pg_test = [ ]
 byteorder = "1.4.3"
 chrono = "0.4.23"
 cow-utils = "0.1.2"
-crossbeam-channel = "0.5.7"
+crossbeam = "0.8.2"
 dashmap = "5.4.0"
 humantime = "2.1.0"
 indexmap = "1.9.2"
 lalrpop-util = "0.19.8"
 lazy_static = "1.4.0"
 levenshtein = "1.0.5"
-memoffset = "0.7.1"
+memoffset = "0.8.0"
 num_cpus = "1.15.0"
 pgx = "=0.7.2"
 rayon = "1.6.1"
@@ -47,7 +47,7 @@ url = "2.3.1"
 
 [build-dependencies]
 lalrpop = { version = "0.19.8", features = [ "lexer" ] }
-built = { version = "0.5.2", features = [ "git2", "semver" ] }
+built = { version = "0.6.0", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
 pgx-tests = "=0.7.2"
