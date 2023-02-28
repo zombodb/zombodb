@@ -135,6 +135,7 @@ fn tally(
         order: Value,
     }
 
+    #[derive(Debug)]
     #[allow(non_camel_case_types)]
     enum DateStem<'a> {
         year(Option<&'a str>),
@@ -219,14 +220,14 @@ fn tally(
         TermsOrderBy::reverse_term | TermsOrderBy::reverse_key => json! {{ "_key": "desc" }},
     };
 
-    let field_name = if is_date_subfield && stem.is_none() {
+    let field_name = if is_date_subfield && (stem.is_none() || date_stem.is_some()) {
         format!("{}.date", field_name)
     } else {
         field_name.into()
     };
     let body = Terms {
         field: field_name.clone(),
-        include: if !is_date_subfield && (is_raw_date_field || !is_string_field) {
+        include: if date_stem.is_some() || !is_date_subfield && (is_raw_date_field || !is_string_field) {
             None
         } else {
             match stem {

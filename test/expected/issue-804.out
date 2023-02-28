@@ -1,0 +1,18 @@
+CREATE TABLE issue804 (
+                                 id SERIAL8 NOT NULL PRIMARY KEY,
+                                 name text NOT NULL,
+                                 testdate date
+);
+CREATE INDEX idxissue804
+    ON issue804 USING zombodb ((issue804.*));
+COPY issue804 FROM stdin;
+SELECT term, count FROM zdb.tally('issue804'::regclass, 'testdate', 'FALSE', 'month', ''::zdbquery, 2147483647, 'term'::termsorderby);
+  term   | count 
+---------+-------
+ 2022-11 |    50
+ 2022-12 |   126
+ 2023-01 |   128
+ 2023-02 |    96
+(4 rows)
+
+DROP TABLE issue804 CASCADE;
