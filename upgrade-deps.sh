@@ -5,4 +5,5 @@
 cargo update
 cargo upgrade
 cargo generate-lockfile
+cd docker-build-system && cargo upgrade
 
