@@ -172,7 +172,7 @@ mod pg_catalog {
 }
 
 impl InOutFuncs for ZDBQuery {
-    fn input(input: &pgx::cstr_core::CStr) -> Self {
+    fn input(input: &std::ffi::CStr) -> Self {
         let input = input.to_str().expect("zdbquery input is not valid UTF8");
         ZDBQuery::from_str(input)
     }

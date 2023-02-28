@@ -3,7 +3,7 @@ use pgx::*;
 
 #[pg_extern(immutable, parallel_safe)]
 fn zdbquery_from_text(input: &str) -> ZDBQuery {
-    let cstr = pgx::cstr_core::CString::new(input).expect("CString::new() failed");
+    let cstr = std::ffi::CString::new(input).expect("CString::new() failed");
     ZDBQuery::input(cstr.as_c_str())
 }
 
