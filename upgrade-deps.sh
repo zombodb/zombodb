@@ -7,7 +7,7 @@ DIRS=". docker-build-system"
 for d in $DIRS; do
 	cd ${d}
 	cargo update
-	cargo upgrade
+	cargo upgrade --pinned
 	cargo generate-lockfile
 done
 
