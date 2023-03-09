@@ -48,13 +48,13 @@ pub fn init() {
                                  "Should queries honor visibility rules?",
                                  "By default, all Elasticsearch search requests apply a MVCC snapshot visibility filter.  Disabling this might provide a slight performance boost at the expense of correct results",
                                  &ZDB_IGNORE_VISIBILITY,
-                                 GucContext::Userset);
+                                 GucContext::Userset, GucFlags::default());
 
     GucRegistry::define_int_guc("zdb.default_row_estimate",
                                 "The default row estimate ZDB should use",
         "ZomboDB needs to provide Postgres with an estimate of the number of rows Elasticsearch will return for any given query. 2500 is a sensible default estimate that generally convinces Postgres to use an IndexScan plan. Setting this to -1 will cause ZomboDB to execute an Elasticsearch _count request for every query to return the exact number.",
         &ZDB_DEFAULT_ROW_ESTIMATE,
-        -1, std::i32::MAX, GucContext::Userset);
+        -1, std::i32::MAX, GucContext::Userset, GucFlags::default());
 
     GucRegistry::define_int_guc(
         "zdb.default_replicas",
@@ -63,14 +63,14 @@ pub fn init() {
         &ZDB_DEFAULT_REPLICAS,
         0,
         32768,
-        GucContext::Sighup);
+        GucContext::Sighup, GucFlags::default());
 
     GucRegistry::define_string_guc(
         "zdb.default_elasticsearch_url",
         "The default Elasticsearch URL ZomboDB should use if not specified on the index",
         "Defines the default URL for your Elasticsearch cluster so you can elite setting it on every index during CREATE INDEX. The value used must end with a forward slash (/).",
         &ZDB_DEFAULT_ELASTICSEARCH_URL,
-        GucContext::Sighup);
+        GucContext::Sighup, GucFlags::default());
 
     GucRegistry::define_enum_guc(
         "zdb.log_level",
@@ -78,6 +78,7 @@ pub fn init() {
         "The Postgres log level to which ZomboDB emits all of its (non-vacuum) log messages.",
         &ZDB_LOG_LEVEL,
         GucContext::Userset,
+        GucFlags::default(),
     );
 
     GucRegistry::define_bool_guc(
@@ -86,6 +87,7 @@ pub fn init() {
         "ZomboDB's search accelerator improves the performance of certain types of queries.",
         &ZDB_ACCELERATOR,
         GucContext::Userset,
+        GucFlags::default(),
     );
 }
 
