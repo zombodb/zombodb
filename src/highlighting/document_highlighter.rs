@@ -1,10 +1,11 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::highlighting::analyze::AnalyzedToken;
-use crate::utils::get_highlight_analysis_info;
+use crate::utils::{get_highlight_analysis_info, has_date_subfield};
 use crate::zql::ast::{IndexLink, ProximityPart, ProximityTerm, QualifiedField, Term};
 use levenshtein::*;
+use pgx::pg_sys::{AsPgCStr, InvalidOid};
 use pgx::prelude::*;
-use pgx::PgRelation;
+use pgx::{direct_function_call, PgRelation};
 use regex::Regex;
 use rustc_hash::FxHashMap;
 use serde_json::Value;
@@ -29,6 +30,7 @@ enum DataType {
     String,
     Integer,
     Float,
+    Date,
 }
 
 pub struct DocumentHighlighter<'a> {
@@ -42,6 +44,44 @@ impl<'a> Debug for DocumentHighlighter<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}::{:?}={:#?}", self.field, self.data_type, self.lookup)
     }
+}
+
+#[rustfmt::skip]
+fn make_date(s: &str) -> Option<pgx::TimestampWithTimeZone> {
+    unsafe {
+        let date_str = s.as_pg_cstr();
+        let date: Option<TimestampWithTimeZone> = PgTryBuilder::new(|| {
+            direct_function_call(
+                pg_sys::timestamptz_in,
+                vec![
+                    Some(pg_sys::Datum::from(date_str)),
+                    InvalidOid.into_datum(),
+                    (-1i32).into_datum(),
+                ],
+            )
+        })
+        .catch_when(PgSqlErrorCode::ERRCODE_DATETIME_FIELD_OVERFLOW, |_| None)
+        .catch_when(PgSqlErrorCode::ERRCODE_INVALID_TIME_ZONE_DISPLACEMENT_VALUE, |_| None)
+        .catch_when(PgSqlErrorCode::ERRCODE_INVALID_DATETIME_FORMAT, |_| None)
+        .execute();
+        pg_sys::pfree(date_str.cast());
+        
+        date
+    }
+}
+
+macro_rules! compare_date {
+    ($left:tt, $cmp:tt, $right:tt) => {{
+        let token = make_date($left);
+        let term = make_date($right);
+        if token.is_none() || term.is_none() {
+            return false;
+        }
+        let token: i64 = token.unwrap().into();
+        let term: i64 = term.unwrap().into();
+
+        token.$cmp(&term)
+    }};
 }
 
 macro_rules! compare_float {
@@ -83,11 +123,21 @@ pub type HighlightCollection<'a> = FxHashMap<(QualifiedField, String), Highlight
 impl<'a> DocumentHighlighter<'a> {
     pub fn new(index: &PgRelation, field: &str, value: &'a Value) -> Self {
         if let Value::String(_) = value {
-            DocumentHighlighter::from_json(index, field, value, 0)
-                .into_iter()
-                .next()
-                .unwrap()
-                .1
+            let (field_type, _, index_analyzer) = get_highlight_analysis_info(index, field);
+            let is_date = has_date_subfield(index, field);
+            DocumentHighlighter::from_json(
+                index,
+                field,
+                value,
+                0,
+                &field_type,
+                is_date,
+                &index_analyzer,
+            )
+            .into_iter()
+            .next()
+            .unwrap()
+            .1
         } else {
             panic!("supplied `value` is not a Value::String")
         }
@@ -98,9 +148,10 @@ impl<'a> DocumentHighlighter<'a> {
         field: &str,
         value: &'a Value,
         array_index: u32,
+        field_type: &Option<String>,
+        is_date: bool,
+        index_analyzer: &Option<String>,
     ) -> HashMap<(String, u32), Self> {
-        let (field_type, _, index_analyzer) = get_highlight_analysis_info(index, field);
-
         match value {
             Value::Object(o) => {
                 // recursively build highlighters for each (k, v) pair
@@ -113,6 +164,9 @@ impl<'a> DocumentHighlighter<'a> {
                         &format!("{}.{}", field, k),
                         v,
                         array_index,
+                        field_type,
+                        is_date,
+                        index_analyzer,
                     ))
                 });
 
@@ -130,6 +184,9 @@ impl<'a> DocumentHighlighter<'a> {
                         field,
                         v,
                         array_index + i as u32,
+                        field_type,
+                        is_date,
+                        index_analyzer,
                     ))
                 });
 
@@ -150,6 +207,7 @@ impl<'a> DocumentHighlighter<'a> {
                     value,
                     array_index,
                     &field_type,
+                    is_date,
                     &index_analyzer,
                 );
 
@@ -167,6 +225,7 @@ impl<'a> DocumentHighlighter<'a> {
         value: &'a Value,
         array_index: u32,
         field_type: &Option<String>,
+        is_date: bool,
         analyzer: &Option<String>,
     ) {
         match value {
@@ -208,6 +267,20 @@ impl<'a> DocumentHighlighter<'a> {
                         });
                     self.data_type = Some(DataType::Integer);
                 }
+            }
+
+            Value::String(s) if is_date => {
+                self.lookup
+                    .entry(Cow::Borrowed(s))
+                    .or_default()
+                    .push(TokenEntry {
+                        type_: "<DATE>".into(),
+                        array_index,
+                        position: 1,
+                        start_offset: 0,
+                        end_offset: 0,
+                    });
+                self.data_type = Some(DataType::Date);
             }
 
             Value::String(s) => {
@@ -312,6 +385,7 @@ impl<'a> DocumentHighlighter<'a> {
                     v,
                     array_index + (idx as u32),
                     field_type,
+                    is_date,
                     analyzer,
                 )
             }),
@@ -324,6 +398,7 @@ impl<'a> DocumentHighlighter<'a> {
                         v,
                         array_index,
                         field_type,
+                        is_date,
                         analyzer,
                     );
                 });
@@ -340,6 +415,7 @@ impl<'a> DocumentHighlighter<'a> {
             DataType::String => str::gt,
             DataType::Float => |token: &str, term: &str| compare_float!(token, gt, term),
             DataType::Integer => |token: &str, term: &str| compare_integer!(token, gt, term),
+            DataType::Date => |token: &str, term: &str| compare_date!(token, gt, term),
         }
     }
 
@@ -348,6 +424,7 @@ impl<'a> DocumentHighlighter<'a> {
             DataType::String => str::lt,
             DataType::Float => |token: &str, term: &str| compare_float!(token, lt, term),
             DataType::Integer => |token: &str, term: &str| compare_integer!(token, lt, term),
+            DataType::Date => |token: &str, term: &str| compare_date!(token, lt, term),
         }
     }
 
@@ -356,6 +433,7 @@ impl<'a> DocumentHighlighter<'a> {
             DataType::String => str::ge,
             DataType::Float => |token: &str, term: &str| compare_float!(token, ge, term),
             DataType::Integer => |token: &str, term: &str| compare_integer!(token, ge, term),
+            DataType::Date => |token: &str, term: &str| compare_date!(token, ge, term),
         }
     }
 
@@ -364,6 +442,7 @@ impl<'a> DocumentHighlighter<'a> {
             DataType::String => str::le,
             DataType::Float => |token: &str, term: &str| compare_float!(token, le, term),
             DataType::Integer => |token: &str, term: &str| compare_integer!(token, le, term),
+            DataType::Date => |token: &str, term: &str| compare_date!(token, le, term),
         }
     }
 
