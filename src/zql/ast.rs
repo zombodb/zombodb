@@ -5,6 +5,7 @@ use std::str::FromStr;
 use lalrpop_util::ParseError;
 use pgx::PgRelation;
 use serde::{Deserialize, Serialize};
+use unicode_segmentation::UnicodeSegmentation;
 
 pub use pg_catalog::{ProximityPart, ProximityTerm};
 

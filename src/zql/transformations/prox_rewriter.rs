@@ -1,4 +1,5 @@
 use crate::zql::ast::{Expr, ProximityTerm, QualifiedField, Term};
+use unicode_segmentation::UnicodeSegmentation;
 
 pub fn rewrite_proximity_chains(expr: &mut Expr) {
     match expr {
@@ -43,6 +44,16 @@ fn rewrite_term(field: &QualifiedField, term: &mut Term) {
                 part.words
                     .iter_mut()
                     .for_each(|prox_term| rewrite_prox_term(field, prox_term));
+            }
+        }
+        Term::Prefix(s, b) => {
+            if s.unicode_words().count() > 1 {
+                match ProximityTerm::make_proximity_chain(field, s, *b) {
+                    ProximityTerm::ProximityChain(chain) => {
+                        *term = Term::ProximityChain(chain);
+                    }
+                    _ => panic!("unexpected proximity chain"),
+                }
             }
         }
         _ => {}
