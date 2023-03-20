@@ -6,6 +6,7 @@ use levenshtein::*;
 use pgx::prelude::*;
 use pgx::PgRelation;
 use regex::Regex;
+use rustc_hash::FxHashMap;
 use serde_json::Value;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -77,6 +78,7 @@ macro_rules! compare_integer {
 }
 
 pub type HighlightMatches<'a> = Vec<(&'a Cow<'a, str>, &'a TokenEntry)>;
+pub type HighlightCollection<'a> = FxHashMap<(QualifiedField, String), HighlightMatches<'a>>;
 
 impl<'a> DocumentHighlighter<'a> {
     pub fn new(index: &PgRelation, field: &str, value: &'a Value) -> Self {
@@ -245,6 +247,7 @@ impl<'a> DocumentHighlighter<'a> {
                         }
                         (Some(analyzer), _) if analyzer == "fulltext_with_shingles" => Box::new(
                             crate::highlighting::analyze::fulltext_with_shingles(&s)
+                                .filter(|t| t.type_ != "shingle")
                                 .map(|x| map_analyzed_token(array_index, x)),
                         ),
                         (_, Some(field_type)) if field_type == "keyword" => {
