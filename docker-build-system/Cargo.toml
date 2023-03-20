@@ -12,5 +12,5 @@ ctrlc = { version = "3.2.5", features = ["termination"] }
 durationfmt = "0.1.1"
 fs_extra = "1.3.0"
 num_cpus = "1.15.0"
-rayon = "1.7.0"
+rayon = "1.6.1"
 users = "0.11.0"

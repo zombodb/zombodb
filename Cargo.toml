@@ -32,12 +32,12 @@ lazy_static = "1.4.0"
 levenshtein = "1.0.5"
 memoffset = "0.8.0"
 num_cpus = "1.15.0"
-pgx = "=0.7.3"
-rayon = "1.7.0"
+pgx = "=0.7.2"
+rayon = "1.6.1"
 regex = "1.7.1"
 rustc-hash = "1.1.0"
-serde = { version = "1.0.154", features = [ "derive" ] }
-serde_json = { version = "1.0.94", features = [ "preserve_order" ] }
+serde = { version = "1.0.152", features = [ "derive" ] }
+serde_json = { version = "1.0.93", features = [ "preserve_order" ] }
 serde_cbor = "0.11.2"
 sqlformat = "0.2.1"
 time = "0.3.20"
@@ -50,8 +50,8 @@ lalrpop = { version = "0.19.8", features = [ "lexer" ] }
 built = { version = "0.6.0", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
-pgx-tests = "=0.7.3"
-libc = "0.2.140"
+pgx-tests = "=0.7.2"
+libc = "0.2.139"
 
 [profile.dev]
 panic = "unwind"
