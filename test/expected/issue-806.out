@@ -1,0 +1,36 @@
+CREATE TABLE hyphen_test (
+                             id SERIAL8 NOT NULL PRIMARY KEY,
+                             full_text zdb.fulltext NOT NULL
+);
+CREATE INDEX es_idxhyphentest_var
+    ON hyphen_test USING zombodb ((hyphen_test.*));
+insert into hyphen_test(full_text) values ('please remove me from your e-mail list');
+insert into hyphen_test(full_text) values ('please send me your e-mails');
+SELECT * FROM hyphen_test ORDER BY 1;
+ id |               full_text                
+----+----------------------------------------
+  1 | please remove me from your e-mail list
+  2 | please send me your e-mails
+(2 rows)
+
+SELECT * FROM hyphen_test WHERE hyphen_test ==> 'full_text : "e-mail"' ORDER BY 1;
+ id |               full_text                
+----+----------------------------------------
+  1 | please remove me from your e-mail list
+(1 row)
+
+SELECT * FROM hyphen_test WHERE hyphen_test ==> 'full_text : "e*"' ORDER BY 1;
+ id |               full_text                
+----+----------------------------------------
+  1 | please remove me from your e-mail list
+  2 | please send me your e-mails
+(2 rows)
+
+SELECT * FROM hyphen_test WHERE hyphen_test ==> 'full_text : "e-mail*"' ORDER BY 1;
+ id |               full_text                
+----+----------------------------------------
+  1 | please remove me from your e-mail list
+  2 | please send me your e-mails
+(2 rows)
+
+drop table hyphen_test;
