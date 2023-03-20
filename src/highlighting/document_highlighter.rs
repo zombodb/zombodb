@@ -542,7 +542,9 @@ impl<'a> DocumentHighlighter<'a> {
                     ProximityTerm::to_terms(&p.words)
                         .into_iter()
                         .filter_map(|t| {
-                            self.highlight_term(&t).map(|highlights| (highlights, matches!(t, Term::ProximityChain(_))))
+                            self.highlight_term(&t).map(|highlights| {
+                                (highlights, matches!(t, Term::ProximityChain(_)))
+                            })
                         })
                         .collect::<Vec<_>>(),
                 )
@@ -612,7 +614,10 @@ impl<'a> DocumentHighlighter<'a> {
     ) -> Option<HighlightMatches<'a>> {
         let words = words
             .into_iter()
-            .filter_map(|t| self.highlight_term(t).map(|highlights| (highlights, matches!(t, Term::ProximityChain(_)))))
+            .filter_map(|t| {
+                self.highlight_term(t)
+                    .map(|highlights| (highlights, matches!(t, Term::ProximityChain(_))))
+            })
             .collect::<Vec<_>>();
         self.look_for_match_ex(&words, distance, order, starting_point, array_index)
     }
@@ -642,7 +647,6 @@ impl<'a> DocumentHighlighter<'a> {
                         {
                             if *is_prox_chain {
                                 matches.extend(highlights);
-
                             } else {
                                 let e = highlights.get(idx).unwrap();
                                 matches.push(*e);

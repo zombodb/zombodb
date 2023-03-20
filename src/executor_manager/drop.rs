@@ -1,6 +1,6 @@
+use pgx::spi::SpiTupleTable;
 use pgx::{
-    pg_sys, register_xact_callback, spi, spi::SpiTupleTable, IntoDatum, PgOid, PgRelation,
-    PgXactCallbackEvent, Spi,
+    pg_sys, register_xact_callback, spi, IntoDatum, PgOid, PgRelation, PgXactCallbackEvent, Spi,
 };
 
 use crate::elasticsearch::Elasticsearch;

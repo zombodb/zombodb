@@ -3,6 +3,7 @@ use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
 use crate::executor_manager::get_executor_manager;
 use crate::gucs::ZDB_LOG_LEVEL;
 use crate::json::builder::JsonBuilder;
+use crossbeam::channel::{RecvTimeoutError, SendTimeoutError};
 use dashmap::DashSet;
 use pgx::pg_sys::elog::interrupt_pending;
 use pgx::*;
@@ -18,7 +19,6 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
-use crossbeam::channel::{RecvTimeoutError, SendTimeoutError};
 
 #[derive(Debug)]
 pub enum BulkRequestCommand<'a> {
