@@ -407,6 +407,10 @@ impl ZDBQuery {
             .expect("ZDBQuery does not contain query dsl")
     }
 
+    pub fn query_string(&self) -> Option<String> {
+        Some(self.query_dsl.as_ref()?.zdb.as_ref()?.query.clone())
+    }
+
     /// Convert the this `ZDBQuery` into a `serde_json::Value` using the most minimal form we can
     pub fn into_value(self) -> serde_json::Value {
         self.as_value()
