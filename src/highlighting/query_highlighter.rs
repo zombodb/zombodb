@@ -43,7 +43,7 @@ impl QueryHighlighter {
             }
         });
 
-        let mut highlights = HashMap::new();
+        let mut highlights = Default::default();
         let result: Box<
             dyn std::iter::Iterator<
                 Item = (
@@ -87,7 +87,7 @@ impl QueryHighlighter {
 
     fn walk_expression<'a>(
         expr: &Expr<'a>,
-        highlights: &mut HashMap<(QualifiedField, String), HighlightMatches<'a>>,
+        highlights: &mut HighlightCollection<'a>,
         highlighters: &'a HashMap<String, Vec<DocumentHighlighter<'a>>>,
     ) -> bool {
         match expr {
@@ -99,7 +99,7 @@ impl QueryHighlighter {
 
             Expr::AndList(v) => {
                 let mut did_highlight = false;
-                let mut tmp_highlights = HashMap::new();
+                let mut tmp_highlights = Default::default();
 
                 for e in v {
                     did_highlight =
@@ -118,11 +118,11 @@ impl QueryHighlighter {
 
             Expr::WithList(v) => {
                 let mut did_highlight = false;
-                let mut tmp_highlights = HashMap::new();
+                let mut tmp_highlights = HighlightCollection::default();
                 let mut array_indexes = HashSet::new();
 
                 for e in v {
-                    let mut matches = HashMap::new();
+                    let mut matches = HighlightCollection::default();
                     did_highlight =
                         QueryHighlighter::walk_expression(e, &mut matches, highlighters);
                     if !did_highlight {
@@ -176,7 +176,7 @@ impl QueryHighlighter {
                 let mut did_highlight = false;
 
                 for e in v {
-                    let mut tmp_highlights = HashMap::new();
+                    let mut tmp_highlights = HighlightCollection::default();
                     if QueryHighlighter::walk_expression(e, &mut tmp_highlights, highlighters) {
                         highlights.extend(tmp_highlights);
                         did_highlight = true;
@@ -322,7 +322,7 @@ impl QueryHighlighter {
         field: QualifiedField,
         expr: &Expr<'a>,
         term: &Term,
-        highlights: &mut HashMap<(QualifiedField, String), HighlightMatches<'a>>,
+        highlights: &mut HighlightCollection<'a>,
         eval: F,
     ) -> bool {
         let mut cnt = 0;
@@ -345,7 +345,7 @@ impl QueryHighlighter {
         field: QualifiedField,
         expr: &Expr<'a>,
         term: &Term,
-        highlights: &mut HashMap<(QualifiedField, String), HighlightMatches<'a>>,
+        highlights: &mut HighlightCollection<'a>,
     ) -> bool {
         let mut cnt = 0;
         match term {
@@ -431,7 +431,7 @@ impl QueryHighlighter {
         expr: &Expr<'a>,
         field: &QualifiedField,
         mut entries: HighlightMatches<'a>,
-        highlights: &mut HashMap<(QualifiedField, String), HighlightMatches<'a>>,
+        highlights: &mut HighlightCollection<'a>,
     ) {
         highlights
             // for this field in our map of highlights
