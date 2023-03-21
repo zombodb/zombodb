@@ -77,6 +77,14 @@ find ./ -name "*.so" -exec strip {} \;
 ## hack for when we installed ruby via rvm.  if it doesn't work we don't care
 source ~/.rvm/scripts/rvm
 
+# architecture name
+UNAME=$(uname -m)
+DEBUNAME=${UNAME}
+if [ "${DEBUNAME}" == "x86_64" ]; then
+    # name used for .deb packages is different for historical reasons
+    DEBUNAME="amd64"
+fi
+
 if [ "${PKG_FORMAT}" == "deb" ]; then
 	fpm \
 		-s dir \
@@ -84,8 +92,8 @@ if [ "${PKG_FORMAT}" == "deb" ]; then
 		-n zombodb-${PGVER} \
 		-v ${VERSION} \
 		--deb-no-default-config-files \
-		-p ${ARTIFACTDIR}/zombodb_${OSNAME}_pg${PGVER}-${VERSION}_amd64.deb \
-		-a amd64 \
+		-p ${ARTIFACTDIR}/zombodb_${OSNAME}_pg${PGVER}-${VERSION}_${DEBUNAME}.deb \
+		-a ${DEBUNAME} \
 		. || exit 1
 
 elif [ "${PKG_FORMAT}" == "rpm" ]; then
@@ -95,8 +103,8 @@ elif [ "${PKG_FORMAT}" == "rpm" ]; then
 		-n zombodb-${PGVER} \
 		-v ${VERSION} \
 		--rpm-os linux \
-		-p ${ARTIFACTDIR}/zombodb_${OSNAME}_pg${PGVER}-${VERSION}_1.x86_64.rpm \
-		-a x86_64 \
+		-p ${ARTIFACTDIR}/zombodb_${OSNAME}_pg${PGVER}-${VERSION}_1.${UNAME}.rpm \
+		-a ${UNAME} \
 		. || exit 1
 
 elif [ "${PKG_FORMAT}" == "apk" ]; then
@@ -105,8 +113,8 @@ elif [ "${PKG_FORMAT}" == "apk" ]; then
 		-t apk \
 		-n zombodb-${PGVER} \
 		-v ${VERSION} \
-		-p ${ARTIFACTDIR}/zombodb_${OSNAME}_pg${PGVER}-${VERSION}.$(uname -m).apk \
-		-a $(uname -m) \
+		-p ${ARTIFACTDIR}/zombodb_${OSNAME}_pg${PGVER}-${VERSION}.${UNAME}.apk \
+		-a ${UNAME} \
 		. \
 		|| exit 1
 

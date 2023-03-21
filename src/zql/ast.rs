@@ -68,7 +68,7 @@ pub struct QualifiedIndex {
     pub index: String,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub struct QualifiedField {
     pub index: Option<IndexLink>,
     pub field: String,

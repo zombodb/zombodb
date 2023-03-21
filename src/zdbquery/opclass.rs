@@ -4,7 +4,7 @@ use crate::gucs::ZDB_DEFAULT_ROW_ESTIMATE;
 use crate::utils::get_heap_relation_for_func_expr;
 use crate::zdbquery::ZDBQuery;
 use pgx::*;
-use std::collections::HashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 #[pg_extern(immutable, parallel_safe)]
 fn anyelement_cmpfunc(
@@ -34,14 +34,21 @@ fn anyelement_cmpfunc(
 
     match tid {
         Some(tid) => unsafe {
-            pg_func_extra(fcinfo, || do_seqscan(query, index_oid)).contains(&tid)
+            let mut lookup_by_query = pg_func_extra(fcinfo, || {
+                FxHashMap::<(pg_sys::Oid, Option<String>), FxHashSet<u64>>::default()
+            });
+
+            lookup_by_query
+                .entry((index_oid, query.query_string()))
+                .or_insert_with(|| do_seqscan(query, index_oid))
+                .contains(&tid)
         },
         None => false,
     }
 }
 
 #[inline]
-fn do_seqscan(query: ZDBQuery, index_oid: pg_sys::Oid) -> HashSet<u64> {
+fn do_seqscan(query: ZDBQuery, index_oid: pg_sys::Oid) -> FxHashSet<u64> {
     unsafe {
         let index = pg_sys::index_open(index_oid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
         let heap = pg_sys::relation_open(
@@ -55,7 +62,7 @@ fn do_seqscan(query: ZDBQuery, index_oid: pg_sys::Oid) -> HashSet<u64> {
         let scan = pg_sys::index_beginscan(heap, index, pg_sys::GetTransactionSnapshot(), 1, 0);
         pg_sys::index_rescan(scan, keys.into_pg(), 1, std::ptr::null_mut(), 0);
 
-        let mut lookup = HashSet::new();
+        let mut lookup = FxHashSet::default();
         loop {
             check_for_interrupts!();
 

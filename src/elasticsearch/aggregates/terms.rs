@@ -227,7 +227,9 @@ fn tally(
     };
     let body = Terms {
         field: field_name.clone(),
-        include: if date_stem.is_some() || !is_date_subfield && (is_raw_date_field || !is_string_field) {
+        include: if date_stem.is_some()
+            || !is_date_subfield && (is_raw_date_field || !is_string_field)
+        {
             None
         } else {
             match stem {

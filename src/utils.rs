@@ -429,6 +429,19 @@ pub fn lookup_es_subfield_type(index: &PgRelation, field: &str) -> String {
     Spi::get_one(&sql).expect("SPI failed").unwrap_or_default()
 }
 
+pub fn has_date_subfield(index: &PgRelation, field: &str) -> bool {
+    let mut sql = String::new();
+
+    sql.push_str(&format!(
+        "select
+        zdb.index_mapping({}::regclass)->zdb.index_name({}::regclass)->'mappings'->'properties'->'{field}'->'fields'->'date'->>'type' = 'date'",
+        index.oid().as_u32(),
+        index.oid().as_u32()
+    ));
+
+    Spi::get_one(&sql).expect("SPI failed").unwrap_or_default()
+}
+
 pub fn json_to_string(key: serde_json::Value) -> Option<String> {
     match key {
         Value::Null => None,

@@ -1,6 +1,7 @@
 use crate::highlighting::document_highlighter::*;
-use crate::utils::find_zdb_index;
+use crate::utils::{find_zdb_index, get_highlight_analysis_info, has_date_subfield};
 use crate::zql::ast::{Expr, IndexLink, QualifiedField, Term};
+use pgx::once_cell::sync::Lazy;
 use pgx::prelude::*;
 use pgx::{JsonB, PgRelation, *};
 use std::borrow::Cow;
@@ -12,7 +13,7 @@ impl QueryHighlighter {
     pub fn highlight<'a>(
         index: &PgRelation,
         document: &'a serde_json::Value,
-        fields: &HashSet<&'a str>,
+        fields: &HashSet<(String, Option<String>, Option<String>, bool)>,
         query: &Expr<'a>,
         highlighters: &'a mut HashMap<String, Vec<DocumentHighlighter<'a>>>,
     ) -> impl std::iter::Iterator<
@@ -29,21 +30,28 @@ impl QueryHighlighter {
     > + 'a {
         let document = document.as_object().expect("document not an object");
 
-        fields.iter().for_each(|field| {
-            let base_field = field.split('.').next().map(|v| v.to_string()).unwrap();
-            if let Some(value) = document.get(&base_field) {
-                for ((fieldname, _), highlighter) in
-                    DocumentHighlighter::from_json(index, &base_field, value, 0)
-                {
-                    highlighters
-                        .entry(fieldname)
-                        .or_insert_with(Vec::new)
-                        .push(highlighter);
+        fields
+            .iter()
+            .for_each(|(base_field, field_type, index_analyzer, is_date)| {
+                if let Some(value) = document.get(base_field) {
+                    for ((fieldname, _), highlighter) in DocumentHighlighter::from_json(
+                        index,
+                        &base_field,
+                        value,
+                        0,
+                        &field_type,
+                        *is_date,
+                        &index_analyzer,
+                    ) {
+                        highlighters
+                            .entry(fieldname)
+                            .or_insert_with(Vec::new)
+                            .push(highlighter);
+                    }
                 }
-            }
-        });
+            });
 
-        let mut highlights = HashMap::new();
+        let mut highlights = Default::default();
         let result: Box<
             dyn std::iter::Iterator<
                 Item = (
@@ -87,7 +95,7 @@ impl QueryHighlighter {
 
     fn walk_expression<'a>(
         expr: &Expr<'a>,
-        highlights: &mut HashMap<(QualifiedField, String), HighlightMatches<'a>>,
+        highlights: &mut HighlightCollection<'a>,
         highlighters: &'a HashMap<String, Vec<DocumentHighlighter<'a>>>,
     ) -> bool {
         match expr {
@@ -99,7 +107,7 @@ impl QueryHighlighter {
 
             Expr::AndList(v) => {
                 let mut did_highlight = false;
-                let mut tmp_highlights = HashMap::new();
+                let mut tmp_highlights = Default::default();
 
                 for e in v {
                     did_highlight =
@@ -118,11 +126,11 @@ impl QueryHighlighter {
 
             Expr::WithList(v) => {
                 let mut did_highlight = false;
-                let mut tmp_highlights = HashMap::new();
+                let mut tmp_highlights = HighlightCollection::default();
                 let mut array_indexes = HashSet::new();
 
                 for e in v {
-                    let mut matches = HashMap::new();
+                    let mut matches = HighlightCollection::default();
                     did_highlight =
                         QueryHighlighter::walk_expression(e, &mut matches, highlighters);
                     if !did_highlight {
@@ -176,7 +184,7 @@ impl QueryHighlighter {
                 let mut did_highlight = false;
 
                 for e in v {
-                    let mut tmp_highlights = HashMap::new();
+                    let mut tmp_highlights = HighlightCollection::default();
                     if QueryHighlighter::walk_expression(e, &mut tmp_highlights, highlighters) {
                         highlights.extend(tmp_highlights);
                         did_highlight = true;
@@ -322,19 +330,19 @@ impl QueryHighlighter {
         field: QualifiedField,
         expr: &Expr<'a>,
         term: &Term,
-        highlights: &mut HashMap<(QualifiedField, String), HighlightMatches<'a>>,
+        highlights: &mut HighlightCollection<'a>,
         eval: F,
     ) -> bool {
         let mut cnt = 0;
 
         match term {
-            Term::String(s, _) => {
+            Term::String(s, _) | Term::Phrase(s, _) => {
                 if let Some(entries) = highlighter.highlight_token_scan(s, eval) {
                     cnt = entries.len();
                     QueryHighlighter::process_entries(expr, &field, entries, highlights);
                 }
             }
-            _ => panic!("cannot highlight using scans for {}", expr),
+            _ => panic!("cannot highlight using scans for {:?}", expr),
         }
 
         cnt > 0
@@ -345,7 +353,7 @@ impl QueryHighlighter {
         field: QualifiedField,
         expr: &Expr<'a>,
         term: &Term,
-        highlights: &mut HashMap<(QualifiedField, String), HighlightMatches<'a>>,
+        highlights: &mut HighlightCollection<'a>,
     ) -> bool {
         let mut cnt = 0;
         match term {
@@ -431,7 +439,7 @@ impl QueryHighlighter {
         expr: &Expr<'a>,
         field: &QualifiedField,
         mut entries: HighlightMatches<'a>,
-        highlights: &mut HashMap<(QualifiedField, String), HighlightMatches<'a>>,
+        highlights: &mut HighlightCollection<'a>,
     ) {
         highlights
             // for this field in our map of highlights
@@ -460,6 +468,7 @@ fn highlight_document_jsonb(
     name!(query_clause, String),
 )> {
     let (expr, used_fields) = make_expr(&index, query_string);
+    let used_fields = make_used_fields(&index, &used_fields);
     highlight_document_internal(index, &document.0, &expr, &used_fields, dedup_results)
 }
 
@@ -480,14 +489,54 @@ fn highlight_document_json(
     name!(query_clause, String),
 )> {
     let (expr, used_fields) = make_expr(&index, query_string);
+    let used_fields = make_used_fields(&index, &used_fields);
     highlight_document_internal(index, &document.0, &expr, &used_fields, dedup_results)
+}
+
+fn make_used_fields(
+    index: &PgRelation,
+    used_fields: &HashSet<&str>,
+) -> &'static HashSet<(String, Option<String>, Option<String>, bool)> {
+    static mut USED_FIELDS_CACHE: Lazy<
+        HashMap<String, HashSet<(String, Option<String>, Option<String>, bool)>>,
+    > = Lazy::new(|| Default::default());
+
+    unsafe {
+        let key = used_fields.iter().map(|s| *s).collect::<String>();
+        USED_FIELDS_CACHE.entry(key.clone()).or_insert_with(|| {
+            {
+                let key = key.clone();
+                register_xact_callback(PgXactCallbackEvent::Abort, move || {
+                    USED_FIELDS_CACHE.remove(&key);
+                });
+            }
+
+            {
+                let key = key.clone();
+                register_xact_callback(PgXactCallbackEvent::Commit, move || {
+                    USED_FIELDS_CACHE.remove(&key);
+                });
+            }
+
+            used_fields
+                .into_iter()
+                .map(|field| {
+                    let base_field = field.split('.').next().map(|v| v.to_string()).unwrap();
+                    let (field_type, _, index_analyzer) =
+                        get_highlight_analysis_info(index, &base_field);
+                    let is_date = has_date_subfield(index, &base_field);
+                    (base_field, field_type, index_analyzer, is_date)
+                })
+                .collect::<HashSet<_>>()
+        })
+    }
 }
 
 fn highlight_document_internal<'a>(
     index: PgRelation,
     document: &serde_json::Value,
     query: &Expr,
-    used_fields: &HashSet<&str>,
+    used_fields: &HashSet<(String, Option<String>, Option<String>, bool)>,
     dedup_results: bool,
 ) -> TableIterator<
     'a,
@@ -503,8 +552,8 @@ fn highlight_document_internal<'a>(
     ),
 > {
     let mut highlighters = HashMap::new();
-    let iter = QueryHighlighter::highlight(&index, document, used_fields, query, &mut highlighters)
-        .map(
+    let iter =
+        QueryHighlighter::highlight(&index, document, &used_fields, query, &mut highlighters).map(
             |(
                 field_name,
                 array_index,
@@ -556,7 +605,8 @@ fn make_expr<'a>(index: &PgRelation, query_string: &'a str) -> (Expr<'a>, HashSe
 #[cfg(any(test, feature = "pg_test"))]
 #[pgx::pg_schema]
 mod tests {
-    use crate::highlighting::query_highlighter::QueryHighlighter;
+    use crate::highlighting::query_highlighter::{make_used_fields, QueryHighlighter};
+    use crate::utils::{get_highlight_analysis_info, has_date_subfield};
     use crate::zql::ast::Expr;
     use pgx::*;
     use serde_json::*;
@@ -881,6 +931,8 @@ mod tests {
     ) -> Vec<(String, i32, String, String, i32, i64, i64, String)> {
         let relation = start_table_and_index(table);
         let (query, used_fields) = make_query(&relation, query_string);
+        let used_fields = make_used_fields(&relation, &used_fields);
+
         let mut highlighters = HashMap::new();
         let mut results = QueryHighlighter::highlight(
             &relation,

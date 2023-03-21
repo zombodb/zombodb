@@ -3,6 +3,7 @@ use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
 use crate::executor_manager::get_executor_manager;
 use crate::gucs::ZDB_LOG_LEVEL;
 use crate::json::builder::JsonBuilder;
+use crossbeam::channel::{RecvTimeoutError, SendTimeoutError};
 use dashmap::DashSet;
 use pgx::pg_sys::elog::interrupt_pending;
 use pgx::*;
@@ -18,7 +19,6 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
-use crossbeam::channel::{RecvTimeoutError, SendTimeoutError};
 
 #[derive(Debug)]
 pub enum BulkRequestCommand<'a> {
@@ -360,6 +360,7 @@ pub(crate) struct Handler {
     elasticsearch: Elasticsearch,
     concurrency: usize,
     batch_size: usize,
+    queue_size: usize,
     bulk_sender: Option<crossbeam::channel::Sender<BulkRequestCommand<'static>>>,
     bulk_receiver: crossbeam::channel::Receiver<BulkRequestCommand<'static>>,
     error_sender: crossbeam::channel::Sender<BulkRequestError>,
@@ -377,6 +378,7 @@ struct BulkReceiver<'a> {
     buffer: Vec<u8>,
     buffer_offset: usize,
     batch_size: usize,
+    queue_size: usize,
 }
 
 impl<'a> std::io::Read for BulkReceiver<'a> {
@@ -406,7 +408,7 @@ impl<'a> std::io::Read for BulkReceiver<'a> {
             Some(command) => Some(command),
 
             // otherwise if we have room, try to pull one from the receiver
-            None if self.docs_out < 10_000 && self.bytes_out < self.batch_size => {
+            None if self.docs_out < self.queue_size && self.bytes_out < self.batch_size => {
                 // we don't care if there's an error trying to receive
                 self.receiver
                     .recv_timeout(Duration::from_millis(333))
@@ -690,13 +692,13 @@ impl<'a> BulkReceiver<'a> {
 impl Handler {
     pub(crate) fn new(
         elasticsearch: Elasticsearch,
-        _queue_size: usize,
+        queue_size: usize,
         concurrency: usize,
         batch_size: usize,
         error_sender: crossbeam::channel::Sender<BulkRequestError>,
         error_receiver: &crossbeam::channel::Receiver<BulkRequestError>,
     ) -> Self {
-        let (tx, rx) = crossbeam::channel::bounded(1000 * concurrency);
+        let (tx, rx) = crossbeam::channel::bounded(concurrency);
 
         Handler {
             when_started: Instant::now(),
@@ -710,6 +712,7 @@ impl Handler {
             successful_requests: Arc::new(AtomicUsize::new(0)),
             elasticsearch,
             batch_size,
+            queue_size,
             concurrency,
             bulk_sender: Some(tx),
             bulk_receiver: rx,
@@ -812,7 +815,7 @@ impl Handler {
 
         // now determine if we need to start a new thread to handle what's in the queue
         let nthreads = self.active_threads.load(Ordering::SeqCst);
-        if self.total_docs > 0 && self.total_docs % 10_000 == 0 {
+        if self.total_docs > 0 && self.total_docs % self.queue_size == 0 {
             ZDB_LOG_LEVEL.get().log(&format!(
                 "[zombodb] total={}, in_flight={}, queued={}, active_threads={}, index={}, elapsed={}",
                 self.total_docs,
@@ -824,7 +827,8 @@ impl Handler {
             ));
         }
         if nthreads == 0
-            || (nthreads < self.concurrency && self.total_docs % (10_000 / self.concurrency) == 0)
+            || (nthreads < self.concurrency
+                && self.total_docs % (self.queue_size / self.concurrency) == 0)
         {
             self.threads.push(Some(self.create_thread(nthreads)));
         }
@@ -840,6 +844,7 @@ impl Handler {
         let error = self.error_sender.clone();
         let terminated = self.terminated.clone();
         let batch_size = self.batch_size;
+        let queue_size = self.queue_size;
         let active_threads = self.active_threads.clone();
         let successful_requests = self.successful_requests.clone();
 
@@ -878,6 +883,7 @@ impl Handler {
                         consumed: Default::default(),
                         receiver: bulk_receiver.clone(),
                         batch_size,
+                        queue_size,
                         bytes_out: 0,
                         docs_out: 0,
                         buffer: Vec::with_capacity(16384),
