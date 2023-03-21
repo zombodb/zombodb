@@ -34,7 +34,7 @@ memoffset = "0.8.0"
 num_cpus = "1.15.0"
 pgx = "=0.7.4"
 rayon = "1.7.0"
-regex = "1.7.1"
+regex = "1.7.2"
 rustc-hash = "1.1.0"
 serde = { version = "1.0.158", features = [ "derive" ] }
 serde_json = { version = "1.0.94", features = [ "preserve_order" ] }
