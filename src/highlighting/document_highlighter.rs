@@ -320,7 +320,6 @@ impl<'a> DocumentHighlighter<'a> {
                         }
                         (Some(analyzer), _) if analyzer == "fulltext_with_shingles" => Box::new(
                             crate::highlighting::analyze::fulltext_with_shingles(&s)
-                                .filter(|t| t.type_ != "shingle")
                                 .map(|x| map_analyzed_token(array_index, x)),
                         ),
                         (_, Some(field_type)) if field_type == "keyword" => {
@@ -714,6 +713,11 @@ impl<'a> DocumentHighlighter<'a> {
     ) -> Option<HighlightMatches<'a>> {
         let mut matches = Vec::new();
         for (highlights, is_prox_chain) in words {
+            let mut highlights = highlights
+                .iter()
+                .filter(|(_, entry)| entry.type_ != "shingle")
+                .map(|(cow, entry)| (*cow, *entry))
+                .collect::<HighlightMatches>();
             for start in &starting_point {
                 let start = *start;
                 let range = if order {
@@ -728,7 +732,7 @@ impl<'a> DocumentHighlighter<'a> {
                             highlights.binary_search_by(|(_, entry)| entry.position.cmp(&point))
                         {
                             if *is_prox_chain {
-                                matches.extend(highlights);
+                                matches.append(&mut highlights);
                             } else {
                                 let e = highlights.get(idx).unwrap();
                                 matches.push(*e);
