@@ -74,14 +74,20 @@ fn maybe_nest(index: &Option<&PgRelation>, expr: &mut Expr) {
     if let Some(index) = index {
         if let Some(path) = expr.get_nested_path() {
             let is_nested = is_nested_field(index, &path);
-            if is_nested {
+            if matches!(is_nested, Some(true)) {
                 // the nested query begins with the longest path if we have an index and it's a nested field
                 *expr = Expr::Nested(path.clone(), Box::new(expr.clone()));
+            } else if matches!(is_nested, Some(false)) {
+                // it is strictly not a nested field, so there's nothing we should do here
+                return;
             }
+
+            // it might be nested `Some(true)` or we might not know `None` and in that case
+            // we'll assume that it is
 
             // then we build bottom-up for the leading paths
             let mut paths: Vec<&str> = path.split('.').collect();
-            if is_nested || is_named_index_link(index, &path) {
+            if matches!(is_nested, Some(true)) || is_named_index_link(index, &path) {
                 paths.pop();
             }
 
