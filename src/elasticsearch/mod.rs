@@ -316,7 +316,7 @@ impl Elasticsearch {
                 let mut path = field.rsplitn(2, '.').collect::<Vec<&str>>();
                 let path = path.pop().unwrap();
 
-                if is_nested_field(&index, &path) {
+                if is_nested_field(&index, &path).unwrap_or(false) {
                     // is nested, so we also need to generate a filter query for it
                     if need_filter {
                         let mut value = query.query_dsl().clone();

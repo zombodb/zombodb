@@ -358,8 +358,13 @@ pub fn is_date_subfield(index: &PgRelation, field: &str) -> bool {
     lookup_es_subfield_type(index, field) == "date"
 }
 
-pub fn is_nested_field(index: &PgRelation, field: &str) -> bool {
-    lookup_es_field_type(index, field) == "nested"
+pub fn is_nested_field(index: &PgRelation, field: &str) -> Option<bool> {
+    let field_type = lookup_es_field_type(index, field);
+    if field_type.is_empty() {
+        None
+    } else {
+        Some(field_type == "nested")
+    }
 }
 
 pub fn is_named_index_link(index: &PgRelation, name: &str) -> bool {
