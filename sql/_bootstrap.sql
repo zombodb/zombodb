@@ -5,7 +5,7 @@ DO LANGUAGE plpgsql $$
         session_preload_libraries = COALESCE (current_setting('session_preload_libraries'), '');
         IF (session_preload_libraries NOT LIKE '%zombodb.so%') THEN
             IF (session_preload_libraries = '') THEN
-                session_preload_libraries = 'zombodb.so';
+                session_preload_libraries = '"zombodb.so"';
             ELSE
                 session_preload_libraries = format('"zombodb.so",%s', session_preload_libraries);
             END IF;
