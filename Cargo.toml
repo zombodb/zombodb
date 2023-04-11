@@ -36,7 +36,7 @@ pgx = "=0.7.4"
 rayon = "1.7.0"
 regex = "1.7.3"
 rustc-hash = "1.1.0"
-serde = { version = "1.0.159", features = [ "derive" ] }
+serde = { version = "1.0.160", features = [ "derive" ] }
 serde_json = { version = "1.0.95", features = [ "preserve_order" ] }
 serde_cbor = "0.11.2"
 sqlformat = "0.2.1"
@@ -51,7 +51,7 @@ built = { version = "0.6.0", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
 pgx-tests = "=0.7.4"
-libc = "0.2.140"
+libc = "0.2.141"
 
 [profile.dev]
 panic = "unwind"
