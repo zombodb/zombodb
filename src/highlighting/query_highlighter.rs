@@ -606,7 +606,6 @@ fn make_expr<'a>(index: &PgRelation, query_string: &'a str) -> (Expr<'a>, HashSe
 #[pgx::pg_schema]
 mod tests {
     use crate::highlighting::query_highlighter::{make_used_fields, QueryHighlighter};
-    use crate::utils::{get_highlight_analysis_info, has_date_subfield};
     use crate::zql::ast::Expr;
     use pgx::*;
     use serde_json::*;
