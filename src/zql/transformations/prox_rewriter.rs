@@ -1,5 +1,5 @@
 use crate::utils::lookup_es_field_type;
-use crate::zql::ast::{Expr, ProximityTerm, QualifiedField, Term};
+use crate::zql::ast::{Expr, ProximityPart, ProximityTerm, QualifiedField, Term};
 use unicode_segmentation::UnicodeSegmentation;
 
 pub fn rewrite_proximity_chains(expr: &mut Expr) {
@@ -63,7 +63,12 @@ fn rewrite_term(field: &QualifiedField, term: &mut Term) {
                     ProximityTerm::ProximityChain(chain) => {
                         *term = Term::ProximityChain(chain);
                     }
-                    _ => panic!("unexpected proximity chain"),
+                    other => {
+                        *term = Term::ProximityChain(vec![ProximityPart {
+                            words: vec![other],
+                            distance: None,
+                        }])
+                    }
                 }
             }
         }
