@@ -30,5 +30,6 @@ REINDEX INDEX idxissue823;
 
 select * from zdb.dump_query('issue823', 'value_term.exact_case:the');
 SELECT * FROM issue823 WHERE issue823 ==> 'value_term.exact_case:the';
+SELECT upper(term) term, count, term AS exact_term from zdb.tally('issue823'::regclass, 'value_term.exact_case', 'FALSE', '^[cC].*', ''::zdbquery, 5000, 'term'::termsorderby);
 
 DROP TABLE issue823;

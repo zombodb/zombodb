@@ -222,6 +222,8 @@ fn tally(
 
     let field_name = if is_date_subfield && (stem.is_none() || date_stem.is_some()) {
         format!("{}.date", field_name)
+    } else if is_date_subfield && (field_name.ends_with(".date") && stem.is_some()) {
+        format!("{}", field_name.rsplitn(2, '.').skip(1).next().unwrap())
     } else {
         field_name.into()
     };

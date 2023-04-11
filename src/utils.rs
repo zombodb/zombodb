@@ -346,7 +346,12 @@ pub fn get_null_copy_to_fields(index: &PgRelation) -> Vec<String> {
 }
 
 pub fn is_string_field(index: &PgRelation, field: &str) -> bool {
-    let field_type = lookup_es_field_type(index, field);
+    let field_type = if field.contains('.') {
+        lookup_es_subfield_type(index, field)
+    } else {
+        lookup_es_field_type(index, field)
+    };
+
     field_type == "text" || field_type == "keyword"
 }
 
@@ -355,7 +360,7 @@ pub fn is_date_field(index: &PgRelation, field: &str) -> bool {
 }
 
 pub fn is_date_subfield(index: &PgRelation, field: &str) -> bool {
-    lookup_es_subfield_type(index, field) == "date"
+    lookup_es_subfield_type(index, &format!("{field}.date")) == "date"
 }
 
 pub fn is_nested_field(index: &PgRelation, field: &str) -> Option<bool> {
@@ -420,7 +425,7 @@ pub fn lookup_es_subfield_type(index: &PgRelation, field: &str) -> String {
 
     for (idx, part) in field.split('.').enumerate() {
         if idx > 0 {
-            sql.push_str("->'properties'");
+            sql.push_str("->'fields'");
         }
 
         sql.push_str("->");
@@ -429,7 +434,6 @@ pub fn lookup_es_subfield_type(index: &PgRelation, field: &str) -> String {
         sql.push('\'');
     }
 
-    sql.push_str("->'fields'->'date'");
     sql.push_str("->>'type';");
     Spi::get_one(&sql).expect("SPI failed").unwrap_or_default()
 }
