@@ -18,7 +18,7 @@
 
 PGVER=$1
 IMAGE=$2
-PGX_VERSION=$3
+PGRX_VERSION=$3
 
 if [ "x${PGVER}" == "x" ] || [ "x${IMAGE}" == "x" ] ; then
 	echo 'usage:  ./package.sh <PGVER> <image>'
@@ -39,7 +39,7 @@ OSNAME=$(echo ${IMAGE} | cut -f3-4 -d-)
 VERSION=$(cat zombodb.control | grep default_version | cut -f2 -d\')
 
 
-PG_CONFIG_DIR=$(dirname $(grep ${PGVER} ~/.pgx/config.toml | cut -f2 -d= | cut -f2 -d\"))
+PG_CONFIG_DIR=$(dirname $(grep ${PGVER} ~/.pgrx/config.toml | cut -f2 -d= | cut -f2 -d\"))
 export PATH=${PG_CONFIG_DIR}:${PATH}
 
 #
@@ -51,14 +51,14 @@ ls -la
 rustup update || exit 1
 
 #
-# ensure cargo-pgx is the correct version and compiled with this Rust version
+# ensure cargo-pgrx is the correct version and compiled with this Rust version
 #
-cargo install cargo-pgx --version $PGX_VERSION
+cargo install cargo-pgrx --version $PGRX_VERSION
 
 #
 # build the extension
 #
-cargo pgx package --profile artifacts || exit $?
+cargo pgrx package --profile artifacts || exit $?
 
 #
 # cd into the package directory

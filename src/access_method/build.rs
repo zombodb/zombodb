@@ -6,7 +6,7 @@ use crate::gucs::ZDB_LOG_LEVEL;
 use crate::json::builder::JsonBuilder;
 use crate::mapping::{categorize_tupdesc, generate_default_mapping, CategorizedAttribute};
 use crate::utils::{count_non_shadow_zdb_indices, lookup_zdb_index_tupdesc};
-use pgx::*;
+use pgrx::*;
 
 struct BuildState<'a> {
     bulk: &'a mut ElasticsearchBulkRequest,

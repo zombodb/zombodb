@@ -3,10 +3,10 @@
 //!
 //!The most simple query, which matches all documents, giving them all a _score of 1.0
 
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod dsl {
     use crate::zdbquery::ZDBQuery;
-    use pgx::*;
+    use pgrx::*;
     use serde_json::*;
 
     #[pg_extern(immutable, parallel_safe)]
@@ -37,11 +37,11 @@ mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod tests {
     use crate::query_dsl::match_all::dsl::*;
     use crate::zdbquery::ZDBQuery;
-    use pgx::*;
+    use pgrx::*;
     use serde_json::json;
 
     #[pg_test]

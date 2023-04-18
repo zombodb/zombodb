@@ -2,7 +2,7 @@ use std::str::FromStr;
 use std::collections::HashSet;
 use crate::zql::ast::*;
 use std::collections::HashMap;
-use pgx::*;
+use pgrx::*;
 
 grammar(source_index: Option<&PgRelation>, used_fields: &mut HashSet<&'input str>, fieldname_stack: &mut Vec<&'input str>, operator_stack: &mut Vec<ComparisonOpcode>);
 

@@ -1,5 +1,5 @@
 use crate::utils::lookup_function;
-use pgx::*;
+use pgrx::*;
 
 pub struct PlanWalker {
     zdbquery_oid: pg_sys::Oid,
@@ -214,7 +214,7 @@ unsafe extern "C" fn rewrite_walker(node: *mut pg_sys::Node, context_ptr: void_m
                                 asteriskConstNode.consttype = pg_sys::TEXTOID;
                                 asteriskConstNode.constlen = 1;
                                 asteriskConstNode.constvalue =
-                                    pgx::rust_str_to_text_p("*").into_datum().unwrap();
+                                    pgrx::rust_str_to_text_p("*").into_datum().unwrap();
 
                                 asteriskConstNode.into_pg() as *mut pg_sys::Node
                             } else {

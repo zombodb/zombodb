@@ -1,8 +1,8 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::zdbquery::mvcc::apply_visibility_clause;
 use crate::zdbquery::ZDBQuery;
-use pgx::prelude::*;
-use pgx::*;
+use pgrx::prelude::*;
+use pgrx::*;
 use serde::*;
 use serde_json::*;
 use std::collections::HashMap;

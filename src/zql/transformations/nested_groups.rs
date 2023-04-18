@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use pgx::PgRelation;
+use pgrx::PgRelation;
 
 use crate::utils::{is_named_index_link, is_nested_field};
 use crate::zql::ast::Expr;

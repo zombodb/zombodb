@@ -1,6 +1,6 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgrx::*;
 
 pub mod timestamp_support;
 

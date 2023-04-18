@@ -1,6 +1,6 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
-use pgx::prelude::*;
-use pgx::*;
+use pgrx::prelude::*;
+use pgrx::*;
 use serde::*;
 use serde_json::*;
 
@@ -218,10 +218,10 @@ fn elasticsearch_request_return(
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod tests {
-    use pgx::spi::SpiTupleTable;
-    use pgx::*;
+    use pgrx::spi::SpiTupleTable;
+    use pgrx::*;
 
     #[pg_test]
     #[initialize(es = true)]

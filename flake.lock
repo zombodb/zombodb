@@ -3,7 +3,7 @@
     "fenix": {
       "inputs": {
         "nixpkgs": [
-          "pgx",
+          "pgrx",
           "nixpkgs"
         ],
         "rust-analyzer-src": "rust-analyzer-src"
@@ -25,7 +25,7 @@
     "gitignore": {
       "inputs": {
         "nixpkgs": [
-          "pgx",
+          "pgrx",
           "nixpkgs"
         ]
       },
@@ -79,7 +79,7 @@
         "type": "github"
       }
     },
-    "pgx": {
+    "pgrx": {
       "inputs": {
         "fenix": "fenix",
         "gitignore": "gitignore",
@@ -94,14 +94,14 @@
         "lastModified": 1663709485,
         "narHash": "sha256-KzipDxg8tvTkvVcb9hoNMymAaWF4bjmwpNWUFkvJxEE=",
         "owner": "zombodb",
-        "repo": "pgx",
+        "repo": "pgrx",
         "rev": "dc4f46bba336b5b705026807c2adb5d362a1bc1f",
         "type": "github"
       },
       "original": {
         "owner": "zombodb",
         "ref": "new-sql-type-mapping",
-        "repo": "pgx",
+        "repo": "pgrx",
         "type": "github"
       }
     },
@@ -109,7 +109,7 @@
       "inputs": {
         "naersk": "naersk",
         "nixpkgs": "nixpkgs",
-        "pgx": "pgx"
+        "pgrx": "pgrx"
       }
     },
     "rust-analyzer-src": {

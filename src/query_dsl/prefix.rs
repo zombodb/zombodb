@@ -3,10 +3,10 @@
 //!
 //! Returns documents that contain a specific prefix in a provided field
 
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod dsl {
     use crate::zdbquery::ZDBQuery;
-    use pgx::*;
+    use pgrx::*;
     use serde_json::*;
 
     #[pg_extern(immutable, parallel_safe)]
@@ -25,10 +25,10 @@ mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod tests {
     use crate::query_dsl::prefix::dsl::*;
-    use pgx::*;
+    use pgrx::*;
     use serde_json::json;
 
     #[pg_test]

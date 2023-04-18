@@ -3,12 +3,12 @@
 //!
 //! Allows you to add one or more sorts on specific fields. Each sort can be reversed as well.
 
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod dsl {
     use crate::zdbquery::{
         SortDescriptor, SortDescriptorOptions, SortDirection, SortMode, ZDBQuery,
     };
-    use pgx::*;
+    use pgrx::*;
 
     #[pg_extern(immutable, parallel_safe)]
     fn sd(
@@ -75,10 +75,10 @@ mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod tests {
     use crate::zdbquery::ZDBQuery;
-    use pgx::*;
+    use pgrx::*;
     use serde_json::*;
 
     #[pg_test]

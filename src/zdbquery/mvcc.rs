@@ -2,7 +2,7 @@ use crate::elasticsearch::Elasticsearch;
 use crate::executor_manager::get_executor_manager;
 use crate::gucs::ZDB_IGNORE_VISIBILITY;
 use crate::zdbquery::{ZDBPreparedQuery, ZDBQuery, ZDBQueryClause};
-use pgx::*;
+use pgrx::*;
 use serde_json::json;
 
 #[pg_extern]

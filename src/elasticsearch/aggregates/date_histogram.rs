@@ -1,14 +1,14 @@
 use crate::elasticsearch::aggregates::date_histogram::pg_catalog::*;
 use crate::elasticsearch::Elasticsearch;
 use crate::zdbquery::ZDBQuery;
-use pgx::prelude::*;
-use pgx::*;
+use pgrx::prelude::*;
+use pgrx::*;
 use serde::*;
 use serde_json::*;
 
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 pub(crate) mod pg_catalog {
-    use pgx::*;
+    use pgrx::*;
     use serde::Serialize;
 
     #[allow(non_camel_case_types)]

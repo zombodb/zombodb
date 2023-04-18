@@ -18,25 +18,25 @@ If you're a [sponsor](https://github.com/sponsors/eeeebbbbrrrr) you might want t
 
 - The Rust toolchain
 
-- `cargo install cargo-pgx`
+- `cargo install cargo-pgrx`
 
 - A 64bit Intel Architecture
 
 ## Building from Sources
 
-First off, and you'll only need to do this once, you need to initialize `cargo-pgx`, and you'll want to tell it the path
+First off, and you'll only need to do this once, you need to initialize `cargo-pgrx`, and you'll want to tell it the path
 to the version of Postgres on your computer.
 
 If that version of Postgres is pg12, and assuming its `pg_config` tool is on your `$PATH`, this will likely work:
 
 ```shell script
-$ cargo pgx init --pg12=`which pg_config`
+$ cargo pgrx init --pg12=`which pg_config`
 ```
 
 Next, clone this repo, change into the checkout directory and simply run:
 
 ```shell script
-$ cargo pgx install --release
+$ cargo pgrx install --release
 ```
 
 This will compile ZomboDB **and** install it into the Postgres installation described by `pg_config`. The user that runs

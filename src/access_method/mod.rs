@@ -1,4 +1,4 @@
-use pgx::*;
+use pgrx::*;
 
 mod build;
 mod cost_estimate;

@@ -5,7 +5,7 @@ use crate::query_dsl::bool::dsl::{and_vec, noteq};
 use crate::query_dsl::range::dsl::range_numeric;
 use crate::query_dsl::terms_lookup::dsl::terms_lookup;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgrx::*;
 use serde::*;
 
 #[pg_guard]

@@ -2,7 +2,7 @@
 
 ###### Making Postgres and Elasticsearch work together like it's 2022
 
-![cargo test --all](https://github.com/zombodb/zombodb/workflows/cargo%20pgx%20test%20pgXX/badge.svg)
+![cargo test --all](https://github.com/zombodb/zombodb/workflows/cargo%20pgrx%20test%20pgrxX/badge.svg)
 [![Twitter Follow](https://img.shields.io/twitter/follow/zombodb.svg?style=flat)](https://twitter.com/zombodb)
 
 ## Readme
@@ -10,7 +10,7 @@
 ZomboDB brings powerful text-search and analytics features to Postgres by using Elasticsearch as an index type. Its
 comprehensive query language and SQL functions enable new and creative ways to query your relational data.
 
-From a technical perspective, ZomboDB is a 100% native Postgres extension written in Rust with [PGX].
+From a technical perspective, ZomboDB is a 100% native Postgres extension written in Rust with [PGRX].
 ZomboDB uses Postgres's Index Access Method API to directly manage and optimize ZomboDB's specialized indices.
 As a native Postgres index type, ZomboDB allows you to `CREATE INDEX ... USING zombodb` on your existing Postgres tables.
 At that point, ZomboDB takes over and fully manages the remote Elasticsearch index,
@@ -185,5 +185,5 @@ language governing permissions and limitations under the License.
 [elasticsearch's similarity module]: TYPE-MAPPING.md#similarity-module-support
 [hot standby]: https://www.postgresql.org/docs/current/hot-standby.html
 [partial indexes]: https://www.postgresql.org/docs/10/indexes-partial.html
-[pgx]: https://github.com/tcdi/pgx
+[pgrx]: https://github.com/tcdi/pgrx
 [postgres's full-text search]: https://www.postgresql.org/docs/current/textsearch-intro.html

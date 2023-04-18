@@ -1,7 +1,7 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::json::builder::JsonBuilder;
 use crate::utils::{find_zdb_index, lookup_zdb_index_tupdesc, type_is_domain};
-use pgx::*;
+use pgrx::*;
 use serde_json::*;
 use std::collections::HashMap;
 
@@ -323,7 +323,9 @@ pub fn categorize_tupdesc<'a>(
                                     builder.add_json_string_array(
                                         name,
                                         unsafe {
-                                            Vec::<Option<pgx::JsonString>>::from_datum(datum, false)
+                                            Vec::<Option<pgrx::JsonString>>::from_datum(
+                                                datum, false,
+                                            )
                                         }
                                         .unwrap(),
                                     )
@@ -332,7 +334,7 @@ pub fn categorize_tupdesc<'a>(
                                 Box::new(|builder, name, datum, _oid| {
                                     builder.add_json_string(
                                         name,
-                                        unsafe { pgx::JsonString::from_datum(datum, false) }
+                                        unsafe { pgrx::JsonString::from_datum(datum, false) }
                                             .unwrap(),
                                     )
                                 })
@@ -640,11 +642,11 @@ fn lookup_type_conversions() -> HashMap<pg_sys::Oid, pg_sys::Oid> {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod tests {
     use crate::mapping::{categorize_tupdesc, generate_default_mapping};
     use crate::utils::lookup_zdb_index_tupdesc;
-    use pgx::*;
+    use pgrx::*;
     use serde_json::json;
 
     #[pg_test]

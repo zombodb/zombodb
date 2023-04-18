@@ -1,13 +1,13 @@
 use crate::executor_manager::get_executor_manager;
 use crate::highlighting::es_highlighting::pg_catalog::*;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgrx::*;
 use serde::Serialize;
 use serde_json::*;
 
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod pg_catalog {
-    use pgx::*;
+    use pgrx::*;
     use serde::*;
 
     #[allow(non_camel_case_types)]

@@ -1,4 +1,4 @@
-use pgx::{Timestamp, TimestampWithTimeZone};
+use pgrx::{Timestamp, TimestampWithTimeZone};
 use std::convert::TryInto;
 use time::format_description::FormatItem;
 
@@ -26,7 +26,7 @@ impl From<Timestamp> for ZDBTimestamp {
     fn from(ts: Timestamp) -> Self {
         ZDBTimestamp(
             ts.try_into()
-                .expect("failed to convert pgx::Timestamp to ZDBTimestamp"),
+                .expect("failed to convert pgrx::Timestamp to ZDBTimestamp"),
         )
     }
 }
@@ -34,8 +34,9 @@ impl From<Timestamp> for ZDBTimestamp {
 impl From<TimestampWithTimeZone> for ZDBTimestampWithTimeZone {
     fn from(tsz: TimestampWithTimeZone) -> Self {
         ZDBTimestampWithTimeZone(
-            tsz.try_into()
-                .expect("failed to convert pgx::TimestampWithTimeZone to ZDBTimestampWithTimeZone"),
+            tsz.try_into().expect(
+                "failed to convert pgrx::TimestampWithTimeZone to ZDBTimestampWithTimeZone",
+            ),
         )
     }
 }

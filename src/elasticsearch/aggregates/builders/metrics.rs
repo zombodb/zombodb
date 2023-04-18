@@ -19,7 +19,7 @@
 ///
 ///
 use crate::zdbquery::{SortDescriptor, ZDBQuery};
-use pgx::*;
+use pgrx::*;
 use serde::*;
 use serde_json::*;
 
@@ -858,7 +858,7 @@ fn t_test_fields_queries_agg(
 }
 
 #[cfg(test)]
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod tests {
     use crate::elasticsearch::aggregates::builders::metrics::*;
 

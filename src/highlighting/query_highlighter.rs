@@ -1,9 +1,9 @@
 use crate::highlighting::document_highlighter::*;
 use crate::utils::{find_zdb_index, get_highlight_analysis_info, has_date_subfield};
 use crate::zql::ast::{Expr, IndexLink, QualifiedField, Term};
-use pgx::once_cell::sync::Lazy;
-use pgx::prelude::*;
-use pgx::{JsonB, PgRelation, *};
+use pgrx::once_cell::sync::Lazy;
+use pgrx::prelude::*;
+use pgrx::{JsonB, PgRelation, *};
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 
@@ -603,11 +603,11 @@ fn make_expr<'a>(index: &PgRelation, query_string: &'a str) -> (Expr<'a>, HashSe
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod tests {
     use crate::highlighting::query_highlighter::{make_used_fields, QueryHighlighter};
     use crate::zql::ast::Expr;
-    use pgx::*;
+    use pgrx::*;
     use serde_json::*;
     use std::collections::{HashMap, HashSet};
 

@@ -4,7 +4,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::missing_safety_doc)]
 #![allow(clippy::redundant_closure)]
-use pgx::*;
+use pgrx::*;
 
 mod access_method;
 mod cat;

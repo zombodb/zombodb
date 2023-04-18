@@ -1,4 +1,4 @@
-use pgx::*;
+use pgrx::*;
 
 #[derive(PostgresGucEnum, Clone, Copy, PartialEq, Debug)]
 pub enum ZDBLogLevel {
@@ -28,9 +28,9 @@ impl ZDBLogLevel {
     }
 
     pub fn log(self, message: &str) {
-        pgx::ereport!(
+        pgrx::ereport!(
             self.log_level(),
-            pgx::PgSqlErrorCode::ERRCODE_SUCCESSFUL_COMPLETION,
+            pgrx::PgSqlErrorCode::ERRCODE_SUCCESSFUL_COMPLETION,
             message
         )
     }
@@ -92,13 +92,13 @@ pub fn init() {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod tests {
     use crate::gucs::{
         ZDBLogLevel, ZDB_DEFAULT_ELASTICSEARCH_URL, ZDB_DEFAULT_REPLICAS, ZDB_DEFAULT_ROW_ESTIMATE,
         ZDB_IGNORE_VISIBILITY, ZDB_LOG_LEVEL,
     };
-    use pgx::*;
+    use pgrx::*;
 
     #[pg_test]
     fn test_default_url() {

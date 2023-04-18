@@ -36,8 +36,8 @@ WORKDIR /home/${USER}
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
 ENV PATH="/home/${USER}/.cargo/bin:${PATH}"
 
-RUN cargo install cargo-pgx
-RUN cargo pgx init \
+RUN cargo install cargo-pgrx
+RUN cargo pgrx init \
 	--pg10=/usr/pgsql-10/bin/pg_config \
 	--pg11=/usr/pgsql-11/bin/pg_config \
 	--pg12=/usr/pgsql-12/bin/pg_config

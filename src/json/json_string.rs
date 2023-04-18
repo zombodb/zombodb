@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use pgx::{Json, JsonB};
+use pgrx::{Json, JsonB};
 use serde_json::json;
 
 use crate::misc::timestamp_support::{
@@ -123,7 +123,7 @@ impl JsonString for String {
     }
 }
 
-impl JsonString for pgx::JsonString {
+impl JsonString for pgrx::JsonString {
     #[inline]
     fn push_json(&self, target: &mut Vec<u8>) {
         if self.0.contains('\r') || self.0.contains('\n') {

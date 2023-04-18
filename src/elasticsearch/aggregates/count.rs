@@ -1,6 +1,6 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgrx::*;
 use std::convert::TryInto;
 
 #[pg_extern(immutable, parallel_safe)]

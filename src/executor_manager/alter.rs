@@ -2,7 +2,7 @@ use crate::access_method::options::ZDBIndexOptions;
 use crate::elasticsearch::Elasticsearch;
 use crate::mapping::{categorize_tupdesc, generate_default_mapping};
 use crate::utils::{is_zdb_index, lookup_zdb_index_tupdesc};
-use pgx::{
+use pgrx::{
     pg_sys, register_xact_callback, spi, warning, IntoDatum, PgBuiltInOids, PgRelation,
     PgXactCallbackEvent, Spi,
 };

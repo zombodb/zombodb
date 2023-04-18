@@ -1,7 +1,7 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::zdbquery::ZDBQuery;
-use pgx::prelude::*;
-use pgx::*;
+use pgrx::prelude::*;
+use pgrx::*;
 use serde::*;
 use serde_json::*;
 

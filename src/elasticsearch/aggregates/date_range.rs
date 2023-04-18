@@ -1,8 +1,8 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::utils::json_to_string;
 use crate::zdbquery::ZDBQuery;
-use pgx::prelude::*;
-use pgx::*;
+use pgrx::prelude::*;
+use pgrx::*;
 use serde::*;
 use serde_json::*;
 

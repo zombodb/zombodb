@@ -1,7 +1,7 @@
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod dsl {
     use crate::zdbquery::ZDBQuery;
-    use pgx::*;
+    use pgrx::*;
     use serde::*;
     use serde_json::*;
 
@@ -50,10 +50,10 @@ mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod tests {
     use crate::query_dsl::fuzzy::dsl::*;
-    use pgx::*;
+    use pgrx::*;
     use serde_json::json;
 
     #[pg_test]

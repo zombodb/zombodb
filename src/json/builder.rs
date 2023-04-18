@@ -2,7 +2,7 @@ use crate::json::json_string::JsonString;
 use crate::misc::timestamp_support::{
     ZDBDate, ZDBTime, ZDBTimeWithTimeZone, ZDBTimestamp, ZDBTimestampWithTimeZone,
 };
-use pgx::{Date, JsonB, Time, TimeWithTimeZone, Timestamp, TimestampWithTimeZone};
+use pgrx::{Date, JsonB, Time, TimeWithTimeZone, Timestamp, TimestampWithTimeZone};
 
 #[derive(Debug)]
 #[allow(non_camel_case_types)]
@@ -21,7 +21,7 @@ enum JsonBuilderValue {
     timestamp_with_time_zone(ZDBTimestampWithTimeZone),
     date(ZDBDate),
     string(String),
-    json_string(pgx::JsonString),
+    json_string(pgrx::JsonString),
     jsonb(JsonB),
     json_value(serde_json::Value),
 
@@ -38,7 +38,7 @@ enum JsonBuilderValue {
     timestamp_with_time_zone_array(Vec<Option<ZDBTimestampWithTimeZone>>),
     date_array(Vec<Option<ZDBDate>>),
     string_array(Vec<Option<String>>),
-    json_string_array(Vec<Option<pgx::JsonString>>),
+    json_string_array(Vec<Option<pgrx::JsonString>>),
     jsonb_array(Vec<Option<JsonB>>),
 }
 
@@ -140,7 +140,7 @@ impl<'a> JsonBuilder<'a> {
     }
 
     #[inline]
-    pub fn add_json_string(&mut self, attname: &'a str, value: pgx::JsonString) {
+    pub fn add_json_string(&mut self, attname: &'a str, value: pgrx::JsonString) {
         self.values
             .push((attname, JsonBuilderValue::json_string(value)));
     }
@@ -275,7 +275,11 @@ impl<'a> JsonBuilder<'a> {
     }
 
     #[inline]
-    pub fn add_json_string_array(&mut self, attname: &'a str, value: Vec<Option<pgx::JsonString>>) {
+    pub fn add_json_string_array(
+        &mut self,
+        attname: &'a str,
+        value: Vec<Option<pgrx::JsonString>>,
+    ) {
         self.values
             .push((attname, JsonBuilderValue::json_string_array(value)));
     }

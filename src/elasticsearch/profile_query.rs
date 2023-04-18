@@ -1,6 +1,6 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchError};
 use crate::zdbquery::{ZDBPreparedQuery, ZDBQuery};
-use pgx::*;
+use pgrx::*;
 use serde_json::*;
 
 pub struct ElasticsearchProfileQueryRequest {

@@ -12,11 +12,11 @@ crate-type = [ "cdylib" ]
 
 [features]
 default = [ "pg14" ]
-pg11 = [ "pgx/pg11", "pgx-tests/pg11" ]
-pg12 = [ "pgx/pg12", "pgx-tests/pg12" ]
-pg13 = [ "pgx/pg13", "pgx-tests/pg13" ]
-pg14 = [ "pgx/pg14", "pgx-tests/pg14" ]
-pg15 = [ "pgx/pg15", "pgx-tests/pg15" ]
+pg11 = [ "pgrx/pg11", "pgrx-tests/pg11" ]
+pg12 = [ "pgrx/pg12", "pgrx-tests/pg12" ]
+pg13 = [ "pgrx/pg13", "pgrx-tests/pg13" ]
+pg14 = [ "pgrx/pg14", "pgrx-tests/pg14" ]
+pg15 = [ "pgrx/pg15", "pgrx-tests/pg15" ]
 pg_test = [ ]
 
 [dependencies]
@@ -32,7 +32,7 @@ lazy_static = "1.4.0"
 levenshtein = "1.0.5"
 memoffset = "0.8.0"
 num_cpus = "1.15.0"
-pgx = "=0.7.4"
+pgrx = "=0.7.4"
 rayon = "1.7.0"
 regex = "1.7.3"
 rustc-hash = "1.1.0"
@@ -50,7 +50,7 @@ lalrpop = { version = "0.19.9", features = [ "lexer" ] }
 built = { version = "0.6.0", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
-pgx-tests = "=0.7.4"
+pgrx-tests = "=0.7.4"
 libc = "0.2.141"
 
 [profile.dev]

@@ -353,7 +353,7 @@ impl RelationshipManager {
 }
 
 #[cfg(test)]
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod tests {
     use crate::zql::ast::{IndexLink, QualifiedIndex};
     use crate::zql::relationship_manager::RelationshipManager;

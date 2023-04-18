@@ -3,9 +3,9 @@ use crate::highlighting::analyze::AnalyzedToken;
 use crate::utils::{get_highlight_analysis_info, has_date_subfield};
 use crate::zql::ast::{IndexLink, ProximityPart, ProximityTerm, QualifiedField, Term};
 use levenshtein::*;
-use pgx::pg_sys::{AsPgCStr, InvalidOid};
-use pgx::prelude::*;
-use pgx::{direct_function_call, PgRelation};
+use pgrx::pg_sys::{AsPgCStr, InvalidOid};
+use pgrx::prelude::*;
+use pgrx::{direct_function_call, PgRelation};
 use regex::Regex;
 use rustc_hash::FxHashMap;
 use serde_json::Value;
@@ -47,7 +47,7 @@ impl<'a> Debug for DocumentHighlighter<'a> {
 }
 
 #[rustfmt::skip]
-fn make_date(s: &str) -> Option<pgx::TimestampWithTimeZone> {
+fn make_date(s: &str) -> Option<pgrx::TimestampWithTimeZone> {
     unsafe {
         let date_str = s.as_pg_cstr();
         let date: Option<TimestampWithTimeZone> = PgTryBuilder::new(|| {
@@ -371,7 +371,7 @@ impl<'a> DocumentHighlighter<'a> {
                     };
 
                 for (token, entry) in results {
-                    pgx::check_for_interrupts!();
+                    pgrx::check_for_interrupts!();
                     self.lookup.entry(token).or_default().push(entry);
                 }
                 self.data_type = Some(DataType::String);
@@ -1010,12 +1010,12 @@ fn highlight_proximity(
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod tests {
     use crate::highlighting::document_highlighter::{DocumentHighlighter, TokenEntry};
     use crate::zql::ast::Term;
-    use pgx::spi::SpiTupleTable;
-    use pgx::*;
+    use pgrx::spi::SpiTupleTable;
+    use pgrx::*;
     use regex::Regex;
     use serde_json::*;
     use std::borrow::Cow;
