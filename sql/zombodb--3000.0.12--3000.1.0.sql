@@ -7,8 +7,8 @@ $$;
 -- src/highlighting/query_highlighter.rs:370
 -- zombodb::highlighting::query_highlighter::highlight_document
 CREATE FUNCTION zdb."highlight_document"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"document" jsonb, /* pgx::datum::json::JsonB */
+	"index" regclass, /* pgrx::rel::PgRelation */
+	"document" jsonb, /* pgrx::datum::json::JsonB */
 	"query_string" text /* &str */
 ) RETURNS TABLE (
 	"field_name" text,  /* alloc::string::String */
@@ -26,8 +26,8 @@ AS 'MODULE_PATHNAME', 'highlight_document_jsonb_wrapper';
 -- src/highlighting/query_highlighter.rs:390
 -- zombodb::highlighting::query_highlighter::highlight_document
 CREATE FUNCTION zdb."highlight_document"(
-	"index" regclass, /* pgx::rel::PgRelation */
-	"document" json, /* pgx::datum::json::Json */
+	"index" regclass, /* pgrx::rel::PgRelation */
+	"document" json, /* pgrx::datum::json::Json */
 	"query_string" text /* &str */
 ) RETURNS TABLE (
 	"field_name" text,  /* alloc::string::String */

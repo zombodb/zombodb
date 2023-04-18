@@ -72,11 +72,11 @@ fn main() -> Result<(), std::io::Error> {
         "     Setting".bold().green(),
         max_cpus
     );
-    let pgx_version = determine_pgx_version()?;
+    let pgrx_version = determine_pgrx_version()?;
     println!(
-        "{} pgx version to {}",
+        "{} pgrx version to {}",
         "     Setting".bold().green(),
-        pgx_version
+        pgrx_version
     );
 
     let targetdir = PathBuf::from_str("./target/zdb-build/").unwrap();
@@ -153,7 +153,7 @@ fn main() -> Result<(), std::io::Error> {
                                 &repodir,
                                 &builddir,
                                 &artifactdir,
-                                &pgx_version
+                                &pgrx_version
                             ),
                             "Failed to compile {} for {}",
                             image,
@@ -196,7 +196,7 @@ fn main() -> Result<(), std::io::Error> {
                                 &repodir,
                                 &builddir,
                                 &artifactdir,
-                                &pgx_version
+                                &pgrx_version
                             ),
                             "Failed to compile {} for {}",
                             image,
@@ -273,7 +273,7 @@ fn docker_run(
     repodir: &PathBuf,
     builddir: &PathBuf,
     artifactdir: &PathBuf,
-    pgx_version: &str,
+    pgrx_version: &str,
 ) -> Result<String, std::io::Error> {
     let mut builddir = builddir.clone();
     builddir.push(&format!("{}-{}", image, pgver));
@@ -305,7 +305,7 @@ fn docker_run(
         .arg("-e")
         .arg(&format!("image={}", image))
         .arg("-e")
-        .arg(&format!("pgx_version={}", pgx_version))
+        .arg(&format!("pgrx_version={}", pgrx_version))
         .arg("-w")
         .arg(&format!("/build"))
         .arg("--mount")
@@ -328,7 +328,7 @@ fn docker_run(
         .arg(image)
         .arg("bash")
         .arg("-c")
-        .arg("./docker-build-system/package.sh ${pgver} ${image} ${pgx_version}");
+        .arg("./docker-build-system/package.sh ${pgver} ${image} ${pgrx_version}");
 
     println!(
         "{} {} for pg{}",
@@ -442,10 +442,10 @@ fn parse_dockerfile(filename: &PathBuf) -> Result<Vec<(String, Option<String>)>,
     Ok(map)
 }
 
-fn determine_pgx_version() -> Result<String, std::io::Error> {
+fn determine_pgrx_version() -> Result<String, std::io::Error> {
     let mut command = Command::new("cargo");
 
-    command.current_dir("../").arg("tree").arg("-i").arg("pgx");
+    command.current_dir("../").arg("tree").arg("-i").arg("pgrx");
 
     let output = command.output()?;
     let output = String::from_utf8(output.stdout).expect("invalid UTF8 output from cargo tree");

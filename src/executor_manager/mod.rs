@@ -1,7 +1,7 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchBulkRequest};
 use crate::mapping::{categorize_tupdesc, CategorizedAttribute};
 use crate::utils::{find_zdb_index, lookup_all_zdb_index_oids, lookup_zdb_index_tupdesc};
-use pgx::*;
+use pgrx::*;
 use std::collections::{HashMap, HashSet};
 
 pub mod alter;

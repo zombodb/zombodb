@@ -1,4 +1,4 @@
-use pgx::*;
+use pgrx::*;
 use serde_json::{json, Value};
 
 mod cast;
@@ -98,18 +98,18 @@ impl PartialEq<Value> for ZDBQueryClause {
     fn eq(&self, other: &Value) -> bool {
         let value =
             serde_json::to_value(self).expect("failed to serialize ZDBQueryClause to Value");
-        pgx::log!("left ={}", serde_json::to_string(&value).unwrap());
-        pgx::log!("right={}", serde_json::to_string(other).unwrap());
+        pgrx::log!("left ={}", serde_json::to_string(&value).unwrap());
+        pgrx::log!("right={}", serde_json::to_string(other).unwrap());
         &value == other
     }
 }
 
 #[allow(non_camel_case_types)]
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod pg_catalog {
     use crate::zdbquery::ZDBQueryClause;
     use crate::zql::ast::IndexLink;
-    use pgx::*;
+    use pgrx::*;
     use serde::*;
     use serde_json::Value;
     use std::collections::HashMap;
@@ -901,7 +901,7 @@ fn to_queries_dsl(queries: Array<ZDBQuery>) -> Vec<Option<Json>> {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod tests {
     use crate::zdbquery::*;
     use serde_json::json;

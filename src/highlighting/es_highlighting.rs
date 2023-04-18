@@ -1,13 +1,13 @@
 use crate::executor_manager::get_executor_manager;
 use crate::highlighting::es_highlighting::pg_catalog::*;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgrx::*;
 use serde::Serialize;
 use serde_json::*;
 
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod pg_catalog {
-    use pgx::*;
+    use pgrx::*;
     use serde::*;
 
     #[allow(non_camel_case_types)]
@@ -135,7 +135,7 @@ fn highlight(
 fn highlight_field(
     ctid: pg_sys::ItemPointerData,
     field: &str,
-    _highlight_definition: default!(Json, "zdb.highlight()"),
+    _highlight_definition: default!(Json, "'{}'"),
     fcinfo: pg_sys::FunctionCallInfo,
 ) -> Option<Vec<Option<&'static String>>> {
     let highlights = match get_executor_manager().peek_query_state() {
@@ -160,10 +160,10 @@ fn highlight_field(
     }
 }
 
-#[pg_extern(parallel_safe, immutable, requires = [ highlighting::es_highlighting::highlight, ])]
+#[pg_extern(parallel_safe, immutable, requires = [ highlight ])]
 fn highlight_all_fields(
     ctid: pg_sys::ItemPointerData,
-    _highlight_definition: default!(Json, "zdb.highlight()"),
+    _highlight_definition: default!(Json, "'{}'"),
     fcinfo: pg_sys::FunctionCallInfo,
 ) -> Json {
     let highlights = match get_executor_manager().peek_query_state() {
@@ -182,11 +182,11 @@ fn highlight_all_fields(
     }
 }
 
-#[pg_extern(parallel_safe, immutable, requires = [ highlighting::es_highlighting::highlight, ])]
+#[pg_extern(parallel_safe, immutable, requires = [ highlight ])]
 fn want_highlight(
     mut query: ZDBQuery,
     field: String,
-    highlight_definition: default!(Json, "zdb.highlight()"),
+    highlight_definition: default!(Json, "'{}'"),
 ) -> ZDBQuery {
     let highlights = query.highlights();
     highlights.insert(field, highlight_definition.0);

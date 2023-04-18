@@ -1,7 +1,7 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::zdbquery::ZDBQuery;
-use pgx::prelude::*;
-use pgx::*;
+use pgrx::prelude::*;
+use pgrx::*;
 
 #[pg_extern(immutable, parallel_safe)]
 fn query(index: PgRelation, query: ZDBQuery) -> SetOfIterator<'static, pg_sys::ItemPointerData> {

@@ -1,5 +1,5 @@
 use lazy_static::*;
-use pgx_tests::add_shutdown_hook;
+use pgrx_tests::add_shutdown_hook;
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};

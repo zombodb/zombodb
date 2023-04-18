@@ -391,11 +391,11 @@ mod macros {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod tests {
     use std::collections::{HashMap, HashSet};
 
-    use pgx::*;
+    use pgrx::*;
 
     use crate::zql::ast::{Expr, IndexLink, ParserError, QualifiedIndex};
 

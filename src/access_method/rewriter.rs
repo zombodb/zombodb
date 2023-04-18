@@ -1,5 +1,5 @@
 use crate::utils::lookup_function;
-use pgx::*;
+use pgrx::*;
 use std::collections::HashSet;
 
 struct WalkContext {

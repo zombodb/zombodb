@@ -6,7 +6,7 @@ $$;
 -- src/mapping/mod.rs:9
 -- zombodb::mapping::reapply_mapping
 CREATE  FUNCTION zdb."reapply_mapping"(
-	"index_relation" regclass /* pgx::rel::PgRelation */
+	"index_relation" regclass /* pgrx::rel::PgRelation */
 ) RETURNS bool /* bool */
 STRICT
 LANGUAGE c /* Rust */
@@ -32,9 +32,9 @@ CREATE OR REPLACE FUNCTION dsl.link_options(options text[], query pg_catalog.zdb
 -- requires:
 --   highlighting::es_highlighting::highlight
 CREATE  FUNCTION zdb."highlight_all_fields"(
-	"ctid" tid, /* pgx_pg_sys::pg14::ItemPointerData */
-	"_highlight_definition" json DEFAULT zdb.highlight() /* pgx::datum::json::Json */
-) RETURNS json /* pgx::datum::json::Json */
+	"ctid" tid, /* pgrx_pg_sys::pg14::ItemPointerData */
+	"_highlight_definition" json DEFAULT zdb.highlight() /* pgrx::datum::json::Json */
+) RETURNS json /* pgrx::datum::json::Json */
 IMMUTABLE STRICT PARALLEL SAFE 
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'highlight_all_fields_wrapper';

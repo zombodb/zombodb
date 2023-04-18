@@ -1,18 +1,18 @@
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod pg_catalog {
     use crate::zdbquery::ZDBQueryClause;
-    use pgx::*;
+    use pgrx::*;
     use serde::*;
 
     #[derive(Debug, PostgresType, Serialize, Deserialize)]
     pub struct BoolQueryPart(pub ZDBQueryClause);
 }
 
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 pub mod dsl {
     use super::pg_catalog::*;
     use crate::zdbquery::{ZDBQuery, ZDBQueryClause};
-    use pgx::*;
+    use pgrx::*;
 
     #[pg_extern(immutable, parallel_safe)]
     fn bool(parts: VariadicArray<BoolQueryPart>) -> ZDBQuery {
@@ -218,11 +218,11 @@ pub mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod tests {
     use crate::query_dsl::bool::dsl::*;
     use crate::zdbquery::ZDBQuery;
-    use pgx::*;
+    use pgrx::*;
     use serde_json::json;
 
     #[pg_test]

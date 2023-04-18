@@ -1,10 +1,10 @@
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod dsl {
     use crate::zdbquery::ZDBQuery;
     use crate::zql::ast::IndexLink;
     use crate::zql::dsl::expr_to_dsl;
     use crate::zql::INDEX_LINK_PARSER;
-    use pgx::*;
+    use pgrx::*;
     use std::collections::HashSet;
 
     #[pg_extern(immutable, parallel_safe)]

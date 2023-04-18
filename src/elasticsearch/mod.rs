@@ -45,7 +45,7 @@ use crate::zdbquery::ZDBPreparedQuery;
 pub use bulk::*;
 pub use create_index::*;
 use lazy_static::*;
-use pgx::*;
+use pgrx::*;
 use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -56,9 +56,9 @@ lazy_static! {
     static ref NUM_CPUS: usize = num_cpus::get();
 }
 
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 pub mod pg_catalog {
-    use pgx::*;
+    use pgrx::*;
     use serde::Serialize;
 
     #[allow(non_camel_case_types)]

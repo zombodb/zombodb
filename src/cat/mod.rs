@@ -1,4 +1,4 @@
-use pgx::*;
+use pgrx::*;
 
 use crate::elasticsearch::Elasticsearch;
 

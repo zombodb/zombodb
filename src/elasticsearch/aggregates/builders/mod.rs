@@ -1,4 +1,4 @@
-use pgx::JsonB;
+use pgrx::JsonB;
 use serde_json::Value;
 use std::collections::HashMap;
 

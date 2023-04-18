@@ -4,7 +4,7 @@
 //! Returns JsonB that is a Filer ES Query
 
 use crate::elasticsearch::aggregates::builders::make_children_map;
-use pgx::*;
+use pgrx::*;
 use serde::*;
 use serde_json::*;
 

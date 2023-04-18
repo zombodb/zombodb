@@ -1,4 +1,4 @@
-use pgx::*;
+use pgrx::*;
 
 #[pg_guard(immutable, parallel_safe)]
 pub unsafe extern "C" fn amcostestimate(

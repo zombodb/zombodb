@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
-use pgx::prelude::*;
-use pgx::*;
+use pgrx::prelude::*;
+use pgrx::*;
 use serde_json::json;
 
 use crate::access_method::options::ZDBIndexOptions;

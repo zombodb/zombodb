@@ -3,7 +3,7 @@ use std::fmt::{Debug, Display, Error, Formatter};
 use std::str::FromStr;
 
 use lalrpop_util::ParseError;
-use pgx::PgRelation;
+use pgrx::PgRelation;
 use serde::{Deserialize, Serialize};
 
 pub use pg_catalog::{ProximityPart, ProximityTerm};
@@ -36,9 +36,9 @@ impl Default for ProximityDistance {
     }
 }
 
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 pub mod pg_catalog {
-    use pgx::*;
+    use pgrx::*;
     use serde::{Deserialize, Serialize};
 
     use crate::zql::ast::ProximityDistance;
@@ -415,7 +415,7 @@ impl ProximityTerm {
                 // the current part's distance for each consecutive '*' we find
                 while next.is_some() {
                     let current_distance = part.distance.as_mut().unwrap().distance;
-                    pgx::check_for_interrupts!();
+                    pgrx::check_for_interrupts!();
 
                     let unwrapped = next.unwrap();
                     if unwrapped.words.len() == 1 {

@@ -1,5 +1,5 @@
-use pgx::spi::SpiTupleTable;
-use pgx::{
+use pgrx::spi::SpiTupleTable;
+use pgrx::{
     pg_sys, register_xact_callback, spi, IntoDatum, PgOid, PgRelation, PgXactCallbackEvent, Spi,
 };
 

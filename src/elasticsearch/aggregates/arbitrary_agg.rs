@@ -1,6 +1,6 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgrx::*;
 
 #[pg_extern(immutable, parallel_safe)]
 fn arbitrary_agg(index: PgRelation, query: ZDBQuery, json: JsonB) -> JsonB {

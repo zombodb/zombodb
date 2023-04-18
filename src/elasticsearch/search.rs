@@ -3,7 +3,7 @@ use crate::gucs::ZDB_ACCELERATOR;
 use crate::utils::read_vlong;
 use crate::zdbquery::mvcc::apply_visibility_clause;
 use crate::zdbquery::ZDBPreparedQuery;
-use pgx::PgBuiltInOids;
+use pgrx::PgBuiltInOids;
 use serde::*;
 use serde_json::*;
 use std::collections::HashMap;
@@ -706,9 +706,9 @@ impl IntoIterator for ElasticsearchSearchResponse {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod tests {
-    use pgx::*;
+    use pgrx::*;
 
     #[pg_test]
     #[initialize(es = true)]

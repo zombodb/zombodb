@@ -1,7 +1,7 @@
 #! /bin/bash
 
-PGXS=$(dirname `pg_config --pgxs`)
-REGRESS="${PGXS}/../test/regress/pg_regress"
+PGRXS=$(dirname `pg_config --pgrxs`)
+REGRESS="${PGRXS}/../test/regress/pg_regress"
 TESTDIR="test"
 DBNAME=contrib_regression
 PRETESTS="setup create-tables load-data index-data"

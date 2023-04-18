@@ -1,8 +1,8 @@
 use crate::access_method::options::ZDBIndexOptions;
 use crate::zql::ast::IndexLink;
 use byteorder::ReadBytesExt;
-use pgx::pg_sys::AsPgCStr;
-use pgx::*;
+use pgrx::pg_sys::AsPgCStr;
+use pgrx::*;
 use serde_json::Value;
 use std::io::Read;
 

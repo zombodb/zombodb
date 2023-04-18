@@ -2,7 +2,7 @@ use crate::elasticsearch::search::SearchResponseIntoIter;
 use crate::elasticsearch::Elasticsearch;
 use crate::executor_manager::get_executor_manager;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgrx::*;
 
 struct ZDBScanState {
     index_oid: pg_sys::Oid,

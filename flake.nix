@@ -1,34 +1,34 @@
 {
-  description = "A PostgreSQL extension built by pgx.";
+  description = "A PostgreSQL extension built by pgrx.";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     naersk.url = "github:nmattia/naersk";
     naersk.inputs.nixpkgs.follows = "nixpkgs";
-    pgx.url = "github:zombodb/pgx/new-sql-type-mapping";
-    pgx.inputs.nixpkgs.follows = "nixpkgs";
-    pgx.inputs.naersk.follows = "naersk";
+    pgrx.url = "github:zombodb/pgrx/new-sql-type-mapping";
+    pgrx.inputs.nixpkgs.follows = "nixpkgs";
+    pgrx.inputs.naersk.follows = "naersk";
   };
 
-  outputs = { self, nixpkgs, pgx, naersk }:
+  outputs = { self, nixpkgs, pgrx, naersk }:
     let
       cargoToml = (builtins.fromTOML (builtins.readFile ./Cargo.toml));
       supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" ];
       forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems (system: f system);
     in
     {
-      inherit (pgx) devShell;
+      inherit (pgrx) devShell;
 
       defaultPackage = forAllSystems (system: (import nixpkgs {
         inherit system;
-        overlays = [ pgx.overlay self.overlay ];
+        overlays = [ pgrx.overlay self.overlay ];
       })."${cargoToml.package.name}");
 
       packages = forAllSystems (system:
         let
           pkgs = import nixpkgs {
             inherit system;
-            overlays = [ pgx.overlay self.overlay ];
+            overlays = [ pgrx.overlay self.overlay ];
           };
         in
         {
@@ -49,10 +49,10 @@
 
       overlay = final: prev: {
         "${cargoToml.package.name}" = final.callPackage ./. { inherit naersk; };
-        "${cargoToml.package.name}_10" = final.callPackage ./. { pgxPostgresVersion = 10; inherit naersk; };
-        "${cargoToml.package.name}_11" = final.callPackage ./. { pgxPostgresVersion = 11; inherit naersk; };
-        "${cargoToml.package.name}_12" = final.callPackage ./. { pgxPostgresVersion = 12; inherit naersk; };
-        "${cargoToml.package.name}_13" = final.callPackage ./. { pgxPostgresVersion = 13; inherit naersk; };
+        "${cargoToml.package.name}_10" = final.callPackage ./. { pgrxPostgresVersion = 10; inherit naersk; };
+        "${cargoToml.package.name}_11" = final.callPackage ./. { pgrxPostgresVersion = 11; inherit naersk; };
+        "${cargoToml.package.name}_12" = final.callPackage ./. { pgrxPostgresVersion = 12; inherit naersk; };
+        "${cargoToml.package.name}_13" = final.callPackage ./. { pgrxPostgresVersion = 13; inherit naersk; };
       };
 
       nixosModule = { config, pkgs, lib, ... }:
@@ -65,7 +65,7 @@
             services.postgresql."${cargoToml.package.name}".enable = mkEnableOption "Enable ${cargoToml.package.name}.";
           };
           config = mkIf cfg.enable {
-            nixpkgs.overlays = [ self.overlay pgx.overlay ];
+            nixpkgs.overlays = [ self.overlay pgrx.overlay ];
             services.postgresql.extraPlugins = with pkgs; [
               "${cargoToml.package.name}"
             ];
@@ -76,7 +76,7 @@
         let
           pkgs = import nixpkgs {
             inherit system;
-            overlays = [ pgx.overlay self.overlay ];
+            overlays = [ pgrx.overlay self.overlay ];
           };
         in
         {

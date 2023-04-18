@@ -3,7 +3,7 @@ use crate::executor_manager::get_executor_manager;
 use crate::gucs::ZDB_DEFAULT_ROW_ESTIMATE;
 use crate::utils::get_heap_relation_for_func_expr;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgrx::*;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 #[pg_extern(immutable, parallel_safe)]

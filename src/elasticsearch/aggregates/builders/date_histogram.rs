@@ -5,7 +5,7 @@
 
 use crate::elasticsearch::aggregates::builders::make_children_map;
 use crate::elasticsearch::aggregates::date_histogram::pg_catalog::CalendarInterval;
-use pgx::*;
+use pgrx::*;
 use serde::*;
 use serde_json::*;
 

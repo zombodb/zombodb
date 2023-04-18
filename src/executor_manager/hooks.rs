@@ -5,7 +5,7 @@ use crate::executor_manager::alter::{
 use crate::executor_manager::drop::{drop_extension, drop_index, drop_schema, drop_table};
 use crate::executor_manager::get_executor_manager;
 use crate::walker::PlanWalker;
-use pgx::*;
+use pgrx::*;
 use std::ffi::CStr;
 
 struct ZDBHooks;

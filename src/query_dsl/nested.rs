@@ -1,6 +1,6 @@
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 pub mod pg_catalog {
-    use pgx::*;
+    use pgrx::*;
     use serde::*;
 
     #[allow(non_camel_case_types)]
@@ -14,11 +14,11 @@ pub mod pg_catalog {
     }
 }
 
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod dsl {
     use crate::query_dsl::nested::pg_catalog::ScoreMode;
     use crate::zdbquery::{ZDBQuery, ZDBQueryClause};
-    use pgx::*;
+    use pgrx::*;
 
     #[pg_extern(immutable, parallel_safe)]
     fn nested(
@@ -37,10 +37,10 @@ mod dsl {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod tests {
     use crate::zdbquery::ZDBQuery;
-    use pgx::*;
+    use pgrx::*;
     use serde_json::*;
 
     #[pg_test]

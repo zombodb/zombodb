@@ -6,9 +6,9 @@ use crate::zql::transformations::field_finder::find_link_for_field;
 use crate::zql::{parse_field_lists, INDEX_LINK_PARSER};
 use lazy_static::*;
 use memoffset::*;
-use pgx::pg_sys::AsPgCStr;
-use pgx::prelude::*;
-use pgx::*;
+use pgrx::pg_sys::AsPgCStr;
+use pgrx::prelude::*;
+use pgrx::*;
 use std::collections::{HashMap, HashSet};
 use std::ffi::CStr;
 use std::fmt::Debug;
@@ -1189,7 +1189,7 @@ pub unsafe fn init() {
 }
 
 #[cfg(any(test, feature = "pg_test"))]
-#[pgx::pg_schema]
+#[pgrx::pg_schema]
 mod tests {
     use crate::access_method::options::{
         validate_translog_durability, validate_url, RefreshInterval, ZDBIndexOptions,
@@ -1198,8 +1198,8 @@ mod tests {
     };
     use crate::gucs::ZDB_DEFAULT_REPLICAS;
     use crate::zql::ast::IndexLink;
-    use pgx::pg_sys::AsPgCStr;
-    use pgx::*;
+    use pgrx::pg_sys::AsPgCStr;
+    use pgrx::*;
 
     #[pg_test]
     fn test_validate_url() {
@@ -1295,7 +1295,7 @@ mod tests {
         assert_eq!(options.type_name(), DEFAULT_TYPE_NAME);
         assert_eq!(
             &options.alias(),
-            &format!("pgx_tests.public.test.idxtest-{}", indexrel.oid().as_u32())
+            &format!("pgrx_tests.public.test.idxtest-{}", indexrel.oid().as_u32())
         );
         assert_eq!(
             &options.uuid(),

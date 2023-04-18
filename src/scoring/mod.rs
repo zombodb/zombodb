@@ -1,6 +1,6 @@
 use crate::executor_manager::get_executor_manager;
 use crate::zdbquery::ZDBQuery;
-use pgx::*;
+use pgrx::*;
 
 #[pg_extern(immutable, parallel_safe)]
 fn score(ctid: Option<pg_sys::ItemPointerData>, fcinfo: pg_sys::FunctionCallInfo) -> f64 {

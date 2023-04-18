@@ -1,4 +1,4 @@
-name: cargo pgx test pgXX
+name: cargo pgrx test pgrxX
 
 on:
   push:
@@ -51,16 +51,16 @@ jobs:
     - name: cargo update
       run: cargo update
 
-      # install cargo-pgx
-    - name: install cargo-pgx
-      run: cargo install cargo-pgx
+      # install cargo-pgrx
+    - name: install cargo-pgrx
+      run: cargo install cargo-pgrx
 
-    # initialize pgx
-    - name: cargo pgx init
-      run: cargo pgx init --pg${{ matrix.version }}=`which pg_config`
+    # initialize pgrx
+    - name: cargo pgrx init
+      run: cargo pgrx init --pg${{ matrix.version }}=`which pg_config`
 
     - name: cat config.toml
-      run: cat ~/.pgx/config.toml
+      run: cat ~/.pgrx/config.toml
 
     - name: hack permissions
       run: sudo chmod a+rwx `pg_config --pkglibdir` `pg_config --sharedir`/extension /var/run/postgresql/

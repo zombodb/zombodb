@@ -7,8 +7,8 @@ fi
 
 cargo update
 cargo install --git https://github.com/zombodb/pg-schema-diff.git
-cargo pgx schema -o ./sql/releases/zombodb--$2.sql
-GIT_HASH=$(cargo pgx get git_hash)
+cargo pgrx schema -o ./sql/releases/zombodb--$2.sql
+GIT_HASH=$(cargo pgrx get git_hash)
 sed -i'' -e "s/@DEFAULT_VERSION@/$2/g" ./sql/releases/zombodb--$2.sql
 sed -i'' -e "s/@GIT_HASH@/${GIT_HASH}/g" ./sql/releases/zombodb--$2.sql
 echo "diffing schema..."

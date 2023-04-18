@@ -5,7 +5,7 @@
 
 use crate::elasticsearch::aggregates::builders::make_children_map;
 use crate::elasticsearch::aggregates::terms::pg_catalog::TermsOrderBy;
-use pgx::*;
+use pgrx::*;
 use serde_json::*;
 
 #[pg_extern(immutable, parallel_safe)]

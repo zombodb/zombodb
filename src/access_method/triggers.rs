@@ -1,6 +1,6 @@
 use crate::executor_manager::get_executor_manager;
-use pgx::pg_sys::{AsPgCStr, MaxOffsetNumber};
-use pgx::*;
+use pgrx::pg_sys::{AsPgCStr, MaxOffsetNumber};
+use pgrx::*;
 use std::ffi::CStr;
 
 #[pg_extern(sql = "
