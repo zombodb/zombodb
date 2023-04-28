@@ -53,7 +53,7 @@ fn make_date(s: &str) -> Option<pgrx::TimestampWithTimeZone> {
         let date: Option<TimestampWithTimeZone> = PgTryBuilder::new(|| {
             direct_function_call(
                 pg_sys::timestamptz_in,
-                vec![
+                &[
                     Some(pg_sys::Datum::from(date_str)),
                     InvalidOid.into_datum(),
                     (-1i32).into_datum(),

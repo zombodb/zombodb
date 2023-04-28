@@ -12,7 +12,7 @@ mod dsl {
         let array_as_json = unsafe {
             direct_function_call::<Json>(
                 pg_sys::array_to_json,
-                vec![array.into_datum(), false.into_datum()],
+                &[array.into_datum(), false.into_datum()],
             )
         }
         .expect("anyarray conversion to json returned null");

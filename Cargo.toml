@@ -27,17 +27,17 @@ crossbeam = "0.8.2"
 dashmap = "5.4.0"
 humantime = "2.1.0"
 indexmap = "1.9.3"
-lalrpop-util = "0.19.9"
+lalrpop-util = { git = "https://github.com/tcdi/lalrpop", branch = "0.19.9-regex-dep-fix" }
 lazy_static = "1.4.0"
 levenshtein = "1.0.5"
 memoffset = "0.8.0"
 num_cpus = "1.15.0"
-pgrx = "=0.7.4"
+pgrx = "=0.8.2"
 rayon = "1.7.0"
-regex = "1.7.3"
+regex = { version = "1.8.1", features = [ "unicode-case"] }
 rustc-hash = "1.1.0"
 serde = { version = "1.0.160", features = [ "derive" ] }
-serde_json = { version = "1.0.95", features = [ "preserve_order" ] }
+serde_json = { version = "1.0.96", features = [ "preserve_order" ] }
 serde_cbor = "0.11.2"
 sqlformat = "0.2.1"
 time = "0.3.20"
@@ -46,12 +46,12 @@ ureq = { version = "2.6.2", features = [ "json" ] }
 url = "2.3.1"
 
 [build-dependencies]
-lalrpop = { version = "0.19.9", features = [ "lexer" ] }
+lalrpop = { git = "https://github.com/tcdi/lalrpop", branch = "0.19.9-regex-dep-fix", features = [ "lexer" ] }
 built = { version = "0.6.0", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
-pgrx-tests = "=0.7.4"
-libc = "0.2.141"
+pgrx-tests = "=0.8.2"
+libc = "0.2.142"
 
 [profile.dev]
 panic = "unwind"
