@@ -171,17 +171,17 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
         walk_node(aggref.aggdistinct as NodePtr, context);
         walk_node(aggref.aggfilter as NodePtr, context);
     } else if is_a(node, pg_sys::NodeTag_T_ModifyTable) {
-        let mut modifytable = PgBox::from_pg(node as *mut pg_sys::ModifyTable);
-        walk_plan(&mut modifytable.plan, context);
-        #[cfg(any(feature = "pg10", feature = "pg11", feature = "pg12", feature = "pg13"))]
-        {
-            walk_node(modifytable.plans as NodePtr, context);
-        }
-        #[cfg(any(feature = "pg14", feature = "pg15"))]
-        {
-            walk_node(modifytable.updateColnosLists as NodePtr, context);
-        }
-        walk_node(modifytable.returningLists as NodePtr, context);
+        // let mut modifytable = PgBox::from_pg(node as *mut pg_sys::ModifyTable);
+        // walk_plan(&mut modifytable.plan, context);
+        // #[cfg(any(feature = "pg10", feature = "pg11", feature = "pg12", feature = "pg13"))]
+        // {
+        //     walk_node(modifytable.plans as NodePtr, context);
+        // }
+        // #[cfg(any(feature = "pg14", feature = "pg15"))]
+        // {
+        //     walk_node(modifytable.updateColnosLists as NodePtr, context);
+        // }
+        // walk_node(modifytable.returningLists as NodePtr, context);
     } else if is_a(node, pg_sys::NodeTag_T_LockRows) {
         let mut lockrows = PgBox::from_pg(node as *mut pg_sys::LockRows);
         walk_plan(&mut lockrows.plan, context);
