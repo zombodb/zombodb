@@ -31,6 +31,7 @@ enum DataType {
     Integer,
     Float,
     Date,
+    Bool,
 }
 
 pub struct DocumentHighlighter<'a> {
@@ -229,6 +230,20 @@ impl<'a> DocumentHighlighter<'a> {
         analyzer: &Option<String>,
     ) {
         match value {
+            Value::Bool(b) => {
+                self.lookup
+                    .entry(Cow::Owned(b.to_string()))
+                    .or_default()
+                    .push(TokenEntry {
+                        type_: "<BOOLEAN>".into(),
+                        array_index,
+                        position: 1,
+                        start_offset: 0,
+                        end_offset: 0,
+                    });
+                self.data_type = Some(DataType::Bool);
+            }
+
             Value::Number(number) => {
                 if number.is_f64() {
                     self.lookup
@@ -404,8 +419,6 @@ impl<'a> DocumentHighlighter<'a> {
             }
 
             Value::Null => { /* noop */ }
-
-            _ => unimplemented!("Cannot highlight value: {:#?}", value),
         }
     }
 
@@ -415,6 +428,7 @@ impl<'a> DocumentHighlighter<'a> {
             DataType::Float => |token: &str, term: &str| compare_float!(token, gt, term),
             DataType::Integer => |token: &str, term: &str| compare_integer!(token, gt, term),
             DataType::Date => |token: &str, term: &str| compare_date!(token, gt, term),
+            DataType::Bool => |_, _| false,
         }
     }
 
@@ -424,6 +438,7 @@ impl<'a> DocumentHighlighter<'a> {
             DataType::Float => |token: &str, term: &str| compare_float!(token, lt, term),
             DataType::Integer => |token: &str, term: &str| compare_integer!(token, lt, term),
             DataType::Date => |token: &str, term: &str| compare_date!(token, lt, term),
+            DataType::Bool => |_, _| false,
         }
     }
 
@@ -433,6 +448,7 @@ impl<'a> DocumentHighlighter<'a> {
             DataType::Float => |token: &str, term: &str| compare_float!(token, ge, term),
             DataType::Integer => |token: &str, term: &str| compare_integer!(token, ge, term),
             DataType::Date => |token: &str, term: &str| compare_date!(token, ge, term),
+            DataType::Bool => |token: &str, term: &str| token == term,
         }
     }
 
@@ -442,6 +458,7 @@ impl<'a> DocumentHighlighter<'a> {
             DataType::Float => |token: &str, term: &str| compare_float!(token, le, term),
             DataType::Integer => |token: &str, term: &str| compare_integer!(token, le, term),
             DataType::Date => |token: &str, term: &str| compare_date!(token, le, term),
+            DataType::Bool => |token: &str, term: &str| token == term,
         }
     }
 
