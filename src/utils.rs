@@ -347,7 +347,10 @@ pub fn get_null_copy_to_fields(index: &PgRelation) -> Vec<String> {
 
 pub fn is_string_field(index: &PgRelation, field: &str) -> bool {
     let field_type = if field.contains('.') {
-        lookup_es_subfield_type(index, field)
+        match lookup_es_subfield_type(index, field).as_str() {
+            "" => lookup_es_nestedfield_type(index, field),
+            other => other.to_string(),
+        }
     } else {
         lookup_es_field_type(index, field)
     };
@@ -426,6 +429,31 @@ pub fn lookup_es_subfield_type(index: &PgRelation, field: &str) -> String {
     for (idx, part) in field.split('.').enumerate() {
         if idx > 0 {
             sql.push_str("->'fields'");
+        }
+
+        sql.push_str("->");
+        sql.push('\'');
+        sql.push_str(part);
+        sql.push('\'');
+    }
+
+    sql.push_str("->>'type';");
+    Spi::get_one(&sql).expect("SPI failed").unwrap_or_default()
+}
+
+pub fn lookup_es_nestedfield_type(index: &PgRelation, field: &str) -> String {
+    let mut sql = String::new();
+
+    sql.push_str(&format!(
+        "select
+        zdb.index_mapping({}::regclass)->zdb.index_name({}::regclass)->'mappings'->'properties'",
+        index.oid().as_u32(),
+        index.oid().as_u32()
+    ));
+
+    for (idx, part) in field.split('.').enumerate() {
+        if idx > 0 {
+            sql.push_str("->'properties'");
         }
 
         sql.push_str("->");
