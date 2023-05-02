@@ -2,8 +2,13 @@ use crate::zql::ast::{Expr, IndexLink, QualifiedField};
 use crate::zql::transformations::field_finder::find_link_for_field;
 use indexmap::IndexMap;
 
-pub fn assign_links<'a>(root_index: &IndexLink, expr: &mut Expr<'a>, indexes: &Vec<IndexLink>) {
-    match determine_link(root_index, expr, indexes) {
+pub fn assign_links<'a>(
+    original_index: &IndexLink,
+    root_index: &IndexLink,
+    expr: &mut Expr<'a>,
+    indexes: &Vec<IndexLink>,
+) {
+    match determine_link(original_index, root_index, expr, indexes) {
         // everything belongs to the same link (that isn't the root_index), and whatever that is we wrapped it in an Expr::Linked
         Some(target_link) if &target_link.qualified_index != &root_index.qualified_index => {
             match expr {
@@ -26,6 +31,7 @@ pub fn assign_links<'a>(root_index: &IndexLink, expr: &mut Expr<'a>, indexes: &V
 }
 
 fn determine_link(
+    original_index: &IndexLink,
     root_index: &IndexLink,
     expr: &mut Expr,
     indexes: &Vec<IndexLink>,
@@ -34,30 +40,34 @@ fn determine_link(
         Expr::Null => unreachable!(),
 
         Expr::Subselect(i, e) => {
-            determine_link(i, e, indexes);
+            determine_link(original_index, i, e, indexes);
             None
         }
         Expr::Expand(i, e, f) => {
             if let Some(f) = f {
-                determine_link(i, f, indexes);
+                determine_link(original_index, i, f, indexes);
             }
-            determine_link(i, e, indexes);
+            determine_link(original_index, i, e, indexes);
             None
         }
 
         Expr::Not(e) => {
-            determine_link(root_index, e.as_mut(), indexes);
+            determine_link(original_index, root_index, e.as_mut(), indexes);
             None
         }
 
-        Expr::WithList(v) => group_links(root_index, v, indexes, |v| Expr::WithList(v)),
-        Expr::AndList(v) => group_links(root_index, v, indexes, |v| Expr::AndList(v)),
-        Expr::OrList(v) => group_links(root_index, v, indexes, |v| Expr::OrList(v)),
+        Expr::WithList(v) => group_links(original_index, root_index, v, indexes, |v| {
+            Expr::WithList(v)
+        }),
+        Expr::AndList(v) => {
+            group_links(original_index, root_index, v, indexes, |v| Expr::AndList(v))
+        }
+        Expr::OrList(v) => group_links(original_index, root_index, v, indexes, |v| Expr::OrList(v)),
 
         Expr::Linked(_, _) => unreachable!("determine_link: linked"),
 
         Expr::Nested(path, _) => {
-            let index_link = find_link_for_field(
+            let mut index_link = find_link_for_field(
                 &QualifiedField {
                     index: None,
                     field: path.to_string(),
@@ -66,6 +76,22 @@ fn determine_link(
                 indexes,
             )
             .unwrap();
+
+            if !index_link
+                .contains_field(path.split('.').next().unwrap())
+                .unwrap_or(false)
+            {
+                index_link = find_link_for_field(
+                    &QualifiedField {
+                        index: None,
+                        field: path.to_string(),
+                    },
+                    original_index,
+                    indexes,
+                )
+                .unwrap();
+            }
+
             maybe_link(root_index, expr, index_link)
         }
 
@@ -99,6 +125,7 @@ fn maybe_link(root_index: &IndexLink, expr: &mut Expr, index_link: IndexLink) ->
 }
 
 fn group_links<F: Fn(Vec<Expr>) -> Expr>(
+    original_index: &IndexLink,
     root_index: &IndexLink,
     v: &mut Vec<Expr>,
     indexes: &Vec<IndexLink>,
@@ -108,7 +135,7 @@ fn group_links<F: Fn(Vec<Expr>) -> Expr>(
     let mut link_groups = IndexMap::<Option<IndexLink>, Vec<Expr>>::new();
     for mut e in v.drain(..) {
         link_groups
-            .entry(determine_link(root_index, &mut e, indexes))
+            .entry(determine_link(original_index, root_index, &mut e, indexes))
             .or_default()
             .push(e);
     }
