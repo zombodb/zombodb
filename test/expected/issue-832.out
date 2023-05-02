@@ -1,0 +1,632 @@
+CREATE SCHEMA adw;
+CREATE TABLE adw.documents (
+                               pk_doc_id bigint NOT NULL,
+                               doc_file_name character varying
+);
+CREATE INDEX es_idx_adw_documents ON adw.documents
+    USING zombodb ((documents.*))
+    WITH (
+    max_analyze_token_count='10000000',
+    max_terms_count='2147483647');
+CREATE TABLE adw.scope (
+                           pk_scp bigint NOT NULL,
+                           fk_scp_to_doc bigint,
+                           scp_review_data json
+);
+CREATE INDEX es_idx_adw_scope ON adw.scope
+    USING zombodb ((scope.*))
+    WITH (
+    max_analyze_token_count='10000000',
+    max_terms_count='2147483647'
+    );
+CREATE FUNCTION adw.zdb_adw_documents_to_scope(anyelement) RETURNS anyelement
+    LANGUAGE c IMMUTABLE STRICT
+AS '$libdir/zombodb.so', 'shadow_wrapper';
+CREATE FUNCTION adw.zdb_adw_scope_to_documents(anyelement) RETURNS anyelement
+    LANGUAGE c IMMUTABLE STRICT
+AS '$libdir/zombodb.so', 'shadow_wrapper';
+CREATE INDEX es_idx_documents_to_scope_shadow ON adw.documents
+    USING zombodb (adw.zdb_adw_documents_to_scope(documents.*))
+    WITH (shadow='true',
+    options='pk_doc_id=<adw.scope.es_idx_adw_scope>fk_scp_to_doc',
+    max_analyze_token_count='10000000',
+    max_terms_count='2147483647');
+CREATE INDEX es_idx_scope_to_documents_shadow ON adw.scope
+    USING zombodb (adw.zdb_adw_scope_to_documents(scope.*))
+    WITH (shadow='true',
+    options='fk_scp_to_doc=<adw.documents.es_idx_adw_documents>pk_doc_id',
+--    options='fk_scp_to_doc=<adw.documents.es_idx_adw_documents>pk_doc_id, pk_doc_id = <adw.scope.es_idx_adw_scope>fk_scp_to_doc',
+    max_analyze_token_count='10000000',
+    max_terms_count='2147483647');
+CREATE VIEW adw.scope_view AS
+SELECT scope.pk_scp,
+       documents.doc_file_name,
+       scope.fk_scp_to_doc,
+       scope.scp_review_data,
+       adw.zdb_adw_scope_to_documents(scope.*) AS zdb
+FROM (adw.scope
+    JOIN adw.documents ON ((scope.fk_scp_to_doc = documents.pk_doc_id))
+         );
+INSERT INTO adw.documents values (10,'filenameA');
+INSERT INTO adw.documents values (20,'filenameB');
+INSERT INTO adw.documents values (30,'filenameC');
+INSERT INTO adw.documents values (40,'filenameD');
+INSERT INTO adw.scope values (100, 10, '[{"choice":"rock"},{"bucket":"sand"}]');
+INSERT INTO adw.scope values (200, 20, '[{"choice":"paper"},{"waves":"popemobile"}]');
+INSERT INTO adw.scope values (300, 30, '[{"choice":"scissors"},{"vehicle":"hydrant"}]');
+INSERT INTO adw.scope values (400, 40, '[{"choice":"lizard"},{"silica gel":"inedible"}]');
+select * from adw.scope_view order by pk_scp;
+ pk_scp | doc_file_name | fk_scp_to_doc |                 scp_review_data                 |                                zdb                                 
+--------+---------------+---------------+-------------------------------------------------+--------------------------------------------------------------------
+    100 | filenameA     |            10 | [{"choice":"rock"},{"bucket":"sand"}]           | (100,10,"[{""choice"":""rock""},{""bucket"":""sand""}]")
+    200 | filenameB     |            20 | [{"choice":"paper"},{"waves":"popemobile"}]     | (200,20,"[{""choice"":""paper""},{""waves"":""popemobile""}]")
+    300 | filenameC     |            30 | [{"choice":"scissors"},{"vehicle":"hydrant"}]   | (300,30,"[{""choice"":""scissors""},{""vehicle"":""hydrant""}]")
+    400 | filenameD     |            40 | [{"choice":"lizard"},{"silica gel":"inedible"}] | (400,40,"[{""choice"":""lizard""},{""silica gel"":""inedible""}]")
+(4 rows)
+
+select * from zdb.tally('adw.scope_view','doc_file_name',True,'^.*','pk_scp:[100,300]') limit 10;
+ERROR:  no such destination vertex: null@adw.scope.es_idx_adw_scope
+select * from zdb.tally('adw.scope_view','scp_review_data.choice',True,'^.*','') limit 10;
+WARNING:  http://localhost:9200/contrib_regression.adw.scope.es_idx_adw_scope-492456/_search?size=0
+Object {
+    "query": Object {
+        "bool": Object {
+            "must": Array [
+                Object {
+                    "match_all": Object {},
+                },
+            ],
+            "filter": Array [
+                Object {
+                    "bool": Object {
+                        "must": Array [
+                            Object {
+                                "bool": Object {
+                                    "must_not": Array [
+                                        Object {
+                                            "query_string": Object {
+                                                "query": String("_id:zdb_aborted_xids"),
+                                            },
+                                        },
+                                    ],
+                                },
+                            },
+                            Object {
+                                "bool": Object {
+                                    "should": Array [
+                                        Object {
+                                            "bool": Object {
+                                                "must": Array [
+                                                    Object {
+                                                        "terms": Object {
+                                                            "zdb_xmin": Array [],
+                                                        },
+                                                    },
+                                                    Object {
+                                                        "range": Object {
+                                                            "zdb_cmin": Object {
+                                                                "lt": Number(0),
+                                                            },
+                                                        },
+                                                    },
+                                                    Object {
+                                                        "bool": Object {
+                                                            "should": Array [
+                                                                Object {
+                                                                    "bool": Object {
+                                                                        "must_not": Array [
+                                                                            Object {
+                                                                                "exists": Object {
+                                                                                    "field": String("zdb_xmax"),
+                                                                                },
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                },
+                                                                Object {
+                                                                    "bool": Object {
+                                                                        "must": Array [
+                                                                            Object {
+                                                                                "terms": Object {
+                                                                                    "zdb_xmax": Array [],
+                                                                                },
+                                                                            },
+                                                                            Object {
+                                                                                "range": Object {
+                                                                                    "zdb_cmax": Object {
+                                                                                        "gte": Number(0),
+                                                                                    },
+                                                                                },
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                },
+                                                            ],
+                                                        },
+                                                    },
+                                                ],
+                                            },
+                                        },
+                                        Object {
+                                            "bool": Object {
+                                                "must": Array [
+                                                    Object {
+                                                        "bool": Object {
+                                                            "must": Array [
+                                                                Object {
+                                                                    "bool": Object {
+                                                                        "must_not": Array [
+                                                                            Object {
+                                                                                "terms": Object {
+                                                                                    "zdb_xmin": Object {
+                                                                                        "index": String("467946.492442.492451.492456"),
+                                                                                        "path": String("zdb_aborted_xids"),
+                                                                                        "id": String("zdb_aborted_xids"),
+                                                                                    },
+                                                                                },
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                },
+                                                                Object {
+                                                                    "bool": Object {
+                                                                        "must_not": Array [
+                                                                            Object {
+                                                                                "terms": Object {
+                                                                                    "zdb_xmin": Array [],
+                                                                                },
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                },
+                                                                Object {
+                                                                    "bool": Object {
+                                                                        "must_not": Array [
+                                                                            Object {
+                                                                                "range": Object {
+                                                                                    "zdb_xmin": Object {
+                                                                                        "gte": Number(17196),
+                                                                                    },
+                                                                                },
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                },
+                                                                Object {
+                                                                    "bool": Object {
+                                                                        "should": Array [
+                                                                            Object {
+                                                                                "bool": Object {
+                                                                                    "must_not": Array [
+                                                                                        Object {
+                                                                                            "exists": Object {
+                                                                                                "field": String("zdb_xmax"),
+                                                                                            },
+                                                                                        },
+                                                                                    ],
+                                                                                },
+                                                                            },
+                                                                            Object {
+                                                                                "bool": Object {
+                                                                                    "must": Array [
+                                                                                        Object {
+                                                                                            "terms": Object {
+                                                                                                "zdb_xmax": Array [],
+                                                                                            },
+                                                                                        },
+                                                                                        Object {
+                                                                                            "range": Object {
+                                                                                                "zdb_cmax": Object {
+                                                                                                    "gte": Number(0),
+                                                                                                },
+                                                                                            },
+                                                                                        },
+                                                                                    ],
+                                                                                },
+                                                                            },
+                                                                            Object {
+                                                                                "bool": Object {
+                                                                                    "must": Array [
+                                                                                        Object {
+                                                                                            "bool": Object {
+                                                                                                "must_not": Array [
+                                                                                                    Object {
+                                                                                                        "terms": Object {
+                                                                                                            "zdb_xmax": Array [],
+                                                                                                        },
+                                                                                                    },
+                                                                                                ],
+                                                                                            },
+                                                                                        },
+                                                                                        Object {
+                                                                                            "bool": Object {
+                                                                                                "should": Array [
+                                                                                                    Object {
+                                                                                                        "terms": Object {
+                                                                                                            "zdb_xmax": Object {
+                                                                                                                "index": String("467946.492442.492451.492456"),
+                                                                                                                "path": String("zdb_aborted_xids"),
+                                                                                                                "id": String("zdb_aborted_xids"),
+                                                                                                            },
+                                                                                                        },
+                                                                                                    },
+                                                                                                    Object {
+                                                                                                        "terms": Object {
+                                                                                                            "zdb_xmax": Array [],
+                                                                                                        },
+                                                                                                    },
+                                                                                                    Object {
+                                                                                                        "range": Object {
+                                                                                                            "zdb_xmax": Object {
+                                                                                                                "gte": Number(17196),
+                                                                                                            },
+                                                                                                        },
+                                                                                                    },
+                                                                                                ],
+                                                                                            },
+                                                                                        },
+                                                                                    ],
+                                                                                },
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                },
+                                                            ],
+                                                        },
+                                                    },
+                                                ],
+                                            },
+                                        },
+                                    ],
+                                },
+                            },
+                        ],
+                    },
+                },
+            ],
+        },
+    },
+    "aggs": Object {
+        "the_agg": Object {
+            "nested": Object {
+                "path": String("scp_review_data"),
+            },
+            "aggs": Object {
+                "the_agg": Object {
+                    "terms": Object {
+                        "field": String("scp_review_data.choice"),
+                        "size": Number(2147483647),
+                        "min_doc_count": Number(1),
+                        "shard_min_doc_count": Number(0),
+                        "shard_size": Number(2147483647),
+                        "order": Object {
+                            "_count": String("desc"),
+                        },
+                    },
+                },
+            },
+        },
+        "count_nulls": Object {
+            "nested": Object {
+                "path": String("scp_review_data"),
+            },
+            "aggs": Object {
+                "count_nulls": Object {
+                    "missing": Object {
+                        "field": String("scp_review_data.choice"),
+                    },
+                },
+            },
+        },
+    },
+}
+   term   | count 
+----------+-------
+          |     4
+ lizard   |     1
+ paper    |     1
+ rock     |     1
+ scissors |     1
+(5 rows)
+
+select * from zdb.dump_query('adw.scope_view', 'scp_review_data.choice:lizard');
+             dump_query              
+-------------------------------------
+ {                                  +
+   "nested": {                      +
+     "path": "scp_review_data",     +
+     "query": {                     +
+       "match": {                   +
+         "scp_review_data.choice": {+
+           "query": "lizard",       +
+           "boost": 1.0             +
+         }                          +
+       }                            +
+     },                             +
+     "score_mode": "avg",           +
+     "ignore_unmapped": false       +
+   }                                +
+ }
+(1 row)
+
+select * from zdb.debug_query('adw.scope_view', 'scp_review_data.choice:lizard');
+        normalized_query         |       used_fields        |                                ast                                
+---------------------------------+--------------------------+-------------------------------------------------------------------
+ scp_review_data.choice:"lizard" | {scp_review_data.choice} | Nested(                                                          +
+                                 |                          |     "scp_review_data",                                           +
+                                 |                          |     Contains(                                                    +
+                                 |                          |         QualifiedField {                                         +
+                                 |                          |             index: Some(                                         +
+                                 |                          |                 IndexLink(NONE=<adw.scope.es_idx_adw_scope>NONE),+
+                                 |                          |             ),                                                   +
+                                 |                          |             field: "scp_review_data.choice",                     +
+                                 |                          |         },                                                       +
+                                 |                          |         String(                                                  +
+                                 |                          |             "lizard",                                            +
+                                 |                          |             None,                                                +
+                                 |                          |         ),                                                       +
+                                 |                          |     ),                                                           +
+                                 |                          | )
+(1 row)
+
+select * from adw.scope_view where scope_view.zdb ==> 'scp_review_data.choice:lizard' order by pk_scp;
+ pk_scp | doc_file_name | fk_scp_to_doc |                 scp_review_data                 |  zdb  
+--------+---------------+---------------+-------------------------------------------------+-------
+    400 | filenameD     |            40 | [{"choice":"lizard"},{"silica gel":"inedible"}] | (0,4)
+(1 row)
+
+select * from zdb.tally('adw.scope_view','doc_file_name',True,'^.*','scp_review_data.choice:lizard') limit 10;
+WARNING:  http://localhost:9200/contrib_regression.adw.documents.es_idx_adw_documents-492448/_search?size=0
+Object {
+    "query": Object {
+        "bool": Object {
+            "must": Array [
+                Object {
+                    "nested": Object {
+                        "path": String("scp_review_data"),
+                        "query": Object {
+                            "match": Object {
+                                "scp_review_data.choice": Object {
+                                    "query": String("lizard"),
+                                    "boost": Number(1.0),
+                                },
+                            },
+                        },
+                        "score_mode": String("avg"),
+                        "ignore_unmapped": Bool(false),
+                    },
+                },
+            ],
+            "filter": Array [
+                Object {
+                    "bool": Object {
+                        "must": Array [
+                            Object {
+                                "bool": Object {
+                                    "must_not": Array [
+                                        Object {
+                                            "query_string": Object {
+                                                "query": String("_id:zdb_aborted_xids"),
+                                            },
+                                        },
+                                    ],
+                                },
+                            },
+                            Object {
+                                "bool": Object {
+                                    "should": Array [
+                                        Object {
+                                            "bool": Object {
+                                                "must": Array [
+                                                    Object {
+                                                        "terms": Object {
+                                                            "zdb_xmin": Array [],
+                                                        },
+                                                    },
+                                                    Object {
+                                                        "range": Object {
+                                                            "zdb_cmin": Object {
+                                                                "lt": Number(0),
+                                                            },
+                                                        },
+                                                    },
+                                                    Object {
+                                                        "bool": Object {
+                                                            "should": Array [
+                                                                Object {
+                                                                    "bool": Object {
+                                                                        "must_not": Array [
+                                                                            Object {
+                                                                                "exists": Object {
+                                                                                    "field": String("zdb_xmax"),
+                                                                                },
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                },
+                                                                Object {
+                                                                    "bool": Object {
+                                                                        "must": Array [
+                                                                            Object {
+                                                                                "terms": Object {
+                                                                                    "zdb_xmax": Array [],
+                                                                                },
+                                                                            },
+                                                                            Object {
+                                                                                "range": Object {
+                                                                                    "zdb_cmax": Object {
+                                                                                        "gte": Number(0),
+                                                                                    },
+                                                                                },
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                },
+                                                            ],
+                                                        },
+                                                    },
+                                                ],
+                                            },
+                                        },
+                                        Object {
+                                            "bool": Object {
+                                                "must": Array [
+                                                    Object {
+                                                        "bool": Object {
+                                                            "must": Array [
+                                                                Object {
+                                                                    "bool": Object {
+                                                                        "must_not": Array [
+                                                                            Object {
+                                                                                "terms": Object {
+                                                                                    "zdb_xmin": Object {
+                                                                                        "index": String("467946.492442.492443.492448"),
+                                                                                        "path": String("zdb_aborted_xids"),
+                                                                                        "id": String("zdb_aborted_xids"),
+                                                                                    },
+                                                                                },
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                },
+                                                                Object {
+                                                                    "bool": Object {
+                                                                        "must_not": Array [
+                                                                            Object {
+                                                                                "terms": Object {
+                                                                                    "zdb_xmin": Array [],
+                                                                                },
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                },
+                                                                Object {
+                                                                    "bool": Object {
+                                                                        "must_not": Array [
+                                                                            Object {
+                                                                                "range": Object {
+                                                                                    "zdb_xmin": Object {
+                                                                                        "gte": Number(17200),
+                                                                                    },
+                                                                                },
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                },
+                                                                Object {
+                                                                    "bool": Object {
+                                                                        "should": Array [
+                                                                            Object {
+                                                                                "bool": Object {
+                                                                                    "must_not": Array [
+                                                                                        Object {
+                                                                                            "exists": Object {
+                                                                                                "field": String("zdb_xmax"),
+                                                                                            },
+                                                                                        },
+                                                                                    ],
+                                                                                },
+                                                                            },
+                                                                            Object {
+                                                                                "bool": Object {
+                                                                                    "must": Array [
+                                                                                        Object {
+                                                                                            "terms": Object {
+                                                                                                "zdb_xmax": Array [],
+                                                                                            },
+                                                                                        },
+                                                                                        Object {
+                                                                                            "range": Object {
+                                                                                                "zdb_cmax": Object {
+                                                                                                    "gte": Number(0),
+                                                                                                },
+                                                                                            },
+                                                                                        },
+                                                                                    ],
+                                                                                },
+                                                                            },
+                                                                            Object {
+                                                                                "bool": Object {
+                                                                                    "must": Array [
+                                                                                        Object {
+                                                                                            "bool": Object {
+                                                                                                "must_not": Array [
+                                                                                                    Object {
+                                                                                                        "terms": Object {
+                                                                                                            "zdb_xmax": Array [],
+                                                                                                        },
+                                                                                                    },
+                                                                                                ],
+                                                                                            },
+                                                                                        },
+                                                                                        Object {
+                                                                                            "bool": Object {
+                                                                                                "should": Array [
+                                                                                                    Object {
+                                                                                                        "terms": Object {
+                                                                                                            "zdb_xmax": Object {
+                                                                                                                "index": String("467946.492442.492443.492448"),
+                                                                                                                "path": String("zdb_aborted_xids"),
+                                                                                                                "id": String("zdb_aborted_xids"),
+                                                                                                            },
+                                                                                                        },
+                                                                                                    },
+                                                                                                    Object {
+                                                                                                        "terms": Object {
+                                                                                                            "zdb_xmax": Array [],
+                                                                                                        },
+                                                                                                    },
+                                                                                                    Object {
+                                                                                                        "range": Object {
+                                                                                                            "zdb_xmax": Object {
+                                                                                                                "gte": Number(17200),
+                                                                                                            },
+                                                                                                        },
+                                                                                                    },
+                                                                                                ],
+                                                                                            },
+                                                                                        },
+                                                                                    ],
+                                                                                },
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                },
+                                                            ],
+                                                        },
+                                                    },
+                                                ],
+                                            },
+                                        },
+                                    ],
+                                },
+                            },
+                        ],
+                    },
+                },
+            ],
+        },
+    },
+    "aggs": Object {
+        "count_nulls": Object {
+            "missing": Object {
+                "field": String("doc_file_name"),
+            },
+        },
+        "the_agg": Object {
+            "terms": Object {
+                "field": String("doc_file_name"),
+                "include": String(".*"),
+                "size": Number(2147483647),
+                "min_doc_count": Number(1),
+                "shard_min_doc_count": Number(0),
+                "shard_size": Number(2147483647),
+                "order": Object {
+                    "_count": String("desc"),
+                },
+            },
+        },
+    },
+}
+ERROR:  failed to execute aggregate search: ElasticsearchError(Some(400), "{\n  \"error\": {\n    \"root_cause\": [\n      {\n        \"type\": \"query_shard_exception\",\n        \"reason\": \"failed to create query: [nested] failed to find nested object under path [scp_review_data]\",\n        \"index_uuid\": \"QsT_xaPyT1CeybICTbI_pA\",\n        \"index\": \"467946.492442.492443.492448\"\n      }\n    ],\n    \"type\": \"search_phase_execution_exception\",\n    \"reason\": \"all shards failed\",\n    \"phase\": \"query\",\n    \"grouped\": true,\n    \"failed_shards\": [\n      {\n        \"shard\": 0,\n        \"index\": \"467946.492442.492443.492448\",\n        \"node\": \"BCYg6IatSDePPVOfa138uw\",\n        \"reason\": {\n          \"type\": \"query_shard_exception\",\n          \"reason\": \"failed to create query: [nested] failed to find nested object under path [scp_review_data]\",\n          \"index_uuid\": \"QsT_xaPyT1CeybICTbI_pA\",\n          \"index\": \"467946.492442.492443.492448\",\n          \"caused_by\": {\n            \"type\": \"illegal_state_exception\",\n            \"reason\": \"[nested] failed to find nested object under path [scp_review_data]\"\n          }\n        }\n      }\n    ]\n  },\n  \"status\": 400\n}")
+DROP SCHEMA adw CASCADE;
