@@ -6,6 +6,7 @@ struct WalkContext {
     funcoid: pg_sys::Oid,
     targetlists: Vec<*mut pg_sys::List>,
     replacements: HashSet<pg_sys::Oid>,
+    modify_cnt: usize,
 }
 
 type NodePtr = *mut pg_sys::Node;
@@ -29,6 +30,7 @@ pub fn rewrite_opexrs(plan: *mut pg_sys::PlannedStmt) {
             funcoid,
             targetlists: Vec::new(),
             replacements: HashSet::new(),
+            modify_cnt: 0,
         };
 
         walk_node(plan as NodePtr, &mut context);
@@ -108,12 +110,24 @@ unsafe fn walk_plan(plan: *mut pg_sys::Plan, context: &mut WalkContext) {
     }
 
     let plan = PgBox::from_pg(plan);
-    context.targetlists.push(plan.targetlist);
+    let is_modify = is_a(plan.as_ptr() as NodePtr, pg_sys::NodeTag_T_ModifyTable);
+    if is_modify {
+        context.modify_cnt += 1;
+    }
+
+    if context.modify_cnt == 0 {
+        context.targetlists.push(plan.targetlist);
+    }
+
     walk_node(plan.targetlist as NodePtr, context);
     walk_node(plan.initPlan as NodePtr, context);
     walk_node(plan.lefttree as NodePtr, context);
     walk_node(plan.righttree as NodePtr, context);
     walk_node(plan.qual as NodePtr, context);
+
+    if is_modify {
+        context.modify_cnt -= 1;
+    }
 }
 
 #[allow(clippy::cognitive_complexity)]
