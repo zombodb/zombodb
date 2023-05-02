@@ -15,6 +15,7 @@ CREATE INDEX es_idx_adw_documents ON adw.documents
 CREATE TABLE adw.scope (
                            pk_scp bigint NOT NULL,
                            fk_scp_to_doc bigint,
+                           name text,
                            scp_review_data json
 );
 
@@ -66,10 +67,10 @@ INSERT INTO adw.documents values (20,'filenameB');
 INSERT INTO adw.documents values (30,'filenameC');
 INSERT INTO adw.documents values (40,'filenameD');
 
-INSERT INTO adw.scope values (100, 10, '[{"choice":"rock"},{"bucket":"sand"}]');
-INSERT INTO adw.scope values (200, 20, '[{"choice":"paper"},{"waves":"popemobile"}]');
-INSERT INTO adw.scope values (300, 30, '[{"choice":"scissors"},{"vehicle":"hydrant"}]');
-INSERT INTO adw.scope values (400, 40, '[{"choice":"lizard"},{"silica gel":"inedible"}]');
+INSERT INTO adw.scope values (100, 10, 'brandy', '[{"choice":"rock"},{"bucket":"sand"}]');
+INSERT INTO adw.scope values (200, 20, 'sally', '[{"choice":"paper"},{"waves":"popemobile"}]');
+INSERT INTO adw.scope values (300, 30, 'anchovy', '[{"choice":"scissors"},{"vehicle":"hydrant"}]');
+INSERT INTO adw.scope values (400, 40, 'cupid', '[{"choice":"lizard"},{"silica gel":"inedible"}]');
 
 select * from adw.scope_view order by pk_scp;
 select * from zdb.tally('adw.scope_view','doc_file_name',True,'^.*','pk_scp:[100,300]') limit 10;
@@ -78,5 +79,7 @@ select * from zdb.dump_query('adw.scope_view', 'scp_review_data.choice:lizard');
 select * from zdb.debug_query('adw.scope_view', 'scp_review_data.choice:lizard');
 select * from adw.scope_view where scope_view.zdb ==> 'scp_review_data.choice:lizard' order by pk_scp;
 select * from zdb.tally('adw.scope_view','doc_file_name',True,'^.*','scp_review_data.choice:lizard') limit 10;
+select * from zdb.tally('adw.scope_view','doc_file_name',True,'^.*','name:brandy') limit 10;
+select * from zdb.tally('adw.scope_view','doc_file_name',True,'^.*','name:cupid') limit 10;
 
 DROP SCHEMA adw CASCADE;
