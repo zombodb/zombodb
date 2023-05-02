@@ -557,13 +557,14 @@ impl<'input> Expr<'input> {
                 link.right_field.as_ref().unwrap(),
             )
         }
+        let original_index = &root_index;
         let root_index = if let Some(link) = target_link {
             link
         } else {
             &root_index
         };
 
-        assign_links(&root_index, &mut expr, index_links);
+        assign_links(original_index, &root_index, &mut expr, index_links);
         expand_index_links(&mut expr, &root_index, &mut relationship_manager);
         rewrite_proximity_chains(&mut expr);
         Ok(expr)
@@ -861,6 +862,17 @@ impl IndexLink {
             index: None,
             field: self.left_field.as_ref().unwrap().clone(),
         }
+    }
+
+    pub fn contains_field(&self, field_name: &str) -> std::result::Result<bool, &str> {
+        let relation = self.open_index()?;
+        for att in relation.tuple_desc().iter() {
+            if att.name() == field_name {
+                // the table behind this index link contains this field
+                return Ok(true);
+            }
+        }
+        Ok(false)
     }
 }
 
