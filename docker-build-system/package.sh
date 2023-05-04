@@ -68,12 +68,13 @@ fi
 #
 # cd into the package directory
 #
+ARTIFACTDIR=/artifacts
+
 if [ "$DEBUG" == "true" ] ; then
-  ARTIFACTDIR=/debug
+  BUILDDIR=/build/target/debug/zombodb-pg${PGVER}
 else
-  ARTIFACTDIR=/artifacts
+  BUILDDIR=/build/target/artifacts/zombodb-pg${PGVER}
 fi
-BUILDDIR=/build/target${ARTIFACTDIR}/zombodb-pg${PGVER}
 cd ${BUILDDIR} || exit $?
 
 # strip the binaries to make them smaller
