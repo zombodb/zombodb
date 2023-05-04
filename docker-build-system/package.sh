@@ -19,6 +19,7 @@
 PGVER=$1
 IMAGE=$2
 PGRX_VERSION=$3
+DEBUG=$4
 
 if [ "x${PGVER}" == "x" ] || [ "x${IMAGE}" == "x" ] ; then
 	echo 'usage:  ./package.sh <PGVER> <image>'
@@ -58,7 +59,11 @@ cargo install cargo-pgrx --version $PGRX_VERSION --locked
 #
 # build the extension
 #
-cargo pgrx package --profile artifacts || exit $?
+if [ "$DEBUG" == "true" ] ; then
+  cargo pgrx package --debug || exit $?
+else
+  cargo pgrx package --profile artifacts || exit $?
+fi
 
 #
 # cd into the package directory
