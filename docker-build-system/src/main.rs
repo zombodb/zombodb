@@ -338,10 +338,11 @@ fn docker_run(
         .arg("./docker-build-system/package.sh ${pgver} ${image} ${pgrx_version} ${debug}");
 
     println!(
-        "{} {} for pg{}",
+        "{} {} for pg{} as {}",
         "   Packaging".bold().green(),
         image,
-        pgver
+        pgver,
+        if debug { "--debug" } else { "--release" }
     );
 
     let command_str = format!("{:?}", command);
