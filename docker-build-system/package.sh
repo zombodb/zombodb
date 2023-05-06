@@ -77,8 +77,10 @@ else
 fi
 cd ${BUILDDIR} || exit $?
 
-# strip the binaries to make them smaller
-find ./ -name "*.so" -exec strip {} \;
+if [ "$DEBUG" == "false" ] ; then
+  # strip the binaries to make them smaller
+  find ./ -name "*.so" -exec strip {} \;
+fi
 
 #
 # then use 'fpm' to build either a .deb, .rpm or .apk
