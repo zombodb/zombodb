@@ -36,11 +36,11 @@ pgrx = "=0.8.3"
 rayon = "1.7.0"
 regex = { version = "1.8.1", features = [ "unicode-case"] }
 rustc-hash = "1.1.0"
-serde = { version = "1.0.160", features = [ "derive" ] }
+serde = { version = "1.0.162", features = [ "derive" ] }
 serde_json = { version = "1.0.96", features = [ "preserve_order" ] }
 serde_cbor = "0.11.2"
 sqlformat = "0.2.1"
-time = "0.3.20"
+time = "0.3.21"
 unicode-segmentation = "1.10.1"
 ureq = { version = "2.6.2", features = [ "json" ] }
 url = "2.3.1"
@@ -51,7 +51,7 @@ built = { version = "0.6.0", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
 pgrx-tests = "=0.8.3"
-libc = "0.2.142"
+libc = "0.2.144"
 
 [profile.dev]
 panic = "unwind"
