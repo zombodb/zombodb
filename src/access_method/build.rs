@@ -1,30 +1,23 @@
+use pgrx::*;
+
 use crate::access_method::options::ZDBIndexOptions;
 use crate::access_method::triggers::create_triggers;
-use crate::elasticsearch::{Elasticsearch, ElasticsearchBulkRequest};
-use crate::executor_manager::get_executor_manager;
+use crate::elasticsearch::Elasticsearch;
+use crate::executor_manager::{get_executor_manager, BulkContext};
 use crate::gucs::ZDB_LOG_LEVEL;
 use crate::json::builder::JsonBuilder;
 use crate::mapping::{categorize_tupdesc, generate_default_mapping, CategorizedAttribute};
 use crate::utils::{count_non_shadow_zdb_indices, lookup_zdb_index_tupdesc};
-use pgrx::*;
 
 struct BuildState<'a> {
-    bulk: &'a mut ElasticsearchBulkRequest,
-    tupdesc: &'a PgTupleDesc<'a>,
-    attributes: Vec<CategorizedAttribute<'a>>,
+    bulk: &'a mut BulkContext,
     memcxt: PgMemoryContexts,
 }
 
 impl<'a> BuildState<'a> {
-    fn new(
-        bulk: &'a mut ElasticsearchBulkRequest,
-        tupdesc: &'a PgTupleDesc,
-        attributes: Vec<CategorizedAttribute<'a>>,
-    ) -> Self {
+    fn new(bulk: &'a mut BulkContext) -> Self {
         BuildState {
             bulk,
-            tupdesc,
-            attributes,
             memcxt: PgMemoryContexts::new("zombodb build context"),
         }
     }
@@ -67,7 +60,7 @@ pub extern "C" fn ambuild(
     let tupdesc = lookup_zdb_index_tupdesc(&index_relation);
 
     let mut mapping = generate_default_mapping(&heap_relation);
-    let attributes = categorize_tupdesc(&tupdesc, &heap_relation, Some(&mut mapping));
+    let _ = categorize_tupdesc(&tupdesc, &heap_relation, Some(&mut mapping));
 
     // delete any existing Elasticsearch index with the same name as this one we're about to create
     elasticsearch
@@ -93,14 +86,7 @@ pub extern "C" fn ambuild(
         }
     });
 
-    let ntuples = do_heap_scan(
-        index_info,
-        &heap_relation,
-        &index_relation,
-        &tupdesc,
-        attributes,
-        &elasticsearch,
-    );
+    let ntuples = do_heap_scan(index_info, &heap_relation, &index_relation, &elasticsearch);
 
     // update the index settings, such as refresh_interval and number of replicas
     elasticsearch
@@ -130,17 +116,10 @@ fn do_heap_scan<'a>(
     index_info: *mut pg_sys::IndexInfo,
     heap_relation: &'a PgRelation,
     index_relation: &'a PgRelation,
-    tupdesc: &'a PgTupleDesc,
-    attributes: Vec<CategorizedAttribute<'a>>,
     elasticsearch: &Elasticsearch,
 ) -> usize {
-    let mut state = BuildState::new(
-        &mut get_executor_manager()
-            .checkout_bulk_context(index_relation.oid())
-            .bulk,
-        &tupdesc,
-        attributes,
-    );
+    let bulk_context = get_executor_manager().checkout_bulk_context(index_relation.oid());
+    let mut state = BuildState::new(bulk_context);
 
     unsafe {
         pg_sys::IndexBuildHeapScan(
@@ -152,7 +131,7 @@ fn do_heap_scan<'a>(
         );
     }
 
-    let (ntuples, nrequests) = state.bulk.totals();
+    let (ntuples, nrequests) = state.bulk.es_bulk_request.totals();
 
     ZDB_LOG_LEVEL.get().log(&format!(
         "[zombodb] indexed {} rows to {} in {} requests",
@@ -210,13 +189,13 @@ unsafe fn aminsert_internal(
     }
 
     let values = std::slice::from_raw_parts(values, 1);
-    let builder = row_to_json(values[0], bulk.tupdesc, &bulk.attributes);
+    let builder = row_to_json(values[0], bulk);
     let cmin = pg_sys::GetCurrentCommandId(true);
     let cmax = cmin;
     let xmin = xid_to_64bit(pg_sys::GetCurrentTransactionId());
     let xmax = pg_sys::InvalidTransactionId as u64;
 
-    bulk.bulk
+    bulk.es_bulk_request
         .insert(*heap_tid, cmin, cmax, xmin, xmax, builder)
         .expect("Unable to send tuple for insert");
 
@@ -264,7 +243,7 @@ unsafe extern "C" fn build_callback_internal(
     let mut old_context = state.memcxt.set_as_current();
 
     let values = std::slice::from_raw_parts(values, 1);
-    let builder = row_to_json(values[0], &state.tupdesc, &state.attributes);
+    let builder = row_to_json(values[0], &state.bulk);
 
     let cmin = pg_sys::FirstCommandId;
     let cmax = cmin;
@@ -274,6 +253,7 @@ unsafe extern "C" fn build_callback_internal(
 
     state
         .bulk
+        .es_bulk_request
         .insert(ctid, cmin, cmax, xmin, xmax, builder)
         .expect("Unable to send tuple for insert");
 
@@ -281,18 +261,14 @@ unsafe extern "C" fn build_callback_internal(
     state.memcxt.reset();
 }
 
-unsafe fn row_to_json<'a>(
-    row: pg_sys::Datum,
-    tupdesc: &'a PgTupleDesc,
-    attributes: &'a [CategorizedAttribute<'a>],
-) -> JsonBuilder<'a> {
-    let mut builder = JsonBuilder::new(attributes.len());
+unsafe fn row_to_json(row: pg_sys::Datum, bulk: &BulkContext) -> JsonBuilder {
+    let mut builder = JsonBuilder::new(bulk.attributes.len());
 
-    for (attr, datum) in decon_row(tupdesc, attributes, row)
+    for (attr, datum) in decon_row(bulk, row)
         .filter(|item| item.is_some())
         .map(|item| item.unwrap())
     {
-        (attr.conversion_func)(&mut builder, attr.attname, datum, attr.typoid);
+        (attr.conversion_func)(&mut builder, attr.attname.clone(), datum, attr.typoid);
     }
 
     builder
@@ -300,10 +276,9 @@ unsafe fn row_to_json<'a>(
 
 #[inline]
 unsafe fn decon_row<'a>(
-    tupdesc: &'a PgTupleDesc,
-    attributes: &'a [CategorizedAttribute<'a>],
+    bulk: &'a BulkContext,
     row: pg_sys::Datum,
-) -> impl std::iter::Iterator<Item = Option<(&'a CategorizedAttribute<'a>, pg_sys::Datum)>> + 'a {
+) -> impl std::iter::Iterator<Item = Option<(&'a CategorizedAttribute, pg_sys::Datum)>> + 'a {
     let td =
         pg_sys::pg_detoast_datum(row.cast_mut_ptr::<pg_sys::varlena>()) as pg_sys::HeapTupleHeader;
     let mut tmptup = pg_sys::HeapTupleData {
@@ -313,19 +288,19 @@ unsafe fn decon_row<'a>(
         t_data: td,
     };
 
-    let mut datums = vec![pg_sys::Datum::from(0); tupdesc.natts as usize];
-    let mut nulls = vec![false; tupdesc.natts as usize];
+    let mut datums = vec![pg_sys::Datum::from(0 as usize); bulk.natts];
+    let mut nulls = vec![false; bulk.natts];
 
     pg_sys::heap_deform_tuple(
         &mut tmptup,
-        tupdesc.as_ptr(),
+        bulk.tupdesc.as_ptr(),
         datums.as_mut_ptr(),
         nulls.as_mut_ptr(),
     );
 
     let mut drop_cnt = 0;
-    (0..tupdesc.natts as usize).into_iter().map(move |idx| {
-        let is_dropped = tupdesc.get(idx).unwrap().is_dropped();
+    (0..bulk.natts).into_iter().map(move |idx| {
+        let is_dropped = *bulk.dropped.get(idx).unwrap() == true;
 
         if is_dropped {
             drop_cnt += 1;
@@ -333,7 +308,7 @@ unsafe fn decon_row<'a>(
         } else if nulls[idx] {
             None
         } else {
-            Some((&attributes[idx - drop_cnt], *&datums[idx]))
+            Some((&bulk.attributes[idx - drop_cnt], *&datums[idx]))
         }
     })
 }

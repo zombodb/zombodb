@@ -1,6 +1,7 @@
 use crate::elasticsearch::{Elasticsearch, ElasticsearchBulkRequest};
 use crate::mapping::{categorize_tupdesc, CategorizedAttribute};
 use crate::utils::{find_zdb_index, lookup_all_zdb_index_oids, lookup_zdb_index_tupdesc};
+use pgrx::pg_sys::Oid;
 use pgrx::*;
 use std::collections::{HashMap, HashSet};
 
@@ -10,16 +11,18 @@ pub mod hooks;
 
 static mut EXECUTOR_MANAGER: ExecutorManager = ExecutorManager::new();
 
-pub fn get_executor_manager() -> &'static mut ExecutorManager<'static> {
+pub fn get_executor_manager() -> &'static mut ExecutorManager {
     unsafe { &mut EXECUTOR_MANAGER }
 }
 
-pub struct BulkContext<'a> {
+pub struct BulkContext {
     pub elasticsearch: Elasticsearch,
-    pub bulk: ElasticsearchBulkRequest,
-    pub attributes: Vec<CategorizedAttribute<'a>>,
-    pub tupdesc: &'a PgTupleDesc<'a>,
+    pub es_bulk_request: ElasticsearchBulkRequest,
+    pub attributes: Vec<CategorizedAttribute>,
+    pub natts: usize,
+    pub dropped: Vec<bool>,
     pub is_shadow: bool,
+    pub tupdesc: PgTupleDesc<'static>,
 }
 
 pub struct QueryState {
@@ -206,18 +209,16 @@ impl QueryState {
     }
 }
 
-pub struct ExecutorManager<'a> {
-    tuple_descriptors: Option<HashMap<pg_sys::Oid, PgTupleDesc<'static>>>,
-    bulk_requests: Option<HashMap<pg_sys::Oid, BulkContext<'a>>>,
+pub struct ExecutorManager {
+    bulk_requests: Option<HashMap<pg_sys::Oid, BulkContext>>,
     xids: Option<HashSet<pg_sys::TransactionId>>,
     query_stack: Option<Vec<(*mut pg_sys::QueryDesc, QueryState)>>,
     hooks_registered: bool,
 }
 
-impl<'a> ExecutorManager<'a> {
+impl ExecutorManager {
     pub const fn new() -> Self {
         ExecutorManager {
-            tuple_descriptors: None,
             bulk_requests: None,
             xids: None,
             query_stack: None,
@@ -261,7 +262,7 @@ impl<'a> ExecutorManager<'a> {
 
             if let Some(bulk_requests) = self.bulk_requests.as_mut() {
                 for (_, bulk) in bulk_requests.iter_mut() {
-                    bulk.bulk
+                    bulk.es_bulk_request
                         .transaction_in_progress(xid)
                         .expect("Failed to mark transaction as in progress for existing bulk");
                 }
@@ -306,21 +307,25 @@ impl<'a> ExecutorManager<'a> {
             {
                 let elasticsearch = bulk.elasticsearch;
                 let attributes = bulk.attributes;
+                let natts = bulk.natts;
+                let dropped = bulk.dropped;
                 let tupdesc = bulk.tupdesc;
 
-                if let Err(e) = bulk.bulk.finish() {
+                if let Err(e) = bulk.es_bulk_request.finish() {
                     panic!("{:?}", e)
                 }
 
-                let bulk = elasticsearch.start_bulk();
+                let es_bulk_request = elasticsearch.start_bulk();
                 replacement_requests.insert(
                     key,
                     BulkContext {
                         elasticsearch,
-                        bulk,
+                        es_bulk_request,
                         attributes,
-                        tupdesc,
+                        natts,
+                        dropped,
                         is_shadow: false,
+                        tupdesc,
                     },
                 );
             }
@@ -338,12 +343,12 @@ impl<'a> ExecutorManager<'a> {
             // shadow indexes don't do anything
             {
                 for xid in self.xids.as_ref().unwrap().iter() {
-                    bulk.bulk
+                    bulk.es_bulk_request
                         .transaction_committed(*xid)
                         .expect("failed to mark transaction as committed");
                 }
 
-                if let Err(e) = bulk.bulk.finish() {
+                if let Err(e) = bulk.es_bulk_request.finish() {
                     panic!("{:?}", e);
                 }
             }
@@ -358,45 +363,31 @@ impl<'a> ExecutorManager<'a> {
                 .filter(|(_, bulk)| !bulk.is_shadow)
             // shadow indexes don't do anything
             {
-                bulk.bulk.terminate_now();
+                bulk.es_bulk_request.terminate_now();
             }
         }
     }
 
     fn cleanup(&mut self) {
-        self.tuple_descriptors.take();
         self.bulk_requests.take();
         self.xids.take();
         self.query_stack.take();
         self.hooks_registered = false;
     }
 
-    pub fn checkout_bulk_context(
-        &'static mut self,
-        relid: pg_sys::Oid,
-    ) -> &'static mut BulkContext {
+    pub fn checkout_bulk_context(&'static mut self, indexrelid: Oid) -> &'static mut BulkContext {
         if self.bulk_requests.is_none() {
             self.bulk_requests.replace(HashMap::new());
-            self.tuple_descriptors.replace(HashMap::new());
             self.xids.replace(HashSet::new());
         }
 
-        let tupdesc_map = self.tuple_descriptors.as_mut().unwrap();
-        let tupdesc = tupdesc_map.entry(relid).or_insert_with(|| {
-            let indexrel = unsafe {
-                PgRelation::with_lock(relid, pg_sys::AccessShareLock as pg_sys::LOCKMODE)
-            };
-            lookup_zdb_index_tupdesc(&indexrel)
-        });
-
         let bulk_map = self.bulk_requests.as_mut().unwrap();
         let xids = &self.xids;
-        bulk_map.entry(relid).or_insert_with(move || {
-            let indexrel = unsafe {
-                PgRelation::with_lock(relid, pg_sys::AccessShareLock as pg_sys::LOCKMODE)
-            };
+        bulk_map.entry(indexrelid).or_insert_with(move || {
+            let indexrel = unsafe { PgRelation::open(indexrelid) };
             let elasticsearch = Elasticsearch::new(&indexrel);
-            let attributes = categorize_tupdesc(tupdesc, &indexrel.heap_relation().unwrap(), None);
+            let tupdesc = lookup_zdb_index_tupdesc(&indexrel); // this is allocated in TopTransactionContext, which as far as we're concerned is effectively the `'static` lifetime
+            let attributes = categorize_tupdesc(&tupdesc, &indexrel.heap_relation().unwrap(), None);
 
             if !get_executor_manager().hooks_registered {
                 // called when the top-level transaction commits
@@ -424,7 +415,7 @@ impl<'a> ExecutorManager<'a> {
             }
 
             let is_shadow = elasticsearch.is_shadow_index();
-            let mut bulk = elasticsearch.start_bulk();
+            let mut es_bulk_request = elasticsearch.start_bulk();
 
             // only non-shadow indexes are written to
             if !is_shadow {
@@ -432,7 +423,8 @@ impl<'a> ExecutorManager<'a> {
                 // also in progress for this new bulk context too
                 if let Some(xids) = xids.as_ref() {
                     for xid in xids {
-                        bulk.transaction_in_progress(*xid)
+                        es_bulk_request
+                            .transaction_in_progress(*xid)
                             .expect("Failed to mark transaction as in progress for new bulk");
                     }
                 }
@@ -440,10 +432,14 @@ impl<'a> ExecutorManager<'a> {
 
             BulkContext {
                 elasticsearch,
-                bulk,
+                es_bulk_request,
                 attributes,
-                tupdesc,
+                natts: tupdesc.natts as _,
+                dropped: (0..tupdesc.natts as usize)
+                    .map(|i| tupdesc.get(i).unwrap().is_dropped())
+                    .collect(),
                 is_shadow,
+                tupdesc,
             }
         })
     }

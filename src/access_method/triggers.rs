@@ -42,7 +42,7 @@ fn zdb_update_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
 
         let bulk = get_executor_manager().checkout_bulk_context(index_relid);
         if !bulk.is_shadow {
-            bulk.bulk
+            bulk.es_bulk_request
                 .update(
                     tid,
                     pg_sys::GetCurrentCommandId(true),
@@ -94,7 +94,7 @@ fn zdb_delete_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
 
         let bulk = get_executor_manager().checkout_bulk_context(index_relid);
         if !bulk.is_shadow {
-            bulk.bulk
+            bulk.es_bulk_request
                 .delete(
                     tid,
                     pg_sys::GetCurrentCommandId(true),

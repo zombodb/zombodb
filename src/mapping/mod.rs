@@ -22,20 +22,20 @@ fn reapply_mapping(index_relation: PgRelation) -> bool {
     true
 }
 
-type ConversionFunc<'a> = dyn Fn(&mut JsonBuilder<'a>, &'a str, pg_sys::Datum, pg_sys::Oid);
-pub struct CategorizedAttribute<'a> {
-    pub attname: &'a str,
+type ConversionFunc = dyn Fn(&mut JsonBuilder, String, pg_sys::Datum, pg_sys::Oid);
+pub struct CategorizedAttribute {
+    pub attname: String,
     pub typoid: pg_sys::Oid,
-    pub conversion_func: Box<ConversionFunc<'a>>,
+    pub conversion_func: Box<ConversionFunc>,
     pub attno: usize,
 }
 
 #[allow(clippy::cognitive_complexity)]
-pub fn categorize_tupdesc<'a>(
-    tupdesc: &'a PgTupleDesc,
+pub fn categorize_tupdesc(
+    tupdesc: &PgTupleDesc,
     heap_relation: &PgRelation,
     mut mapping: Option<&mut HashMap<String, serde_json::Value>>,
-) -> Vec<CategorizedAttribute<'a>> {
+) -> Vec<CategorizedAttribute> {
     let mut categorized_attributes = Vec::with_capacity(tupdesc.len());
     let type_conversion_cache = lookup_type_conversions();
     let user_mappings = if mapping.is_some() {
@@ -442,9 +442,8 @@ pub fn categorize_tupdesc<'a>(
 
         let attname = serde_json::to_string(&json! {attname})
             .expect("failed to convert attribute name to json");
-        let attname = PgMemoryContexts::TopTransactionContext.leak_and_drop_on_delete(attname);
         categorized_attributes.push(CategorizedAttribute {
-            attname: unsafe { attname.as_ref().unwrap() },
+            attname,
             typoid: typoid.value(),
             conversion_func,
             attno,
@@ -454,10 +453,7 @@ pub fn categorize_tupdesc<'a>(
     categorized_attributes
 }
 
-fn handle_as_generic_string<'a>(
-    is_array: bool,
-    base_type_oid: pg_sys::Oid,
-) -> Box<ConversionFunc<'a>> {
+fn handle_as_generic_string(is_array: bool, base_type_oid: pg_sys::Oid) -> Box<ConversionFunc> {
     let mut output_func = pg_sys::InvalidOid;
     let mut is_varlena = false;
 
