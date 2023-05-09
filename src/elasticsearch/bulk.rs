@@ -21,15 +21,15 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 #[derive(Debug)]
-pub enum BulkRequestCommand<'a> {
+pub enum BulkRequestCommand {
     Insert {
-        prior_update: Option<Box<BulkRequestCommand<'a>>>,
+        prior_update: Option<Box<BulkRequestCommand>>,
         ctid: u64,
         cmin: pg_sys::CommandId,
         cmax: pg_sys::CommandId,
         xmin: u64,
         xmax: u64,
-        builder: JsonBuilder<'a>,
+        builder: JsonBuilder,
     },
     Update {
         ctid: u64,
@@ -208,7 +208,7 @@ impl ElasticsearchBulkRequest {
         cmax: pg_sys::CommandId,
         xmin: u64,
         xmax: u64,
-        builder: JsonBuilder<'static>,
+        builder: JsonBuilder,
     ) -> Result<(), crossbeam::channel::SendError<BulkRequestCommand>> {
         self.handler.check_for_error();
 
@@ -351,9 +351,9 @@ pub(crate) struct Handler {
     when_started: Instant,
     terminated: Arc<AtomicBool>,
     threads: Vec<Option<JoinHandle<usize>>>,
-    prior_update: Option<BulkRequestCommand<'static>>,
+    prior_update: Option<BulkRequestCommand>,
     in_flight: Arc<DashSet<u64, BuildHasherDefault<FxHasher>>>,
-    deferred: Vec<BulkRequestCommand<'static>>,
+    deferred: Vec<BulkRequestCommand>,
     total_docs: usize,
     active_threads: Arc<AtomicUsize>,
     successful_requests: Arc<AtomicUsize>,
@@ -361,18 +361,18 @@ pub(crate) struct Handler {
     concurrency: usize,
     batch_size: usize,
     queue_size: usize,
-    bulk_sender: Option<crossbeam::channel::Sender<BulkRequestCommand<'static>>>,
-    bulk_receiver: crossbeam::channel::Receiver<BulkRequestCommand<'static>>,
+    bulk_sender: Option<crossbeam::channel::Sender<BulkRequestCommand>>,
+    bulk_receiver: crossbeam::channel::Receiver<BulkRequestCommand>,
     error_sender: crossbeam::channel::Sender<BulkRequestError>,
     error_receiver: crossbeam::channel::Receiver<BulkRequestError>,
     current_xid: Option<pg_sys::TransactionId>,
 }
 
-struct BulkReceiver<'a> {
+struct BulkReceiver {
     terminated: Arc<AtomicBool>,
-    first: Option<BulkRequestCommand<'a>>,
+    first: Option<BulkRequestCommand>,
     consumed: HashSet<u64>,
-    receiver: crossbeam::channel::Receiver<BulkRequestCommand<'a>>,
+    receiver: crossbeam::channel::Receiver<BulkRequestCommand>,
     bytes_out: usize,
     docs_out: usize,
     buffer: Vec<u8>,
@@ -381,7 +381,7 @@ struct BulkReceiver<'a> {
     queue_size: usize,
 }
 
-impl<'a> std::io::Read for BulkReceiver<'a> {
+impl std::io::Read for BulkReceiver {
     fn read(&mut self, mut buf: &mut [u8]) -> Result<usize, Error> {
         // were we asked to terminate?
         if self.terminated.load(Ordering::SeqCst) {
@@ -444,8 +444,8 @@ impl<'a> std::io::Read for BulkReceiver<'a> {
     }
 }
 
-impl<'a> BulkReceiver<'a> {
-    fn serialize_command(&mut self, command: BulkRequestCommand<'a>) {
+impl BulkReceiver {
+    fn serialize_command(&mut self, command: BulkRequestCommand) {
         self.docs_out += 1;
 
         // build json of this entire command and store in self.bytes
@@ -477,14 +477,14 @@ impl<'a> BulkReceiver<'a> {
                 .expect("failed to serialize index line");
                 self.buffer.push(b'\n');
 
-                doc.add_u64("\"zdb_ctid\"", ctid);
-                doc.add_u32("\"zdb_cmin\"", cmin);
+                doc.add_u64("\"zdb_ctid\"".into(), ctid);
+                doc.add_u32("\"zdb_cmin\"".into(), cmin);
                 if cmax as pg_sys::CommandId != pg_sys::InvalidCommandId {
-                    doc.add_u32("\"zdb_cmax\"", cmax);
+                    doc.add_u32("\"zdb_cmax\"".into(), cmax);
                 }
-                doc.add_u64("\"zdb_xmin\"", xmin);
+                doc.add_u64("\"zdb_xmin\"".into(), xmin);
                 if xmax as pg_sys::TransactionId != pg_sys::InvalidTransactionId {
-                    doc.add_u64("\"zdb_xmax\"", xmax);
+                    doc.add_u64("\"zdb_xmax\"".into(), xmax);
                 }
 
                 doc.build(&mut self.buffer);
@@ -724,16 +724,16 @@ impl Handler {
 
     pub fn queue_command(
         &mut self,
-        command: BulkRequestCommand<'static>,
-    ) -> Result<(), crossbeam::channel::SendError<BulkRequestCommand<'static>>> {
+        command: BulkRequestCommand,
+    ) -> Result<(), crossbeam::channel::SendError<BulkRequestCommand>> {
         self.queue_command_ex(command, false)
     }
 
     pub fn queue_command_ex(
         &mut self,
-        mut command: BulkRequestCommand<'static>,
+        mut command: BulkRequestCommand,
         is_deferred: bool,
-    ) -> Result<(), crossbeam::channel::SendError<BulkRequestCommand<'static>>> {
+    ) -> Result<(), crossbeam::channel::SendError<BulkRequestCommand>> {
         if is_deferred == false && self.current_xid.is_none() {
             match &command {
                 BulkRequestCommand::Insert { .. } | BulkRequestCommand::Update { .. } => {
