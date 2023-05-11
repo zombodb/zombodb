@@ -1,0 +1,68 @@
+select count(*) from so_posts where so_posts ==> 'body: "java is*"';
+ count 
+-------
+   859
+(1 row)
+
+select count(*) from so_posts where so_posts ==> '({
+ "match_phrase_prefix": {
+   "body": {
+     "query": "java is",
+     "boost": 1.0,
+     "max_expansions": 2147483647
+   }
+ }
+})';
+ count 
+-------
+   859
+(1 row)
+
+select zdb.dump_query('so_posts', 'body: "java is*"');
+             dump_query             
+------------------------------------
+ {                                 +
+   "match_phrase_prefix": {        +
+     "body": {                     +
+       "query": "java is",         +
+       "boost": 1.0,               +
+       "max_expansions": 2147483647+
+     }                             +
+   }                               +
+ }
+(1 row)
+
+select count(*) from so_posts where so_posts ==> 'body: "java i*"';
+ count 
+-------
+  2075
+(1 row)
+
+select count(*) from so_posts where so_posts ==> '({
+ "match_phrase_prefix": {
+   "body": {
+     "query": "java i",
+     "boost": 1.0,
+     "max_expansions": 2147483647
+   }
+ }
+})';
+ count 
+-------
+  2075
+(1 row)
+
+select zdb.dump_query('so_posts', 'body: "java i*"');
+             dump_query             
+------------------------------------
+ {                                 +
+   "match_phrase_prefix": {        +
+     "body": {                     +
+       "query": "java i",          +
+       "boost": 1.0,               +
+       "max_expansions": 2147483647+
+     }                             +
+   }                               +
+ }
+(1 row)
+

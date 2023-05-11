@@ -321,9 +321,9 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
             } else {
                 if s.contains('\\') {
                     let s = unescape(s);
-                    json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0) } } } }
+                    json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0), "max_expansions": 2147483647 } } } }
                 } else {
-                    json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0) } } } }
+                    json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0), "max_expansions": 2147483647 } } } }
                 }
             }
         }
