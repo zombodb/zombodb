@@ -1,6 +1,6 @@
 [![logo](logo.png)](https://www.zombodb.com/)
 
-###### Making Postgres and Elasticsearch work together like it's 2022
+###### Making Postgres and Elasticsearch work together like it's 2023
 
 ![cargo test --all](https://github.com/zombodb/zombodb/workflows/cargo%20pgrx%20test%20pgrxX/badge.svg)
 [![Twitter Follow](https://img.shields.io/twitter/follow/zombodb.svg?style=flat)](https://twitter.com/zombodb)
