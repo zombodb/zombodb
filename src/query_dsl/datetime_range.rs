@@ -14,7 +14,9 @@ mod pg_catalog {
 
 #[pgrx::pg_schema]
 mod dsl {
-    use crate::misc::timestamp_support::{ZDBTimestamp, ZDBTimestampWithTimeZone};
+    use crate::misc::timestamp_support::{
+        ZDBDate, ZDBTime, ZDBTimeWithTimeZone, ZDBTimestamp, ZDBTimestampWithTimeZone,
+    };
     use crate::query_dsl::datetime_range::pg_catalog::*;
     use crate::zdbquery::ZDBQuery;
     use pgrx::*;
@@ -46,11 +48,11 @@ mod dsl {
         boost: default!(Option<f32>, NULL),
         relation: default!(Option<Relation>, "'intersects'"),
     ) -> ZDBQuery {
-        let datetime_range = DateTimeRange {
-            lt,
-            lte,
-            gt,
-            gte,
+        let datetime_range = DateTimeRange::<ZDBDate> {
+            lt: lt.map(|t| t.into()),
+            lte: lte.map(|t| t.into()),
+            gt: gt.map(|t| t.into()),
+            gte: gte.map(|t| t.into()),
             boost,
             relation,
         };
@@ -67,11 +69,11 @@ mod dsl {
         boost: default!(Option<f32>, NULL),
         relation: default!(Option<Relation>, "'intersects'"),
     ) -> ZDBQuery {
-        let datetime_range: DateTimeRange<Time> = DateTimeRange {
-            lt,
-            lte,
-            gt,
-            gte,
+        let datetime_range: DateTimeRange<ZDBTime> = DateTimeRange {
+            lt: lt.map(|t| t.into()),
+            lte: lte.map(|t| t.into()),
+            gt: gt.map(|t| t.into()),
+            gte: gte.map(|t| t.into()),
             boost,
             relation,
         };
@@ -130,11 +132,11 @@ mod dsl {
         boost: default!(Option<f32>, NULL),
         relation: default!(Option<Relation>, "'intersects'"),
     ) -> ZDBQuery {
-        let datetime_range: DateTimeRange<TimeWithTimeZone> = DateTimeRange {
-            lt,
-            lte,
-            gt,
-            gte,
+        let datetime_range: DateTimeRange<ZDBTimeWithTimeZone> = DateTimeRange {
+            lt: lt.map(|t| t.into()),
+            lte: lte.map(|t| t.into()),
+            gt: gt.map(|t| t.into()),
+            gte: gte.map(|t| t.into()),
             boost,
             relation,
         };
@@ -258,10 +260,10 @@ mod tests {
                 {
                     "range": {
                         "fieldname": {
-                            "lt": "12:34:56-07",
-                            "gt": "21:43:54-07",
-                            "lte": "10:34:24-07",
-                            "gte": "09:45:30-07",
+                            "lt": "12:34:56-0700",
+                            "gt": "21:43:54-0700",
+                            "lte": "10:34:24-0700",
+                            "gte": "09:45:30-0700",
                             "boost": 5.0 as f32,
                             "relation": "contains"
                         }
@@ -330,10 +332,10 @@ mod tests {
                 {
                     "range": {
                         "fieldname": {
-                            "lt": "2003-01-02T19:34:56-00",
-                            "gt": "2006-04-06T04:43:54-00",
-                            "lte": "2009-07-08T17:34:24-00",
-                            "gte": "2012-10-11T16:45:30-00",
+                            "lt": "2003-01-02T19:34:56+00:00",
+                            "gt": "2006-04-06T04:43:54+00:00",
+                            "lte": "2009-07-08T17:34:24+00:00",
+                            "gte": "2012-10-11T16:45:30+00:00",
                             "boost": 5.0 as f32,
                             "relation": "contains"
                         }

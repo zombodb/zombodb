@@ -91,14 +91,14 @@ impl ElasticsearchAnalyzerRequest {
         }
     }
 
-    pub fn new_custom(
+    pub fn new_custom<'a>(
         elasticsearch: &Elasticsearch,
-        field: Option<&str>,
-        text: Option<&str>,
-        tokenizer: Option<&str>,
-        normalizer: Option<&str>,
-        filter: Option<Array<&str>>,
-        char_filter: Option<Array<&str>>,
+        field: Option<&'a str>,
+        text: Option<&'a str>,
+        tokenizer: Option<&'a str>,
+        normalizer: Option<&'a str>,
+        filter: Option<Array<'a, &'a str>>,
+        char_filter: Option<Array<'a, &'a str>>,
     ) -> ElasticsearchAnalyzerRequest {
         let custom = Custom {
             field,
@@ -157,14 +157,14 @@ pub(crate) fn analyze_with_field(
 }
 
 #[pg_extern(immutable, parallel_safe)]
-fn analyze_custom(
+fn analyze_custom<'a>(
     index: PgRelation,
-    field: default!(Option<&str>, NULL),
-    text: default!(Option<&str>, NULL),
-    tokenizer: default!(Option<&str>, NULL),
-    normalizer: default!(Option<&str>, NULL),
-    filter: default!(Option<Array<&str>>, NULL),
-    char_filter: default!(Option<Array<&str>>, NULL),
+    field: default!(Option<&'a str>, NULL),
+    text: default!(Option<&'a str>, NULL),
+    tokenizer: default!(Option<&'a str>, NULL),
+    normalizer: default!(Option<&'a str>, NULL),
+    filter: default!(Option<Array<'a, &'a str>>, NULL),
+    char_filter: default!(Option<Array<'a, &'a str>>, NULL),
 ) -> TableIterator<
     'static,
     (

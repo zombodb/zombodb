@@ -168,15 +168,15 @@ mod dsl {
     }
 
     #[pg_extern(immutable, parallel_safe)]
-    fn multi_match(
-        fields: Array<&str>,
-        query: &str,
+    fn multi_match<'a>(
+        fields: Array<'a, &'a str>,
+        query: &'a str,
         boost: default!(Option<f32>, NULL),
-        analyzer: default!(Option<&str>, NULL),
+        analyzer: default!(Option<&'a str>, NULL),
         minimum_should_match: default!(Option<i32>, NULL),
         lenient: default!(Option<bool>, NULL),
         fuzziness: default!(Option<i32>, NULL),
-        fuzzy_rewrite: default!(Option<&str>, NULL),
+        fuzzy_rewrite: default!(Option<&'a str>, NULL),
         fuzzy_transpositions: default!(Option<bool>, NULL),
         prefix_length: default!(Option<i32>, NULL),
         cutoff_frequency: default!(Option<f32>, NULL),

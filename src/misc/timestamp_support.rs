@@ -1,10 +1,9 @@
-use pgrx::{Timestamp, TimestampWithTimeZone};
-use std::convert::TryInto;
-use time::format_description::FormatItem;
+use pgrx::{Date, Time, TimeWithTimeZone, Timestamp, TimestampWithTimeZone, ToIsoString};
+use serde::{Serialize, Serializer};
 
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct ZDBTimestamp(time::PrimitiveDateTime);
+pub struct ZDBTimestamp(pub String);
 
 #[derive(Debug)]
 #[repr(transparent)]
@@ -20,112 +19,81 @@ pub struct ZDBDate(pub String);
 
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct ZDBTimestampWithTimeZone(time::OffsetDateTime);
+pub struct ZDBTimestampWithTimeZone(pub String);
 
 impl From<Timestamp> for ZDBTimestamp {
     fn from(ts: Timestamp) -> Self {
-        ZDBTimestamp(
-            ts.try_into()
-                .expect("failed to convert pgrx::Timestamp to ZDBTimestamp"),
-        )
+        ZDBTimestamp(ts.to_iso_string_with_timezone("UTC").unwrap() + "-00")
     }
 }
 
 impl From<TimestampWithTimeZone> for ZDBTimestampWithTimeZone {
     fn from(tsz: TimestampWithTimeZone) -> Self {
-        ZDBTimestampWithTimeZone(
-            tsz.try_into().expect(
-                "failed to convert pgrx::TimestampWithTimeZone to ZDBTimestampWithTimeZone",
-            ),
-        )
+        ZDBTimestampWithTimeZone(tsz.to_iso_string_with_timezone("UTC").unwrap())
     }
 }
 
-impl serde::Serialize for ZDBTimestamp {
-    fn serialize<S>(
-        &self,
-        serializer: S,
-    ) -> Result<<S as serde::Serializer>::Ok, <S as serde::Serializer>::Error>
-    where
-        S: serde::Serializer,
-    {
-        if self.0.millisecond() > 0 {
-            serializer.serialize_str(
-                &self
-                    .0
-                    .format(
-                        &time::format_description::parse(&format!(
-                            "[year]-[month]-[day]T[hour]:[minute]:[second].{}-00",
-                            self.0.millisecond()
-                        ))
-                        .map_err(|e| {
-                            serde::ser::Error::custom(format!(
-                                "Timestamp invalid format problem: {:?}",
-                                e
-                            ))
-                        })?,
-                    )
-                    .map_err(|e| {
-                        serde::ser::Error::custom(format!("Timestamp formatting problem: {:?}", e))
-                    })?,
-            )
-        } else {
-            serializer.serialize_str(&self.0.format(&DEFAULT_TIMESTAMP_FORMAT).map_err(|e| {
-                serde::ser::Error::custom(format!("Timestamp formatting problem: {:?}", e))
-            })?)
+impl From<Time> for ZDBTime {
+    fn from(t: Time) -> Self {
+        ZDBTime(t.to_iso_string_with_timezone("UTC").unwrap())
+    }
+}
+
+impl From<TimeWithTimeZone> for ZDBTimeWithTimeZone {
+    fn from(tz: TimeWithTimeZone) -> Self {
+        let seconds = tz.second();
+        let second_left = seconds as u64;
+        let second_right = seconds.to_string();
+        let mut parts = second_right.split('.');
+        let _ = parts.next();
+        let right = parts.next().unwrap_or("0");
+        let right = &right[0..6.min(right.len())];
+        let s = format!(
+            "{:02}:{:02}:{:02}{}{}",
+            tz.hour(),
+            tz.minute(),
+            second_left,
+            if right.parse::<u64>().unwrap() > 0 {
+                format!(".{:}", right)
+            } else {
+                "".to_string()
+            },
+            if tz.timezone_offset() == 0 {
+                "Z".to_string()
+            } else {
+                let hour = tz.timezone_hour();
+                let neg = hour < 0;
+                let hour = hour.abs();
+                format!("{}", if neg { "-" } else { "" })
+                    + &format!("{:02}", hour)
+                    + &format!("{:02}", tz.timezone_minute())
+            }
+        );
+        ZDBTimeWithTimeZone(s)
+    }
+}
+
+impl From<Date> for ZDBDate {
+    fn from(t: Date) -> Self {
+        ZDBDate(t.to_iso_string())
+    }
+}
+
+macro_rules! serialize {
+    ($t:ty) => {
+        impl Serialize for $t {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: Serializer,
+            {
+                serializer.serialize_str(&self.0)
+            }
         }
-    }
+    };
 }
 
-static DEFAULT_TIMESTAMP_FORMAT: &[FormatItem<'static>] =
-    time::macros::format_description!("[year]-[month]-[day]T[hour]:[minute]:[second]-00");
-
-impl serde::Serialize for ZDBTimestampWithTimeZone {
-    fn serialize<S>(
-        &self,
-        serializer: S,
-    ) -> std::result::Result<<S as serde::Serializer>::Ok, <S as serde::Serializer>::Error>
-    where
-        S: serde::Serializer,
-    {
-        if self.0.millisecond() > 0 {
-            serializer.serialize_str(
-                &self
-                    .0
-                    .format(
-                        &time::format_description::parse(&format!(
-                            "[year]-[month]-[day]T[hour]:[minute]:[second].{}-00",
-                            self.0.millisecond()
-                        ))
-                        .map_err(|e| {
-                            serde::ser::Error::custom(format!(
-                                "TimeStampWithTimeZone invalid format problem: {:?}",
-                                e
-                            ))
-                        })?,
-                    )
-                    .map_err(|e| {
-                        serde::ser::Error::custom(format!(
-                            "TimeStampWithTimeZone formatting problem: {:?}",
-                            e
-                        ))
-                    })?,
-            )
-        } else {
-            serializer.serialize_str(
-                &self
-                    .0
-                    .format(&DEFAULT_TIMESTAMP_WITH_TIMEZONE_FORMAT)
-                    .map_err(|e| {
-                        serde::ser::Error::custom(format!(
-                            "TimeStampWithTimeZone formatting problem: {:?}",
-                            e
-                        ))
-                    })?,
-            )
-        }
-    }
-}
-
-static DEFAULT_TIMESTAMP_WITH_TIMEZONE_FORMAT: &[FormatItem<'static>] =
-    time::macros::format_description!("[year]-[month]-[day]T[hour]:[minute]:[second]-00");
+serialize!(ZDBTimestamp);
+serialize!(ZDBTime);
+serialize!(ZDBTimeWithTimeZone);
+serialize!(ZDBDate);
+serialize!(ZDBTimestampWithTimeZone);
