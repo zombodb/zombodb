@@ -358,6 +358,19 @@ pub fn is_string_field(index: &PgRelation, field: &str) -> bool {
     field_type == "text" || field_type == "keyword"
 }
 
+pub fn is_keyword_field(index: &PgRelation, field: &str) -> bool {
+    let field_type = if field.contains('.') {
+        match lookup_es_subfield_type(index, field).as_str() {
+            "" => lookup_es_nestedfield_type(index, field),
+            other => other.to_string(),
+        }
+    } else {
+        lookup_es_field_type(index, field)
+    };
+
+    field_type == "keyword"
+}
+
 pub fn is_date_field(index: &PgRelation, field: &str) -> bool {
     lookup_es_field_type(index, field) == "date"
 }
