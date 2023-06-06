@@ -52,7 +52,18 @@ fn determine_link(
         }
 
         Expr::Not(e) => {
-            determine_link(original_index, root_index, e.as_mut(), indexes);
+            if let Some(target_link) =
+                determine_link(original_index, root_index, e.as_mut(), indexes)
+            {
+                if target_link.qualified_index != original_index.qualified_index {
+                    if let Expr::Linked(linked_index, linked_expr) = e.as_ref() {
+                        *expr = Expr::Linked(
+                            linked_index.clone(),
+                            Box::new(Expr::Not(linked_expr.clone())),
+                        );
+                    }
+                }
+            }
             None
         }
 
