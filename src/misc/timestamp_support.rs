@@ -23,19 +23,31 @@ pub struct ZDBTimestampWithTimeZone(pub String);
 
 impl From<Timestamp> for ZDBTimestamp {
     fn from(ts: Timestamp) -> Self {
-        ZDBTimestamp(ts.to_iso_string_with_timezone("UTC").unwrap() + "-00")
+        #[cfg(any(feature = "pg13", feature = "pg14", feature = "pg15"))]
+        return ZDBTimestamp(ts.to_iso_string_with_timezone("UTC").unwrap() + "-00");
+
+        #[cfg(not(any(feature = "pg13", feature = "pg14", feature = "pg15")))]
+        return ZDBTimestamp(ts.to_iso_string() + "-00");
     }
 }
 
 impl From<TimestampWithTimeZone> for ZDBTimestampWithTimeZone {
     fn from(tsz: TimestampWithTimeZone) -> Self {
-        ZDBTimestampWithTimeZone(tsz.to_iso_string_with_timezone("UTC").unwrap())
+        #[cfg(any(feature = "pg13", feature = "pg14", feature = "pg15"))]
+        return ZDBTimestampWithTimeZone(tsz.to_iso_string_with_timezone("UTC").unwrap());
+
+        #[cfg(not(any(feature = "pg13", feature = "pg14", feature = "pg15")))]
+        return ZDBTimestampWithTimeZone(tsz.to_utc().to_iso_string() + "+00:00");
     }
 }
 
 impl From<Time> for ZDBTime {
     fn from(t: Time) -> Self {
-        ZDBTime(t.to_iso_string_with_timezone("UTC").unwrap())
+        #[cfg(any(feature = "pg13", feature = "pg14", feature = "pg15"))]
+        return ZDBTime(t.to_iso_string_with_timezone("UTC").unwrap());
+
+        #[cfg(not(any(feature = "pg13", feature = "pg14", feature = "pg15")))]
+        return ZDBTime(t.to_iso_string());
     }
 }
 
