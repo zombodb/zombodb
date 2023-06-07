@@ -7,7 +7,7 @@ use serde_json::json;
 use crate::access_method::options::ZDBIndexOptions;
 use crate::elasticsearch::aggregates::terms::terms_array_agg;
 use crate::gucs::{ZDB_ACCELERATOR, ZDB_IGNORE_VISIBILITY};
-use crate::utils::lookup_es_field_type;
+use crate::utils::{is_keyword_field, lookup_es_field_type};
 use crate::zdbquery::mvcc::build_visibility_clause;
 use crate::zdbquery::ZDBQuery;
 use crate::zql::ast::{
@@ -276,10 +276,19 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
                 }
             }
         }
-        Term::PhraseWithWildcard(s, b) => match ProximityTerm::make_proximity_chain(field, s, *b) {
-            ProximityTerm::ProximityChain(v) => proximity_chain(field, &v),
-            other => eq(field, &other.to_term(), true),
-        },
+        Term::PhraseWithWildcard(s, b) => {
+            if let Some(index) = field.index.as_ref() {
+                let indexrel = index.open_index().unwrap();
+                if is_keyword_field(&indexrel, &field.field_name()) {
+                    let wildcard = Term::Wildcard(s, *b);
+                    return eq(field, &wildcard, is_span);
+                }
+            }
+            match ProximityTerm::make_proximity_chain(field, s, *b) {
+                ProximityTerm::ProximityChain(v) => proximity_chain(field, &v),
+                other => eq(field, &other.to_term(), true),
+            }
+        }
 
         Term::Phrase(s, b) => {
             if is_span {
