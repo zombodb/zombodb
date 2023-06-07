@@ -65,17 +65,17 @@ mod dsl {
     }
 
     #[pg_extern(immutable, parallel_safe)]
-    fn query_string(
-        query: &str,
-        default_field: default!(Option<&str>, NULL),
+    fn query_string<'a>(
+        query: &'a str,
+        default_field: default!(Option<&'a str>, NULL),
         allow_leading_wildcard: default!(Option<bool>, NULL),
         analyze_wildcard: default!(Option<bool>, NULL),
-        analyzer: default!(Option<&str>, NULL),
+        analyzer: default!(Option<&'a str>, NULL),
         auto_generate_synonyms_phrase_query: default!(Option<bool>, NULL),
         boost: default!(Option<f32>, NULL),
         default_operator: default!(Option<QueryStringDefaultOperator>, NULL),
         enable_position_increments: default!(Option<bool>, NULL),
-        fields: default!(Option<Array<&str>>, NULL),
+        fields: default!(Option<Array<'a, &'a str>>, NULL),
         fuzziness: default!(Option<i32>, NULL),
         fuzzy_max_expansions: default!(Option<i64>, NULL),
         fuzzy_transpositions: default!(Option<bool>, NULL),
@@ -83,10 +83,10 @@ mod dsl {
         lenient: default!(Option<bool>, NULL),
         max_determinized_states: default!(Option<i64>, NULL),
         minimum_should_match: default!(Option<i32>, NULL),
-        quote_analyzer: default!(Option<&str>, NULL),
+        quote_analyzer: default!(Option<&'a str>, NULL),
         phrase_slop: default!(Option<i64>, NULL),
-        quote_field_suffix: default!(Option<&str>, NULL),
-        time_zone: default!(Option<&str>, NULL),
+        quote_field_suffix: default!(Option<&'a str>, NULL),
+        time_zone: default!(Option<&'a str>, NULL),
     ) -> ZDBQuery {
         let querystring = QueryString {
             query,

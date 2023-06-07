@@ -185,14 +185,14 @@ impl Elasticsearch {
         ElasticsearchAnalyzerRequest::new_with_field(self, field, text)
     }
 
-    pub fn analyze_custom(
+    pub fn analyze_custom<'a>(
         &self,
-        field: Option<default!(&str, NULL)>,
-        text: Option<default!(&str, NULL)>,
-        tokenizer: Option<default!(&str, NULL)>,
-        normalizer: Option<default!(&str, NULL)>,
-        filter: Option<default!(Array<&str>, NULL)>,
-        char_filter: Option<default!(Array<&str>, NULL)>,
+        field: Option<default!(&'a str, NULL)>,
+        text: Option<default!(&'a str, NULL)>,
+        tokenizer: Option<default!(&'a str, NULL)>,
+        normalizer: Option<default!(&'a str, NULL)>,
+        filter: Option<default!(Array<'a, &'a str>, NULL)>,
+        char_filter: Option<default!(Array<'a, &'a str>, NULL)>,
     ) -> ElasticsearchAnalyzerRequest {
         ElasticsearchAnalyzerRequest::new_custom(
             self,

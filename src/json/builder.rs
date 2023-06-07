@@ -96,20 +96,14 @@ impl JsonBuilder {
 
     #[inline]
     pub fn add_time(&mut self, attname: String, value: Time) {
-        self.values.push((
-            attname,
-            JsonBuilderValue::time(ZDBTime(serde_json::to_string(&value).unwrap())),
-        ));
+        self.values
+            .push((attname, JsonBuilderValue::time(value.into())));
     }
 
     #[inline]
     pub fn add_time_with_time_zone(&mut self, attname: String, value: TimeWithTimeZone) {
-        self.values.push((
-            attname,
-            JsonBuilderValue::time_with_time_zone(ZDBTimeWithTimeZone(
-                serde_json::to_string(&value).unwrap(),
-            )),
-        ));
+        self.values
+            .push((attname, JsonBuilderValue::time_with_time_zone(value.into())));
     }
 
     #[inline]
@@ -128,10 +122,8 @@ impl JsonBuilder {
 
     #[inline]
     pub fn add_date(&mut self, attname: String, value: Date) {
-        self.values.push((
-            attname,
-            JsonBuilderValue::date(ZDBDate(serde_json::to_string(&value).unwrap())),
-        ));
+        self.values
+            .push((attname, JsonBuilderValue::date(value.into())));
     }
 
     #[inline]
@@ -200,10 +192,7 @@ impl JsonBuilder {
 
     #[inline]
     pub fn add_time_array(&mut self, attname: String, value: Vec<Option<Time>>) {
-        let value = value
-            .into_iter()
-            .map(|t| Some(ZDBTime(serde_json::to_string(&t).unwrap())))
-            .collect();
+        let value = value.into_iter().map(|t| t.map(|t| t.into())).collect();
         self.values
             .push((attname, JsonBuilderValue::time_array(value)));
     }
@@ -214,10 +203,7 @@ impl JsonBuilder {
         attname: String,
         value: Vec<Option<TimeWithTimeZone>>,
     ) {
-        let value = value
-            .into_iter()
-            .map(|t| Some(ZDBTimeWithTimeZone(serde_json::to_string(&t).unwrap())))
-            .collect();
+        let value = value.into_iter().map(|t| t.map(|t| t.into())).collect();
         self.values
             .push((attname, JsonBuilderValue::time_with_time_zone_array(value)));
     }
@@ -249,10 +235,7 @@ impl JsonBuilder {
             JsonBuilderValue::timestamp_with_time_zone_array(
                 value
                     .into_iter()
-                    .map(|tsz| match tsz {
-                        Some(ts) => Some(ts.into()),
-                        None => None,
-                    })
+                    .map(|tsz| tsz.map(|tsz| tsz.into()))
                     .collect(),
             ),
         ));
@@ -260,10 +243,7 @@ impl JsonBuilder {
 
     #[inline]
     pub fn add_date_array(&mut self, attname: String, value: Vec<Option<Date>>) {
-        let value = value
-            .into_iter()
-            .map(|t| Some(ZDBDate(serde_json::to_string(&t).unwrap())))
-            .collect();
+        let value = value.into_iter().map(|d| d.map(|d| d.into())).collect();
         self.values
             .push((attname, JsonBuilderValue::date_array(value)));
     }

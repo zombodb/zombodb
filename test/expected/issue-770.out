@@ -34,3 +34,21 @@ SELECT zdb.reapply_mapping('issue770_with');
 (1 row)
 
 DROP TABLE issue770_with;
+CREATE TABLE issue770_tstz (
+    tstz timestamp with time zone
+);
+CREATE INDEX idxissue770 ON issue770_tstz USING zombodb ((issue770_tstz.*));
+INSERT INTO issue770_tstz (tstz) VALUES ('2023-06-06 15:00 EDT');
+INSERT INTO issue770_tstz (tstz) VALUES ('2023-06-06 15:00:00 EDT');
+INSERT INTO issue770_tstz (tstz) VALUES ('2023-06-06 15:00:00.0 EDT');
+INSERT INTO issue770_tstz (tstz) VALUES ('2023-06-06 15:00:00.00 EDT');
+INSERT INTO issue770_tstz (tstz) VALUES ('2023-06-06 15:00:00.0000 EDT');
+INSERT INTO issue770_tstz (tstz) VALUES ('2023-06-06 15:00:00.00000 EDT');
+INSERT INTO issue770_tstz (tstz) VALUES ('2023-06-06 15:00:00.000000 EDT');
+SELECT zdb.reapply_mapping('issue770_tstz');
+ reapply_mapping 
+-----------------
+ t
+(1 row)
+
+DROP TABLE issue770_tstz;

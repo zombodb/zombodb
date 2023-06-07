@@ -1,5 +1,3 @@
-use std::io::Write;
-
 use pgrx::{Json, JsonB};
 use serde_json::json;
 
@@ -70,14 +68,14 @@ impl JsonString for bool {
 impl JsonString for ZDBTime {
     #[inline]
     fn push_json(&self, target: &mut Vec<u8>) {
-        target.write(&self.0.as_bytes()).ok();
+        serde_json::to_writer(target, self).ok();
     }
 }
 
 impl JsonString for ZDBTimeWithTimeZone {
     #[inline]
     fn push_json(&self, target: &mut Vec<u8>) {
-        target.write(&self.0.as_bytes()).ok();
+        serde_json::to_writer(target, self).ok();
     }
 }
 
@@ -98,7 +96,7 @@ impl JsonString for ZDBTimestampWithTimeZone {
 impl JsonString for ZDBDate {
     #[inline]
     fn push_json(&self, target: &mut Vec<u8>) {
-        target.write(&self.0.as_bytes()).ok();
+        serde_json::to_writer(target, self).ok();
     }
 }
 
