@@ -2422,7 +2422,7 @@ dependencies = [
  "lazy_static",
  "levenshtein",
  "libc",
- "memoffset 0.8.0",
+ "memoffset 0.9.0",
  "num_cpus",
  "pgrx",
  "pgrx-tests",

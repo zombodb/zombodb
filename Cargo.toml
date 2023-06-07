@@ -30,7 +30,7 @@ indexmap = "1.9.3"
 lalrpop-util = "0.20.0"
 lazy_static = "1.4.0"
 levenshtein = "1.0.5"
-memoffset = "0.8.0"
+memoffset = "0.9.0"
 num_cpus = "1.15.0"
 pgrx = "=0.9.3"
 rayon = "1.7.0"
@@ -50,7 +50,7 @@ built = { version = "0.6.0", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
 pgrx-tests = "=0.9.3"
-libc = "0.2.145"
+libc = "0.2.146"
 
 [profile.dev]
 panic = "unwind"
