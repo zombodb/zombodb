@@ -57,11 +57,10 @@ pub extern "C" fn ambulkdelete(
         .execute()
         .expect("failed to refresh index");
 
-    let mut bulk = elasticsearch.start_bulk();
-
     // Find all rows with what we think is an *aborted* xmin
     //
     // These rows can be deleted
+    let mut bulk = elasticsearch.start_bulk();
     let by_xmin = delete_by_xmin(
         &index_relation,
         &elasticsearch,
@@ -69,10 +68,12 @@ pub extern "C" fn ambulkdelete(
         oldest_xmin,
         &mut bulk,
     );
+    bulk.finish().expect("failed to finish delete_by_xmin");
 
     // Find all rows with what we think is a *committed* xmax
     //
     // These rows can be deleted
+    let mut bulk = elasticsearch.start_bulk();
     let by_xmax = delete_by_xmax(
         &index_relation,
         &elasticsearch,
@@ -80,10 +81,12 @@ pub extern "C" fn ambulkdelete(
         oldest_xmin,
         &mut bulk,
     );
+    bulk.finish().expect("failed to finish delete_by_xmax");
 
     // Find all rows with what we think is an *aborted* xmax
     //
     // These rows can have their xmax reset to null because they're still live
+    let mut bulk = elasticsearch.start_bulk();
     let vacuumed = vacuum_xmax(
         &index_relation,
         &elasticsearch,
@@ -91,12 +94,13 @@ pub extern "C" fn ambulkdelete(
         oldest_xmin,
         &mut bulk,
     );
+    bulk.finish().expect("failed to finish vacuum_xmax");
 
     // Finally, any "zdb_aborted_xid" value we have can be removed if it's
     // known to be aborted and no longer referenced anywhere in the index
+    let mut bulk = elasticsearch.start_bulk();
     let aborted = remove_aborted_xids(&index_relation, &elasticsearch, oldest_xmin, &mut bulk);
-
-    bulk.finish().expect("failed to finish vacuum");
+    bulk.finish().expect("failed to finish remove_aborted_xids");
 
     ZDB_LOG_LEVEL.get().log(&format!(
         "[zombodb] vacuum:  index={}, by_xmin={}, by_xmax={}, vacuumed={}, aborted_xids_removed={}",
