@@ -463,18 +463,20 @@ fn handle_as_generic_string(is_array: bool, base_type_oid: pg_sys::Oid) -> Box<C
 
     if is_array {
         Box::new(move |builder, name, datum, _oid| {
-            let array: Array<pg_sys::Datum> = unsafe { Array::from_datum(datum, false).unwrap() };
+            if base_type_oid == pg_sys::TEXTOID || base_type_oid == pg_sys::VARCHAROID {
+                builder.add_string_array(name, unsafe {
+                    Vec::<Option<String>>::from_datum(datum, false).unwrap()
+                });
+            } else {
+                let array: Array<pg_sys::Datum> =
+                    unsafe { Array::from_datum(datum, false).unwrap() };
 
-            // build up a vec of each element as a string
-            let mut values = Vec::with_capacity(array.len());
-            for e in array.iter() {
-                // only serialize to json non-null array values
-                if let Some(element_datum) = e {
-                    if base_type_oid == pg_sys::TEXTOID || base_type_oid == pg_sys::VARCHAROID {
-                        values.push(Some(
-                            unsafe { String::from_datum(element_datum, false) }.unwrap(),
-                        ));
-                    } else {
+                // build up a vec of each element as a string
+                let mut values = Vec::with_capacity(array.len());
+                for e in array.iter() {
+                    // only serialize to json non-null array values
+                    pgrx::warning!("datum={e:?}");
+                    if let Some(element_datum) = e {
                         let result = unsafe {
                             std::ffi::CStr::from_ptr(pg_sys::OidOutputFunctionCall(
                                 output_func,
@@ -484,10 +486,10 @@ fn handle_as_generic_string(is_array: bool, base_type_oid: pg_sys::Oid) -> Box<C
                         values.push(Some(result.to_str().unwrap().to_string()));
                     }
                 }
-            }
 
-            // then add that vec to our builder as a json blob
-            builder.add_string_array(name, values)
+                // then add that vec to our builder as a json blob
+                builder.add_string_array(name, values)
+            }
         })
     } else {
         Box::new(move |builder, name, datum, _oid| {
