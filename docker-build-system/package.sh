@@ -75,6 +75,14 @@ if [ "$DEBUG" == "true" ] ; then
 else
   BUILDDIR=/build/target/artifacts/zombodb-pg${PGVER}
 fi
+
+#
+# copy over the sql/releases/zombodb--pg${PGVER} the caller should have already made with `prepare-release.sh`
+#
+cp -v sql/releases/zombodb--pg${PGVER}.sql  ${BUILDDIR}/$(pg_config --sharedir)/extension/ || exit $?
+
+# move into the build directory
+
 cd ${BUILDDIR} || exit $?
 
 if [ "$DEBUG" == "false" ] ; then
