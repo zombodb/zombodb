@@ -360,6 +360,9 @@ impl QueryHighlighter {
             Term::MatchAll => {
                 // do nothing
             }
+            Term::MatchNone => {
+                // do nothing
+            }
             Term::String(s, _) => {
                 if let Some(entries) = highlighter.highlight_token(s) {
                     cnt = entries.len();

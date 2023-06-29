@@ -275,8 +275,20 @@ ComparisonOp: ComparisonOpcode = {
 
 Term: Term<'input> = {
     StringExpr => <>,
-    O_BRACKET <v:(<StringExpr> COMMA?)*> C_BRACKET <b:Boost?> => Term::ParsedArray(v, b),
-    <a:UnparsedArray> <b:Boost?> => Term::UnparsedArray(a, b),
+    O_BRACKET <v:(<StringExpr> COMMA?)*> C_BRACKET <b:Boost?> => {
+        if v.is_empty() {
+            Term::MatchNone
+        } else {
+            Term::ParsedArray(v, b)
+        }
+    },
+    <a:UnparsedArray> <b:Boost?> => {
+        if a.trim().is_empty() {
+            Term::MatchNone
+        } else {
+            Term::UnparsedArray(a, b)
+        }
+    },
 };
 
 UnparsedArray: &'input str = {

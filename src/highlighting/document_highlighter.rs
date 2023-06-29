@@ -465,6 +465,7 @@ impl<'a> DocumentHighlighter<'a> {
     pub fn highlight_term(&'a self, term: &Term) -> Option<HighlightMatches<'a>> {
         match term {
             Term::MatchAll => None,
+            Term::MatchNone => None,
             Term::String(s, _) => self.highlight_token(s),
             Term::Prefix(s, _) => self.highlight_wildcard(s),
             Term::PhrasePrefix(_, _) => unimplemented!("prefix phrases cannot be highlighted"),
