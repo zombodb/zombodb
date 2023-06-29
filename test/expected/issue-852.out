@@ -1,0 +1,134 @@
+create table issue852 (
+    body text[]
+);
+create index idxissue852 on issue852 using zombodb ((issue852.*));
+insert into issue852(body) values (NULL);
+insert into issue852(body) values (ARRAY[NULL, NULL, NULL]);
+insert into issue852(body) values (ARRAY['a']);
+insert into issue852(body) values (ARRAY['a', 'b']);
+insert into issue852(body) values (ARRAY['a', 'b', 'c']);
+SELECT count(*) FROM issue852 WHERE issue852 ==> 'body:[]';
+ count 
+-------
+     0
+(1 row)
+
+SELECT count(*) FROM issue852 WHERE issue852 ==> 'body<>[]';
+ count 
+-------
+     5
+(1 row)
+
+select * from zdb.dump_query('idxissue852', 'body:[]');
+     dump_query     
+--------------------
+ {                 +
+   "match_none": {}+
+ }
+(1 row)
+
+select * from zdb.debug_query('idxissue852', 'body:[]');
+ normalized_query | used_fields |                              ast                               
+------------------+-------------+----------------------------------------------------------------
+ body :[]         | {body}      | Contains(                                                     +
+                  |             |     QualifiedField {                                          +
+                  |             |         index: Some(                                          +
+                  |             |             IndexLink(NONE=<public.issue852.idxissue852>NONE),+
+                  |             |         ),                                                    +
+                  |             |         field: "body",                                        +
+                  |             |     },                                                        +
+                  |             |     MatchNone,                                                +
+                  |             | )
+(1 row)
+
+select * from zdb.dump_query('idxissue852', 'body<>[]');
+        dump_query        
+--------------------------
+ {                       +
+   "bool": {             +
+     "must_not": [       +
+       {                 +
+         "match_none": {}+
+       }                 +
+     ]                   +
+   }                     +
+ }
+(1 row)
+
+select * from zdb.debug_query('idxissue852', 'body<>[]');
+ normalized_query | used_fields |                              ast                               
+------------------+-------------+----------------------------------------------------------------
+ body <> []       | {body}      | DoesNotContain(                                               +
+                  |             |     QualifiedField {                                          +
+                  |             |         index: Some(                                          +
+                  |             |             IndexLink(NONE=<public.issue852.idxissue852>NONE),+
+                  |             |         ),                                                    +
+                  |             |         field: "body",                                        +
+                  |             |     },                                                        +
+                  |             |     MatchNone,                                                +
+                  |             | )
+(1 row)
+
+SELECT count(*) FROM issue852 WHERE issue852 ==> 'body:[[]]';
+ count 
+-------
+     0
+(1 row)
+
+SELECT count(*) FROM issue852 WHERE issue852 ==> 'body<>[[]]';
+ count 
+-------
+     5
+(1 row)
+
+select * from zdb.dump_query('idxissue852', 'body:[[]]');
+     dump_query     
+--------------------
+ {                 +
+   "match_none": {}+
+ }
+(1 row)
+
+select * from zdb.debug_query('idxissue852', 'body:[[]]');
+ normalized_query | used_fields |                              ast                               
+------------------+-------------+----------------------------------------------------------------
+ body :[]         | {body}      | Contains(                                                     +
+                  |             |     QualifiedField {                                          +
+                  |             |         index: Some(                                          +
+                  |             |             IndexLink(NONE=<public.issue852.idxissue852>NONE),+
+                  |             |         ),                                                    +
+                  |             |         field: "body",                                        +
+                  |             |     },                                                        +
+                  |             |     MatchNone,                                                +
+                  |             | )
+(1 row)
+
+select * from zdb.dump_query('idxissue852', 'body<>[[]]');
+        dump_query        
+--------------------------
+ {                       +
+   "bool": {             +
+     "must_not": [       +
+       {                 +
+         "match_none": {}+
+       }                 +
+     ]                   +
+   }                     +
+ }
+(1 row)
+
+select * from zdb.debug_query('idxissue852', 'body<>[[]]');
+ normalized_query | used_fields |                              ast                               
+------------------+-------------+----------------------------------------------------------------
+ body <> []       | {body}      | DoesNotContain(                                               +
+                  |             |     QualifiedField {                                          +
+                  |             |         index: Some(                                          +
+                  |             |             IndexLink(NONE=<public.issue852.idxissue852>NONE),+
+                  |             |         ),                                                    +
+                  |             |         field: "body",                                        +
+                  |             |     },                                                        +
+                  |             |     MatchNone,                                                +
+                  |             | )
+(1 row)
+
+drop table issue852;

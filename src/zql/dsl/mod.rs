@@ -260,6 +260,11 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
                 json! { { "exists": { "field": field.field_name() } } }
             }
         }
+
+        Term::MatchNone => {
+            json! { { "match_none": {} } }
+        }
+
         Term::String(s, b) => {
             if s.contains('\\') {
                 let s = unescape(s);
@@ -365,7 +370,10 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
                 }
             }
 
-            if clauses.len() == 1 {
+            if clauses.is_empty() {
+                // this shouldn't happen as a `field:[]` gets rewritten to Term::MatchNone during parsing
+                json! { { "terms": { field.field_name(): [] } } }
+            } else if clauses.len() == 1 {
                 clauses.pop().unwrap()
             } else {
                 json! { { "bool": { "should": clauses } } }

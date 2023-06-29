@@ -126,6 +126,7 @@ pub enum ComparisonOpcode {
 pub enum Term<'input> {
     Null,
     MatchAll,
+    MatchNone,
     String(&'input str, Option<f32>),
     Phrase(&'input str, Option<f32>),
     Prefix(&'input str, Option<f32>),
@@ -971,6 +972,7 @@ impl<'input> Display for Term<'input> {
             Term::Null => write!(fmt, "NULL"),
 
             Term::MatchAll => write!(fmt, "*"),
+            Term::MatchNone => write!(fmt, "[]"),
 
             Term::String(s, b)
             | Term::Phrase(s, b)
