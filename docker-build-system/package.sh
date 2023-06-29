@@ -79,7 +79,7 @@ fi
 #
 # copy over the sql/releases/zombodb--pg${PGVER} the caller should have already made with `prepare-release.sh`
 #
-cp -v sql/releases/zombodb--pg${PGVER}.sql  ${BUILDDIR}/$(pg_config --sharedir)/extension/ || exit $?
+cp -v sql/releases/zombodb--${VERSION}.sql  ${BUILDDIR}$(pg_config --sharedir)/extension/ || exit $?
 
 # move into the build directory
 
