@@ -13,6 +13,7 @@ if [ "x$TEST" = "x" ] ; then
     grep -v test-llapi | \
     grep -v test-operators | \
     grep -v test-tablesamplers)
+  TESTS="${TESTS} legacy/issue-83"
 elif [ "$TEST" = "all-syntax-tests" ]; then
   TESTS=$(ls ${TESTDIR}/sql/syntax-*.sql | \
     cut -f3 -d/ | \

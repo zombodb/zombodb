@@ -546,19 +546,7 @@ fn index_field_lists(
 
 #[pg_extern(volatile, parallel_safe)]
 fn field_mapping(index_relation: PgRelation, field: &str) -> Option<JsonB> {
-    let root_index = IndexLink::from_relation(&index_relation);
-    let index_links = IndexLink::from_zdb(&index_relation);
-    let link = find_link_for_field(
-        &QualifiedField {
-            index: None,
-            field: field.into(),
-        },
-        &root_index,
-        &index_links,
-    );
-
-    link.map_or(None, |link| {
-        let index = link.open_index().expect("failed to open index");
+    fn extract_field_mapping(index: PgRelation, field: &str, full_mapping: bool) -> Option<JsonB> {
         let options = ZDBIndexOptions::from_relation(&index);
         let mapping = index_mapping(index);
 
@@ -571,6 +559,11 @@ fn field_mapping(index_relation: PgRelation, field: &str) -> Option<JsonB> {
                 .expect("no index object in mapping"),
         )
         .unwrap();
+
+        if full_mapping {
+            return as_map.remove("mappings").map(|v| JsonB(v));
+        }
+
         as_map = serde_json::from_value(
             as_map
                 .remove("mappings")
@@ -588,6 +581,45 @@ fn field_mapping(index_relation: PgRelation, field: &str) -> Option<JsonB> {
             Some(field_mapping) => Some(JsonB(field_mapping)),
             None => None,
         }
+    }
+
+    let root_index = IndexLink::from_relation(&index_relation);
+    let index_links = IndexLink::from_zdb(&index_relation);
+    let link = find_link_for_field(
+        &QualifiedField {
+            index: None,
+            field: field.into(),
+        },
+        &root_index,
+        &index_links,
+    );
+
+    link.map_or(None, |link| {
+        if link.name == Some(field.to_string()) {
+            // the link is named the same as the desired field, so the result is the entire ES mapping
+            // for the linked *index*
+            return extract_field_mapping(
+                link.open_index().expect("failed to open linked index"),
+                field,
+                true,
+            );
+        } else if link.name.is_some() && field.contains('.') {
+            // the link is a nested field, so lets see if it's the named link we found
+            let mut parts = field.split('.');
+            let base_fieldname = parts.next().unwrap();
+            let actual_field = parts.next().unwrap();
+            if link.name == Some(base_fieldname.to_string()) {
+                if let Some(field_mapping) = field_mapping(
+                    link.open_index().expect("failed to open linked index"),
+                    actual_field,
+                ) {
+                    return Some(field_mapping);
+                }
+            }
+        }
+
+        let index = link.open_index().expect("failed to open index");
+        extract_field_mapping(index, field, false)
     })
 }
 

@@ -8,6 +8,7 @@ CREATE TABLE public.docs_usage (
   fk_documents       BIGINT,
   fk_library_profile BIGINT,
   place_used         TEXT,
+  usage_json         JSON,
   CONSTRAINT idx_docs_usage PRIMARY KEY (pk_docs_usage)
 );
 CREATE TABLE public.library_profile (
@@ -23,7 +24,7 @@ CREATE INDEX idxdocuments_master_view_shadow ON documents USING zombodb (documen
     WITH (
         shadow = true,
         options = $$
-            docs_usage_data:(pk_documents=<public.docs_usage.es_docs_usage>fk_documents),
+            usage_data:(pk_documents=<public.docs_usage.es_docs_usage>fk_documents),
             fk_library_profile=<public.library_profile.es_library_profile>pk_library_profile
         $$
     );
@@ -44,8 +45,8 @@ INSERT INTO documents (doc_stuff)
 VALUES ('Every good boy does fine.'), ('Sally sells sea shells down by the seashore.'),
   ('The quick brown fox jumps over the lazy dog.');
 INSERT INTO library_profile (library_name) VALUES ('GSO Public Library'), ('Library of Congress'), ('The interwebs.');
-INSERT INTO docs_usage (fk_documents, fk_library_profile, place_used)
-VALUES (1, 1, 'somewhere'), (2, 2, 'anywhere'), (3, 3, 'everywhere'), (3, 1, 'somewhere');
+INSERT INTO docs_usage (fk_documents, fk_library_profile, place_used, usage_json)
+VALUES (1, 1, 'somewhere', '{"title": "one one"}'), (2, 2, 'anywhere', '{"title": "two two"}'), (3, 3, 'everywhere', '{"title": "three three"}'), (3, 1, 'somewhere', '{"title": "three one"}');
 SELECT count(*) FROM documents_master_view WHERE public.documents_master_view.zdb ==> 'somewhere';
  count 
 -------
@@ -72,6 +73,30 @@ SELECT count(*) FROM documents_master_view WHERE public.documents_master_view.zd
  count 
 -------
      2
+(1 row)
+
+select zdb.field_mapping('documents_master_view', 'doc_stuff');
+                                      field_mapping                                      
+-----------------------------------------------------------------------------------------
+ {"type": "text", "copy_to": ["zdb_all"], "analyzer": "zdb_standard", "fielddata": true}
+(1 row)
+
+select zdb.field_mapping('documents_master_view', 'usage_data');
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       field_mapping                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ {"properties": {"zdb_all": {"type": "text", "analyzer": "zdb_all_analyzer"}, "zdb_cmax": {"type": "integer"}, "zdb_cmin": {"type": "integer"}, "zdb_ctid": {"type": "long"}, "zdb_xmax": {"type": "long"}, "zdb_xmin": {"type": "long"}, "place_used": {"type": "text", "copy_to": ["zdb_all"], "analyzer": "zdb_standard", "fielddata": true}, "usage_json": {"type": "nested", "properties": {"title": {"type": "keyword", "copy_to": ["zdb_all"], "normalizer": "lowercase", "ignore_above": 10922}}, "include_in_parent": true}, "fk_documents": {"type": "long"}, "pk_docs_usage": {"type": "long"}, "zdb_aborted_xids": {"type": "long"}, "fk_library_profile": {"type": "long"}}, "date_detection": false, "dynamic_templates": [{"strings": {"mapping": {"type": "keyword", "copy_to": "zdb_all", "normalizer": "lowercase", "ignore_above": 10922}, "match_mapping_type": "string"}}, {"dates_times": {"mapping": {"type": "keyword", "fields": {"date": {"type": "date", "format": "strict_date_optional_time||epoch_millis||HH:mm:ss.S||HH:mm:ss.SX||HH:mm:ss.SS||HH:mm:ss.SSX||HH:mm:ss.SSS||HH:mm:ss.SSSX||HH:mm:ss.SSSS||HH:mm:ss.SSSSX||HH:mm:ss.SSSSS||HH:mm:ss.SSSSSX||HH:mm:ss.SSSSSS||HH:mm:ss.SSSSSSX"}}, "copy_to": "zdb_all"}, "match_mapping_type": "date"}}, {"objects": {"mapping": {"type": "nested", "include_in_parent": true}, "match_mapping_type": "object"}}], "numeric_detection": false}
+(1 row)
+
+select zdb.field_mapping('documents_master_view', 'usage_data.usage_json');
+                                                                             field_mapping                                                                             
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ {"type": "nested", "properties": {"title": {"type": "keyword", "copy_to": ["zdb_all"], "normalizer": "lowercase", "ignore_above": 10922}}, "include_in_parent": true}
+(1 row)
+
+select zdb.field_mapping('documents_master_view', 'usage_json');
+                                                                             field_mapping                                                                             
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ {"type": "nested", "properties": {"title": {"type": "keyword", "copy_to": ["zdb_all"], "normalizer": "lowercase", "ignore_above": 10922}}, "include_in_parent": true}
 (1 row)
 
 DROP TABLE documents CASCADE;
