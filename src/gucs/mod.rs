@@ -63,14 +63,14 @@ pub fn init() {
         &ZDB_DEFAULT_REPLICAS,
         0,
         32768,
-        GucContext::Sighup, GucFlags::default());
+        GucContext::Suset, GucFlags::default());
 
     GucRegistry::define_string_guc(
         "zdb.default_elasticsearch_url",
         "The default Elasticsearch URL ZomboDB should use if not specified on the index",
         "Defines the default URL for your Elasticsearch cluster so you can elite setting it on every index during CREATE INDEX. The value used must end with a forward slash (/).",
         &ZDB_DEFAULT_ELASTICSEARCH_URL,
-        GucContext::Sighup, GucFlags::default());
+        GucContext::Suset, GucFlags::default());
 
     GucRegistry::define_enum_guc(
         "zdb.log_level",
