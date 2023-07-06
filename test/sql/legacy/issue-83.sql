@@ -8,6 +8,7 @@ CREATE TABLE public.docs_usage (
   fk_documents       BIGINT,
   fk_library_profile BIGINT,
   place_used         TEXT,
+  usage_json         JSON,
   CONSTRAINT idx_docs_usage PRIMARY KEY (pk_docs_usage)
 );
 CREATE TABLE public.library_profile (
@@ -25,7 +26,7 @@ CREATE INDEX idxdocuments_master_view_shadow ON documents USING zombodb (documen
     WITH (
         shadow = true,
         options = $$
-            docs_usage_data:(pk_documents=<public.docs_usage.es_docs_usage>fk_documents),
+            usage_data:(pk_documents=<public.docs_usage.es_docs_usage>fk_documents),
             fk_library_profile=<public.library_profile.es_library_profile>pk_library_profile
         $$
     );
@@ -48,8 +49,8 @@ INSERT INTO documents (doc_stuff)
 VALUES ('Every good boy does fine.'), ('Sally sells sea shells down by the seashore.'),
   ('The quick brown fox jumps over the lazy dog.');
 INSERT INTO library_profile (library_name) VALUES ('GSO Public Library'), ('Library of Congress'), ('The interwebs.');
-INSERT INTO docs_usage (fk_documents, fk_library_profile, place_used)
-VALUES (1, 1, 'somewhere'), (2, 2, 'anywhere'), (3, 3, 'everywhere'), (3, 1, 'somewhere');
+INSERT INTO docs_usage (fk_documents, fk_library_profile, place_used, usage_json)
+VALUES (1, 1, 'somewhere', '{"title": "one one"}'), (2, 2, 'anywhere', '{"title": "two two"}'), (3, 3, 'everywhere', '{"title": "three three"}'), (3, 1, 'somewhere', '{"title": "three one"}');
 
 SELECT count(*) FROM documents_master_view WHERE public.documents_master_view.zdb ==> 'somewhere';
 SELECT count(*) FROM documents_master_view WHERE public.documents_master_view.zdb ==> 'GSO';
@@ -58,6 +59,14 @@ set enable_indexscan to off;
 set enable_bitmapscan to off;
 explain (costs off) SELECT count(*) FROM documents_master_view WHERE public.documents_master_view.zdb ==> 'somewhere';
 SELECT count(*) FROM documents_master_view WHERE public.documents_master_view.zdb ==> 'somewhere';
+
+select zdb.field_mapping('documents_master_view', 'doc_stuff');
+
+select zdb.field_mapping('documents_master_view', 'usage_data');
+
+select zdb.field_mapping('documents_master_view', 'usage_data.usage_json');
+
+select zdb.field_mapping('documents_master_view', 'usage_json');
 
 DROP TABLE documents CASCADE;
 DROP TABLE docs_usage CASCADE;
