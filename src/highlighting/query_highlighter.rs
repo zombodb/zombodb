@@ -358,7 +358,10 @@ impl QueryHighlighter {
         let mut cnt = 0;
         match term {
             Term::MatchAll => {
-                // do nothing
+                if let Some(entries) = highlighter.highlight_regex(".*") {
+                    cnt = entries.len();
+                    QueryHighlighter::process_entries(expr, &field, entries, highlights);
+                }
             }
             Term::MatchNone => {
                 // do nothing
