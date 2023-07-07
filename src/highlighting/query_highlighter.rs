@@ -433,7 +433,11 @@ impl QueryHighlighter {
                     }
                 }
             }
-            Term::Null => {}
+            Term::Null => {
+                if let Some(_entries) = highlighter.highlight_null() {
+                    cnt += 1;
+                }
+            }
         }
         cnt > 0
     }

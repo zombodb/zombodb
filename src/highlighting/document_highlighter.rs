@@ -34,17 +34,12 @@ enum DataType {
     Bool,
 }
 
+#[derive(Debug)]
 pub struct DocumentHighlighter<'a> {
     lookup: HashMap<Cow<'a, str>, Vec<TokenEntry>>,
     data_type: Option<DataType>,
     field: String,
     index_oid: pg_sys::Oid,
-}
-
-impl<'a> Debug for DocumentHighlighter<'a> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}::{:?}={:#?}", self.field, self.data_type, self.lookup)
-    }
 }
 
 #[rustfmt::skip]
@@ -476,10 +471,18 @@ impl<'a> DocumentHighlighter<'a> {
             Term::Regex(r, _) => self.highlight_regex(r),
             Term::Fuzzy(f, p, _) => self.highlight_fuzzy(f, *p),
             Term::Range(_, _, _) => unimplemented!(),
-            Term::Null => unimplemented!(),
+            Term::Null => self.highlight_null(),
             Term::ParsedArray(_, _) => unimplemented!(),
             Term::UnparsedArray(_, _) => unimplemented!(),
             Term::ProximityChain(v) => self.highlight_proximity(v),
+        }
+    }
+
+    pub fn highlight_null(&'a self) -> Option<HighlightMatches<'a>> {
+        if self.lookup.is_empty() {
+            Some(vec![])
+        } else {
+            None
         }
     }
 
