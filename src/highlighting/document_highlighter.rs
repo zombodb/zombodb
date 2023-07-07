@@ -12,7 +12,7 @@ use serde_json::Value;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::convert::TryInto;
-use std::fmt::{Debug, Formatter};
+use std::fmt::Debug;
 use std::ops::Deref;
 use std::str::FromStr;
 
