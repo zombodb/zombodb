@@ -1,0 +1,3 @@
+select * from zdb.highlight_document('so_posts', '{"body": "java", "other":null}'::json, 'body:java and other:NULL') order by 1, 2, 3;
+select * from zdb.highlight_document('so_posts', '{"body": "java", "other":[null, "a"]}'::json, 'body:java and other:null') order by 1, 2, 3;
+select * from zdb.highlight_document('so_posts', '{"body": "java", "other":[null, "a"]}'::json, 'body:java and other:a') order by 1, 2, 3;

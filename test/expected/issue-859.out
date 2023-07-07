@@ -1,0 +1,19 @@
+select * from zdb.highlight_document('so_posts', '{"body": "java", "other":null}'::json, 'body:java and other:NULL') order by 1, 2, 3;
+ field_name | array_index | term |    type    | position | start_offset | end_offset | query_clause 
+------------+-------------+------+------------+----------+--------------+------------+--------------
+ body       |           0 | java | <ALPHANUM> |        1 |            0 |          4 | body:"java"
+(1 row)
+
+select * from zdb.highlight_document('so_posts', '{"body": "java", "other":[null, "a"]}'::json, 'body:java and other:null') order by 1, 2, 3;
+ field_name | array_index | term |    type    | position | start_offset | end_offset | query_clause 
+------------+-------------+------+------------+----------+--------------+------------+--------------
+ body       |           0 | java | <ALPHANUM> |        1 |            0 |          4 | body:"java"
+(1 row)
+
+select * from zdb.highlight_document('so_posts', '{"body": "java", "other":[null, "a"]}'::json, 'body:java and other:a') order by 1, 2, 3;
+ field_name | array_index | term |    type    | position | start_offset | end_offset | query_clause 
+------------+-------------+------+------------+----------+--------------+------------+--------------
+ body       |           0 | java | <ALPHANUM> |        1 |            0 |          4 | body:"java"
+ other      |           1 | a    | <ALPHANUM> |        1 |            0 |          1 | other:"a"
+(2 rows)
+
