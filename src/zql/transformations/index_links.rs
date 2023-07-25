@@ -1,6 +1,7 @@
 use crate::zql::ast::{Expr, IndexLink, QualifiedField};
 use crate::zql::transformations::field_finder::find_link_for_field;
 use indexmap::IndexMap;
+use std::collections::HashSet;
 
 pub fn assign_links<'a>(
     original_index: &IndexLink,
@@ -67,9 +68,36 @@ fn determine_link(
             None
         }
 
-        Expr::WithList(v) => group_links(original_index, root_index, v, indexes, |v| {
-            Expr::WithList(v)
-        }),
+        Expr::WithList(v) => {
+            let link = group_links(original_index, root_index, v, indexes, |v| {
+                Expr::WithList(v)
+            });
+
+            let mut inner_links = HashSet::new();
+            let mut exprs = Vec::new();
+            for e in v.iter() {
+                if let Expr::Linked(link, expr) = e {
+                    inner_links.insert(link);
+                    exprs.push(*expr.clone());
+                }
+            }
+
+            if !inner_links.is_empty() {
+                if inner_links.len() == 1 {
+                    *expr = Expr::Linked(
+                        inner_links.into_iter().next().unwrap().clone(),
+                        Box::new(Expr::WithList(exprs)),
+                    );
+                } else {
+                    panic!(
+                        "WITH operator expressions not all from the same index: {:#?}",
+                        inner_links
+                    )
+                }
+            }
+
+            link
+        }
         Expr::AndList(v) => {
             group_links(original_index, root_index, v, indexes, |v| Expr::AndList(v))
         }
