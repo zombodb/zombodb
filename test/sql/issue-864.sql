@@ -1,0 +1,79 @@
+CREATE SCHEMA cake;
+CREATE TABLE cake.brand
+(
+    pk_brand_id SERIAL8 NOT NULL PRIMARY KEY,
+    brand_name  character varying
+);
+
+CREATE INDEX es_idx_cake_brand on cake.brand
+    USING zombodb ((brand.*))
+    WITH (max_analyze_token_count='10000000', max_terms_count='2147483647');
+
+CREATE TABLE cake.flavor
+(
+    pk_flavor    SERIAL8 NOT NULL PRIMARY KEY,
+    fk_flv_to_bd bigint,
+    flv_name     varchar,
+    flv_color    varchar
+);
+
+CREATE INDEX es_idx_cake_flavor ON cake.flavor
+    USING zombodb ((flavor.*))
+    WITH (max_analyze_token_count='10000000', max_terms_count='2147483647');
+
+CREATE FUNCTION cake.zdb_cake_bd_to_flavor(anyelement) RETURNS anyelement
+    LANGUAGE c
+    IMMUTABLE STRICT
+AS
+'$libdir/zombodb.so',
+'shadow_wrapper';
+
+CREATE INDEX es_idx_cp_to_flavor_shadow ON cake.brand
+    USING zombodb (cake.zdb_cake_bd_to_flavor(brand.*))
+    WITH (shadow='true',
+    options='pk_brand_id=<cake.flavor.es_idx_cake_flavor>fk_flv_to_bd,flavor_data:(pk_brand_id = <cake.flavor.es_idx_cake_flavor>fk_flv_to_bd)',
+    max_analyze_token_count='10000000',
+    max_terms_count='2147483647');
+
+CREATE OR REPLACE VIEW cake.cake_summary AS
+SELECT brand.pk_brand_id,
+       brand.brand_name,
+       (SELECT json_agg(row_to_json(cj.*)) AS json_agg
+        FROM (SELECT flavor.pk_flavor,
+                     flavor.flv_name,
+                     flavor.flv_color
+              FROM cake.flavor
+              WHERE (brand.pk_brand_id = flavor.fk_flv_to_bd)) cj)::json AS flavor_data,
+       cake.zdb_cake_bd_to_flavor(brand.*)                               AS zdb
+FROM cake.brand;
+
+-- case data
+INSERT INTO cake.brand (pk_brand_id, brand_name)
+VALUES (100, 'Barney Crocker');
+INSERT INTO cake.brand (pk_brand_id, brand_name)
+VALUES (101, 'Wake n Bake');
+INSERT INTO cake.brand (pk_brand_id, brand_name)
+VALUES (102, 'Old El Paso');
+-- flavor data
+INSERT INTO cake.flavor (pk_flavor, fk_flv_to_bd, flv_name, flv_color)
+VALUES (300, 100, 'Vanilla', 'yellow');
+INSERT INTO cake.flavor (pk_flavor, fk_flv_to_bd, flv_name, flv_color)
+VALUES (301, 100, 'Chocolate', 'brown');
+INSERT INTO cake.flavor (pk_flavor, fk_flv_to_bd, flv_name, flv_color)
+VALUES (302, 102, 'Red Velvet', 'red');
+INSERT INTO cake.flavor (pk_flavor, fk_flv_to_bd, flv_name, flv_color)
+VALUES (303, 102, 'Spice', 'brown');
+
+SELECT cake.cake_summary.pk_brand_id                      as "cake_brand_id",
+       cake.cake_summary.brand_name                       as "cake_brand_name",
+       jsonb_pretty(cake.cake_summary.flavor_data::jsonb) as "flavor_data"
+FROM cake.cake_summary
+WHERE cake.cake_summary.zdb ==> '( ( flavor_data.flv_name = "VANILLA" WITH flavor_data.flv_color = "YELLOW" ) )';
+
+SELECT cake.cake_summary.pk_brand_id                      as "cake_brand_id",
+       cake.cake_summary.brand_name                       as "cake_brand_name",
+       jsonb_pretty(cake.cake_summary.flavor_data::jsonb) as "flavor_data"
+FROM cake.cake_summary
+WHERE cake.cake_summary.zdb ==> '( ( flavor_data.flv_name = "VANILLA" WITH flavor_data.flv_color = "BROWN" ) )';
+
+DROP SCHEMA cake CASCADE;
