@@ -1222,9 +1222,9 @@ dependencies = [
 
 [[package]]
 name = "pgrx"
-version = "0.9.7"
+version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6186d4aa5911be4c00b52e555779deece35a7563c87fcfe794407dc2e9cc4dc1"
+checksum = "0e80e25d7f85997d5d24c824297529bcb73231bbdc74d77906004d41cd3ffee3"
 dependencies = [
  "atomic-traits",
  "bitflags 2.3.3",
@@ -1247,9 +1247,9 @@ dependencies = [
 
 [[package]]
 name = "pgrx-macros"
-version = "0.9.7"
+version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "479a66a8c582e0fdf101178473315cb13eaa10829c154db742c35ec0279cdaec"
+checksum = "999ef782b36bb511806277f2a74a7f9e075edcad8c9439a3b90f4c90384f2a29"
 dependencies = [
  "pgrx-sql-entity-graph",
  "proc-macro2",
@@ -1259,9 +1259,9 @@ dependencies = [
 
 [[package]]
 name = "pgrx-pg-config"
-version = "0.9.7"
+version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e45c557631217a13859e223899c01d35982ef0c860ee5ab65af496f830b1316"
+checksum = "a7b27ccd3d892e3b27bcb7a6e2bf86588d82fad3da622db168261bc6b534a737"
 dependencies = [
  "cargo_toml",
  "dirs",
@@ -1277,9 +1277,9 @@ dependencies = [
 
 [[package]]
 name = "pgrx-pg-sys"
-version = "0.9.7"
+version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0dde896a17c638b6475d6fc12b571a176013a8486437bbc8a64ac2afb8ba5d58"
+checksum = "c0767fdf6930ba6fa2d1b1934313aae3694b70732e0b6169ece26b03de27f8dc"
 dependencies = [
  "bindgen",
  "eyre",
@@ -1299,9 +1299,9 @@ dependencies = [
 
 [[package]]
 name = "pgrx-sql-entity-graph"
-version = "0.9.7"
+version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1e9abc71b018d90aa9b7a34fedf48b76da5d55c04d2ed2288096827bebbf403"
+checksum = "4d632abaa9c3da42e5e2a17a6268afb0449a7f655764c65e06695ee55763ff0e"
 dependencies = [
  "convert_case",
  "eyre",
@@ -1314,9 +1314,9 @@ dependencies = [
 
 [[package]]
 name = "pgrx-tests"
-version = "0.9.7"
+version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39ac4ffedfa247f9d51421e4e2ac18c33d8d674350bad730f3fe5736bf298612"
+checksum = "d44327bd084bcdc6fe4e72dfce8065e23b5b4522f36d63d14ee21c5000e7c73c"
 dependencies = [
  "clap-cargo",
  "eyre",
@@ -1327,6 +1327,7 @@ dependencies = [
  "pgrx-macros",
  "pgrx-pg-config",
  "postgres",
+ "rand",
  "regex",
  "serde",
  "serde_json",
@@ -1442,9 +1443,9 @@ checksum = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.63"
+version = "1.0.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b368fba921b0dce7e60f5e04ec15e565b3303972b42bcfde1d0713b881959eb"
+checksum = "18fb31db3f9bddb2ea821cde30a9f70117e3f119938b5ee630b7403aa6e2ead9"
 dependencies = [
  "unicode-ident",
 ]

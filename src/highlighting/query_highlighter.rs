@@ -51,7 +51,8 @@ impl QueryHighlighter {
                 }
             });
 
-        let mut highlights = Default::default();
+        let mut highlights: Vec<((QualifiedField, String), Vec<(&Cow<'_, str>, &TokenEntry)>)> =
+            Default::default();
         let result: Box<
             dyn std::iter::Iterator<
                 Item = (
@@ -141,16 +142,16 @@ impl QueryHighlighter {
                         // keep all the array_index values from all matched TokenEntries
                         array_indexes.extend(
                             matches
-                                .values()
-                                .map(|matches| matches.iter())
+                                .iter()
+                                .map(|matches| matches.1.iter())
                                 .flatten()
                                 .map(|e| e.1.array_index),
                         );
                     } else {
                         // keep only the existing array_indexes that are also found in the matched TokenEntries
                         array_indexes.retain(|i| {
-                            for m in matches.values() {
-                                for (_, e) in m {
+                            for m in matches.iter() {
+                                for (_, e) in m.1.iter() {
                                     if e.array_index == *i {
                                         return true;
                                     }
@@ -448,16 +449,10 @@ impl QueryHighlighter {
     fn process_entries<'a>(
         expr: &Expr<'a>,
         field: &QualifiedField,
-        mut entries: HighlightMatches<'a>,
+        entries: HighlightMatches<'a>,
         highlights: &mut HighlightCollection<'a>,
     ) {
-        highlights
-            // for this field in our map of highlights
-            .entry((field.clone(), format!("{}", expr)))
-            // add to existing entries
-            .and_modify(|v| v.append(&mut entries))
-            // or insert brand new entries
-            .or_insert(entries);
+        highlights.push(((field.clone(), format!("{expr}")), entries))
     }
 }
 
@@ -588,7 +583,54 @@ fn highlight_document_internal<'a>(
         );
 
     let iter: Box<dyn std::iter::Iterator<Item = _>> = if dedup_results {
-        Box::new(iter.collect::<HashSet<_>>().into_iter())
+        let mut collected = iter.collect::<Vec<_>>();
+        collected.sort_by_key(
+            |(field_name, array_index, term, type_, position, start_offset, end_offset, _)| {
+                (
+                    Clone::clone(field_name),
+                    *array_index,
+                    *position,
+                    *start_offset,
+                    *end_offset,
+                    Clone::clone(term),
+                    Clone::clone(type_),
+                )
+            },
+        );
+
+        let mut deduped = Vec::new();
+        let mut peekable = collected.into_iter().peekable();
+        while let Some(current) = peekable.next() {
+            let pos = current.4;
+            let field_name = &current.0;
+            let array_index = current.1;
+            let query_clause = &current.7;
+
+            let current_uniq = (field_name, array_index, query_clause, pos);
+            while let Some(next) = peekable.peek() {
+                let next_type = &next.3;
+                let next_pos = next.4;
+                let next_field_name = &next.0;
+                let next_array_index = next.1;
+                let next_query_clause = &next.7;
+
+                let next_uniq = (
+                    next_field_name,
+                    next_array_index,
+                    next_query_clause,
+                    next_pos,
+                );
+
+                if next == &current || (current_uniq == next_uniq && next_type == "shingle") {
+                    // skip duplicates or the next one if it's a shingle at the same position
+                    peekable.next();
+                } else {
+                    break;
+                }
+            }
+            deduped.push(current);
+        }
+        Box::new(deduped.into_iter())
     } else {
         Box::new(iter.collect::<Vec<_>>().into_iter())
     };

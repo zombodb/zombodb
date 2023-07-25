@@ -9,12 +9,14 @@ select * from zdb.highlight_document('issue836', (select row_to_json(issue836) f
  field_name | array_index | term |   type    | position | start_offset | end_offset | query_clause 
 ------------+-------------+------+-----------+----------+--------------+------------+--------------
  b          |           0 | true | <BOOLEAN> |        1 |            0 |          0 | b:"true"
-(1 row)
+ b          |           0 | true | <BOOLEAN> |        1 |            0 |          0 | b:"true"
+(2 rows)
 
 select * from zdb.highlight_document('issue836', (select row_to_json(issue836) from issue836 where b = false), 'b:true or b:false or b:TRUE or b:FALSE or b:NOT_a_Boolean', false);
  field_name | array_index | term  |   type    | position | start_offset | end_offset | query_clause 
 ------------+-------------+-------+-----------+----------+--------------+------------+--------------
  b          |           0 | false | <BOOLEAN> |        1 |            0 |          0 | b:"false"
-(1 row)
+ b          |           0 | false | <BOOLEAN> |        1 |            0 |          0 | b:"false"
+(2 rows)
 
 drop table issue836 cascade;

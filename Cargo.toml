@@ -32,7 +32,7 @@ lazy_static = "1.4.0"
 levenshtein = "1.0.5"
 memoffset = "0.9.0"
 num_cpus = "1.16.0"
-pgrx = "=0.9.7"
+pgrx = "=0.9.8"
 rayon = "1.7.0"
 regex = { version = "1.8.4", features = [ "unicode-case"] }
 rustc-hash = "1.1.0"
@@ -49,7 +49,7 @@ lalrpop = "0.20.0"
 built = { version = "0.6.1", features = [ "git2", "semver" ] }
 
 [dev-dependencies]
-pgrx-tests = "=0.9.7"
+pgrx-tests = "=0.9.8"
 libc = "0.2.147"
 
 [profile.dev]
