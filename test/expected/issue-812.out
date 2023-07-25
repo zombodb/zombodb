@@ -16,20 +16,16 @@ from (
     zdb.highlight_document('wi60341.hili_recreate'::regclass,to_json(crv),
                            'data_full_text:("Duis*" W/3 "aute*")'::text) as highlights ON true
 order by position, start_offset, end_offset, term;
-   field_name   | array_index |   term    |    type    | position | start_offset | end_offset |             query_clause             
-----------------+-------------+-----------+------------+----------+--------------+------------+--------------------------------------
- data_full_text |           0 | duis      | <ALPHANUM> |       37 |          232 |        236 | data_full_text:("duis*" W/3 "aute*")
- data_full_text |           0 | duis$aute | shingle    |       37 |          232 |        241 | data_full_text:("duis*" W/3 "aute*")
- data_full_text |           0 | aute      | <ALPHANUM> |       38 |          237 |        241 | data_full_text:("duis*" W/3 "aute*")
- data_full_text |           0 | duis      | <ALPHANUM> |      106 |          678 |        682 | data_full_text:("duis*" W/3 "aute*")
- data_full_text |           0 | duis$aute | shingle    |      106 |          678 |        687 | data_full_text:("duis*" W/3 "aute*")
- data_full_text |           0 | aute      | <ALPHANUM> |      107 |          683 |        687 | data_full_text:("duis*" W/3 "aute*")
- data_full_text |           0 | duis      | <ALPHANUM> |      175 |         1124 |       1128 | data_full_text:("duis*" W/3 "aute*")
- data_full_text |           0 | duis$aute | shingle    |      175 |         1124 |       1133 | data_full_text:("duis*" W/3 "aute*")
- data_full_text |           0 | aute      | <ALPHANUM> |      176 |         1129 |       1133 | data_full_text:("duis*" W/3 "aute*")
- data_full_text |           0 | duis      | <ALPHANUM> |      244 |         1570 |       1574 | data_full_text:("duis*" W/3 "aute*")
- data_full_text |           0 | duis$aute | shingle    |      244 |         1570 |       1579 | data_full_text:("duis*" W/3 "aute*")
- data_full_text |           0 | aute      | <ALPHANUM> |      245 |         1575 |       1579 | data_full_text:("duis*" W/3 "aute*")
-(12 rows)
+   field_name   | array_index | term |    type    | position | start_offset | end_offset |             query_clause             
+----------------+-------------+------+------------+----------+--------------+------------+--------------------------------------
+ data_full_text |           0 | duis | <ALPHANUM> |       37 |          232 |        236 | data_full_text:("duis*" W/3 "aute*")
+ data_full_text |           0 | aute | <ALPHANUM> |       38 |          237 |        241 | data_full_text:("duis*" W/3 "aute*")
+ data_full_text |           0 | duis | <ALPHANUM> |      106 |          678 |        682 | data_full_text:("duis*" W/3 "aute*")
+ data_full_text |           0 | aute | <ALPHANUM> |      107 |          683 |        687 | data_full_text:("duis*" W/3 "aute*")
+ data_full_text |           0 | duis | <ALPHANUM> |      175 |         1124 |       1128 | data_full_text:("duis*" W/3 "aute*")
+ data_full_text |           0 | aute | <ALPHANUM> |      176 |         1129 |       1133 | data_full_text:("duis*" W/3 "aute*")
+ data_full_text |           0 | duis | <ALPHANUM> |      244 |         1570 |       1574 | data_full_text:("duis*" W/3 "aute*")
+ data_full_text |           0 | aute | <ALPHANUM> |      245 |         1575 |       1579 | data_full_text:("duis*" W/3 "aute*")
+(8 rows)
 
 drop schema wi60341 cascade;

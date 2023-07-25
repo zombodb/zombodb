@@ -7,10 +7,9 @@ use pgrx::pg_sys::{AsPgCStr, InvalidOid};
 use pgrx::prelude::*;
 use pgrx::{direct_function_call, PgRelation};
 use regex::Regex;
-use rustc_hash::FxHashMap;
 use serde_json::Value;
 use std::borrow::Cow;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::convert::TryInto;
 use std::fmt::Debug;
 use std::ops::Deref;
@@ -36,7 +35,7 @@ enum DataType {
 
 #[derive(Debug)]
 pub struct DocumentHighlighter<'a> {
-    lookup: HashMap<Cow<'a, str>, Vec<TokenEntry>>,
+    lookup: BTreeMap<Cow<'a, str>, Vec<TokenEntry>>,
     data_type: Option<DataType>,
     field: String,
     index_oid: pg_sys::Oid,
@@ -114,7 +113,7 @@ macro_rules! compare_integer {
 }
 
 pub type HighlightMatches<'a> = Vec<(&'a Cow<'a, str>, &'a TokenEntry)>;
-pub type HighlightCollection<'a> = FxHashMap<(QualifiedField, String), HighlightMatches<'a>>;
+pub type HighlightCollection<'a> = Vec<((QualifiedField, String), HighlightMatches<'a>)>;
 
 impl<'a> DocumentHighlighter<'a> {
     pub fn new(index: &PgRelation, field: &str, value: &'a Value) -> Self {
@@ -191,7 +190,7 @@ impl<'a> DocumentHighlighter<'a> {
 
             _ => {
                 let mut result = DocumentHighlighter {
-                    lookup: HashMap::with_capacity(150),
+                    lookup: Default::default(),
                     data_type: None,
                     field: field.into(),
                     index_oid: index.oid(),
@@ -736,9 +735,9 @@ impl<'a> DocumentHighlighter<'a> {
         for (highlights, is_prox_chain) in words {
             let mut highlights = highlights
                 .iter()
-                .filter(|(_, entry)| entry.type_ != "shingle")
                 .map(|(cow, entry)| (*cow, *entry))
                 .collect::<HighlightMatches>();
+            highlights.sort_by_key(|(_, entry)| entry.position);
             for start in &starting_point {
                 let start = *start;
                 let range = if order {
@@ -749,7 +748,7 @@ impl<'a> DocumentHighlighter<'a> {
 
                 for point in range {
                     if point != start {
-                        if let Ok(idx) =
+                        while let Ok(idx) =
                             highlights.binary_search_by(|(_, entry)| entry.position.cmp(&point))
                         {
                             if *is_prox_chain {
@@ -757,6 +756,9 @@ impl<'a> DocumentHighlighter<'a> {
                             } else {
                                 let e = highlights.get(idx).unwrap();
                                 matches.push(*e);
+                            }
+                            if !highlights.is_empty() {
+                                highlights.remove(idx);
                             }
                         }
                     }
@@ -1316,7 +1318,6 @@ mod tests {
             },
         );
         expected.push(value_one);
-        expected.push(value_two.clone());
         expected.push(value_two);
         assert_eq!(matches, expected)
     }
