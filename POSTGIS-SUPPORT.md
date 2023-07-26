@@ -178,3 +178,9 @@ aggregation or selections of items in that zip code based on the shape.
   `dsl.geo_bounding_box()` and `dsl.geo_polygon()` queries
 - Columns defined as `geometry(Point, x)` or `geography(Point, x)` are automatically mapped to the Elasticsearch
   `geo_point` type and can be queried with `dsl.geo_bounding_box()` and `dsl.geo_polygon()` queries
+
+Installing PostGIS (v3.3.2, at least) from source requires the following Ubuntu packages:
+
+```
+sudo apt install libxml2-dev libgeos-dev libproj-dev libprotobuf-c-dev protobuf-c-compiler libgdal-dev
+```
