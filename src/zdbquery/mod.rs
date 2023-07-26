@@ -444,7 +444,10 @@ impl ZDBQuery {
                     &indexes,
                 );
                 let target_index = if let Some(target_link) = target_link.as_ref() {
-                    target_link.open_index().expect("failed to open index")
+                    target_link.open_index().expect(&format!(
+                        "ZQLQuery::prepare: failed to open index `{}`",
+                        target_link
+                    ))
                 } else {
                     index.clone()
                 };
