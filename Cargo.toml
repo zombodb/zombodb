@@ -36,8 +36,8 @@ pgrx = "=0.9.8"
 rayon = "1.7.0"
 regex = { version = "1.9.1", features = [ "unicode-case"] }
 rustc-hash = "1.1.0"
-serde = { version = "1.0.175", features = [ "derive" ] }
-serde_json = { version = "1.0.103", features = [ "preserve_order" ] }
+serde = { version = "1.0.177", features = [ "derive" ] }
+serde_json = { version = "1.0.104", features = [ "preserve_order" ] }
 serde_cbor = "0.11.2"
 sqlformat = "0.2.1"
 unicode-segmentation = "1.10.1"
