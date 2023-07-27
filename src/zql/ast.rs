@@ -17,6 +17,7 @@ use crate::zql::transformations::expand_index_links::expand_index_links;
 use crate::zql::transformations::field_finder::{find_fields, find_link_for_field};
 use crate::zql::transformations::field_lists::expand_field_lists;
 use crate::zql::transformations::index_links::assign_links;
+use crate::zql::transformations::merge_index_links::merge_adjacent_links;
 use crate::zql::transformations::nested_groups::group_nested;
 use crate::zql::transformations::prox_rewriter::rewrite_proximity_chains;
 use crate::zql::{INDEX_LINK_PARSER, ZDB_QUERY_PARSER};
@@ -514,11 +515,13 @@ impl<'input> Expr<'input> {
                 for (link, relation) in index
                     .into_iter()
                     .map(|index| (&root_index, index.clone()))
-                    .chain(
-                        index_links
-                            .iter()
-                            .map(|link| (link, link.open_index().expect("failed to open index"))),
-                    )
+                    .chain(index_links.iter().map(|link| {
+                        (
+                            link,
+                            link.open_index()
+                                .expect(&format!("failed to open index for {:?}", link)),
+                        )
+                    }))
                 {
                     let fields = get_null_copy_to_fields(&relation);
                     field_lists.entry("zdb_all".into()).or_default().append(
@@ -567,6 +570,7 @@ impl<'input> Expr<'input> {
 
         assign_links(original_index, &root_index, &mut expr, index_links);
         expand_index_links(&mut expr, &root_index, &mut relationship_manager);
+        merge_adjacent_links(&mut expr);
         rewrite_proximity_chains(&mut expr);
         Ok(expr)
     }
@@ -690,6 +694,10 @@ impl<'input> Expr<'input> {
             Expr::FuzzyLikeThis(f, _) => f.nested_path(),
             Expr::Matches(f, _) => f.nested_path(),
         }
+    }
+
+    pub fn is_linked(&self) -> bool {
+        matches!(self, Expr::Linked(_, _))
     }
 }
 
