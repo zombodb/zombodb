@@ -1049,8 +1049,25 @@ impl Handler {
         }
 
         if interrupt_pending() {
-            self.terminate();
-            panic!("detected interrupt from Postgres");
+            unsafe {
+                #[cfg(any(feature = "pg11"))]
+                let query_cancel_pending = pg_sys::QueryCancelPending;
+
+                #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14", feature = "pg15"))]
+                let query_cancel_pending = pg_sys::QueryCancelPending != 0;
+
+                if query_cancel_pending {
+                    ZDB_LOG_LEVEL
+                        .get()
+                        .log("[zombodb] detected query cancel signal during _bulk command");
+                    self.terminate();
+                }
+
+                pg_sys::ProcessInterrupts();
+                if query_cancel_pending {
+                    panic!("bulk.rs: check_for_error detected query cancel from Postgres.  Terminating _bulk requests");
+                }
+            }
         }
     }
 }

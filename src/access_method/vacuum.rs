@@ -11,17 +11,16 @@ use serde::*;
 #[pg_guard]
 pub extern "C" fn ambulkdelete(
     info: *mut pg_sys::IndexVacuumInfo,
-    _stats: *mut pg_sys::IndexBulkDeleteResult,
+    stats: *mut pg_sys::IndexBulkDeleteResult,
     _callback: pg_sys::IndexBulkDeleteCallback,
     _callback_state: *mut ::std::os::raw::c_void,
 ) -> *mut pg_sys::IndexBulkDeleteResult {
-    let result = unsafe { PgBox::<pg_sys::IndexBulkDeleteResult>::alloc0() };
     let info = unsafe { PgBox::from_pg(info) };
     let index_relation = unsafe { PgRelation::from_pg(info.index) };
 
     if ZDBIndexOptions::from_relation(&index_relation).is_shadow_index() {
         // nothing for us to do for a shadow index
-        return result.into_pg();
+        return stats;
     }
 
     let elasticsearch = Elasticsearch::new(&index_relation);
@@ -110,7 +109,7 @@ pub extern "C" fn ambulkdelete(
         vacuumed,
         aborted
     ));
-    result.into_pg()
+    stats
 }
 
 #[pg_guard]
@@ -118,17 +117,23 @@ pub extern "C" fn amvacuumcleanup(
     info: *mut pg_sys::IndexVacuumInfo,
     stats: *mut pg_sys::IndexBulkDeleteResult,
 ) -> *mut pg_sys::IndexBulkDeleteResult {
-    let result = unsafe { PgBox::<pg_sys::IndexBulkDeleteResult>::alloc0() };
     let info = unsafe { PgBox::from_pg(info) };
     let index_relation = unsafe { PgRelation::from_pg(info.index) };
+    let mut stats = stats;
 
-    if ZDBIndexOptions::from_relation(&index_relation).is_shadow_index() {
-        // nothing for us to do for a shadow index
-        return result.into_pg();
+    if info.analyze_only {
+        return stats;
     }
 
     if stats.is_null() {
-        ambulkdelete(info.as_ptr(), result.as_ptr(), None, std::ptr::null_mut());
+        stats =
+            unsafe { pg_sys::palloc0(std::mem::size_of::<pg_sys::IndexBulkDeleteResult>()).cast() };
+        ambulkdelete(info.as_ptr(), stats, None, std::ptr::null_mut());
+    }
+
+    if ZDBIndexOptions::from_relation(&index_relation).is_shadow_index() {
+        // nothing for us to do for a shadow index
+        return stats;
     }
 
     let elasticsearch = Elasticsearch::new(&index_relation);
@@ -138,7 +143,7 @@ pub extern "C" fn amvacuumcleanup(
         .execute()
         .expect("failed to expunge deleted docs");
 
-    result.into_pg()
+    stats
 }
 
 fn remove_aborted_xids(
