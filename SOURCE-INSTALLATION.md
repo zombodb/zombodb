@@ -48,6 +48,22 @@ the above command will need write permissions to the Postgres `$PG_INSTALL_PATH/
 Updating ZomboDB from sources will simply require a `git pull`, another `make clean install` and running
 `ALTER EXTENSION zombodb UPDATE;` in all databases that use the ZomboDB extension.
 
+## TLS Support via `rustls`
+ZomboDB supports TLS connections to Elasticsearch via the `rustls` and `native-tls` crates. By default, ZomboDB is compiled with `rustls` support. By default it will trust [webpki-roots](https://docs.rs/webpki-roots/latest/webpki_roots/), a copy of the Mozilla Root program that is bundled into ZomboDB.
+
+If you want to use custom certificates you will need to enable `rustls_native_certs` feature when building ZomboDB. This will use the OS certificate verifier and trust store. 
+
+> [!NOTE]  
+> If you want to load a certificate from the file - you can set the `SSL_CERT_FILE` environment variable to the path of the certificate file.
+
+
+## Enabling TLS Support via `native-tls`
+By default, ZomboDB is compiled with `rustls` support.  If you'd like to use `native-tls` instead, you'll need to enable the `native_tls` feature when building ZomboDB.
+
+Both `rustls` and `native-tls` support TLS connections via the `https` scheme. Both features will use the OS certificate verifier and trust store.
+
+You may want to use `native-tls` if you are using TLS 1.1 or 1.0, as `rustls` does not support these older TLS versions or if you need to validate the certificates for IP addresses.
+
 ## Building Binary Artifacts with Docker
 
 If you have a proper Docker installation you can simply run:

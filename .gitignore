@@ -13,3 +13,4 @@ foo.*
 /regression.diffs
 /regression.out
 /src/zql/parser.rs
+.vscode/

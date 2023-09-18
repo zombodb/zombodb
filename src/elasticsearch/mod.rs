@@ -132,7 +132,29 @@ impl Elasticsearch {
     pub fn client() -> &'static ureq::Agent {
         lazy_static::lazy_static! {
             static ref AGENT: ureq::Agent = {
-                ureq::AgentBuilder::new()
+                let agent_builder = ureq::AgentBuilder::new();
+
+                #[cfg(feature = "native_tls")] // if native_tls feature is enabled - we need to create TlsConnector and pass it to agent_builder
+                {
+                    match native_tls::TlsConnector::new() {
+                        Ok(tls_config) => {
+                            return agent_builder
+                            .tls_connector(std::sync::Arc::new(tls_config))
+                            .timeout_read(std::time::Duration::from_secs(3600))  // a 1hr timeout waiting on ES to return
+                            .max_idle_connections_per_host(num_cpus::get())     // 1 for each CPU -- only really used during _bulk
+                            .build();
+                        }
+                        Err(e) => {
+                            // log the error
+                            crate::gucs::ZDB_LOG_LEVEL.get().log(&format!(
+                                "[zombodb] can't create native tls connector - {}",
+                                e
+                            ));
+                        }
+                    }
+                }
+
+                agent_builder
                 .timeout_read(std::time::Duration::from_secs(3600))  // a 1hr timeout waiting on ES to return
                 .max_idle_connections_per_host(num_cpus::get())     // 1 for each CPU -- only really used during _bulk
                 .build()
