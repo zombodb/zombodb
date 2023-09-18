@@ -12,5 +12,4 @@ foo.*
 /test/sql/load-data.sql
 /regression.diffs
 /regression.out
-/src/zql/parser.rs
 .vscode/
