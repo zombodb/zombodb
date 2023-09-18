@@ -283,9 +283,9 @@ A proximity search in the form of: `jumped w/2 quick` would match the above beca
 
 Whereas `jumped wo/2 quick` would *not* match because order was required.
 
-Proximity clauses can be chained together and are evaluated right-to-left. For example:
+Proximity clauses can be chained together and are evaluated left-to-right. For example:
 
-`quick w/2 jumped w/4 back` is evaluated as if it were written as `quick w/2 (jumped w/4 back)`.
+`quick w/2 jumped w/4 back` is evaluated as if it were written as `((quick w/2 jumped) w/4 back)`.
 
 Additionally, phrase proximity is supported. For example:
 

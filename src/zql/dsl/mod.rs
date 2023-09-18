@@ -11,8 +11,7 @@ use crate::utils::{is_keyword_field, lookup_es_field_type};
 use crate::zdbquery::mvcc::build_visibility_clause;
 use crate::zdbquery::ZDBQuery;
 use crate::zql::ast::{
-    ComparisonOpcode, Expr, IndexLink, ProximityDistance, ProximityPart, ProximityTerm,
-    QualifiedField, Term,
+    ComparisonOpcode, Expr, IndexLink, ProximityPart, ProximityTerm, QualifiedField, Term,
 };
 
 #[pg_extern(immutable, parallel_safe)]
@@ -421,28 +420,27 @@ fn proximity_chain(field: &QualifiedField, parts: &Vec<ProximityPart>) -> serde_
         }
     }
 
-    let mut span_near = None;
-    let mut clauses = clauses.into_iter();
-    let mut prev_distance = ProximityDistance::default();
-    while let Some((clause, distance)) = clauses.next() {
-        let mut distance = distance.unwrap_or(prev_distance);
-        let span = if let Some((next_clause, next_distance)) = clauses.next() {
-            let span = json! {
-                { "span_near": { "clauses": [ clause, next_clause ], "slop": distance.distance, "in_order": distance.in_order } }
-            };
-            distance = next_distance.unwrap_or_default();
-            span
-        } else {
-            clause
-        };
+    if clauses.len() == 1 {
+        return clauses.pop().unwrap().0;
+    }
 
-        span_near = Some(if span_near.is_none() {
-            span
-        } else {
-            json! {
-                { "span_near": { "clauses": [ span_near, span ], "slop": distance.distance, "in_order": distance.in_order } }
-            }
+    let mut clauses = clauses.into_iter();
+
+    let (first, distance) = clauses.next().unwrap();
+    let (second, next_distance) = clauses.next().unwrap();
+
+    let distance = distance.unwrap();
+    let mut span_near = Some(json! {
+        { "span_near": { "clauses": [ first, second ], "slop": distance.distance, "in_order": distance.in_order } }
+    });
+
+    let mut prev_distance = next_distance;
+    while let Some((clause, distance)) = clauses.next() {
+        let d = prev_distance.unwrap();
+        span_near = Some(json! {
+            { "span_near": { "clauses": [ span_near.unwrap(), clause ], "slop": d.distance, "in_order": d.in_order } }
         });
+
         prev_distance = distance;
     }
 

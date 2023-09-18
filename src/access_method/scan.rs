@@ -47,8 +47,7 @@ pub extern "C" fn amrescan(
     let scan: PgBox<pg_sys::IndexScanDescData> = unsafe { PgBox::from_pg(scan) };
     let indexrel = unsafe { PgRelation::from_pg(scan.indexRelation) };
 
-    let mut state =
-        unsafe { (scan.opaque as *mut ZDBScanState).as_mut() }.expect("no scandesc state");
+    let state = unsafe { (scan.opaque as *mut ZDBScanState).as_mut() }.expect("no scandesc state");
     let nkeys = nkeys as usize;
     let keys = unsafe { std::slice::from_raw_parts(keys as *const pg_sys::ScanKeyData, nkeys) };
     let mut query = unsafe { ZDBQuery::from_datum(keys[0].sk_argument, false).unwrap() };
