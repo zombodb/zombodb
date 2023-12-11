@@ -53,7 +53,7 @@ jobs:
 
       # install cargo-pgrx
     - name: install cargo-pgrx
-      run: cargo install cargo-pgrx
+      run: cargo install cargo-pgrx --version 0.9.8 --locked
 
     # initialize pgrx
     - name: cargo pgrx init
