@@ -416,7 +416,6 @@ impl ExecutorManager {
                 get_executor_manager().hooks_registered = true;
             }
 
-            // let is_shadow = elasticsearch.is_shadow_index();
             let mut es_bulk_request = elasticsearch.start_bulk();
 
             // only non-shadow indexes are written to
