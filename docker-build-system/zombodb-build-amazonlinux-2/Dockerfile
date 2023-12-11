@@ -33,12 +33,6 @@ RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.n
 RUN yum install -y clang llvm5.0-devel openssl-devel
 
 RUN echo $'\n\
-[pgdg11]\n\
-name=PostgreSQL 11 for RHEL/CentOS 7 - x86_64\n\
-baseurl=https://download.postgresql.org/pub/repos/yum/11/redhat/rhel-7-x86_64\n\
-enabled=1\n\
-gpgcheck=0\n\
-\n\
 [pgdg12]\n\
 name=PostgreSQL 12 for RHEL/CentOS 7 - x86_64\n\
 baseurl=https://download.postgresql.org/pub/repos/yum/12/redhat/rhel-7-x86_64\n\
