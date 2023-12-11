@@ -1050,10 +1050,6 @@ impl Handler {
 
         if interrupt_pending() {
             unsafe {
-                #[cfg(any(feature = "pg11"))]
-                let query_cancel_pending = pg_sys::QueryCancelPending;
-
-                #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14", feature = "pg15"))]
                 let query_cancel_pending = pg_sys::QueryCancelPending != 0;
 
                 if query_cancel_pending {

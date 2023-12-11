@@ -146,7 +146,7 @@ fn do_heap_scan<'a>(
 #[pg_guard]
 pub extern "C" fn ambuildempty(_index_relation: pg_sys::Relation) {}
 
-#[cfg(any(feature = "pg10", feature = "pg11", feature = "pg12", feature = "pg13"))]
+#[cfg(any(feature = "pg12", feature = "pg13"))]
 #[pg_guard]
 pub unsafe extern "C" fn aminsert(
     index_relation: pg_sys::Relation,
@@ -202,7 +202,7 @@ unsafe fn aminsert_internal(
     true
 }
 
-#[cfg(any(feature = "pg10", feature = "pg11", feature = "pg12"))]
+#[cfg(any(feature = "pg12"))]
 #[pg_guard]
 unsafe extern "C" fn build_callback(
     _index: pg_sys::Relation,

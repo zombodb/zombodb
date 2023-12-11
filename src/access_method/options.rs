@@ -886,7 +886,7 @@ unsafe fn build_relopts(
     rdopts as *mut pg_sys::bytea
 }
 
-#[cfg(any(feature = "pg10", feature = "pg11", feature = "pg12"))]
+#[cfg(any(feature = "pg12"))]
 unsafe fn build_relopts(
     reloptions: pg_sys::Datum,
     validate: bool,

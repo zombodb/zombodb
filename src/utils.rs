@@ -176,9 +176,6 @@ fn find_zdb_shadow_index(table: &PgRelation, funcid: pg_sys::Oid) -> PgRelation 
 
 #[inline]
 pub fn is_zdb_index(index: &PgRelation) -> bool {
-    #[cfg(any(feature = "pg10", feature = "pg11"))]
-    let routine = index.rd_amroutine;
-    #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14", feature = "pg15"))]
     let routine = index.rd_indam;
 
     if routine.is_null() {
@@ -191,9 +188,6 @@ pub fn is_zdb_index(index: &PgRelation) -> bool {
 
 #[inline]
 pub fn is_non_shadow_zdb_index(index: &PgRelation) -> bool {
-    #[cfg(any(feature = "pg10", feature = "pg11"))]
-    let routine = index.rd_amroutine;
-    #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14", feature = "pg15"))]
     let routine = index.rd_indam;
 
     if routine.is_null() {

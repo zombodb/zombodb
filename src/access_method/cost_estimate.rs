@@ -32,17 +32,9 @@ pub unsafe extern "C" fn amcostestimate(
     // these would have been calculated in zdb_restrict()
     *index_selectivity = 1.0;
 
-    #[cfg(any(feature = "pg10", feature = "pg11"))]
-    let index_clauses = PgList::<pg_sys::RestrictInfo>::from_pg(path.indexclauses);
-
-    #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14", feature = "pg15"))]
     let index_clauses = PgList::<pg_sys::IndexClause>::from_pg(path.indexclauses);
 
     for clause in index_clauses.iter_ptr() {
-        #[cfg(any(feature = "pg10", feature = "pg11"))]
-        let ri = clause.as_ref().expect("restrict info is NULL");
-
-        #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14", feature = "pg15"))]
         let ri = clause
             .as_ref()
             .unwrap()

@@ -27,7 +27,7 @@ pub extern "C" fn ambulkdelete(
     let options = ZDBIndexOptions::from_relation(&index_relation);
     let es_index_name = options.index_name();
     let oldest_xmin = {
-        #[cfg(any(feature = "pg10", feature = "pg11", feature = "pg12", feature = "pg13"))]
+        #[cfg(any(feature = "pg12", feature = "pg13"))]
         unsafe {
             pg_sys::TransactionIdLimitedForOldSnapshots(
                 pg_sys::GetOldestXmin(info.index, pg_sys::PROCARRAY_FLAGS_VACUUM as i32),

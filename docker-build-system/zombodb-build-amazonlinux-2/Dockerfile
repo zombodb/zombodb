@@ -66,7 +66,6 @@ gpgcheck=0\n\
 
 RUN yum install -y http://mirror.centos.org/centos/7/extras/x86_64/Packages/centos-release-scl-rh-2-3.el7.centos.noarch.rpm
 RUN yum install -y llvm-toolset-7-clang
-RUN yum install -y postgresql11 postgresql11-server postgresql11-devel
 RUN yum install -y postgresql12 postgresql12-server postgresql12-devel
 RUN yum install -y postgresql13 postgresql13-server postgresql13-devel
 RUN yum install -y postgresql14 postgresql14-server postgresql14-devel
@@ -88,7 +87,6 @@ ENV PATH="/home/${USER}/.cargo/bin:${PATH}"
 
 RUN cargo install cargo-pgrx
 RUN cargo pgrx init \
-	--pg11=/usr/pgsql-11/bin/pg_config \
 	--pg12=/usr/pgsql-12/bin/pg_config \
 	--pg13=/usr/pgsql-13/bin/pg_config \
 	--pg14=/usr/pgsql-14/bin/pg_config \
