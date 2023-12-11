@@ -1,3 +1,4 @@
+use crate::access_method::options::ZDBIndexOptions;
 use crate::elasticsearch::{Elasticsearch, ElasticsearchBulkRequest};
 use crate::mapping::{categorize_tupdesc, CategorizedAttribute};
 use crate::utils::{find_zdb_index, lookup_all_zdb_index_oids, lookup_zdb_index_tupdesc};
@@ -385,6 +386,7 @@ impl ExecutorManager {
         let xids = &self.xids;
         bulk_map.entry(indexrelid).or_insert_with(move || {
             let indexrel = unsafe { PgRelation::open(indexrelid) };
+            let is_shadow = ZDBIndexOptions::is_shadow_index_fast(&indexrel);
             let elasticsearch = Elasticsearch::new(&indexrel);
             let tupdesc = lookup_zdb_index_tupdesc(&indexrel); // this is allocated in TopTransactionContext, which as far as we're concerned is effectively the `'static` lifetime
             let attributes = categorize_tupdesc(&tupdesc, &indexrel.heap_relation().unwrap(), None);
@@ -414,7 +416,7 @@ impl ExecutorManager {
                 get_executor_manager().hooks_registered = true;
             }
 
-            let is_shadow = elasticsearch.is_shadow_index();
+            // let is_shadow = elasticsearch.is_shadow_index();
             let mut es_bulk_request = elasticsearch.start_bulk();
 
             // only non-shadow indexes are written to

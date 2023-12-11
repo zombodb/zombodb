@@ -1,0 +1,33 @@
+CREATE TABLE issue881 (id serial8, t varchar);
+INSERT INTO issue881 (t) values ('test');
+CREATE INDEX idxissue881 ON issue881 USING zombodb ((issue881.*));
+CREATE INDEX idxissue881_shadow ON issue881 USING zombodb ((issue881.*)) WITH (shadow='true');
+SELECT zdb.count('issue881', '');
+ count 
+-------
+     1
+(1 row)
+
+SELECT * FROM zdb.terms('issue881', 't', '');
+ term | doc_count 
+------+-----------
+ test |         1
+(1 row)
+
+BEGIN;
+UPDATE issue881 SET id = id;
+UPDATE issue881 SET t = 'this is the new value';
+COMMIT;
+SELECT zdb.count('issue881', '');
+ count 
+-------
+     1
+(1 row)
+
+SELECT * FROM zdb.terms('issue881', 't', '');
+         term          | doc_count 
+-----------------------+-----------
+ this is the new value |         1
+(1 row)
+
+DROP TABLE issue881;
