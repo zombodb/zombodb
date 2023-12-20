@@ -417,42 +417,46 @@ impl<'a> DocumentHighlighter<'a> {
     }
 
     pub fn gt_func(&self) -> fn(&str, &str) -> bool {
-        match self.data_type.as_ref().unwrap() {
-            DataType::String => str::gt,
-            DataType::Float => |token: &str, term: &str| compare_float!(token, gt, term),
-            DataType::Integer => |token: &str, term: &str| compare_integer!(token, gt, term),
-            DataType::Date => |token: &str, term: &str| compare_date!(token, gt, term),
-            DataType::Bool => |_, _| false,
+        match &self.data_type {
+            Some(DataType::String) => str::gt,
+            Some(DataType::Float) => |token: &str, term: &str| compare_float!(token, gt, term),
+            Some(DataType::Integer) => |token: &str, term: &str| compare_integer!(token, gt, term),
+            Some(DataType::Date) => |token: &str, term: &str| compare_date!(token, gt, term),
+            Some(DataType::Bool) => |_, _| false,
+            None => |_, _| false,
         }
     }
 
     pub fn lt_func(&self) -> fn(&str, &str) -> bool {
-        match self.data_type.as_ref().unwrap() {
-            DataType::String => str::lt,
-            DataType::Float => |token: &str, term: &str| compare_float!(token, lt, term),
-            DataType::Integer => |token: &str, term: &str| compare_integer!(token, lt, term),
-            DataType::Date => |token: &str, term: &str| compare_date!(token, lt, term),
-            DataType::Bool => |_, _| false,
+        match &self.data_type {
+            Some(DataType::String) => str::lt,
+            Some(DataType::Float) => |token: &str, term: &str| compare_float!(token, lt, term),
+            Some(DataType::Integer) => |token: &str, term: &str| compare_integer!(token, lt, term),
+            Some(DataType::Date) => |token: &str, term: &str| compare_date!(token, lt, term),
+            Some(DataType::Bool) => |_, _| false,
+            None => |_, _| false,
         }
     }
 
     pub fn ge_func(&self) -> fn(&str, &str) -> bool {
-        match self.data_type.as_ref().unwrap() {
-            DataType::String => str::ge,
-            DataType::Float => |token: &str, term: &str| compare_float!(token, ge, term),
-            DataType::Integer => |token: &str, term: &str| compare_integer!(token, ge, term),
-            DataType::Date => |token: &str, term: &str| compare_date!(token, ge, term),
-            DataType::Bool => |token: &str, term: &str| token == term,
+        match &self.data_type {
+            Some(DataType::String) => str::ge,
+            Some(DataType::Float) => |token: &str, term: &str| compare_float!(token, ge, term),
+            Some(DataType::Integer) => |token: &str, term: &str| compare_integer!(token, ge, term),
+            Some(DataType::Date) => |token: &str, term: &str| compare_date!(token, ge, term),
+            Some(DataType::Bool) => |token: &str, term: &str| token == term,
+            None => |_, _| false,
         }
     }
 
     pub fn le_func(&self) -> fn(&str, &str) -> bool {
-        match self.data_type.as_ref().unwrap() {
-            DataType::String => str::le,
-            DataType::Float => |token: &str, term: &str| compare_float!(token, le, term),
-            DataType::Integer => |token: &str, term: &str| compare_integer!(token, le, term),
-            DataType::Date => |token: &str, term: &str| compare_date!(token, le, term),
-            DataType::Bool => |token: &str, term: &str| token == term,
+        match &self.data_type {
+            Some(DataType::String) => str::le,
+            Some(DataType::Float) => |token: &str, term: &str| compare_float!(token, le, term),
+            Some(DataType::Integer) => |token: &str, term: &str| compare_integer!(token, le, term),
+            Some(DataType::Date) => |token: &str, term: &str| compare_date!(token, le, term),
+            Some(DataType::Bool) => |token: &str, term: &str| token == term,
+            None => |_, _| false,
         }
     }
 
