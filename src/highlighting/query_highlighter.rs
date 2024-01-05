@@ -219,28 +219,95 @@ impl QueryHighlighter {
                 false
             }
 
-            Expr::Contains(f, t) | Expr::Eq(f, t) | Expr::Regex(f, t) => {
-                if let Some(dh) = highlighters.get(&f.field) {
-                    let mut did_highlight = false;
-                    for dh in dh {
-                        did_highlight |=
-                            QueryHighlighter::highlight_term(dh, f.clone(), expr, t, highlights);
+            Expr::Contains(f, t) | Expr::Eq(f, t) | Expr::Regex(f, t) => match t {
+                Term::Range(b, e, boost) => {
+                    if let Some(dh) = highlighters.get(&f.field) {
+                        let mut did_highlight = false;
+                        for dh in dh {
+                            let in_range = QueryHighlighter::highlight_term_scan(
+                                dh,
+                                f.clone(),
+                                expr,
+                                &Term::String(b, *boost),
+                                highlights,
+                                dh.ge_func(),
+                            ) && QueryHighlighter::highlight_term_scan(
+                                dh,
+                                f.clone(),
+                                expr,
+                                &Term::String(e, *boost),
+                                highlights,
+                                dh.le_func(),
+                            );
+                            did_highlight |= in_range;
+                        }
+                        return did_highlight;
                     }
-                    return did_highlight;
+                    false
                 }
-                false
-            }
-            Expr::DoesNotContain(f, t) | Expr::Ne(f, t) => {
-                if let Some(dh) = highlighters.get(&f.field) {
-                    let mut did_highlight = false;
-                    for dh in dh {
-                        did_highlight |=
-                            !QueryHighlighter::highlight_term(dh, f.clone(), expr, t, highlights);
+
+                _ => {
+                    if let Some(dh) = highlighters.get(&f.field) {
+                        let mut did_highlight = false;
+                        for dh in dh {
+                            did_highlight |= QueryHighlighter::highlight_term(
+                                dh,
+                                f.clone(),
+                                expr,
+                                t,
+                                highlights,
+                            );
+                        }
+                        return did_highlight;
                     }
-                    return did_highlight;
+                    false
                 }
-                false
-            }
+            },
+
+            Expr::DoesNotContain(f, t) | Expr::Ne(f, t) => match t {
+                Term::Range(b, e, boost) => {
+                    if let Some(dh) = highlighters.get(&f.field) {
+                        let mut did_highlight = false;
+                        for dh in dh {
+                            let in_range = QueryHighlighter::highlight_term_scan(
+                                dh,
+                                f.clone(),
+                                expr,
+                                &Term::String(b, *boost),
+                                highlights,
+                                dh.ge_func(),
+                            ) && QueryHighlighter::highlight_term_scan(
+                                dh,
+                                f.clone(),
+                                expr,
+                                &Term::String(e, *boost),
+                                highlights,
+                                dh.le_func(),
+                            );
+                            did_highlight |= !in_range;
+                        }
+                        return did_highlight;
+                    }
+                    false
+                }
+
+                _ => {
+                    if let Some(dh) = highlighters.get(&f.field) {
+                        let mut did_highlight = false;
+                        for dh in dh {
+                            did_highlight |= !QueryHighlighter::highlight_term(
+                                dh,
+                                f.clone(),
+                                expr,
+                                t,
+                                highlights,
+                            );
+                        }
+                        return did_highlight;
+                    }
+                    false
+                }
+            },
 
             Expr::Gt(f, t) => {
                 if let Some(dh) = highlighters.get(&f.field) {
@@ -405,6 +472,7 @@ impl QueryHighlighter {
             Term::Range(_, _, _) => {
                 // TODO:  Do we support highlighting ranges, and then how do we deal with
                 //        various data types?
+                unreachable!("Term::Range() is handled elsewhere")
             }
             Term::ProximityChain(v) => {
                 if let Some(entries) = highlighter.highlight_proximity(v) {
