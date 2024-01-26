@@ -1,0 +1,1081 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js zombo">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>ElasticSearch QueryDSL queries</title>
+
+
+        <!-- Custom HTML head -->
+<link href="https://fonts.googleapis.com/css?family=Josefin+Slab|Open+Sans|Raleway" rel="stylesheet">
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+        <link rel="stylesheet" href="../zombo-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../zombo.css">
+        <link rel="stylesheet" href="../zombo-highlight.css">
+
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "../";
+            var default_theme = "zombo";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('zombo')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../index.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="../getting-started.html"><strong aria-hidden="true">2.</strong> Getting started tutorial</a></li><li class="chapter-item expanded affix "><li class="part-title">Usage</li><li class="chapter-item expanded "><a href="../usage/zql-queries.html"><strong aria-hidden="true">3.</strong> ZQL queries</a></li><li class="chapter-item expanded "><a href="../usage/elasticsearch-dsl-queries.html" class="active"><strong aria-hidden="true">4.</strong> ElasticSearch QueryDSL queries</a></li><li class="chapter-item expanded "><a href="../usage/using-sql-functions.html"><strong aria-hidden="true">5.</strong> Using SQL functions</a></li><li class="chapter-item expanded "><a href="../usage/scoring.html"><strong aria-hidden="true">6.</strong> Scoring</a></li><li class="chapter-item expanded "><a href="../usage/highlighting.html"><strong aria-hidden="true">7.</strong> Highlighting</a></li><li class="chapter-item expanded "><a href="../usage/cross-index-joins.html"><strong aria-hidden="true">8.</strong> Cross-index joins</a></li><li class="chapter-item expanded "><a href="../usage/aggregations.html"><strong aria-hidden="true">9.</strong> Aggregations</a></li><li class="chapter-item expanded "><a href="../usage/aggregate-builder-api.html"><strong aria-hidden="true">10.</strong> Aggregate Builder API</a></li><li class="chapter-item expanded "><a href="../usage/_cat-api_.html"><strong aria-hidden="true">11.</strong> ElasticSearch _cat API</a></li><li class="chapter-item expanded "><a href="../usage/postgis-support.html"><strong aria-hidden="true">12.</strong> PostGIS Support</a></li><li class="chapter-item expanded affix "><li class="part-title">Administration</li><li class="chapter-item expanded "><a href="../administration/binary-installation.html"><strong aria-hidden="true">13.</strong> Binary installation</a></li><li class="chapter-item expanded "><a href="../administration/source-installation.html"><strong aria-hidden="true">14.</strong> Source installation</a></li><li class="chapter-item expanded "><a href="../administration/configuration.html"><strong aria-hidden="true">15.</strong> Configuration</a></li><li class="chapter-item expanded "><a href="../administration/index-management.html"><strong aria-hidden="true">16.</strong> Index Management</a></li><li class="chapter-item expanded "><a href="../usage/creating-a-zombodb-index.html"><strong aria-hidden="true">17.</strong> Creating a ZomboDB Index in Postgres</a></li><li class="chapter-item expanded affix "><li class="part-title">Internals</li><li class="chapter-item expanded "><a href="../internals/important-things-to-know.html"><strong aria-hidden="true">18.</strong> Architecture</a></li><li class="chapter-item expanded "><a href="../internals/type-mapping.html"><strong aria-hidden="true">19.</strong> Type Mapping</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="zombo">Zombo (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Cool</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title"></h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="elasticsearch-querydsl"><a class="header" href="#elasticsearch-querydsl">ElasticSearch QueryDSL</a></h1>
+<p>ZomboDB supports a few different ways to generate Elasticsearch-compatible queries.  You can use Elasticsearch’s query string syntax, directly generate its QueryDSL in JSON form, or use ZomboDB’s SQL builder API which closely mirrors Elasticsearch’s QueryDSL.</p>
+<p>Wherever ZomboDB wants to you specify a query, which is typically <code>SELECT</code> statements and aggregate functions, you can interchangeably use any of the below query forms.</p>
+<p>To use a <code>SELECT</code> statement as an example, lets suppose we want to select all the rows that contain the terms “cats and dogs” regardless of field.  The basic query template looks like:</p>
+<pre><code class="language-sql">SELECT * FROM table WHERE table ==&gt; &lt;cats and dogs query here&gt;
+</code></pre>
+<p>Note that regardless of the way you query, know that essentially you’re generating <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl.html">Elasticsearch QueryDSL</a> in JSON.</p>
+<p>ZomboDB tries to abstract this fact away by using a custom Postgres type called <code>zdbquery</code> that can be cast to/from <code>text</code>, <code>json</code>, and <code>jsonb</code>.  As such, the right-hand-side of ZomboDB’s <code>==&gt;</code> operator is of type <code>zdbquery</code>.</p>
+<p>The goal of this document is not to teach the ins-and-outs of Elasticsearch’s query capabilities.  It is recommented you reference its documentation when the information here is not sufficient.  Where approrpiate, links to specific Elasticsearch Query DSL clauses are provided below.</p>
+<p>That said, lets discuss how to write our example query using ZomboDB’s supported query forms.</p>
+<h3 id="query-string-syntax"><a class="header" href="#query-string-syntax">Query String Syntax</a></h3>
+<p>The Query String Syntax is a plain-text query language <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html">implemented by Elasticsearch</a>.  It’s “google”-like in that you can simply specify free-form, unqualified words and “quoted phrases” and Elasticsearch figures out the matching documents.  Additionally, it supports a fairly sophsicated boolean syntax that includes field qualification, proximity, ranges, wildcards, etc.</p>
+<p>Using the query string syntax, searching for “cats and dogs” could be any of the following:</p>
+<pre><code class="language-sql">SELECT * FROM table WHERE table ==&gt; '+cats +dogs';
+SELECT * FROM table WHERE table ==&gt; 'cats AND dogs';
+</code></pre>
+<p>To show what’s happening behind the scenes, ZomboDB is actually generating Elasticsearch QueryDSL JSON for the above queries:</p>
+<pre><code class="language-sql">SELECT '+cats +dogs'::zdbquery::json;
+                   json                   
+------------------------------------------
+ {&quot;query_string&quot;:{&quot;query&quot;:&quot;+cats +dogs&quot;}}
+
+SELECT 'cats AND dogs'::zdbquery::json;
+                    json                    
+--------------------------------------------
+ {&quot;query_string&quot;:{&quot;query&quot;:&quot;cats AND dogs&quot;}}
+
+</code></pre>
+<p>So you can see that ZomboDB is directly using Elasticsearch’s Query String query.</p>
+<h3 id="direct-json"><a class="header" href="#direct-json">Direct JSON</a></h3>
+<p>While the above Query String Syntax is easy for humans to read and type, it doesn’t expose every feature of Elasticsearch’s QueryDSL.  Enter direct json.</p>
+<pre><code class="language-sql">SELECT * FROM table WHERE table ==&gt; '{&quot;bool&quot;:{&quot;must&quot;:[{&quot;term&quot;:{&quot;zdb_all&quot;:{&quot;value&quot;:&quot;cats&quot;}}},{&quot;term&quot;:{&quot;zdb_all&quot;:{&quot;value&quot;:&quot;dogs&quot;}}}]}}';
+</code></pre>
+<p>You have the full gamut of the Elasticsearch QueryDSL available to you with this form.  This is likely best used when you’re programatically generating queries.</p>
+<blockquote>
+<p>Note that the field <code>zdb_all</code> is ZomboDB’s version of Elasticsearch’s “_all” field, except <code>zdb_all</code> is enabled for all versions of Elasticsearch.  It is also configured as the default search field for every ZomboDB index, which is why it wasn’t specified in the Query String Syntax examples, but is here.</p>
+</blockquote>
+<h3 id="sql-builder-api"><a class="header" href="#sql-builder-api">SQL Builder API</a></h3>
+<p>ZomboDB also exposes nearly all of Elasticsearch’s QueryDSL queries as SQL functions, located in a schema named <code>dsl</code>.  These functions all return a <code>zdbquery</code>, and can be composed together to build complex queries.  The primary advantages of this API are that these functions are syntax- and type-checked by Postgres, so you’ll catch malformed queries sooner.</p>
+<p>In general, each function models its corresponding Elasticsearch query exactly.  Default values are used for arguments in all places where Elasticsearch provides defaults for properties, and arguments are required where Elasticsearch requires the corresponding property.  Postgres VARIADIC function arguments are used in most cases where Elasticsearch expects an array of queries or values.</p>
+<p>They’re designed to be used with defaults in the common cases, and then otherwise should be used using Postgres’ “named arguments” function call syntax to improve readability.</p>
+<p>All of the functions are briefly described below, but here’s some examples for our “cats and dogs” queries, plus a few more examples.</p>
+<pre><code class="language-sql">SELECT * FROM table WHERE table ==&gt; dsl.and('cats', 'dogs');
+SELECT * FROM table WHERE table ==&gt; dsl.and(dsl.term('zdb_all', 'cats'), dsl.term('zdb_all', 'dogs'));
+</code></pre>
+<p>Behind the scenes, ZomboDB is just generating the QueryDSL JSON for you:</p>
+<pre><code class="language-sql">SELECT dsl.and('cats', 'dogs')::json;
+                                          must                                           
+-----------------------------------------------------------------------------------------
+ {&quot;bool&quot;:{&quot;must&quot;:[{&quot;query_string&quot;:{&quot;query&quot;:&quot;cats&quot;}},{&quot;query_string&quot;:{&quot;query&quot;:&quot;dogs&quot;}}]}}
+ 
+SELECT dsl.and(dsl.term('zdb_all', 'cats'), dsl.term('zdb_all', 'dogs'))::json;
+                                              must                                               
+-------------------------------------------------------------------------------------------------
+ {&quot;bool&quot;:{&quot;must&quot;:[{&quot;term&quot;:{&quot;zdb_all&quot;:{&quot;value&quot;:&quot;cats&quot;}}},{&quot;term&quot;:{&quot;zdb_all&quot;:{&quot;value&quot;:&quot;dogs&quot;}}}]}}
+</code></pre>
+<p>Lets say you want to find all rows that contain cats with an age greater than 3 years.  This example shows, with the <code>range()</code> function, using Postgres “named arugments” function call syntax so that you can specifiy only the bounds of the range you need.  We’re also mix-and-matching between the plain text Query String Syntax (<code>'cats'</code>) and the builder API (<code>must()</code> and <code>range()</code>):</p>
+<pre><code class="language-sql">SELECT * FROM table WHERE table ==&gt; dsl.and('cats', dsl.range(field=&gt;'age', gt=&gt;3));
+</code></pre>
+<p>Which rewrites to:</p>
+<pre><code class="language-sql">SELECT dsl.and('cats', dsl.range(field=&gt;'age', gt=&gt;3))::json;
+                                        must                                        
+------------------------------------------------------------------------------------
+ {&quot;bool&quot;:{&quot;must&quot;:[{&quot;query_string&quot;:{&quot;query&quot;:&quot;cats&quot;}},{&quot;range&quot;:{&quot;age&quot;:{&quot;gt&quot;:&quot;3&quot;}}}]}}
+</code></pre>
+<p>One of the more powerful benefits of the Builder API is that it allows you to generate Postgres prepared statements for your text-search queries.  For example:</p>
+<pre><code class="language-sql">PREPARE example AS SELECT * FROM table WHERE table ==&gt; dsl.and($1, dsl.range(field=&gt;'age', gt=&gt;$2));
+</code></pre>
+<p>Now we can execute that query using a different search term and age range:</p>
+<pre><code class="language-sql">EXECUTE exampe('cats', 3);
+EXECUTE exampe('dogs', 7);
+EXECUTE exampe('elephants', 23);
+</code></pre>
+<p>Using prepared statements is extremely important to avoid SQL-injection attacks.  ZomboDB makes this possible for your Elasticsearch QueryDSL query clauses too.  Any argument to any of the functions can become a prepared statement arugment that you can change at EXECUTE time.</p>
+<h3 id="sorting-and-limiting-results"><a class="header" href="#sorting-and-limiting-results">Sorting and Limiting Results</a></h3>
+<p>ZomboDB allows you to limit the number of rows returned, and their sort order, similar to the SQL <code>LIMIT</code> and <code>ORDER BY</code> clauses, except they’re specified as part of the Elasticsearch query, and the sorting/limiting happens within Elasticsearch.  In general, this is significantly faster than having Postgres do it.</p>
+<p>The following functions are designed to wrap the query you want to execute, on the outer levels.  For example, to return only 10 rows:</p>
+<pre><code class="language-sql">SELECT * FROM table WHERE table ==&gt; dsl.limit(10, dsl.term('title', 'cat'));
+</code></pre>
+<p>Or to return 10 rows sorted by <code>id</code>:</p>
+<pre><code class="language-sql">SELECT * FROM table WHERE table ==&gt; dsl.sort('id', 'asc', dsl.limit(10, dsl.term('title', 'cat')));
+</code></pre>
+<h2 id="sort-and-limit-functions"><a class="header" href="#sort-and-limit-functions">Sort and Limit Functions</a></h2>
+<h4 id="dsllimit"><a class="header" href="#dsllimit"><code>dsl.limit()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.limit(
+	limit bigint, 
+	query zdbquery
+) RETURNS zdbquery
+</code></pre>
+<p>Limits the number of rows returned to the specified <code>limit</code> limit.  If the query doesn’t otherwise contain a <code>dsl.sort()</code> (see below), then the results returned are first sorted by <code>_score</code> in <code>desc</code>ending order.  This ensures that ZomboDB returns the top scoring documents. </p>
+<hr />
+<h4 id="dsloffset"><a class="header" href="#dsloffset"><code>dsl.offset()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.offset(
+	offset bigint, 
+	query zdbquery
+) RETURNS zdbquery
+</code></pre>
+<p>Similar to the SQL <code>OFFSET</code> clause, allows you to start returning results from a point other than the start.</p>
+<hr />
+<h4 id="dslsort"><a class="header" href="#dslsort"><code>dsl.sort()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.sort(
+	sort_field text, 
+	sort_direction dsl.es_sort_directions, -- one of 'asc' or 'desc'
+	query zdbquery
+) RETURNS zdbquery
+</code></pre>
+<p>Sort the results returned from Elasticsearch by an arbitrary field.</p>
+<p>Because the SQL standard doesn’t guarantee result ordering unless the query contains an <code>ORDER BY</code> clause, you should use <code>ORDER BY</code> in conjunction with this function.  For example:</p>
+<pre><code class="language-sql">SELECT * FROM table WHERE table ==&gt; dsl.sort('id', 'asc', 'cats AND dogs') ORDER BY id asc;
+</code></pre>
+<p>In practice, using <code>dsl.sort()</code> only makes sense when combined with <code>dsl.limit()</code>.</p>
+<p>There’s an overloaded version of <code>dsl.sort()</code> (described below) that allows for more complex sorting descriptors.</p>
+<hr />
+<h4 id="dslsd"><a class="header" href="#dslsd"><code>dsl.sd()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.sd(
+	field text, 
+	&quot;order&quot; dsl.es_sort_directions, 
+	mode dsl.es_sort_modes DEFAULT NULL
+) RETURNS dsl.es_sort_descriptor
+</code></pre>
+<p><code>dsl.sd()</code> (which is short for “sort descriptor”) allows you to contruct an object that represents sorting.  It is designed to be used as the arguments to <code>dsl.sort_many(zdbquery, VARIADIC dsl.es_sort_descriptor[])</code> (defined below).</p>
+<p>The possible values for the <code>mode</code> argument are <code>min</code>, <code>max</code>, <code>sum</code>, <code>avg</code>,  and <code>median</code>.  These are documented here:  https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-sort.html#_sort_mode_option</p>
+<p>Example:</p>
+<pre><code class="language-sql">SELECT * FROM table WHERE table ==&gt; dsl.sort_many(dsl.match_all(), dsl.sd('field', 'asc'), dsl.sd('price', 'desc', 'avg'));
+</code></pre>
+<hr />
+<h4 id="dslsd_nested"><a class="header" href="#dslsd_nested"><code>dsl.sd_nested()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.sd_nested(
+	field text, &quot;order&quot; 
+	dsl.es_sort_directions, 
+	nested_path text, 
+	nested_filter zdbquery DEFAULT NULL, 
+	mode dsl.es_sort_modes DEFAULT NULL
+) RETURNS dsl.es_sort_descriptor
+</code></pre>
+<p><code>dsl.sd_nested()</code> (which is short for “nested field sort descriptor”) allows you to contruct an object that represents sorting for a nested field.  It is designed to be used as an argument to <code>dsl.sort_many(zdbquery, VARIADIC dsl.es_sort_descriptor[])</code> (defined below).</p>
+<p>The possible values for the <code>mode</code> argument are <code>min</code>, <code>max</code>, <code>sum</code>, <code>avg</code>,  and <code>median</code>.  These are documented here:  https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-sort.html#_sort_mode_option</p>
+<p>Example:</p>
+<pre><code class="language-sql">SELECT * FROM table WHERE table ==&gt; dsl.sort_many(dsl.match_all(), dsl.sd_nested('offer.price', 'asc', 'offer', dsl.match_all(), 'avg'), dsl.sd('id', 'desc', 'avg'));
+</code></pre>
+<p>The above would first sort the results by the average value from the nested field <code>offer.price</code> in ascending order, and then by <code>id</code> in descending order.</p>
+<hr />
+<h4 id="dslsort_many"><a class="header" href="#dslsort_many"><code>dsl.sort_many()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.sort_many(
+	query zdbquery, 
+	VARIADIC descriptors dsl.es_sort_descriptor[]
+) RETURNS zdbquery
+</code></pre>
+<p>This is similar to the <code>dsl.sort()</code> function described above, however it requires the query be the first argument and allows for a variable list of sort descriptors, that should be generated using the <code>dsl.sd()</code> or <code>dsl.sd_nested()</code> functions.</p>
+<p>Example:</p>
+<pre><code class="language-sql">SELECT * FROM table WHERE table ==&gt; dsl.sort_many(dsl.match_all(), dsl.sd('field', 'asc'), dsl.sd('price', 'desc', 'avg'));
+</code></pre>
+<hr />
+<h4 id="dslsort_direct"><a class="header" href="#dslsort_direct"><code>dsl.sort_direct()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.sort_direct(
+	sort_json json, 
+	query zdbquery
+) RETURNS zdbquery
+</code></pre>
+<p>This function allows you to specify direct json to describe how Elasticsearch should sort the results.</p>
+<p>In the Elasticearch <code>_search</code> request body, this is the top-level <code>&quot;sort&quot;</code> property (https://www.elastic.co/guide/en/elasticsearch/reference/5.6/search-request-sort.html#nested-sorting).</p>
+<p>Example:</p>
+<pre><code class="language-sql">SELECT * FROM table WHERE table ==&gt; dsl.sort_direct('{
+        &quot;_script&quot; : {
+            &quot;type&quot; : &quot;number&quot;,
+            &quot;script&quot; : {
+                &quot;lang&quot;: &quot;painless&quot;,
+                &quot;source&quot;: &quot;doc[''field_name''].value * params.factor&quot;,
+                &quot;params&quot; : {
+                    &quot;factor&quot; : 1.1
+                }
+            },
+            &quot;order&quot; : &quot;asc&quot;
+        }
+    }', dsl.match_all());
+</code></pre>
+<hr />
+<h4 id="dslmin_score"><a class="header" href="#dslmin_score"><code>dsl.min_score()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.min_score(
+	min_score real, 
+	query zdbquery
+) RETURNS zdbquery
+</code></pre>
+<p>This allows you to specify Elastisearch’s <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-min-score.html"><code>min_score</code></a> search property to ensure documents with a score less than the specified value are excluded from the results.</p>
+<h2 id="sql-builder-api-functions"><a class="header" href="#sql-builder-api-functions">SQL Builder API Functions</a></h2>
+<h3 id="simple-boolean-functions"><a class="header" href="#simple-boolean-functions">Simple Boolean Functions</a></h3>
+<h4 id="dsland"><a class="header" href="#dsland"><code>dsl.and()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.and(
+	VARIADIC queries zdbquery[]
+) RETURNS zdbquery
+</code></pre>
+<p>Generates an Elasticsearch <code>bool</code> query where all the arguments are part of the <code>must</code> clause.</p>
+<hr />
+<h4 id="dslor"><a class="header" href="#dslor"><code>dsl.or()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.or(
+	VARIADIC queries zdbquery[]
+) RETURNS zdbquery
+</code></pre>
+<p>Generates an Elasticsearch <code>bool</code> query where all the arguments are part of the <code>should</code> clause.</p>
+<hr />
+<h4 id="dslnot"><a class="header" href="#dslnot"><code>dsl.not()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.not(
+	VARIADIC queries zdbquery[]
+) RETURNS zdbquery
+</code></pre>
+<p>Generates an Elasticsearch <code>bool</code> query where all the arguments are part of the <code>must_not</code> clause.</p>
+<h3 id="elasticsearch-bool-query-support"><a class="header" href="#elasticsearch-bool-query-support">Elasticsearch “bool” Query Support</a></h3>
+<h4 id="dslbool"><a class="header" href="#dslbool"><code>dsl.bool()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.bool(
+	VARIADIC queries dsl.esqdsl_bool_part
+) RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html</p>
+<p>This function represents the Elasticsearch <code>bool</code> query.  It takes one or more “boolean part” queries, which are generated using the SQL functions named <code>dsl.must()</code>, <code>dsl.must_not()</code>, <code>dsl.should()</code>, and <code>dsl.filter()</code>.</p>
+<p>Multiple usages of the same boolean part will be merged together automatically.</p>
+<p>Example:</p>
+<pre><code class="language-sql">SELECT dsl.bool(
+        dsl.must('beer', 'wine', 'cheese'),
+        dsl.must_not('beer', 'wine', 'cheese'),
+        dsl.should('beer', 'wine', 'cheese'),
+        dsl.filter('beer', 'wine', 'cheese'),
+        dsl.must('lettuce', 'tomato', 'bread') -- we used dsl.must() above too!
+    );
+</code></pre>
+<p>Which ultimately generates the following Elasticsearch QueryDSL:</p>
+<pre><code class="language-json">{
+  &quot;bool&quot;: {
+    &quot;filter&quot;: [
+      {
+        &quot;query_string&quot;: {
+          &quot;query&quot;: &quot;beer&quot;
+        }
+      },
+      {
+        &quot;query_string&quot;: {
+          &quot;query&quot;: &quot;wine&quot;
+        }
+      },
+      {
+        &quot;query_string&quot;: {
+          &quot;query&quot;: &quot;cheese&quot;
+        }
+      }
+    ],
+    &quot;must&quot;: [
+      {
+        &quot;query_string&quot;: {
+          &quot;query&quot;: &quot;beer&quot;
+        }
+      },
+      {
+        &quot;query_string&quot;: {
+          &quot;query&quot;: &quot;wine&quot;
+        }
+      },
+      {
+        &quot;query_string&quot;: {
+          &quot;query&quot;: &quot;cheese&quot;
+        }
+      },
+      {
+        &quot;query_string&quot;: {
+          &quot;query&quot;: &quot;lettuce&quot;
+        }
+      },
+      {
+        &quot;query_string&quot;: {
+          &quot;query&quot;: &quot;tomato&quot;
+        }
+      },
+      {
+        &quot;query_string&quot;: {
+          &quot;query&quot;: &quot;bread&quot;
+        }
+      }
+    ],
+    &quot;must_not&quot;: [
+      {
+        &quot;query_string&quot;: {
+          &quot;query&quot;: &quot;beer&quot;
+        }
+      },
+      {
+        &quot;query_string&quot;: {
+          &quot;query&quot;: &quot;wine&quot;
+        }
+      },
+      {
+        &quot;query_string&quot;: {
+          &quot;query&quot;: &quot;cheese&quot;
+        }
+      }
+    ],
+    &quot;should&quot;: [
+      {
+        &quot;query_string&quot;: {
+          &quot;query&quot;: &quot;beer&quot;
+        }
+      },
+      {
+        &quot;query_string&quot;: {
+          &quot;query&quot;: &quot;wine&quot;
+        }
+      },
+      {
+        &quot;query_string&quot;: {
+          &quot;query&quot;: &quot;cheese&quot;
+        }
+      }
+    ]
+  }
+}
+</code></pre>
+<hr />
+<h4 id="dslmust"><a class="header" href="#dslmust"><code>dsl.must()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.must (
+	VARIADIC queries zdbquery[])
+RETURNS dsl.esqdsl_must
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html</p>
+<p>This is the <code>must</code> clause of the Elasticsearch QueryDSL <code>bool</code> query.  The queries must appear in matching documents and will contribute to the score.</p>
+<p>This function is designed to be used with the <code>must</code> argument of <code>dsl.bool()</code>.  Its arguments can be or or more of any of ZomboDB’s <code>dsl</code> functions that return a type of <code>zdbquery</code>.</p>
+<hr />
+<h4 id="dslmust_not"><a class="header" href="#dslmust_not"><code>dsl.must_not()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.must_not (
+	VARIADIC queries zdbquery[])
+RETURNS dsl.esqdsl_must_not
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html</p>
+<p>This is the <code>must_not</code> clause of the Elasticsearch QueryDSL <code>bool</code> query.  The queries must not appear in the matching documents. Clauses are executed in filter context meaning that scoring is ignored and clauses are considered for caching. Because scoring is ignored, a score of 0 for all documents is returned.</p>
+<p>This function is designed to be used with the <code>must_not</code> argument of <code>dsl.bool()</code>.  Its arguments can be or or more of any of ZomboDB’s <code>dsl</code> functions that return a type of <code>zdbquery</code>.</p>
+<hr />
+<h4 id="dslshould"><a class="header" href="#dslshould"><code>dsl.should()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.should (
+	VARIADIC queries zdbquery[])
+RETURNS dsl.esqdsl_should
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html</p>
+<p>This is the <code>should</code> clause of the Elasticsearch QueryDSL <code>bool</code> query.  The queries should appear in matching documents and will contribute to the score.</p>
+<p>This function is designed to be used with the <code>should</code> argument of <code>dsl.bool()</code>.  Its arguments can be or or more of any of ZomboDB’s <code>dsl</code> functions that return a type of <code>zdbquery</code>.</p>
+<hr />
+<h4 id="dslfilter"><a class="header" href="#dslfilter"><code>dsl.filter()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.filter (
+	VARIADIC queries zdbquery[])
+RETURNS dsl.esqdsl_filter
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html</p>
+<p>This is the <code>filter</code> object of an Elasticsearch QueryDSL <code>bool</code>.</p>
+<p>The clause (query) must appear in matching documents. However unlike must the score of the query will be ignored. Filter clauses are executed in filter context, meaning that scoring is ignored and clauses are considered for caching.</p>
+<p>This function is designed to be used with the <code>filter</code> argument of <code>dsl.bool()</code>.  Its arguments can be or or more of any of ZomboDB’s <code>dsl</code> functions that return a type of <code>zdbquery</code>.</p>
+<h3 id="elasticsearch-query-dsl-support"><a class="header" href="#elasticsearch-query-dsl-support">Elasticsearch Query DSL Support</a></h3>
+<h4 id="dslboosting"><a class="header" href="#dslboosting"><code>dsl.boosting()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.boosting (
+	positive zdbquery,
+	negative zdbquery,
+	negative_boost real DEFAULT NULL)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-boosting-query.html</p>
+<p>The boosting query can be used to effectively demote results that match a given query. Unlike the “NOT” clause in bool query, this still selects documents that contain undesirable terms, but reduces their overall score.</p>
+<hr />
+<h4 id="dslcommon"><a class="header" href="#dslcommon"><code>dsl.common()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.common (
+	field text,
+	query text,
+	boost real DEFAULT NULL,
+	cutoff_frequency real DEFAULT NULL,
+	analyzer text DEFAULT NULL,
+	minimum_should_match integer DEFAULT NULL)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-common-terms-query.html</p>
+<p>The common terms query is a modern alternative to stopwords which improves the precision and recall of search results (by taking stopwords into account), without sacrificing performance.</p>
+<hr />
+<h4 id="dslconstant_score"><a class="header" href="#dslconstant_score"><code>dsl.constant_score()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.constant_score (
+	boost real,
+	query zdbquery)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-constant-score-query.html</p>
+<p>A query that wraps another query and simply returns a constant score equal to the query boost for every document in the filter. Maps to Lucene ConstantScoreQuery.</p>
+<hr />
+<h4 id="dsldatetime_range"><a class="header" href="#dsldatetime_range"><code>dsl.datetime_range()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.datetime_range (
+	field text,
+	lt timestamp with time zone DEFAULT NULL,
+	gt timestamp with time zone DEFAULT NULL,
+	lte timestamp with time zone DEFAULT NULL,
+	gte timestamp with time zone DEFAULT NULL,
+	boost real DEFAULT NULL)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-range-query.html</p>
+<p>Matches documents with fields that have terms within a certain range.  This form is for timestamp values.</p>
+<p>ZomboDB will automatically convert the specified time to <code>UTC</code> (to be compatible with Elasticsearch) however, if
+you don’t specify the time zone the timestamp represents then Postgres will first assume it belongs to whatever
+time zone the server is running in (via the <code>TimeZone</code> GUC).  Read here for more about how Postgres handles time zones:
+https://www.postgresql.org/docs/11/datatype-datetime.html#DATATYPE-TIMEZONES</p>
+<hr />
+<h4 id="dsldis_max"><a class="header" href="#dsldis_max"><code>dsl.dis_max()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.dis_max (
+	queries zdbquery[],
+	boost real DEFAULT NULL,
+	tie_breaker real DEFAULT NULL)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-dis-max-query.html</p>
+<p>A query that generates the union of documents produced by its subqueries, and that scores each document with the maximum score for that document as produced by any subquery, plus a tie breaking increment for any additional matching subqueries.</p>
+<hr />
+<h4 id="dslfield_exists"><a class="header" href="#dslfield_exists"><code>dsl.field_exists()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.field_exists (
+	field text)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-exists-query.html</p>
+<p>Returns documents that have at least one non-null value in the specified field</p>
+<hr />
+<h4 id="dslfield_missing"><a class="header" href="#dslfield_missing"><code>dsl.field_missing()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.field_missing (
+	field text)
+RETURNS zdbquery
+</code></pre>
+<p>The inverse of <code>dsl.field_exists()</code>.  Returns documents that have no value in the specified field</p>
+<hr />
+<h4 id="dslfuzzy"><a class="header" href="#dslfuzzy"><code>dsl.fuzzy()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.fuzzy (
+	field text,
+	value text,
+	boost real DEFAULT NULL,
+	fuzziness integer DEFAULT NULL,
+	prefix_length integer DEFAULT NULL,
+	max_expansions integer DEFAULT NULL,
+	transpositions boolean DEFAULT NULL)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-fuzzy-query.html</p>
+<p>The fuzzy query uses similarity based on Levenshtein edit distance.</p>
+<hr />
+<h4 id="dslmatch"><a class="header" href="#dslmatch"><code>dsl.match()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.match (
+	field text,
+	query text,
+	boost real DEFAULT NULL,
+	analyzer text DEFAULT NULL,
+	minimum_should_match integer DEFAULT NULL,
+	lenient boolean DEFAULT NULL,
+	fuzziness integer DEFAULT NULL,
+	fuzzy_rewrite text DEFAULT NULL,
+	fuzzy_transpositions boolean DEFAULT NULL,
+	prefix_length integer DEFAULT NULL,
+	zero_terms_query dsl.es_match_zero_terms_query DEFAULT NULL,
+	cutoff_frequency real DEFAULT NULL,
+	operator dsl.es_match_operator DEFAULT NULL,
+	auto_generate_synonyms_phrase_query boolean DEFAULT NULL)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-match-query.html</p>
+<p><code>match</code> queries accept text/numerics/dates, analyzes them, and constructs a query. </p>
+<hr />
+<h4 id="dslmatch_all"><a class="header" href="#dslmatch_all"><code>dsl.match_all()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.match_all (
+	boost real DEFAULT NULL)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-match-all-query.html</p>
+<p>The most simple query, which matches all documents, giving them all a _score of 1.0.</p>
+<hr />
+<h4 id="dslmatch_none"><a class="header" href="#dslmatch_none"><code>dsl.match_none()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.match_none ()
+RETURNS zdbquery
+</code></pre>
+<p>The inverse of <code>dsl.match_all()</code>.  Matches no documents.</p>
+<hr />
+<h4 id="dslmatch_phrase"><a class="header" href="#dslmatch_phrase"><code>dsl.match_phrase()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.match_phrase (
+	field text,
+	query text,
+	boost real DEFAULT NULL,
+	slop integer DEFAULT NULL,
+	analyzer text DEFAULT NULL)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-match-query-phrase.html</p>
+<p>The <code>match_phrase</code> query analyzes the text and creates a phrase query out of the analyzed text. </p>
+<hr />
+<h4 id="dslmatch_phrase_prefix"><a class="header" href="#dslmatch_phrase_prefix"><code>dsl.match_phrase_prefix()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.match_phrase_prefix (
+	field text,
+	query text,
+	boost real DEFAULT NULL,
+	slop integer DEFAULT NULL,
+	analyzer text DEFAULT NULL,
+	max_expansions integer DEFAULT NULL)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-match-query-phrase-prefix.html</p>
+<p><code>ds.match_phrase_prefix()</code> is the same as <code>dsl.match_phrase()</code>, except that it allows for prefix matches on the last term in the text.</p>
+<hr />
+<h4 id="dslmore_like_this"><a class="header" href="#dslmore_like_this"><code>dsl.more_like_this()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.more_like_this (
+	&quot;like&quot; text,
+	fields text[] DEFAULT NULL,
+	stop_words text[] DEFAULT ARRAY[...],
+	boost real DEFAULT NULL,
+	unlike text DEFAULT NULL,
+	analyzer text DEFAULT NULL,
+	minimum_should_match integer DEFAULT NULL,
+	boost_terms real DEFAULT NULL,
+	include boolean DEFAULT NULL,
+	min_term_freq integer DEFAULT NULL,
+	max_query_terms integer DEFAULT NULL,
+	min_doc_freq integer DEFAULT NULL,
+	max_doc_freq integer DEFAULT NULL,
+	min_word_length integer DEFAULT NULL,
+	max_word_length integer DEFAULT NULL)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-mlt-query.html</p>
+<p>The More Like This Query finds documents that are “like” a given set of documents. In order to do so, MLT selects a set of representative terms of these input documents, forms a query using these terms, executes the query and returns the results.</p>
+<p>This form takes a single blob of text as the source document. </p>
+<hr />
+<h4 id="dslmore_like_this-1"><a class="header" href="#dslmore_like_this-1"><code>dsl.more_like_this()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.more_like_this (
+	&quot;like&quot; text[],
+	fields text[] DEFAULT NULL,
+	stop_words text[] DEFAULT ARRAY[...],
+	boost real DEFAULT NULL,
+	unlike text DEFAULT NULL,
+	analyzer text DEFAULT NULL,
+	minimum_should_match integer DEFAULT NULL,
+	boost_terms real DEFAULT NULL,
+	include boolean DEFAULT NULL,
+	min_term_freq integer DEFAULT NULL,
+	max_query_terms integer DEFAULT NULL,
+	min_doc_freq integer DEFAULT NULL,
+	max_doc_freq integer DEFAULT NULL,
+	min_word_length integer DEFAULT NULL,
+	max_word_length integer DEFAULT NULL)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-mlt-query.html</p>
+<p>The More Like This Query finds documents that are “like” a given set of documents. In order to do so, MLT selects a set of representative terms of these input documents, forms a query using these terms, executes the query and returns the results.</p>
+<p>This form takes multiple snippets of text as the source documents. </p>
+<hr />
+<h4 id="dslmulti_match"><a class="header" href="#dslmulti_match"><code>dsl.multi_match()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.multi_match (
+	fields text[],
+	query text,
+	boost real DEFAULT NULL,
+	type dsl.es_multi_match_type DEFAULT NULL,
+	analyzer text DEFAULT NULL,
+	minimum_should_match integer DEFAULT NULL,
+	lenient boolean DEFAULT NULL,
+	fuzziness integer DEFAULT NULL,
+	fuzzy_rewrite text DEFAULT NULL,
+	fuzzy_transpositions boolean DEFAULT NULL,
+	prefix_length integer DEFAULT NULL,
+	zero_terms_query dsl.es_match_zero_terms_query DEFAULT NULL,
+	cutoff_frequency real DEFAULT NULL,
+	operator dsl.es_match_operator DEFAULT NULL,
+	auto_generate_synonyms_phrase_query boolean DEFAULT NULL)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-multi-match-query.html</p>
+<p>The <code>multi_match</code> query builds on the match query to allow multi-field queries.</p>
+<hr />
+<h4 id="dslquery_string"><a class="header" href="#dslquery_string"><code>dsl.query_string()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.query_string(
+	query text,
+	default_operator dsl.esqdsl_default_operators DEFAULT NULL,
+	default_field text DEFAULT NULL,
+	analyzer text DEFAULT NULL,
+	quote_analyzer text DEFAULT NULL,
+	allow_leading_wildcard boolean DEFAULT NULL,
+	enable_position_increments boolean DEFAULT NULL,
+	fuzzy_max_expansions integer DEFAULT NULL,
+	fuzziness text DEFAULT NULL,
+	fuzzy_prefix_length integer DEFAULT NULL,
+	fuzzy_transpositions boolean DEFAULT NULL,
+	phrase_slop integer DEFAULT NULL,
+	boost real DEFAULT NULL,
+	auto_generate_phrase_queries boolean DEFAULT NULL,
+	analyze_wildcard boolean DEFAULT NULL,
+	max_determinized_states integer DEFAULT NULL,
+	minimum_should_match integer DEFAULT NULL,
+	lenient boolean DEFAULT NULL,
+	time_zone text DEFAULT NULL,
+	quote_field_suffix text DEFAULT NULL,
+	auto_generate_synonyms_phrase_query boolean DEFAULT NULL,
+	all_fields boolean DEFAULT NULL)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html</p>
+<p>A query that uses a query parser in order to parse its content.  The query_string query parses the input and splits text around operators. Each textual part is analyzed independently of each other.</p>
+<hr />
+<h4 id="dslnested"><a class="header" href="#dslnested"><code>dsl.nested()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.nested (
+	path text,
+	query zdbquery,
+	score_mode dsl.es_nested_score_mode DEFAULT 'avg'::dsl.es_nested_score_mode)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-nested-query.html</p>
+<p>Nested query allows to query nested objects / docs (see nested mapping). The query is executed against the nested objects / docs as if they were indexed as separate docs (they are, internally) and resulting in the root parent doc (or parent nested mapping).</p>
+<hr />
+<h4 id="dslnoteq"><a class="header" href="#dslnoteq"><code>dsl.noteq()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.noteq (
+	query zdbquery)
+RETURNS zdbquery
+</code></pre>
+<p>Generates a <code>bool</code> query where the argument is the only member of the <code>bool</code> query’s <code>must_not</code> clause.</p>
+<hr />
+<h4 id="dslphrase"><a class="header" href="#dslphrase"><code>dsl.phrase()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.phrase (
+	field text,
+	query text,
+	boost real DEFAULT NULL,
+	slop integer DEFAULT NULL,
+	analyzer text DEFAULT NULL)
+RETURNS zdbquery
+</code></pre>
+<p>Short-hand form of <code>dsl.match_phrase()</code>.</p>
+<hr />
+<h4 id="dslprefix"><a class="header" href="#dslprefix"><code>dsl.prefix()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.prefix (
+	field text,
+	prefix text,
+	boost real DEFAULT NULL)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-prefix-query.html</p>
+<p>Matches documents that have fields containing terms with a specified prefix (not analyzed).</p>
+<hr />
+<h4 id="dslrange"><a class="header" href="#dslrange"><code>dsl.range()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.range (
+	field text,
+	lt numeric DEFAULT NULL,
+	gt numeric DEFAULT NULL,
+	lte numeric DEFAULT NULL,
+	gte numeric DEFAULT NULL,
+	boost real DEFAULT NULL)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-range-query.html</p>
+<p>Matches documents with fields that have terms within a certain range.  This form is for numeric values.</p>
+<hr />
+<h4 id="dslrange-1"><a class="header" href="#dslrange-1"><code>dsl.range()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.range (
+	field text,
+	lt text DEFAULT NULL,
+	gt text DEFAULT NULL,
+	lte text DEFAULT NULL,
+	gte text DEFAULT NULL,
+	boost real DEFAULT NULL)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-range-query.html</p>
+<p>Matches documents with fields that have terms within a certain range.  This form is for text values.</p>
+<hr />
+<h4 id="dslregexp"><a class="header" href="#dslregexp"><code>dsl.regexp()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.regexp (
+	field text,
+	regexp text,
+	boost real DEFAULT NULL,
+	flags dsl.es_regexp_flags[] DEFAULT NULL,
+	max_determinized_states integer DEFAULT NULL)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-regexp-query.html</p>
+<p>The regexp query allows you to use regular expression term queries.</p>
+<hr />
+<h4 id="dslscript"><a class="header" href="#dslscript"><code>dsl.script()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.script (
+	source_code text,
+	params json DEFAULT NULL,
+	lang text DEFAULT 'painless'::text)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-script-query.html</p>
+<p>A query allowing to define scripts as queries. They are typically used in a filter context.</p>
+<hr />
+<h4 id="dslspan_containing"><a class="header" href="#dslspan_containing"><code>dsl.span_containing()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.span_containing (
+	little zdbquery,
+	big zdbquery)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-span-containing-query.html</p>
+<p>Returns matches which enclose another span query.</p>
+<hr />
+<h4 id="dslspan_first"><a class="header" href="#dslspan_first"><code>dsl.span_first()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.span_first (
+	query zdbquery,
+	&quot;end&quot; integer)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-span-first-query.html</p>
+<p>Matches spans near the beginning of a field.</p>
+<hr />
+<h4 id="dslspan_masking"><a class="header" href="#dslspan_masking"><code>dsl.span_masking()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.span_masking (
+	field text,
+	query zdbquery)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-span-field-masking-query.html</p>
+<p>Wrapper to allow span queries to participate in composite single-field span queries by lying about their search field.</p>
+<hr />
+<h4 id="dslspan_multi"><a class="header" href="#dslspan_multi"><code>dsl.span_multi()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.span_multi (
+	query zdbquery)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-span-multi-term-query.html</p>
+<p>Allows you to wrap a multi term query (one of <code>dsl.wildcard()</code>, <code>dsl.fuzzy()</code>, <code>dsl.prefix()</code>, <code>dsl.range()</code> or <code>dsl.regexp()</code> query) as a span query, so it can be nested. </p>
+<hr />
+<h4 id="dslspan_near"><a class="header" href="#dslspan_near"><code>dsl.span_near()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.span_near (
+	in_order boolean,
+	slop integer,
+	VARIADIC clauses zdbquery[])
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-span-near-query.html</p>
+<p>Matches spans which are near one another. One can specify slop, the maximum number of intervening unmatched positions, as well as whether matches are required to be in-order.</p>
+<hr />
+<h4 id="dslspan_not"><a class="header" href="#dslspan_not"><code>dsl.span_not()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.span_not (
+	include zdbquery,
+	exclude zdbquery,
+	pre integer DEFAULT NULL,
+	post integer DEFAULT NULL,
+	dist integer DEFAULT NULL)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-span-not-query.html</p>
+<p>Removes matches which overlap with another span query or which are within x tokens before (controlled by the parameter pre) or y tokens after (controled by the parameter post) another SpanQuery.</p>
+<hr />
+<h4 id="dslspan_or"><a class="header" href="#dslspan_or"><code>dsl.span_or()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.span_or (
+	VARIADIC clauses zdbquery[])
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-span-or-query.html</p>
+<p>Matches the union of its span clauses.</p>
+<hr />
+<h4 id="dslspan_term"><a class="header" href="#dslspan_term"><code>dsl.span_term()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.span_term (
+	field text,
+	value text,
+	boost real DEFAULT NULL)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-span-term-query.html</p>
+<p>Matches spans containing a term. </p>
+<hr />
+<h4 id="dslspan_within"><a class="header" href="#dslspan_within"><code>dsl.span_within()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.span_within (
+	little zdbquery,
+	big zdbquery)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-span-within-query.html</p>
+<p>Returns matches which are enclosed inside another span query.</p>
+<hr />
+<h4 id="dslterm"><a class="header" href="#dslterm"><code>dsl.term()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.term (
+	field text,
+	value numeric,
+	boost real DEFAULT NULL)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-term-query.html</p>
+<p>The term query finds documents that contain the <strong>exact</strong> term specified in the inverted index.  This form is for numeric terms. </p>
+<hr />
+<h4 id="dslterm-1"><a class="header" href="#dslterm-1"><code>dsl.term()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.term (
+	field text,
+	value text,
+	boost real DEFAULT NULL)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-term-query.html</p>
+<p>The term query finds documents that contain the <strong>exact</strong> term specified in the inverted index.  This form is for text terms. </p>
+<hr />
+<h4 id="dslterms"><a class="header" href="#dslterms"><code>dsl.terms()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.terms (
+	field text,
+	VARIADIC &quot;values&quot; numeric[])
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-terms-query.html</p>
+<p>Filters documents that have fields that match any of the provided terms (not analyzed).  This form is for numeric terms.</p>
+<hr />
+<h4 id="dslterms-1"><a class="header" href="#dslterms-1"><code>dsl.terms()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.terms (
+	field text,
+	VARIADIC &quot;values&quot; text[])
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-terms-query.html</p>
+<p>Filters documents that have fields that match any of the provided terms (not analyzed).  This form is for text terms.</p>
+<hr />
+<h4 id="dslterms_array"><a class="header" href="#dslterms_array"><code>dsl.terms_array()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.terms_array (
+	field text,
+	&quot;values&quot; anyarray)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-terms-query.html</p>
+<p>Filters documents that have fields that match any of the provided terms (not analyzed).  This form is for an array of any kind of Postgres datatype.</p>
+<hr />
+<h4 id="dslterms_lookup"><a class="header" href="#dslterms_lookup"><code>dsl.terms_lookup()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.terms_lookup (
+	field text,
+	index text,
+	type text,
+	path text,
+	id text)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-terms-query.html#query-dsl-terms-lookup</p>
+<p>When it’s needed to specify a terms filter with a lot of terms it can be beneficial to fetch those term values from a document in an index.</p>
+<hr />
+<h4 id="dslwildcard"><a class="header" href="#dslwildcard"><code>dsl.wildcard()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.wildcard (
+	field text,
+	wildcard text,
+	boost real DEFAULT NULL)
+RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-wildcard-query.html</p>
+<p>Matches documents that have fields matching a wildcard expression (not analyzed). Supported wildcards are *, which matches any character sequence (including the empty one), and ?, which matches any single character. Note that this query can be slow, as it needs to iterate over many terms. In order to prevent extremely slow wildcard queries, a wildcard term should not start with one of the wildcards * or ?.</p>
+<h2 id="postgis-support"><a class="header" href="#postgis-support">Postgis Support</a></h2>
+<p>ZomboDB provides basic support for Postgis.  It automatically maps columns of type <code>geometry</code> and <code>geography</code> to
+Elasticsearch’s <code>geo_shape</code> type, and <code>geometry(Point, 2276)</code> is instead indexed as an Elasticsearch <code>geo_point</code>.</p>
+<p>Additionally, it exposes a few functions for querying <code>geo_shape</code>s and polygons and bounding boxes.</p>
+<hr />
+<h4 id="dslgeo_shape"><a class="header" href="#dslgeo_shape"><code>dsl.geo_shape()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.geo_shape(
+    field text,
+    geojson_shape json,
+    relation dsl.es_geo_shape_relation
+) RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-geo-shape-query.html</p>
+<p>The geo_shape query uses the same grid square representation as the geo_shape mapping to find documents that have a shape that intersects with the query shape. It will also use the same PrefixTree configuration as defined for the field mapping.</p>
+<p>The query supports one way of defining the query shape:  by providing a whole shape definition.</p>
+<hr />
+<h4 id="dslgeo_polygon"><a class="header" href="#dslgeo_polygon"><code>dsl.geo_polygon()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.geo_polygon(
+    field text, 
+    VARIADIC points point[]
+) RETURNS zdbquery
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-geo-polygon-query.html</p>
+<p>Given an array of Postgres <code>point</code> objects, generates an Elasticsearch <code>geo_polygon()</code> query</p>
+<hr />
+<h4 id="dslgeo_bounding_box"><a class="header" href="#dslgeo_bounding_box"><code>dsl.geo_bounding_box()</code></a></h4>
+<pre><code class="language-sql">FUNCTION dsl.geo_bounding_box(
+    field text, 
+    box box, 
+    type dsl.es_geo_bounding_box_type DEFAULT 'memory'  -- one of 'memory' or 'indexed'
+)
+</code></pre>
+<p>https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-geo-bounding-box-query.html</p>
+<p>Given a Postgres <code>box</code> object, generates an Elasticsearch <code>geo_bounding_box()</code> query</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../usage/zql-queries.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next" href="../usage/using-sql-functions.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../usage/zql-queries.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next" href="../usage/using-sql-functions.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script type="text/javascript">
+            var socket = new WebSocket("ws://localhost:3000/__livereload");
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../searcher.js" type="text/javascript" charset="utf-8"></script>
+
+        <script src="../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </body>
+</html>

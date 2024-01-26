@@ -1,0 +1,12 @@
+[book]
+authors = ["Eric Ridge"]
+language = "en"
+multilingual = false
+src = "src"
+
+# https://rust-lang.github.io/mdBook/format/configuration/renderers.html#html-renderer-options
+[output.html]
+additional-css = ["zombo.css", "zombo-highlight.css"]
+# theme = "zombo"
+default-theme = "zombo"
+curly-quotes = true
