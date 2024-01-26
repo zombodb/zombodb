@@ -658,7 +658,7 @@ impl<'a> DocumentHighlighter<'a> {
 
         for word in &first_part.words {
             let first_word_entries = match self.highlight_term(&word.to_term()) {
-                None => return None,
+                None => continue,
                 Some(first_word_entries) if phrase.len() == 1 => return Some(first_word_entries),
                 Some(first_word_entries) => first_word_entries,
             };
