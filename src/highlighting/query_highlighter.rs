@@ -1,3 +1,4 @@
+use crate::access_method::options::ZDBIndexOptions;
 use crate::highlighting::document_highlighter::*;
 use crate::utils::{find_zdb_index, get_highlight_analysis_info, has_date_subfield};
 use crate::zql::ast::{Expr, IndexLink, QualifiedField, Term};
@@ -541,7 +542,7 @@ fn highlight_document_jsonb(
     name!(query_clause, String),
 )> {
     let (expr, used_fields) = make_expr(&index, query_string);
-    let used_fields = make_used_fields(&index, &used_fields);
+    let used_fields = make_used_fields(&index, used_fields);
     highlight_document_internal(index, &document.0, &expr, &used_fields, dedup_results)
 }
 
@@ -562,20 +563,20 @@ fn highlight_document_json(
     name!(query_clause, String),
 )> {
     let (expr, used_fields) = make_expr(&index, query_string);
-    let used_fields = make_used_fields(&index, &used_fields);
+    let used_fields = make_used_fields(&index, used_fields);
     highlight_document_internal(index, &document.0, &expr, &used_fields, dedup_results)
 }
 
 fn make_used_fields(
     index: &PgRelation,
-    used_fields: &HashSet<&str>,
+    mut used_fields: HashSet<String>,
 ) -> &'static HashSet<(String, Option<String>, Option<String>, bool)> {
     static mut USED_FIELDS_CACHE: Lazy<
         HashMap<String, HashSet<(String, Option<String>, Option<String>, bool)>>,
     > = Lazy::new(|| Default::default());
 
     unsafe {
-        let key = used_fields.iter().map(|s| *s).collect::<String>();
+        let key = used_fields.iter().map(|s| s.as_str()).collect::<String>();
         USED_FIELDS_CACHE.entry(key.clone()).or_insert_with(|| {
             {
                 let key = key.clone();
@@ -590,6 +591,16 @@ fn make_used_fields(
                     USED_FIELDS_CACHE.remove(&key);
                 });
             }
+
+            let zdboptions = ZDBIndexOptions::from_relation(index);
+            zdboptions
+                .field_lists()
+                .iter()
+                .map(|(_, v)| v.iter())
+                .flatten()
+                .for_each(|fieldname| {
+                    used_fields.insert(fieldname.field_name());
+                });
 
             used_fields
                 .into_iter()
@@ -705,7 +716,7 @@ fn highlight_document_internal<'a>(
     TableIterator::new(iter)
 }
 
-fn make_expr<'a>(index: &PgRelation, query_string: &'a str) -> (Expr<'a>, HashSet<&'a str>) {
+fn make_expr<'a>(index: &PgRelation, query_string: &'a str) -> (Expr<'a>, HashSet<String>) {
     // select * from zdb.highlight_document('idxbeer', '{"subject":"free beer", "authoremail":"Christi l nicolay"}', '!!subject:beer or subject:fr?? and authoremail:(christi, nicolay)') order by field_name, position;
     let mut used_fields = HashSet::new();
     let (index, options) = find_zdb_index(&index).expect("unable to find ZomboDB index");
@@ -719,6 +730,7 @@ fn make_expr<'a>(index: &PgRelation, query_string: &'a str) -> (Expr<'a>, HashSe
         &mut used_fields,
     )
     .expect("failed to parse query");
+    let used_fields = used_fields.into_iter().map(|s| s.to_string()).collect();
     (expr, used_fields)
 }
 
@@ -1050,7 +1062,7 @@ mod tests {
     ) -> Vec<(String, i32, String, String, i32, i64, i64, String)> {
         let relation = start_table_and_index(table);
         let (query, used_fields) = make_query(&relation, query_string);
-        let used_fields = make_used_fields(&relation, &used_fields);
+        let used_fields = make_used_fields(&relation, used_fields);
 
         let mut highlighters = HashMap::new();
         let mut results = QueryHighlighter::highlight(
@@ -1068,11 +1080,11 @@ mod tests {
         results
     }
 
-    fn make_query<'a>(relation: &PgRelation, input: &'a str) -> (Expr<'a>, HashSet<&'a str>) {
+    fn make_query<'a>(relation: &PgRelation, input: &'a str) -> (Expr<'a>, HashSet<String>) {
         let mut used_fields = HashSet::new();
         let query = Expr::from_str(relation, "zdb_all", input, &vec![], &None, &mut used_fields)
             .expect("failed to parse ZDB Query");
-
+        let used_fields = used_fields.into_iter().map(|s| s.to_string()).collect();
         (query, used_fields)
     }
 
