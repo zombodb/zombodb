@@ -38,6 +38,7 @@ RUN apt-get update && apt-get install -y postgresql-13 postgresql-server-dev-13
 RUN apt-get update && apt-get install -y postgresql-14 postgresql-server-dev-14
 RUN apt-get update && apt-get install -y postgresql-15 postgresql-server-dev-15
 RUN apt-get update && apt-get install -y ruby ruby-dev rubygems build-essential
+RUN gem install dotenv -v 2.8.1
 RUN gem install --no-document fpm
 
 USER ${UID}:${GID}
