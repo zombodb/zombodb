@@ -74,6 +74,7 @@ RUN curl -sSL https://rvm.io/pkuczynski.asc | gpg2 --import -
 RUN curl -sSL https://get.rvm.io | bash -s stable
 RUN /bin/bash -l -c ". ~/.rvm/scripts/rvm && rvm install 2.3.3"
 RUN /bin/bash -l -c ". ~/.rvm/scripts/rvm && gem install --no-document rexml -v 3.2.5"
+RUN /bin/bash -l -c ". ~/.rvm/scripts/rvm && gem install --no-document dotenv -v 2.8.1"
 RUN /bin/bash -l -c ". ~/.rvm/scripts/rvm && gem install --no-document fpm"
 
 
