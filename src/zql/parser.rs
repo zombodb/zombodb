@@ -1,18 +1,19 @@
-// auto-generated: "lalrpop 0.20.0"
+// auto-generated: "lalrpop 0.20.2"
 // sha3: 9998006a33e0c91baea56dcdb9ca8eeed48d023c7071a3fadf355bcdea3cac0d
-use crate::zql::ast::*;
-use pgrx::*;
-use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
+use std::collections::HashSet;
+use crate::zql::ast::*;
+use std::collections::HashMap;
+use pgrx::*;
 #[allow(unused_extern_crates)]
 extern crate lalrpop_util as __lalrpop_util;
 #[allow(unused_imports)]
 use self::__lalrpop_util::state_machine as __state_machine;
-extern crate alloc;
 extern crate core;
+extern crate alloc;
 
 #[rustfmt::skip]
-#[allow(non_snake_case, non_camel_case_types, unused_mut, unused_variables, unused_imports, unused_parens, clippy::all)]
+#[allow(non_snake_case, non_camel_case_types, unused_mut, unused_variables, unused_imports, unused_parens, clippy::needless_lifetimes, clippy::type_complexity, clippy::needless_return, clippy::too_many_arguments, clippy::never_loop, clippy::match_single_binding, clippy::needless_raw_string_hashes)]
 mod __parse__Expr {
 
     use std::str::FromStr;
@@ -1094,7 +1095,7 @@ mod __parse__Expr {
             }
         }).collect()
     }
-    pub(crate) struct __StateMachine<'input, '__1, '__2, '__3, '__4>
+    struct __StateMachine<'input, '__1, '__2, '__3, '__4>
     where 'input: '__2, 'input: '__3
     {
         source_index: Option<&'__1 PgRelation>,
@@ -1269,7 +1270,7 @@ mod __parse__Expr {
         _: core::marker::PhantomData<(&'input ())>,
     ) -> __Symbol<'input>
     {
-        match __token_index {
+        #[allow(clippy::manual_range_patterns)]match __token_index {
             0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29 | 30 | 31 | 32 | 33 | 34 | 35 | 36 | 37 | 38 | 39 | 40 | 41 | 42 | 43 | 44 | 45 | 46 => match __token {
                 Token(18, __tok0) | Token(8, __tok0) | Token(21, __tok0) | Token(32, __tok0) | Token(19, __tok0) | Token(46, __tok0) | Token(44, __tok0) | Token(31, __tok0) | Token(38, __tok0) | Token(20, __tok0) | Token(4, __tok0) | Token(0, __tok0) | Token(39, __tok0) | Token(16, __tok0) | Token(22, __tok0) | Token(9, __tok0) | Token(23, __tok0) | Token(27, __tok0) | Token(34, __tok0) | Token(41, __tok0) | Token(42, __tok0) | Token(5, __tok0) | Token(36, __tok0) | Token(37, __tok0) | Token(40, __tok0) | Token(33, __tok0) | Token(29, __tok0) | Token(10, __tok0) | Token(11, __tok0) | Token(28, __tok0) | Token(12, __tok0) | Token(45, __tok0) | Token(43, __tok0) | Token(30, __tok0) | Token(17, __tok0) | Token(6, __tok0) | Token(1, __tok0) | Token(35, __tok0) | Token(24, __tok0) | Token(15, __tok0) | Token(7, __tok0) | Token(13, __tok0) | Token(3, __tok0) | Token(2, __tok0) | Token(14, __tok0) | Token(25, __tok0) | Token(26, __tok0) if true => __Symbol::Variant0(__tok0),
                 _ => unreachable!(),
@@ -2351,6 +2352,7 @@ mod __parse__Expr {
         _priv: (),
     }
 
+    impl Default for ExprParser { fn default() -> Self { Self::new() } }
     impl ExprParser {
         pub fn new() -> ExprParser {
             let __builder = super::__intern_token::new_builder();
@@ -2426,7 +2428,7 @@ mod __parse__Expr {
             __states.push(__next_state);
         }
     }
-    pub(crate) fn __reduce<
+    fn __reduce<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3318,7 +3320,7 @@ mod __parse__Expr {
             _ => __symbol_type_mismatch()
         }
     }
-    pub(crate) fn __reduce0<
+    fn __reduce0<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3341,7 +3343,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (2, 0)
     }
-    pub(crate) fn __reduce1<
+    fn __reduce1<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3364,7 +3366,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (2, 1)
     }
-    pub(crate) fn __reduce2<
+    fn __reduce2<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3388,7 +3390,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (3, 1)
     }
-    pub(crate) fn __reduce3<
+    fn __reduce3<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3411,7 +3413,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (2, 2)
     }
-    pub(crate) fn __reduce4<
+    fn __reduce4<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3425,13 +3427,13 @@ mod __parse__Expr {
     ) -> (usize, usize)
     {
         // (<FieldName> COMMA)* =  => ActionFn(98);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action98::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant3(__nt), __end));
         (0, 3)
     }
-    pub(crate) fn __reduce5<
+    fn __reduce5<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3452,7 +3454,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant3(__nt), __end));
         (1, 3)
     }
-    pub(crate) fn __reduce6<
+    fn __reduce6<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3475,7 +3477,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant3(__nt), __end));
         (2, 4)
     }
-    pub(crate) fn __reduce7<
+    fn __reduce7<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3499,7 +3501,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant3(__nt), __end));
         (3, 4)
     }
-    pub(crate) fn __reduce8<
+    fn __reduce8<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3522,7 +3524,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (2, 5)
     }
-    pub(crate) fn __reduce9<
+    fn __reduce9<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3536,13 +3538,13 @@ mod __parse__Expr {
     ) -> (usize, usize)
     {
         // (<JsonProperty> COMMA)* =  => ActionFn(111);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action111::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant5(__nt), __end));
         (0, 6)
     }
-    pub(crate) fn __reduce10<
+    fn __reduce10<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3563,7 +3565,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant5(__nt), __end));
         (1, 6)
     }
-    pub(crate) fn __reduce11<
+    fn __reduce11<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3586,7 +3588,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant5(__nt), __end));
         (2, 7)
     }
-    pub(crate) fn __reduce12<
+    fn __reduce12<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3610,7 +3612,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant5(__nt), __end));
         (3, 7)
     }
-    pub(crate) fn __reduce13<
+    fn __reduce13<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3633,7 +3635,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (2, 8)
     }
-    pub(crate) fn __reduce14<
+    fn __reduce14<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3647,13 +3649,13 @@ mod __parse__Expr {
     ) -> (usize, usize)
     {
         // (<JsonValue> COMMA)* =  => ActionFn(106);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action106::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant5(__nt), __end));
         (0, 9)
     }
-    pub(crate) fn __reduce15<
+    fn __reduce15<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3674,7 +3676,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant5(__nt), __end));
         (1, 9)
     }
-    pub(crate) fn __reduce16<
+    fn __reduce16<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3697,7 +3699,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant5(__nt), __end));
         (2, 10)
     }
-    pub(crate) fn __reduce17<
+    fn __reduce17<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3721,7 +3723,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant5(__nt), __end));
         (3, 10)
     }
-    pub(crate) fn __reduce18<
+    fn __reduce18<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3744,7 +3746,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant6(__nt), __end));
         (2, 11)
     }
-    pub(crate) fn __reduce19<
+    fn __reduce19<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3758,13 +3760,13 @@ mod __parse__Expr {
     ) -> (usize, usize)
     {
         // (<NamedFieldList> COMMA)* =  => ActionFn(101);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action101::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant7(__nt), __end));
         (0, 12)
     }
-    pub(crate) fn __reduce20<
+    fn __reduce20<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3785,7 +3787,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant7(__nt), __end));
         (1, 12)
     }
-    pub(crate) fn __reduce21<
+    fn __reduce21<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3808,7 +3810,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant7(__nt), __end));
         (2, 13)
     }
-    pub(crate) fn __reduce22<
+    fn __reduce22<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3832,7 +3834,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant7(__nt), __end));
         (3, 13)
     }
-    pub(crate) fn __reduce23<
+    fn __reduce23<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3855,7 +3857,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (2, 14)
     }
-    pub(crate) fn __reduce24<
+    fn __reduce24<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3878,7 +3880,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (2, 15)
     }
-    pub(crate) fn __reduce25<
+    fn __reduce25<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3902,7 +3904,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (3, 15)
     }
-    pub(crate) fn __reduce26<
+    fn __reduce26<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3925,7 +3927,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (2, 16)
     }
-    pub(crate) fn __reduce27<
+    fn __reduce27<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3946,7 +3948,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (1, 16)
     }
-    pub(crate) fn __reduce28<
+    fn __reduce28<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3960,13 +3962,13 @@ mod __parse__Expr {
     ) -> (usize, usize)
     {
         // (<StringExpr> COMMA?)* =  => ActionFn(116);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action116::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant9(__nt), __end));
         (0, 17)
     }
-    pub(crate) fn __reduce29<
+    fn __reduce29<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -3987,7 +3989,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant9(__nt), __end));
         (1, 17)
     }
-    pub(crate) fn __reduce30<
+    fn __reduce30<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4010,7 +4012,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant9(__nt), __end));
         (2, 18)
     }
-    pub(crate) fn __reduce31<
+    fn __reduce31<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4031,7 +4033,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant9(__nt), __end));
         (1, 18)
     }
-    pub(crate) fn __reduce32<
+    fn __reduce32<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4055,7 +4057,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant9(__nt), __end));
         (3, 18)
     }
-    pub(crate) fn __reduce33<
+    fn __reduce33<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4078,7 +4080,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant9(__nt), __end));
         (2, 18)
     }
-    pub(crate) fn __reduce34<
+    fn __reduce34<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4099,7 +4101,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 19)
     }
-    pub(crate) fn __reduce35<
+    fn __reduce35<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4122,7 +4124,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (2, 19)
     }
-    pub(crate) fn __reduce36<
+    fn __reduce36<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4143,7 +4145,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (1, 20)
     }
-    pub(crate) fn __reduce37<
+    fn __reduce37<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4166,7 +4168,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (2, 20)
     }
-    pub(crate) fn __reduce38<
+    fn __reduce38<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4189,7 +4191,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (2, 20)
     }
-    pub(crate) fn __reduce39<
+    fn __reduce39<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4213,7 +4215,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (3, 20)
     }
-    pub(crate) fn __reduce40<
+    fn __reduce40<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4236,7 +4238,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (2, 21)
     }
-    pub(crate) fn __reduce41<
+    fn __reduce41<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4257,7 +4259,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 21)
     }
-    pub(crate) fn __reduce42<
+    fn __reduce42<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4278,7 +4280,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant10(__nt), __end));
         (1, 22)
     }
-    pub(crate) fn __reduce43<
+    fn __reduce43<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4299,7 +4301,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant10(__nt), __end));
         (1, 22)
     }
-    pub(crate) fn __reduce44<
+    fn __reduce44<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4313,13 +4315,13 @@ mod __parse__Expr {
     ) -> (usize, usize)
     {
         // AndOp* =  => ActionFn(133);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action133::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant11(__nt), __end));
         (0, 23)
     }
-    pub(crate) fn __reduce45<
+    fn __reduce45<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4340,7 +4342,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant11(__nt), __end));
         (1, 23)
     }
-    pub(crate) fn __reduce46<
+    fn __reduce46<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4361,7 +4363,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant11(__nt), __end));
         (1, 24)
     }
-    pub(crate) fn __reduce47<
+    fn __reduce47<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4384,7 +4386,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant11(__nt), __end));
         (2, 24)
     }
-    pub(crate) fn __reduce48<
+    fn __reduce48<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4407,7 +4409,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant12(__nt), __end));
         (2, 25)
     }
-    pub(crate) fn __reduce49<
+    fn __reduce49<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4430,7 +4432,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant12(__nt), __end));
         (2, 25)
     }
-    pub(crate) fn __reduce50<
+    fn __reduce50<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4451,7 +4453,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant13(__nt), __end));
         (1, 26)
     }
-    pub(crate) fn __reduce51<
+    fn __reduce51<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4465,13 +4467,13 @@ mod __parse__Expr {
     ) -> (usize, usize)
     {
         // Boost? =  => ActionFn(122);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action122::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant13(__nt), __end));
         (0, 26)
     }
-    pub(crate) fn __reduce52<
+    fn __reduce52<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4492,7 +4494,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant14(__nt), __end));
         (1, 27)
     }
-    pub(crate) fn __reduce53<
+    fn __reduce53<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4506,13 +4508,13 @@ mod __parse__Expr {
     ) -> (usize, usize)
     {
         // COMMA? =  => ActionFn(120);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action120::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant14(__nt), __end));
         (0, 27)
     }
-    pub(crate) fn __reduce54<
+    fn __reduce54<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4536,7 +4538,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (3, 28)
     }
-    pub(crate) fn __reduce55<
+    fn __reduce55<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4563,7 +4565,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (6, 28)
     }
-    pub(crate) fn __reduce56<
+    fn __reduce56<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4589,7 +4591,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (5, 28)
     }
-    pub(crate) fn __reduce57<
+    fn __reduce57<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4610,7 +4612,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 28)
     }
-    pub(crate) fn __reduce58<
+    fn __reduce58<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4636,7 +4638,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (5, 28)
     }
-    pub(crate) fn __reduce59<
+    fn __reduce59<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4660,7 +4662,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (3, 28)
     }
-    pub(crate) fn __reduce60<
+    fn __reduce60<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4681,7 +4683,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 28)
     }
-    pub(crate) fn __reduce61<
+    fn __reduce61<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4702,7 +4704,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce62<
+    fn __reduce62<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4723,7 +4725,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce63<
+    fn __reduce63<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4744,7 +4746,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce64<
+    fn __reduce64<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4765,7 +4767,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce65<
+    fn __reduce65<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4786,7 +4788,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce66<
+    fn __reduce66<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4807,7 +4809,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce67<
+    fn __reduce67<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4828,7 +4830,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce68<
+    fn __reduce68<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4849,7 +4851,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce69<
+    fn __reduce69<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4870,7 +4872,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce70<
+    fn __reduce70<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4891,7 +4893,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce71<
+    fn __reduce71<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4912,7 +4914,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce72<
+    fn __reduce72<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4933,7 +4935,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce73<
+    fn __reduce73<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4954,7 +4956,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 30)
     }
-    pub(crate) fn __reduce74<
+    fn __reduce74<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -4983,7 +4985,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant16(__nt), __end));
         (8, 31)
     }
-    pub(crate) fn __reduce75<
+    fn __reduce75<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5011,7 +5013,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant16(__nt), __end));
         (7, 31)
     }
-    pub(crate) fn __reduce76<
+    fn __reduce76<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5034,7 +5036,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant17(__nt), __end));
         (2, 32)
     }
-    pub(crate) fn __reduce77<
+    fn __reduce77<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5055,7 +5057,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant17(__nt), __end));
         (1, 32)
     }
-    pub(crate) fn __reduce78<
+    fn __reduce78<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5079,7 +5081,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant17(__nt), __end));
         (3, 32)
     }
-    pub(crate) fn __reduce79<
+    fn __reduce79<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5102,7 +5104,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant17(__nt), __end));
         (2, 32)
     }
-    pub(crate) fn __reduce80<
+    fn __reduce80<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5123,7 +5125,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 33)
     }
-    pub(crate) fn __reduce81<
+    fn __reduce81<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5144,7 +5146,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant18(__nt), __end));
         (1, 34)
     }
-    pub(crate) fn __reduce82<
+    fn __reduce82<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5167,7 +5169,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant18(__nt), __end));
         (2, 34)
     }
-    pub(crate) fn __reduce83<
+    fn __reduce83<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5188,7 +5190,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 35)
     }
-    pub(crate) fn __reduce84<
+    fn __reduce84<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5209,7 +5211,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 35)
     }
-    pub(crate) fn __reduce85<
+    fn __reduce85<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5230,7 +5232,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 35)
     }
-    pub(crate) fn __reduce86<
+    fn __reduce86<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5251,7 +5253,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant19(__nt), __end));
         (1, 36)
     }
-    pub(crate) fn __reduce87<
+    fn __reduce87<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5274,7 +5276,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant19(__nt), __end));
         (2, 36)
     }
-    pub(crate) fn __reduce88<
+    fn __reduce88<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5299,7 +5301,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (4, 37)
     }
-    pub(crate) fn __reduce89<
+    fn __reduce89<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5320,7 +5322,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant20(__nt), __end));
         (1, 38)
     }
-    pub(crate) fn __reduce90<
+    fn __reduce90<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5334,13 +5336,13 @@ mod __parse__Expr {
     ) -> (usize, usize)
     {
         // Filter? =  => ActionFn(115);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action115::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant20(__nt), __end));
         (0, 38)
     }
-    pub(crate) fn __reduce91<
+    fn __reduce91<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5361,7 +5363,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant21(__nt), __end));
         (1, 39)
     }
-    pub(crate) fn __reduce92<
+    fn __reduce92<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5388,7 +5390,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant22(__nt), __end));
         (6, 40)
     }
-    pub(crate) fn __reduce93<
+    fn __reduce93<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5419,7 +5421,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant22(__nt), __end));
         (10, 40)
     }
-    pub(crate) fn __reduce94<
+    fn __reduce94<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5443,7 +5445,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (3, 41)
     }
-    pub(crate) fn __reduce95<
+    fn __reduce95<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5466,7 +5468,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (2, 41)
     }
-    pub(crate) fn __reduce96<
+    fn __reduce96<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5491,7 +5493,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (4, 41)
     }
-    pub(crate) fn __reduce97<
+    fn __reduce97<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5515,7 +5517,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (3, 41)
     }
-    pub(crate) fn __reduce98<
+    fn __reduce98<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5536,7 +5538,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 42)
     }
-    pub(crate) fn __reduce99<
+    fn __reduce99<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5557,7 +5559,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 42)
     }
-    pub(crate) fn __reduce100<
+    fn __reduce100<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5578,7 +5580,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 42)
     }
-    pub(crate) fn __reduce101<
+    fn __reduce101<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5599,7 +5601,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 42)
     }
-    pub(crate) fn __reduce102<
+    fn __reduce102<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5620,7 +5622,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 42)
     }
-    pub(crate) fn __reduce103<
+    fn __reduce103<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5641,7 +5643,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 42)
     }
-    pub(crate) fn __reduce104<
+    fn __reduce104<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5665,7 +5667,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (3, 43)
     }
-    pub(crate) fn __reduce105<
+    fn __reduce105<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5688,7 +5690,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (2, 43)
     }
-    pub(crate) fn __reduce106<
+    fn __reduce106<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5713,7 +5715,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (4, 43)
     }
-    pub(crate) fn __reduce107<
+    fn __reduce107<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5737,7 +5739,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (3, 43)
     }
-    pub(crate) fn __reduce108<
+    fn __reduce108<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5761,7 +5763,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (3, 44)
     }
-    pub(crate) fn __reduce109<
+    fn __reduce109<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5782,7 +5784,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant23(__nt), __end));
         (1, 45)
     }
-    pub(crate) fn __reduce110<
+    fn __reduce110<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5796,13 +5798,13 @@ mod __parse__Expr {
     ) -> (usize, usize)
     {
         // JsonProperty? =  => ActionFn(110);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action110::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant23(__nt), __end));
         (0, 45)
     }
-    pub(crate) fn __reduce111<
+    fn __reduce111<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5823,7 +5825,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (1, 46)
     }
-    pub(crate) fn __reduce112<
+    fn __reduce112<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5844,7 +5846,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (1, 46)
     }
-    pub(crate) fn __reduce113<
+    fn __reduce113<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5865,7 +5867,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (1, 46)
     }
-    pub(crate) fn __reduce114<
+    fn __reduce114<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5886,7 +5888,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant23(__nt), __end));
         (1, 47)
     }
-    pub(crate) fn __reduce115<
+    fn __reduce115<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5900,13 +5902,13 @@ mod __parse__Expr {
     ) -> (usize, usize)
     {
         // JsonValue? =  => ActionFn(105);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action105::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant23(__nt), __end));
         (0, 47)
     }
-    pub(crate) fn __reduce116<
+    fn __reduce116<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5932,7 +5934,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant6(__nt), __end));
         (5, 48)
     }
-    pub(crate) fn __reduce117<
+    fn __reduce117<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5953,7 +5955,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant10(__nt), __end));
         (1, 49)
     }
-    pub(crate) fn __reduce118<
+    fn __reduce118<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5974,7 +5976,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant10(__nt), __end));
         (1, 49)
     }
-    pub(crate) fn __reduce119<
+    fn __reduce119<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -5997,7 +5999,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (2, 50)
     }
-    pub(crate) fn __reduce120<
+    fn __reduce120<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6018,7 +6020,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 50)
     }
-    pub(crate) fn __reduce121<
+    fn __reduce121<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6039,7 +6041,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant10(__nt), __end));
         (1, 51)
     }
-    pub(crate) fn __reduce122<
+    fn __reduce122<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6060,7 +6062,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant10(__nt), __end));
         (1, 51)
     }
-    pub(crate) fn __reduce123<
+    fn __reduce123<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6081,7 +6083,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant11(__nt), __end));
         (1, 52)
     }
-    pub(crate) fn __reduce124<
+    fn __reduce124<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6104,7 +6106,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant11(__nt), __end));
         (2, 52)
     }
-    pub(crate) fn __reduce125<
+    fn __reduce125<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6128,7 +6130,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (3, 53)
     }
-    pub(crate) fn __reduce126<
+    fn __reduce126<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6152,7 +6154,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (3, 53)
     }
-    pub(crate) fn __reduce127<
+    fn __reduce127<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6175,7 +6177,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (2, 54)
     }
-    pub(crate) fn __reduce128<
+    fn __reduce128<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6196,7 +6198,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 54)
     }
-    pub(crate) fn __reduce129<
+    fn __reduce129<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6217,7 +6219,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant24(__nt), __end));
         (1, 55)
     }
-    pub(crate) fn __reduce130<
+    fn __reduce130<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6238,7 +6240,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant24(__nt), __end));
         (1, 55)
     }
-    pub(crate) fn __reduce131<
+    fn __reduce131<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6262,7 +6264,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant25(__nt), __end));
         (3, 56)
     }
-    pub(crate) fn __reduce132<
+    fn __reduce132<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6283,7 +6285,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant26(__nt), __end));
         (1, 57)
     }
-    pub(crate) fn __reduce133<
+    fn __reduce133<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6306,7 +6308,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant26(__nt), __end));
         (2, 57)
     }
-    pub(crate) fn __reduce134<
+    fn __reduce134<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6327,7 +6329,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce135<
+    fn __reduce135<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6348,7 +6350,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce136<
+    fn __reduce136<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6369,7 +6371,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce137<
+    fn __reduce137<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6390,7 +6392,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce138<
+    fn __reduce138<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6411,7 +6413,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce139<
+    fn __reduce139<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6432,7 +6434,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce140<
+    fn __reduce140<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6453,7 +6455,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce141<
+    fn __reduce141<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6474,7 +6476,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce142<
+    fn __reduce142<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6495,7 +6497,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce143<
+    fn __reduce143<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6516,7 +6518,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (1, 59)
     }
-    pub(crate) fn __reduce144<
+    fn __reduce144<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6539,7 +6541,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (2, 59)
     }
-    pub(crate) fn __reduce145<
+    fn __reduce145<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6560,7 +6562,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (1, 59)
     }
-    pub(crate) fn __reduce146<
+    fn __reduce146<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6584,7 +6586,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (3, 59)
     }
-    pub(crate) fn __reduce147<
+    fn __reduce147<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6607,7 +6609,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (2, 59)
     }
-    pub(crate) fn __reduce148<
+    fn __reduce148<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6633,7 +6635,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant16(__nt), __end));
         (5, 60)
     }
-    pub(crate) fn __reduce149<
+    fn __reduce149<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6654,7 +6656,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant28(__nt), __end));
         (1, 61)
     }
-    pub(crate) fn __reduce150<
+    fn __reduce150<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6675,7 +6677,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (1, 62)
     }
-    pub(crate) fn __reduce151<
+    fn __reduce151<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6699,7 +6701,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (3, 62)
     }
-    pub(crate) fn __reduce152<
+    fn __reduce152<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6722,7 +6724,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (2, 62)
     }
-    pub(crate) fn __reduce153<
+    fn __reduce153<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6747,7 +6749,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (4, 62)
     }
-    pub(crate) fn __reduce154<
+    fn __reduce154<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6771,7 +6773,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (3, 62)
     }
-    pub(crate) fn __reduce155<
+    fn __reduce155<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6794,7 +6796,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (2, 62)
     }
-    pub(crate) fn __reduce156<
+    fn __reduce156<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6815,7 +6817,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (1, 62)
     }
-    pub(crate) fn __reduce157<
+    fn __reduce157<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6838,7 +6840,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (2, 63)
     }
-    pub(crate) fn __reduce158<
+    fn __reduce158<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6859,7 +6861,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 63)
     }
-    pub(crate) fn __reduce159<
+    fn __reduce159<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6880,7 +6882,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 63)
     }
-    pub(crate) fn __reduce160<
+    fn __reduce160<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6901,7 +6903,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 63)
     }
-    pub(crate) fn __reduce161<
+    fn __reduce161<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6922,7 +6924,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 64)
     }
-    pub(crate) fn __reduce162<
+    fn __reduce162<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6943,7 +6945,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 65)
     }
-    pub(crate) fn __reduce163<
+    fn __reduce163<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6964,7 +6966,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 65)
     }
-    pub(crate) fn __reduce164<
+    fn __reduce164<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -6985,7 +6987,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 65)
     }
-    pub(crate) fn __reduce165<
+    fn __reduce165<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -7008,7 +7010,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (2, 66)
     }
-    pub(crate) fn __reduce166<
+    fn __reduce166<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -7029,7 +7031,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 66)
     }
-    pub(crate) fn __reduce167<
+    fn __reduce167<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -7050,7 +7052,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant10(__nt), __end));
         (1, 67)
     }
-    pub(crate) fn __reduce168<
+    fn __reduce168<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -7071,7 +7073,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant10(__nt), __end));
         (1, 67)
     }
-    pub(crate) fn __reduce169<
+    fn __reduce169<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -7092,7 +7094,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant11(__nt), __end));
         (1, 68)
     }
-    pub(crate) fn __reduce170<
+    fn __reduce170<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -7115,7 +7117,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant11(__nt), __end));
         (2, 68)
     }
-    pub(crate) fn __reduce171<
+    fn __reduce171<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -7136,7 +7138,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant29(__nt), __end));
         (1, 69)
     }
-    pub(crate) fn __reduce172<
+    fn __reduce172<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -7157,7 +7159,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant29(__nt), __end));
         (1, 69)
     }
-    pub(crate) fn __reduce174<
+    fn __reduce174<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -7178,7 +7180,7 @@ mod __parse__Expr {
         __symbols.push((__start, __Symbol::Variant18(__nt), __end));
         (1, 71)
     }
-    pub(crate) fn __reduce175<
+    fn __reduce175<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -7200,10 +7202,11 @@ mod __parse__Expr {
         (1, 72)
     }
 }
+#[allow(unused_imports)]
 pub use self::__parse__Expr::ExprParser;
 
 #[rustfmt::skip]
-#[allow(non_snake_case, non_camel_case_types, unused_mut, unused_variables, unused_imports, unused_parens, clippy::all)]
+#[allow(non_snake_case, non_camel_case_types, unused_mut, unused_variables, unused_imports, unused_parens, clippy::needless_lifetimes, clippy::type_complexity, clippy::needless_return, clippy::too_many_arguments, clippy::never_loop, clippy::match_single_binding, clippy::needless_raw_string_hashes)]
 mod __parse__FieldList {
 
     use std::str::FromStr;
@@ -7438,7 +7441,7 @@ mod __parse__FieldList {
             }
         }).collect()
     }
-    pub(crate) struct __StateMachine<'input, '__1, '__2, '__3, '__4>
+    struct __StateMachine<'input, '__1, '__2, '__3, '__4>
     where 'input: '__2, 'input: '__3
     {
         source_index: Option<&'__1 PgRelation>,
@@ -7613,7 +7616,7 @@ mod __parse__FieldList {
         _: core::marker::PhantomData<(&'input ())>,
     ) -> __Symbol<'input>
     {
-        match __token_index {
+        #[allow(clippy::manual_range_patterns)]match __token_index {
             0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29 | 30 | 31 | 32 | 33 | 34 | 35 | 36 | 37 | 38 | 39 | 40 | 41 | 42 | 43 | 44 | 45 | 46 => match __token {
                 Token(18, __tok0) | Token(8, __tok0) | Token(21, __tok0) | Token(32, __tok0) | Token(19, __tok0) | Token(46, __tok0) | Token(44, __tok0) | Token(31, __tok0) | Token(38, __tok0) | Token(20, __tok0) | Token(4, __tok0) | Token(0, __tok0) | Token(39, __tok0) | Token(16, __tok0) | Token(22, __tok0) | Token(9, __tok0) | Token(23, __tok0) | Token(27, __tok0) | Token(34, __tok0) | Token(41, __tok0) | Token(42, __tok0) | Token(5, __tok0) | Token(36, __tok0) | Token(37, __tok0) | Token(40, __tok0) | Token(33, __tok0) | Token(29, __tok0) | Token(10, __tok0) | Token(11, __tok0) | Token(28, __tok0) | Token(12, __tok0) | Token(45, __tok0) | Token(43, __tok0) | Token(30, __tok0) | Token(17, __tok0) | Token(6, __tok0) | Token(1, __tok0) | Token(35, __tok0) | Token(24, __tok0) | Token(15, __tok0) | Token(7, __tok0) | Token(13, __tok0) | Token(3, __tok0) | Token(2, __tok0) | Token(14, __tok0) | Token(25, __tok0) | Token(26, __tok0) if true => __Symbol::Variant0(__tok0),
                 _ => unreachable!(),
@@ -8695,6 +8698,7 @@ mod __parse__FieldList {
         _priv: (),
     }
 
+    impl Default for FieldListParser { fn default() -> Self { Self::new() } }
     impl FieldListParser {
         pub fn new() -> FieldListParser {
             let __builder = super::__intern_token::new_builder();
@@ -8770,7 +8774,7 @@ mod __parse__FieldList {
             __states.push(__next_state);
         }
     }
-    pub(crate) fn __reduce<
+    fn __reduce<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -9662,7 +9666,7 @@ mod __parse__FieldList {
             _ => __symbol_type_mismatch()
         }
     }
-    pub(crate) fn __reduce0<
+    fn __reduce0<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -9685,7 +9689,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (2, 0)
     }
-    pub(crate) fn __reduce1<
+    fn __reduce1<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -9708,7 +9712,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (2, 1)
     }
-    pub(crate) fn __reduce2<
+    fn __reduce2<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -9732,7 +9736,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (3, 1)
     }
-    pub(crate) fn __reduce3<
+    fn __reduce3<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -9755,7 +9759,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (2, 2)
     }
-    pub(crate) fn __reduce4<
+    fn __reduce4<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -9769,13 +9773,13 @@ mod __parse__FieldList {
     ) -> (usize, usize)
     {
         // (<FieldName> COMMA)* =  => ActionFn(98);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action98::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant3(__nt), __end));
         (0, 3)
     }
-    pub(crate) fn __reduce5<
+    fn __reduce5<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -9796,7 +9800,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant3(__nt), __end));
         (1, 3)
     }
-    pub(crate) fn __reduce6<
+    fn __reduce6<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -9819,7 +9823,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant3(__nt), __end));
         (2, 4)
     }
-    pub(crate) fn __reduce7<
+    fn __reduce7<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -9843,7 +9847,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant3(__nt), __end));
         (3, 4)
     }
-    pub(crate) fn __reduce8<
+    fn __reduce8<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -9866,7 +9870,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (2, 5)
     }
-    pub(crate) fn __reduce9<
+    fn __reduce9<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -9880,13 +9884,13 @@ mod __parse__FieldList {
     ) -> (usize, usize)
     {
         // (<JsonProperty> COMMA)* =  => ActionFn(111);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action111::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant5(__nt), __end));
         (0, 6)
     }
-    pub(crate) fn __reduce10<
+    fn __reduce10<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -9907,7 +9911,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant5(__nt), __end));
         (1, 6)
     }
-    pub(crate) fn __reduce11<
+    fn __reduce11<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -9930,7 +9934,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant5(__nt), __end));
         (2, 7)
     }
-    pub(crate) fn __reduce12<
+    fn __reduce12<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -9954,7 +9958,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant5(__nt), __end));
         (3, 7)
     }
-    pub(crate) fn __reduce13<
+    fn __reduce13<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -9977,7 +9981,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (2, 8)
     }
-    pub(crate) fn __reduce14<
+    fn __reduce14<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -9991,13 +9995,13 @@ mod __parse__FieldList {
     ) -> (usize, usize)
     {
         // (<JsonValue> COMMA)* =  => ActionFn(106);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action106::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant5(__nt), __end));
         (0, 9)
     }
-    pub(crate) fn __reduce15<
+    fn __reduce15<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10018,7 +10022,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant5(__nt), __end));
         (1, 9)
     }
-    pub(crate) fn __reduce16<
+    fn __reduce16<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10041,7 +10045,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant5(__nt), __end));
         (2, 10)
     }
-    pub(crate) fn __reduce17<
+    fn __reduce17<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10065,7 +10069,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant5(__nt), __end));
         (3, 10)
     }
-    pub(crate) fn __reduce18<
+    fn __reduce18<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10088,7 +10092,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant6(__nt), __end));
         (2, 11)
     }
-    pub(crate) fn __reduce19<
+    fn __reduce19<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10102,13 +10106,13 @@ mod __parse__FieldList {
     ) -> (usize, usize)
     {
         // (<NamedFieldList> COMMA)* =  => ActionFn(101);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action101::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant7(__nt), __end));
         (0, 12)
     }
-    pub(crate) fn __reduce20<
+    fn __reduce20<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10129,7 +10133,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant7(__nt), __end));
         (1, 12)
     }
-    pub(crate) fn __reduce21<
+    fn __reduce21<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10152,7 +10156,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant7(__nt), __end));
         (2, 13)
     }
-    pub(crate) fn __reduce22<
+    fn __reduce22<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10176,7 +10180,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant7(__nt), __end));
         (3, 13)
     }
-    pub(crate) fn __reduce23<
+    fn __reduce23<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10199,7 +10203,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (2, 14)
     }
-    pub(crate) fn __reduce24<
+    fn __reduce24<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10222,7 +10226,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (2, 15)
     }
-    pub(crate) fn __reduce25<
+    fn __reduce25<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10246,7 +10250,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (3, 15)
     }
-    pub(crate) fn __reduce26<
+    fn __reduce26<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10269,7 +10273,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (2, 16)
     }
-    pub(crate) fn __reduce27<
+    fn __reduce27<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10290,7 +10294,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (1, 16)
     }
-    pub(crate) fn __reduce28<
+    fn __reduce28<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10304,13 +10308,13 @@ mod __parse__FieldList {
     ) -> (usize, usize)
     {
         // (<StringExpr> COMMA?)* =  => ActionFn(116);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action116::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant9(__nt), __end));
         (0, 17)
     }
-    pub(crate) fn __reduce29<
+    fn __reduce29<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10331,7 +10335,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant9(__nt), __end));
         (1, 17)
     }
-    pub(crate) fn __reduce30<
+    fn __reduce30<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10354,7 +10358,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant9(__nt), __end));
         (2, 18)
     }
-    pub(crate) fn __reduce31<
+    fn __reduce31<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10375,7 +10379,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant9(__nt), __end));
         (1, 18)
     }
-    pub(crate) fn __reduce32<
+    fn __reduce32<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10399,7 +10403,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant9(__nt), __end));
         (3, 18)
     }
-    pub(crate) fn __reduce33<
+    fn __reduce33<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10422,7 +10426,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant9(__nt), __end));
         (2, 18)
     }
-    pub(crate) fn __reduce34<
+    fn __reduce34<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10443,7 +10447,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 19)
     }
-    pub(crate) fn __reduce35<
+    fn __reduce35<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10466,7 +10470,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (2, 19)
     }
-    pub(crate) fn __reduce36<
+    fn __reduce36<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10487,7 +10491,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (1, 20)
     }
-    pub(crate) fn __reduce37<
+    fn __reduce37<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10510,7 +10514,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (2, 20)
     }
-    pub(crate) fn __reduce38<
+    fn __reduce38<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10533,7 +10537,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (2, 20)
     }
-    pub(crate) fn __reduce39<
+    fn __reduce39<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10557,7 +10561,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (3, 20)
     }
-    pub(crate) fn __reduce40<
+    fn __reduce40<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10580,7 +10584,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (2, 21)
     }
-    pub(crate) fn __reduce41<
+    fn __reduce41<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10601,7 +10605,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 21)
     }
-    pub(crate) fn __reduce42<
+    fn __reduce42<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10622,7 +10626,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant10(__nt), __end));
         (1, 22)
     }
-    pub(crate) fn __reduce43<
+    fn __reduce43<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10643,7 +10647,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant10(__nt), __end));
         (1, 22)
     }
-    pub(crate) fn __reduce44<
+    fn __reduce44<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10657,13 +10661,13 @@ mod __parse__FieldList {
     ) -> (usize, usize)
     {
         // AndOp* =  => ActionFn(133);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action133::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant11(__nt), __end));
         (0, 23)
     }
-    pub(crate) fn __reduce45<
+    fn __reduce45<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10684,7 +10688,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant11(__nt), __end));
         (1, 23)
     }
-    pub(crate) fn __reduce46<
+    fn __reduce46<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10705,7 +10709,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant11(__nt), __end));
         (1, 24)
     }
-    pub(crate) fn __reduce47<
+    fn __reduce47<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10728,7 +10732,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant11(__nt), __end));
         (2, 24)
     }
-    pub(crate) fn __reduce48<
+    fn __reduce48<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10751,7 +10755,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant12(__nt), __end));
         (2, 25)
     }
-    pub(crate) fn __reduce49<
+    fn __reduce49<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10774,7 +10778,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant12(__nt), __end));
         (2, 25)
     }
-    pub(crate) fn __reduce50<
+    fn __reduce50<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10795,7 +10799,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant13(__nt), __end));
         (1, 26)
     }
-    pub(crate) fn __reduce51<
+    fn __reduce51<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10809,13 +10813,13 @@ mod __parse__FieldList {
     ) -> (usize, usize)
     {
         // Boost? =  => ActionFn(122);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action122::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant13(__nt), __end));
         (0, 26)
     }
-    pub(crate) fn __reduce52<
+    fn __reduce52<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10836,7 +10840,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant14(__nt), __end));
         (1, 27)
     }
-    pub(crate) fn __reduce53<
+    fn __reduce53<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10850,13 +10854,13 @@ mod __parse__FieldList {
     ) -> (usize, usize)
     {
         // COMMA? =  => ActionFn(120);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action120::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant14(__nt), __end));
         (0, 27)
     }
-    pub(crate) fn __reduce54<
+    fn __reduce54<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10880,7 +10884,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (3, 28)
     }
-    pub(crate) fn __reduce55<
+    fn __reduce55<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10907,7 +10911,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (6, 28)
     }
-    pub(crate) fn __reduce56<
+    fn __reduce56<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10933,7 +10937,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (5, 28)
     }
-    pub(crate) fn __reduce57<
+    fn __reduce57<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10954,7 +10958,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 28)
     }
-    pub(crate) fn __reduce58<
+    fn __reduce58<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -10980,7 +10984,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (5, 28)
     }
-    pub(crate) fn __reduce59<
+    fn __reduce59<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11004,7 +11008,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (3, 28)
     }
-    pub(crate) fn __reduce60<
+    fn __reduce60<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11025,7 +11029,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 28)
     }
-    pub(crate) fn __reduce61<
+    fn __reduce61<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11046,7 +11050,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce62<
+    fn __reduce62<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11067,7 +11071,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce63<
+    fn __reduce63<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11088,7 +11092,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce64<
+    fn __reduce64<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11109,7 +11113,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce65<
+    fn __reduce65<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11130,7 +11134,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce66<
+    fn __reduce66<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11151,7 +11155,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce67<
+    fn __reduce67<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11172,7 +11176,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce68<
+    fn __reduce68<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11193,7 +11197,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce69<
+    fn __reduce69<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11214,7 +11218,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce70<
+    fn __reduce70<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11235,7 +11239,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce71<
+    fn __reduce71<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11256,7 +11260,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce72<
+    fn __reduce72<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11277,7 +11281,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce73<
+    fn __reduce73<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11298,7 +11302,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 30)
     }
-    pub(crate) fn __reduce74<
+    fn __reduce74<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11327,7 +11331,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant16(__nt), __end));
         (8, 31)
     }
-    pub(crate) fn __reduce75<
+    fn __reduce75<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11355,7 +11359,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant16(__nt), __end));
         (7, 31)
     }
-    pub(crate) fn __reduce76<
+    fn __reduce76<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11378,7 +11382,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant17(__nt), __end));
         (2, 32)
     }
-    pub(crate) fn __reduce77<
+    fn __reduce77<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11399,7 +11403,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant17(__nt), __end));
         (1, 32)
     }
-    pub(crate) fn __reduce78<
+    fn __reduce78<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11423,7 +11427,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant17(__nt), __end));
         (3, 32)
     }
-    pub(crate) fn __reduce79<
+    fn __reduce79<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11446,7 +11450,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant17(__nt), __end));
         (2, 32)
     }
-    pub(crate) fn __reduce80<
+    fn __reduce80<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11467,7 +11471,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 33)
     }
-    pub(crate) fn __reduce81<
+    fn __reduce81<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11488,7 +11492,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant18(__nt), __end));
         (1, 34)
     }
-    pub(crate) fn __reduce82<
+    fn __reduce82<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11511,7 +11515,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant18(__nt), __end));
         (2, 34)
     }
-    pub(crate) fn __reduce83<
+    fn __reduce83<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11532,7 +11536,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 35)
     }
-    pub(crate) fn __reduce84<
+    fn __reduce84<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11553,7 +11557,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 35)
     }
-    pub(crate) fn __reduce85<
+    fn __reduce85<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11574,7 +11578,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 35)
     }
-    pub(crate) fn __reduce86<
+    fn __reduce86<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11595,7 +11599,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant19(__nt), __end));
         (1, 36)
     }
-    pub(crate) fn __reduce87<
+    fn __reduce87<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11618,7 +11622,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant19(__nt), __end));
         (2, 36)
     }
-    pub(crate) fn __reduce88<
+    fn __reduce88<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11643,7 +11647,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (4, 37)
     }
-    pub(crate) fn __reduce89<
+    fn __reduce89<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11664,7 +11668,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant20(__nt), __end));
         (1, 38)
     }
-    pub(crate) fn __reduce90<
+    fn __reduce90<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11678,13 +11682,13 @@ mod __parse__FieldList {
     ) -> (usize, usize)
     {
         // Filter? =  => ActionFn(115);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action115::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant20(__nt), __end));
         (0, 38)
     }
-    pub(crate) fn __reduce91<
+    fn __reduce91<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11705,7 +11709,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant21(__nt), __end));
         (1, 39)
     }
-    pub(crate) fn __reduce92<
+    fn __reduce92<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11732,7 +11736,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant22(__nt), __end));
         (6, 40)
     }
-    pub(crate) fn __reduce93<
+    fn __reduce93<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11763,7 +11767,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant22(__nt), __end));
         (10, 40)
     }
-    pub(crate) fn __reduce94<
+    fn __reduce94<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11787,7 +11791,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (3, 41)
     }
-    pub(crate) fn __reduce95<
+    fn __reduce95<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11810,7 +11814,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (2, 41)
     }
-    pub(crate) fn __reduce96<
+    fn __reduce96<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11835,7 +11839,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (4, 41)
     }
-    pub(crate) fn __reduce97<
+    fn __reduce97<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11859,7 +11863,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (3, 41)
     }
-    pub(crate) fn __reduce98<
+    fn __reduce98<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11880,7 +11884,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 42)
     }
-    pub(crate) fn __reduce99<
+    fn __reduce99<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11901,7 +11905,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 42)
     }
-    pub(crate) fn __reduce100<
+    fn __reduce100<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11922,7 +11926,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 42)
     }
-    pub(crate) fn __reduce101<
+    fn __reduce101<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11943,7 +11947,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 42)
     }
-    pub(crate) fn __reduce102<
+    fn __reduce102<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11964,7 +11968,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 42)
     }
-    pub(crate) fn __reduce103<
+    fn __reduce103<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -11985,7 +11989,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 42)
     }
-    pub(crate) fn __reduce104<
+    fn __reduce104<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12009,7 +12013,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (3, 43)
     }
-    pub(crate) fn __reduce105<
+    fn __reduce105<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12032,7 +12036,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (2, 43)
     }
-    pub(crate) fn __reduce106<
+    fn __reduce106<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12057,7 +12061,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (4, 43)
     }
-    pub(crate) fn __reduce107<
+    fn __reduce107<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12081,7 +12085,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (3, 43)
     }
-    pub(crate) fn __reduce108<
+    fn __reduce108<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12105,7 +12109,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (3, 44)
     }
-    pub(crate) fn __reduce109<
+    fn __reduce109<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12126,7 +12130,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant23(__nt), __end));
         (1, 45)
     }
-    pub(crate) fn __reduce110<
+    fn __reduce110<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12140,13 +12144,13 @@ mod __parse__FieldList {
     ) -> (usize, usize)
     {
         // JsonProperty? =  => ActionFn(110);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action110::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant23(__nt), __end));
         (0, 45)
     }
-    pub(crate) fn __reduce111<
+    fn __reduce111<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12167,7 +12171,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (1, 46)
     }
-    pub(crate) fn __reduce112<
+    fn __reduce112<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12188,7 +12192,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (1, 46)
     }
-    pub(crate) fn __reduce113<
+    fn __reduce113<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12209,7 +12213,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (1, 46)
     }
-    pub(crate) fn __reduce114<
+    fn __reduce114<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12230,7 +12234,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant23(__nt), __end));
         (1, 47)
     }
-    pub(crate) fn __reduce115<
+    fn __reduce115<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12244,13 +12248,13 @@ mod __parse__FieldList {
     ) -> (usize, usize)
     {
         // JsonValue? =  => ActionFn(105);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action105::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant23(__nt), __end));
         (0, 47)
     }
-    pub(crate) fn __reduce116<
+    fn __reduce116<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12276,7 +12280,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant6(__nt), __end));
         (5, 48)
     }
-    pub(crate) fn __reduce117<
+    fn __reduce117<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12297,7 +12301,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant10(__nt), __end));
         (1, 49)
     }
-    pub(crate) fn __reduce118<
+    fn __reduce118<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12318,7 +12322,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant10(__nt), __end));
         (1, 49)
     }
-    pub(crate) fn __reduce119<
+    fn __reduce119<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12341,7 +12345,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (2, 50)
     }
-    pub(crate) fn __reduce120<
+    fn __reduce120<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12362,7 +12366,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 50)
     }
-    pub(crate) fn __reduce121<
+    fn __reduce121<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12383,7 +12387,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant10(__nt), __end));
         (1, 51)
     }
-    pub(crate) fn __reduce122<
+    fn __reduce122<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12404,7 +12408,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant10(__nt), __end));
         (1, 51)
     }
-    pub(crate) fn __reduce123<
+    fn __reduce123<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12425,7 +12429,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant11(__nt), __end));
         (1, 52)
     }
-    pub(crate) fn __reduce124<
+    fn __reduce124<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12448,7 +12452,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant11(__nt), __end));
         (2, 52)
     }
-    pub(crate) fn __reduce125<
+    fn __reduce125<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12472,7 +12476,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (3, 53)
     }
-    pub(crate) fn __reduce126<
+    fn __reduce126<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12496,7 +12500,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (3, 53)
     }
-    pub(crate) fn __reduce127<
+    fn __reduce127<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12519,7 +12523,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (2, 54)
     }
-    pub(crate) fn __reduce128<
+    fn __reduce128<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12540,7 +12544,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 54)
     }
-    pub(crate) fn __reduce129<
+    fn __reduce129<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12561,7 +12565,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant24(__nt), __end));
         (1, 55)
     }
-    pub(crate) fn __reduce130<
+    fn __reduce130<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12582,7 +12586,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant24(__nt), __end));
         (1, 55)
     }
-    pub(crate) fn __reduce131<
+    fn __reduce131<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12606,7 +12610,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant25(__nt), __end));
         (3, 56)
     }
-    pub(crate) fn __reduce132<
+    fn __reduce132<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12627,7 +12631,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant26(__nt), __end));
         (1, 57)
     }
-    pub(crate) fn __reduce133<
+    fn __reduce133<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12650,7 +12654,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant26(__nt), __end));
         (2, 57)
     }
-    pub(crate) fn __reduce134<
+    fn __reduce134<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12671,7 +12675,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce135<
+    fn __reduce135<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12692,7 +12696,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce136<
+    fn __reduce136<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12713,7 +12717,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce137<
+    fn __reduce137<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12734,7 +12738,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce138<
+    fn __reduce138<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12755,7 +12759,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce139<
+    fn __reduce139<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12776,7 +12780,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce140<
+    fn __reduce140<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12797,7 +12801,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce141<
+    fn __reduce141<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12818,7 +12822,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce142<
+    fn __reduce142<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12839,7 +12843,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce143<
+    fn __reduce143<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12860,7 +12864,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (1, 59)
     }
-    pub(crate) fn __reduce144<
+    fn __reduce144<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12883,7 +12887,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (2, 59)
     }
-    pub(crate) fn __reduce145<
+    fn __reduce145<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12904,7 +12908,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (1, 59)
     }
-    pub(crate) fn __reduce146<
+    fn __reduce146<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12928,7 +12932,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (3, 59)
     }
-    pub(crate) fn __reduce147<
+    fn __reduce147<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12951,7 +12955,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (2, 59)
     }
-    pub(crate) fn __reduce148<
+    fn __reduce148<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12977,7 +12981,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant16(__nt), __end));
         (5, 60)
     }
-    pub(crate) fn __reduce149<
+    fn __reduce149<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -12998,7 +13002,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant28(__nt), __end));
         (1, 61)
     }
-    pub(crate) fn __reduce150<
+    fn __reduce150<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13019,7 +13023,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (1, 62)
     }
-    pub(crate) fn __reduce151<
+    fn __reduce151<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13043,7 +13047,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (3, 62)
     }
-    pub(crate) fn __reduce152<
+    fn __reduce152<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13066,7 +13070,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (2, 62)
     }
-    pub(crate) fn __reduce153<
+    fn __reduce153<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13091,7 +13095,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (4, 62)
     }
-    pub(crate) fn __reduce154<
+    fn __reduce154<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13115,7 +13119,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (3, 62)
     }
-    pub(crate) fn __reduce155<
+    fn __reduce155<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13138,7 +13142,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (2, 62)
     }
-    pub(crate) fn __reduce156<
+    fn __reduce156<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13159,7 +13163,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (1, 62)
     }
-    pub(crate) fn __reduce157<
+    fn __reduce157<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13182,7 +13186,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (2, 63)
     }
-    pub(crate) fn __reduce158<
+    fn __reduce158<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13203,7 +13207,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 63)
     }
-    pub(crate) fn __reduce159<
+    fn __reduce159<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13224,7 +13228,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 63)
     }
-    pub(crate) fn __reduce160<
+    fn __reduce160<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13245,7 +13249,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 63)
     }
-    pub(crate) fn __reduce161<
+    fn __reduce161<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13266,7 +13270,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 64)
     }
-    pub(crate) fn __reduce162<
+    fn __reduce162<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13287,7 +13291,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 65)
     }
-    pub(crate) fn __reduce163<
+    fn __reduce163<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13308,7 +13312,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 65)
     }
-    pub(crate) fn __reduce164<
+    fn __reduce164<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13329,7 +13333,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 65)
     }
-    pub(crate) fn __reduce165<
+    fn __reduce165<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13352,7 +13356,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (2, 66)
     }
-    pub(crate) fn __reduce166<
+    fn __reduce166<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13373,7 +13377,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 66)
     }
-    pub(crate) fn __reduce167<
+    fn __reduce167<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13394,7 +13398,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant10(__nt), __end));
         (1, 67)
     }
-    pub(crate) fn __reduce168<
+    fn __reduce168<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13415,7 +13419,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant10(__nt), __end));
         (1, 67)
     }
-    pub(crate) fn __reduce169<
+    fn __reduce169<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13436,7 +13440,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant11(__nt), __end));
         (1, 68)
     }
-    pub(crate) fn __reduce170<
+    fn __reduce170<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13459,7 +13463,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant11(__nt), __end));
         (2, 68)
     }
-    pub(crate) fn __reduce171<
+    fn __reduce171<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13480,7 +13484,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant29(__nt), __end));
         (1, 69)
     }
-    pub(crate) fn __reduce172<
+    fn __reduce172<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13501,7 +13505,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant29(__nt), __end));
         (1, 69)
     }
-    pub(crate) fn __reduce173<
+    fn __reduce173<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13522,7 +13526,7 @@ mod __parse__FieldList {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 70)
     }
-    pub(crate) fn __reduce175<
+    fn __reduce175<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -13544,10 +13548,11 @@ mod __parse__FieldList {
         (1, 72)
     }
 }
+#[allow(unused_imports)]
 pub use self::__parse__FieldList::FieldListParser;
 
 #[rustfmt::skip]
-#[allow(non_snake_case, non_camel_case_types, unused_mut, unused_variables, unused_imports, unused_parens, clippy::all)]
+#[allow(non_snake_case, non_camel_case_types, unused_mut, unused_variables, unused_imports, unused_parens, clippy::needless_lifetimes, clippy::type_complexity, clippy::needless_return, clippy::too_many_arguments, clippy::never_loop, clippy::match_single_binding, clippy::needless_raw_string_hashes)]
 mod __parse__IndexLink {
 
     use std::str::FromStr;
@@ -13789,7 +13794,7 @@ mod __parse__IndexLink {
             }
         }).collect()
     }
-    pub(crate) struct __StateMachine<'input, '__1, '__2, '__3, '__4>
+    struct __StateMachine<'input, '__1, '__2, '__3, '__4>
     where 'input: '__2, 'input: '__3
     {
         source_index: Option<&'__1 PgRelation>,
@@ -13964,7 +13969,7 @@ mod __parse__IndexLink {
         _: core::marker::PhantomData<(&'input ())>,
     ) -> __Symbol<'input>
     {
-        match __token_index {
+        #[allow(clippy::manual_range_patterns)]match __token_index {
             0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29 | 30 | 31 | 32 | 33 | 34 | 35 | 36 | 37 | 38 | 39 | 40 | 41 | 42 | 43 | 44 | 45 | 46 => match __token {
                 Token(18, __tok0) | Token(8, __tok0) | Token(21, __tok0) | Token(32, __tok0) | Token(19, __tok0) | Token(46, __tok0) | Token(44, __tok0) | Token(31, __tok0) | Token(38, __tok0) | Token(20, __tok0) | Token(4, __tok0) | Token(0, __tok0) | Token(39, __tok0) | Token(16, __tok0) | Token(22, __tok0) | Token(9, __tok0) | Token(23, __tok0) | Token(27, __tok0) | Token(34, __tok0) | Token(41, __tok0) | Token(42, __tok0) | Token(5, __tok0) | Token(36, __tok0) | Token(37, __tok0) | Token(40, __tok0) | Token(33, __tok0) | Token(29, __tok0) | Token(10, __tok0) | Token(11, __tok0) | Token(28, __tok0) | Token(12, __tok0) | Token(45, __tok0) | Token(43, __tok0) | Token(30, __tok0) | Token(17, __tok0) | Token(6, __tok0) | Token(1, __tok0) | Token(35, __tok0) | Token(24, __tok0) | Token(15, __tok0) | Token(7, __tok0) | Token(13, __tok0) | Token(3, __tok0) | Token(2, __tok0) | Token(14, __tok0) | Token(25, __tok0) | Token(26, __tok0) if true => __Symbol::Variant0(__tok0),
                 _ => unreachable!(),
@@ -15046,6 +15051,7 @@ mod __parse__IndexLink {
         _priv: (),
     }
 
+    impl Default for IndexLinkParser { fn default() -> Self { Self::new() } }
     impl IndexLinkParser {
         pub fn new() -> IndexLinkParser {
             let __builder = super::__intern_token::new_builder();
@@ -15121,7 +15127,7 @@ mod __parse__IndexLink {
             __states.push(__next_state);
         }
     }
-    pub(crate) fn __reduce<
+    fn __reduce<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16013,7 +16019,7 @@ mod __parse__IndexLink {
             _ => __symbol_type_mismatch()
         }
     }
-    pub(crate) fn __reduce0<
+    fn __reduce0<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16036,7 +16042,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (2, 0)
     }
-    pub(crate) fn __reduce1<
+    fn __reduce1<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16059,7 +16065,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (2, 1)
     }
-    pub(crate) fn __reduce2<
+    fn __reduce2<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16083,7 +16089,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (3, 1)
     }
-    pub(crate) fn __reduce3<
+    fn __reduce3<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16106,7 +16112,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (2, 2)
     }
-    pub(crate) fn __reduce4<
+    fn __reduce4<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16120,13 +16126,13 @@ mod __parse__IndexLink {
     ) -> (usize, usize)
     {
         // (<FieldName> COMMA)* =  => ActionFn(98);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action98::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant3(__nt), __end));
         (0, 3)
     }
-    pub(crate) fn __reduce5<
+    fn __reduce5<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16147,7 +16153,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant3(__nt), __end));
         (1, 3)
     }
-    pub(crate) fn __reduce6<
+    fn __reduce6<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16170,7 +16176,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant3(__nt), __end));
         (2, 4)
     }
-    pub(crate) fn __reduce7<
+    fn __reduce7<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16194,7 +16200,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant3(__nt), __end));
         (3, 4)
     }
-    pub(crate) fn __reduce8<
+    fn __reduce8<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16217,7 +16223,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (2, 5)
     }
-    pub(crate) fn __reduce9<
+    fn __reduce9<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16231,13 +16237,13 @@ mod __parse__IndexLink {
     ) -> (usize, usize)
     {
         // (<JsonProperty> COMMA)* =  => ActionFn(111);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action111::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant5(__nt), __end));
         (0, 6)
     }
-    pub(crate) fn __reduce10<
+    fn __reduce10<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16258,7 +16264,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant5(__nt), __end));
         (1, 6)
     }
-    pub(crate) fn __reduce11<
+    fn __reduce11<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16281,7 +16287,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant5(__nt), __end));
         (2, 7)
     }
-    pub(crate) fn __reduce12<
+    fn __reduce12<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16305,7 +16311,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant5(__nt), __end));
         (3, 7)
     }
-    pub(crate) fn __reduce13<
+    fn __reduce13<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16328,7 +16334,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (2, 8)
     }
-    pub(crate) fn __reduce14<
+    fn __reduce14<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16342,13 +16348,13 @@ mod __parse__IndexLink {
     ) -> (usize, usize)
     {
         // (<JsonValue> COMMA)* =  => ActionFn(106);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action106::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant5(__nt), __end));
         (0, 9)
     }
-    pub(crate) fn __reduce15<
+    fn __reduce15<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16369,7 +16375,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant5(__nt), __end));
         (1, 9)
     }
-    pub(crate) fn __reduce16<
+    fn __reduce16<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16392,7 +16398,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant5(__nt), __end));
         (2, 10)
     }
-    pub(crate) fn __reduce17<
+    fn __reduce17<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16416,7 +16422,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant5(__nt), __end));
         (3, 10)
     }
-    pub(crate) fn __reduce18<
+    fn __reduce18<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16439,7 +16445,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant6(__nt), __end));
         (2, 11)
     }
-    pub(crate) fn __reduce19<
+    fn __reduce19<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16453,13 +16459,13 @@ mod __parse__IndexLink {
     ) -> (usize, usize)
     {
         // (<NamedFieldList> COMMA)* =  => ActionFn(101);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action101::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant7(__nt), __end));
         (0, 12)
     }
-    pub(crate) fn __reduce20<
+    fn __reduce20<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16480,7 +16486,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant7(__nt), __end));
         (1, 12)
     }
-    pub(crate) fn __reduce21<
+    fn __reduce21<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16503,7 +16509,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant7(__nt), __end));
         (2, 13)
     }
-    pub(crate) fn __reduce22<
+    fn __reduce22<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16527,7 +16533,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant7(__nt), __end));
         (3, 13)
     }
-    pub(crate) fn __reduce23<
+    fn __reduce23<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16550,7 +16556,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (2, 14)
     }
-    pub(crate) fn __reduce24<
+    fn __reduce24<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16573,7 +16579,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (2, 15)
     }
-    pub(crate) fn __reduce25<
+    fn __reduce25<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16597,7 +16603,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (3, 15)
     }
-    pub(crate) fn __reduce26<
+    fn __reduce26<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16620,7 +16626,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (2, 16)
     }
-    pub(crate) fn __reduce27<
+    fn __reduce27<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16641,7 +16647,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (1, 16)
     }
-    pub(crate) fn __reduce28<
+    fn __reduce28<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16655,13 +16661,13 @@ mod __parse__IndexLink {
     ) -> (usize, usize)
     {
         // (<StringExpr> COMMA?)* =  => ActionFn(116);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action116::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant9(__nt), __end));
         (0, 17)
     }
-    pub(crate) fn __reduce29<
+    fn __reduce29<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16682,7 +16688,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant9(__nt), __end));
         (1, 17)
     }
-    pub(crate) fn __reduce30<
+    fn __reduce30<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16705,7 +16711,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant9(__nt), __end));
         (2, 18)
     }
-    pub(crate) fn __reduce31<
+    fn __reduce31<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16726,7 +16732,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant9(__nt), __end));
         (1, 18)
     }
-    pub(crate) fn __reduce32<
+    fn __reduce32<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16750,7 +16756,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant9(__nt), __end));
         (3, 18)
     }
-    pub(crate) fn __reduce33<
+    fn __reduce33<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16773,7 +16779,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant9(__nt), __end));
         (2, 18)
     }
-    pub(crate) fn __reduce34<
+    fn __reduce34<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16794,7 +16800,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 19)
     }
-    pub(crate) fn __reduce35<
+    fn __reduce35<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16817,7 +16823,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (2, 19)
     }
-    pub(crate) fn __reduce36<
+    fn __reduce36<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16838,7 +16844,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (1, 20)
     }
-    pub(crate) fn __reduce37<
+    fn __reduce37<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16861,7 +16867,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (2, 20)
     }
-    pub(crate) fn __reduce38<
+    fn __reduce38<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16884,7 +16890,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (2, 20)
     }
-    pub(crate) fn __reduce39<
+    fn __reduce39<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16908,7 +16914,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant2(__nt), __end));
         (3, 20)
     }
-    pub(crate) fn __reduce40<
+    fn __reduce40<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16931,7 +16937,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (2, 21)
     }
-    pub(crate) fn __reduce41<
+    fn __reduce41<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16952,7 +16958,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 21)
     }
-    pub(crate) fn __reduce42<
+    fn __reduce42<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16973,7 +16979,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant10(__nt), __end));
         (1, 22)
     }
-    pub(crate) fn __reduce43<
+    fn __reduce43<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -16994,7 +17000,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant10(__nt), __end));
         (1, 22)
     }
-    pub(crate) fn __reduce44<
+    fn __reduce44<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17008,13 +17014,13 @@ mod __parse__IndexLink {
     ) -> (usize, usize)
     {
         // AndOp* =  => ActionFn(133);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action133::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant11(__nt), __end));
         (0, 23)
     }
-    pub(crate) fn __reduce45<
+    fn __reduce45<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17035,7 +17041,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant11(__nt), __end));
         (1, 23)
     }
-    pub(crate) fn __reduce46<
+    fn __reduce46<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17056,7 +17062,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant11(__nt), __end));
         (1, 24)
     }
-    pub(crate) fn __reduce47<
+    fn __reduce47<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17079,7 +17085,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant11(__nt), __end));
         (2, 24)
     }
-    pub(crate) fn __reduce48<
+    fn __reduce48<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17102,7 +17108,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant12(__nt), __end));
         (2, 25)
     }
-    pub(crate) fn __reduce49<
+    fn __reduce49<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17125,7 +17131,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant12(__nt), __end));
         (2, 25)
     }
-    pub(crate) fn __reduce50<
+    fn __reduce50<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17146,7 +17152,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant13(__nt), __end));
         (1, 26)
     }
-    pub(crate) fn __reduce51<
+    fn __reduce51<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17160,13 +17166,13 @@ mod __parse__IndexLink {
     ) -> (usize, usize)
     {
         // Boost? =  => ActionFn(122);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action122::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant13(__nt), __end));
         (0, 26)
     }
-    pub(crate) fn __reduce52<
+    fn __reduce52<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17187,7 +17193,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant14(__nt), __end));
         (1, 27)
     }
-    pub(crate) fn __reduce53<
+    fn __reduce53<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17201,13 +17207,13 @@ mod __parse__IndexLink {
     ) -> (usize, usize)
     {
         // COMMA? =  => ActionFn(120);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action120::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant14(__nt), __end));
         (0, 27)
     }
-    pub(crate) fn __reduce54<
+    fn __reduce54<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17231,7 +17237,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (3, 28)
     }
-    pub(crate) fn __reduce55<
+    fn __reduce55<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17258,7 +17264,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (6, 28)
     }
-    pub(crate) fn __reduce56<
+    fn __reduce56<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17284,7 +17290,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (5, 28)
     }
-    pub(crate) fn __reduce57<
+    fn __reduce57<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17305,7 +17311,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 28)
     }
-    pub(crate) fn __reduce58<
+    fn __reduce58<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17331,7 +17337,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (5, 28)
     }
-    pub(crate) fn __reduce59<
+    fn __reduce59<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17355,7 +17361,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (3, 28)
     }
-    pub(crate) fn __reduce60<
+    fn __reduce60<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17376,7 +17382,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 28)
     }
-    pub(crate) fn __reduce61<
+    fn __reduce61<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17397,7 +17403,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce62<
+    fn __reduce62<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17418,7 +17424,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce63<
+    fn __reduce63<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17439,7 +17445,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce64<
+    fn __reduce64<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17460,7 +17466,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce65<
+    fn __reduce65<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17481,7 +17487,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce66<
+    fn __reduce66<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17502,7 +17508,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce67<
+    fn __reduce67<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17523,7 +17529,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce68<
+    fn __reduce68<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17544,7 +17550,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce69<
+    fn __reduce69<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17565,7 +17571,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce70<
+    fn __reduce70<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17586,7 +17592,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce71<
+    fn __reduce71<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17607,7 +17613,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce72<
+    fn __reduce72<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17628,7 +17634,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 29)
     }
-    pub(crate) fn __reduce73<
+    fn __reduce73<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17649,7 +17655,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant15(__nt), __end));
         (1, 30)
     }
-    pub(crate) fn __reduce74<
+    fn __reduce74<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17678,7 +17684,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant16(__nt), __end));
         (8, 31)
     }
-    pub(crate) fn __reduce75<
+    fn __reduce75<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17706,7 +17712,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant16(__nt), __end));
         (7, 31)
     }
-    pub(crate) fn __reduce76<
+    fn __reduce76<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17729,7 +17735,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant17(__nt), __end));
         (2, 32)
     }
-    pub(crate) fn __reduce77<
+    fn __reduce77<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17750,7 +17756,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant17(__nt), __end));
         (1, 32)
     }
-    pub(crate) fn __reduce78<
+    fn __reduce78<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17774,7 +17780,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant17(__nt), __end));
         (3, 32)
     }
-    pub(crate) fn __reduce79<
+    fn __reduce79<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17797,7 +17803,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant17(__nt), __end));
         (2, 32)
     }
-    pub(crate) fn __reduce80<
+    fn __reduce80<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17818,7 +17824,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 33)
     }
-    pub(crate) fn __reduce81<
+    fn __reduce81<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17839,7 +17845,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant18(__nt), __end));
         (1, 34)
     }
-    pub(crate) fn __reduce82<
+    fn __reduce82<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17862,7 +17868,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant18(__nt), __end));
         (2, 34)
     }
-    pub(crate) fn __reduce83<
+    fn __reduce83<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17883,7 +17889,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 35)
     }
-    pub(crate) fn __reduce84<
+    fn __reduce84<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17904,7 +17910,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 35)
     }
-    pub(crate) fn __reduce85<
+    fn __reduce85<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17925,7 +17931,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 35)
     }
-    pub(crate) fn __reduce86<
+    fn __reduce86<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17946,7 +17952,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant19(__nt), __end));
         (1, 36)
     }
-    pub(crate) fn __reduce87<
+    fn __reduce87<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17969,7 +17975,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant19(__nt), __end));
         (2, 36)
     }
-    pub(crate) fn __reduce88<
+    fn __reduce88<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -17994,7 +18000,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (4, 37)
     }
-    pub(crate) fn __reduce89<
+    fn __reduce89<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18015,7 +18021,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant20(__nt), __end));
         (1, 38)
     }
-    pub(crate) fn __reduce90<
+    fn __reduce90<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18029,13 +18035,13 @@ mod __parse__IndexLink {
     ) -> (usize, usize)
     {
         // Filter? =  => ActionFn(115);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action115::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant20(__nt), __end));
         (0, 38)
     }
-    pub(crate) fn __reduce91<
+    fn __reduce91<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18056,7 +18062,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant21(__nt), __end));
         (1, 39)
     }
-    pub(crate) fn __reduce92<
+    fn __reduce92<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18083,7 +18089,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant22(__nt), __end));
         (6, 40)
     }
-    pub(crate) fn __reduce93<
+    fn __reduce93<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18114,7 +18120,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant22(__nt), __end));
         (10, 40)
     }
-    pub(crate) fn __reduce94<
+    fn __reduce94<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18138,7 +18144,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (3, 41)
     }
-    pub(crate) fn __reduce95<
+    fn __reduce95<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18161,7 +18167,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (2, 41)
     }
-    pub(crate) fn __reduce96<
+    fn __reduce96<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18186,7 +18192,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (4, 41)
     }
-    pub(crate) fn __reduce97<
+    fn __reduce97<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18210,7 +18216,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (3, 41)
     }
-    pub(crate) fn __reduce98<
+    fn __reduce98<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18231,7 +18237,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 42)
     }
-    pub(crate) fn __reduce99<
+    fn __reduce99<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18252,7 +18258,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 42)
     }
-    pub(crate) fn __reduce100<
+    fn __reduce100<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18273,7 +18279,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 42)
     }
-    pub(crate) fn __reduce101<
+    fn __reduce101<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18294,7 +18300,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 42)
     }
-    pub(crate) fn __reduce102<
+    fn __reduce102<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18315,7 +18321,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 42)
     }
-    pub(crate) fn __reduce103<
+    fn __reduce103<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18336,7 +18342,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 42)
     }
-    pub(crate) fn __reduce104<
+    fn __reduce104<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18360,7 +18366,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (3, 43)
     }
-    pub(crate) fn __reduce105<
+    fn __reduce105<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18383,7 +18389,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (2, 43)
     }
-    pub(crate) fn __reduce106<
+    fn __reduce106<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18408,7 +18414,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (4, 43)
     }
-    pub(crate) fn __reduce107<
+    fn __reduce107<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18432,7 +18438,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (3, 43)
     }
-    pub(crate) fn __reduce108<
+    fn __reduce108<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18456,7 +18462,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (3, 44)
     }
-    pub(crate) fn __reduce109<
+    fn __reduce109<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18477,7 +18483,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant23(__nt), __end));
         (1, 45)
     }
-    pub(crate) fn __reduce110<
+    fn __reduce110<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18491,13 +18497,13 @@ mod __parse__IndexLink {
     ) -> (usize, usize)
     {
         // JsonProperty? =  => ActionFn(110);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action110::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant23(__nt), __end));
         (0, 45)
     }
-    pub(crate) fn __reduce111<
+    fn __reduce111<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18518,7 +18524,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (1, 46)
     }
-    pub(crate) fn __reduce112<
+    fn __reduce112<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18539,7 +18545,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (1, 46)
     }
-    pub(crate) fn __reduce113<
+    fn __reduce113<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18560,7 +18566,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant4(__nt), __end));
         (1, 46)
     }
-    pub(crate) fn __reduce114<
+    fn __reduce114<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18581,7 +18587,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant23(__nt), __end));
         (1, 47)
     }
-    pub(crate) fn __reduce115<
+    fn __reduce115<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18595,13 +18601,13 @@ mod __parse__IndexLink {
     ) -> (usize, usize)
     {
         // JsonValue? =  => ActionFn(105);
-        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2.clone())).unwrap_or_default();
-        let __end = __start.clone();
+        let __start = __lookahead_start.cloned().or_else(|| __symbols.last().map(|s| s.2)).unwrap_or_default();
+        let __end = __start;
         let __nt = super::__action105::<>(source_index, used_fields, fieldname_stack, operator_stack, input, &__start, &__end);
         __symbols.push((__start, __Symbol::Variant23(__nt), __end));
         (0, 47)
     }
-    pub(crate) fn __reduce116<
+    fn __reduce116<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18627,7 +18633,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant6(__nt), __end));
         (5, 48)
     }
-    pub(crate) fn __reduce117<
+    fn __reduce117<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18648,7 +18654,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant10(__nt), __end));
         (1, 49)
     }
-    pub(crate) fn __reduce118<
+    fn __reduce118<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18669,7 +18675,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant10(__nt), __end));
         (1, 49)
     }
-    pub(crate) fn __reduce119<
+    fn __reduce119<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18692,7 +18698,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (2, 50)
     }
-    pub(crate) fn __reduce120<
+    fn __reduce120<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18713,7 +18719,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 50)
     }
-    pub(crate) fn __reduce121<
+    fn __reduce121<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18734,7 +18740,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant10(__nt), __end));
         (1, 51)
     }
-    pub(crate) fn __reduce122<
+    fn __reduce122<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18755,7 +18761,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant10(__nt), __end));
         (1, 51)
     }
-    pub(crate) fn __reduce123<
+    fn __reduce123<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18776,7 +18782,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant11(__nt), __end));
         (1, 52)
     }
-    pub(crate) fn __reduce124<
+    fn __reduce124<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18799,7 +18805,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant11(__nt), __end));
         (2, 52)
     }
-    pub(crate) fn __reduce125<
+    fn __reduce125<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18823,7 +18829,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (3, 53)
     }
-    pub(crate) fn __reduce126<
+    fn __reduce126<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18847,7 +18853,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (3, 53)
     }
-    pub(crate) fn __reduce127<
+    fn __reduce127<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18870,7 +18876,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (2, 54)
     }
-    pub(crate) fn __reduce128<
+    fn __reduce128<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18891,7 +18897,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 54)
     }
-    pub(crate) fn __reduce129<
+    fn __reduce129<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18912,7 +18918,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant24(__nt), __end));
         (1, 55)
     }
-    pub(crate) fn __reduce130<
+    fn __reduce130<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18933,7 +18939,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant24(__nt), __end));
         (1, 55)
     }
-    pub(crate) fn __reduce131<
+    fn __reduce131<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18957,7 +18963,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant25(__nt), __end));
         (3, 56)
     }
-    pub(crate) fn __reduce132<
+    fn __reduce132<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -18978,7 +18984,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant26(__nt), __end));
         (1, 57)
     }
-    pub(crate) fn __reduce133<
+    fn __reduce133<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19001,7 +19007,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant26(__nt), __end));
         (2, 57)
     }
-    pub(crate) fn __reduce134<
+    fn __reduce134<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19022,7 +19028,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce135<
+    fn __reduce135<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19043,7 +19049,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce136<
+    fn __reduce136<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19064,7 +19070,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce137<
+    fn __reduce137<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19085,7 +19091,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce138<
+    fn __reduce138<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19106,7 +19112,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce139<
+    fn __reduce139<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19127,7 +19133,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce140<
+    fn __reduce140<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19148,7 +19154,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce141<
+    fn __reduce141<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19169,7 +19175,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce142<
+    fn __reduce142<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19190,7 +19196,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant27(__nt), __end));
         (1, 58)
     }
-    pub(crate) fn __reduce143<
+    fn __reduce143<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19211,7 +19217,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (1, 59)
     }
-    pub(crate) fn __reduce144<
+    fn __reduce144<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19234,7 +19240,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (2, 59)
     }
-    pub(crate) fn __reduce145<
+    fn __reduce145<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19255,7 +19261,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (1, 59)
     }
-    pub(crate) fn __reduce146<
+    fn __reduce146<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19279,7 +19285,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (3, 59)
     }
-    pub(crate) fn __reduce147<
+    fn __reduce147<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19302,7 +19308,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (2, 59)
     }
-    pub(crate) fn __reduce148<
+    fn __reduce148<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19328,7 +19334,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant16(__nt), __end));
         (5, 60)
     }
-    pub(crate) fn __reduce149<
+    fn __reduce149<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19349,7 +19355,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant28(__nt), __end));
         (1, 61)
     }
-    pub(crate) fn __reduce150<
+    fn __reduce150<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19370,7 +19376,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (1, 62)
     }
-    pub(crate) fn __reduce151<
+    fn __reduce151<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19394,7 +19400,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (3, 62)
     }
-    pub(crate) fn __reduce152<
+    fn __reduce152<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19417,7 +19423,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (2, 62)
     }
-    pub(crate) fn __reduce153<
+    fn __reduce153<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19442,7 +19448,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (4, 62)
     }
-    pub(crate) fn __reduce154<
+    fn __reduce154<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19466,7 +19472,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (3, 62)
     }
-    pub(crate) fn __reduce155<
+    fn __reduce155<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19489,7 +19495,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (2, 62)
     }
-    pub(crate) fn __reduce156<
+    fn __reduce156<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19510,7 +19516,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant8(__nt), __end));
         (1, 62)
     }
-    pub(crate) fn __reduce157<
+    fn __reduce157<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19533,7 +19539,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (2, 63)
     }
-    pub(crate) fn __reduce158<
+    fn __reduce158<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19554,7 +19560,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 63)
     }
-    pub(crate) fn __reduce159<
+    fn __reduce159<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19575,7 +19581,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 63)
     }
-    pub(crate) fn __reduce160<
+    fn __reduce160<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19596,7 +19602,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 63)
     }
-    pub(crate) fn __reduce161<
+    fn __reduce161<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19617,7 +19623,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 64)
     }
-    pub(crate) fn __reduce162<
+    fn __reduce162<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19638,7 +19644,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 65)
     }
-    pub(crate) fn __reduce163<
+    fn __reduce163<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19659,7 +19665,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 65)
     }
-    pub(crate) fn __reduce164<
+    fn __reduce164<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19680,7 +19686,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant0(__nt), __end));
         (1, 65)
     }
-    pub(crate) fn __reduce165<
+    fn __reduce165<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19703,7 +19709,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (2, 66)
     }
-    pub(crate) fn __reduce166<
+    fn __reduce166<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19724,7 +19730,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 66)
     }
-    pub(crate) fn __reduce167<
+    fn __reduce167<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19745,7 +19751,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant10(__nt), __end));
         (1, 67)
     }
-    pub(crate) fn __reduce168<
+    fn __reduce168<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19766,7 +19772,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant10(__nt), __end));
         (1, 67)
     }
-    pub(crate) fn __reduce169<
+    fn __reduce169<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19787,7 +19793,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant11(__nt), __end));
         (1, 68)
     }
-    pub(crate) fn __reduce170<
+    fn __reduce170<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19810,7 +19816,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant11(__nt), __end));
         (2, 68)
     }
-    pub(crate) fn __reduce171<
+    fn __reduce171<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19831,7 +19837,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant29(__nt), __end));
         (1, 69)
     }
-    pub(crate) fn __reduce172<
+    fn __reduce172<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19852,7 +19858,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant29(__nt), __end));
         (1, 69)
     }
-    pub(crate) fn __reduce173<
+    fn __reduce173<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19873,7 +19879,7 @@ mod __parse__IndexLink {
         __symbols.push((__start, __Symbol::Variant1(__nt), __end));
         (1, 70)
     }
-    pub(crate) fn __reduce174<
+    fn __reduce174<
         'input,
     >(
         source_index: Option<&PgRelation>,
@@ -19895,8 +19901,9 @@ mod __parse__IndexLink {
         (1, 71)
     }
 }
+#[allow(unused_imports)]
 pub use self::__parse__IndexLink::IndexLinkParser;
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 mod __intern_token {
     #![allow(unused_imports)]
     use std::str::FromStr;
@@ -19912,54 +19919,54 @@ mod __intern_token {
     extern crate alloc;
     pub fn new_builder() -> __lalrpop_util::lexer::MatcherBuilder {
         let __strs: &[(&str, bool)] = &[
-            ("^((?:\"(?:(?:\\\\[\0-\t\u{b}-\u{10ffff}])|[\0-!\\#-\\[\\]-\u{10ffff}])*\"))", false),
-            ("^((?:'(?:(?:\\\\[\0-\t\u{b}-\u{10ffff}])|[\0-\\&\\(-\\[\\]-\u{10ffff}])*'))", false),
-            ("^(((?:((?:[\0-\u{8}\u{e}-\u{1f}\\#\\$\\*\\+\\-\\.0-9;\\?-Z_-z\\|\u{7f}-\u{10ffff}]|((?:\\\\[\0-\t\u{b}-\u{10ffff}]))))+\\.?))+)", false),
-            ("^((?:(?:\\[\\[)[\0-\\\\\\^-\u{10ffff}]*(?:\\]\\])))", false),
-            ("^(((?:[0-9A-Z_a-zſK]+((?:\\.[0-9A-Z_a-zſK]+))+)))", false),
-            ("^([0-9A-Z_a-zſK]+)", false),
-            ("^((?:`[\0-_a-\u{10ffff}]+`))", false),
-            ("^((?:/[Tt][Oo]/))", false),
-            ("^((?:[Aa][Nn][Dd]))", false),
-            ("^((?:[Ff][Aa][Ll][Ssſ][Ee]))", false),
-            ("^((?:[Nn][Oo][Tt]))", false),
-            ("^((?:[Nn][Uu][Ll][Ll]))", false),
-            ("^((?:[Oo][Rr]))", false),
-            ("^((?:[Tt][Rr][Uu][Ee]))", false),
-            ("^((?:[Ww][Ii][Tt][Hh]))", false),
-            ("^((?:\\~[0-9٠-٩۰-۹߀-߉०-९০-৯੦-੯૦-૯୦-୯௦-௯౦-౯೦-೯൦-൯෦-෯๐-๙໐-໙༠-༩၀-၉႐-႙០-៩᠐-᠙᥆-᥏᧐-᧙᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙꘠-꘩꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９𐒠-𐒩𐴰-𐴹𑁦-𑁯𑃰-𑃹𑄶-𑄿𑇐-𑇙𑋰-𑋹𑑐-𑑙𑓐-𑓙𑙐-𑙙𑛀-𑛉𑜰-𑜹𑣠-𑣩𑥐-𑥙𑱐-𑱙𑵐-𑵙𑶠-𑶩𑽐-𑽙𖩠-𖩩𖫀-𖫉𖭐-𖭙𝟎-𝟿𞅀-𞅉𞋰-𞋹𞓰-𞓹𞥐-𞥙🯰-🯹]*))", false),
-            ("^(!)", false),
-            ("^(%)", false),
-            ("^(\\&)", false),
-            ("^(,)", false),
-            ("^(\\.)", false),
-            ("^(\\^)", false),
-            ("^((?:\\#[Ee][Xx][Pp][Aa][Nn][Dd]))", false),
-            ("^((?:\\#[Ff][Ii][Ll][Tt][Ee][Rr]))", false),
-            ("^((?:\\#[Ssſ][Uu][Bb][Ssſ][Ee][Ll][Ee][Cc][Tt]))", false),
-            ("^((?:[Ww]/))", false),
-            ("^((?:[Ww][Oo]/))", false),
-            ("^((?:[\\+\\-]?[0-9]*\\.[0-9]+((?:[Ee][\\+\\-]?[0-9]+))?))", false),
-            ("^((?:[\\+\\-]?[0-9]+))", false),
-            ("^((?:!=))", false),
-            ("^(\\()", false),
-            ("^(\\))", false),
-            ("^(:)", false),
-            ("^((?::@))", false),
-            ("^((?::@\\~))", false),
-            ("^((?::\\~))", false),
-            ("^(<)", false),
-            ("^((?:<=))", false),
-            ("^((?:<>))", false),
-            ("^(=)", false),
-            ("^((?:==>))", false),
-            ("^(>)", false),
-            ("^((?:>=))", false),
-            ("^(\\[)", false),
-            ("^(\\])", false),
-            ("^(\\{)", false),
-            ("^(\\})", false),
-            (r"^(\s*)", true),
+            ("(?:\"(?:(?:\\\\[\0-\t\u{b}-\u{10ffff}])|[\0-!\\#-\\[\\]-\u{10ffff}])*\")", false),
+            ("(?:'(?:(?:\\\\[\0-\t\u{b}-\u{10ffff}])|[\0-\\&\\(-\\[\\]-\u{10ffff}])*')", false),
+            ("((?:((?:[\0-\u{8}\u{e}-\u{1f}\\#\\$\\*\\+\\-\\.0-9;\\?-Z_-z\\|\u{7f}-\u{10ffff}]|((?:\\\\[\0-\t\u{b}-\u{10ffff}]))))+\\.?))+", false),
+            ("(?:(?:\\[\\[)[\0-\\\\\\^-\u{10ffff}]*(?:\\]\\]))", false),
+            ("((?:[0-9A-Z_a-zſK]+((?:\\.[0-9A-Z_a-zſK]+))+))", false),
+            ("[0-9A-Z_a-zſK]+", false),
+            ("(?:`[\0-_a-\u{10ffff}]+`)", false),
+            ("(?:/[Tt][Oo]/)", false),
+            ("(?:[Aa][Nn][Dd])", false),
+            ("(?:[Ff][Aa][Ll][Ssſ][Ee])", false),
+            ("(?:[Nn][Oo][Tt])", false),
+            ("(?:[Nn][Uu][Ll][Ll])", false),
+            ("(?:[Oo][Rr])", false),
+            ("(?:[Tt][Rr][Uu][Ee])", false),
+            ("(?:[Ww][Ii][Tt][Hh])", false),
+            ("(?:\\~[0-9٠-٩۰-۹߀-߉०-९০-৯੦-੯૦-૯୦-୯௦-௯౦-౯೦-೯൦-൯෦-෯๐-๙໐-໙༠-༩၀-၉႐-႙០-៩᠐-᠙᥆-᥏᧐-᧙᪀-᪉᪐-᪙᭐-᭙᮰-᮹᱀-᱉᱐-᱙꘠-꘩꣐-꣙꤀-꤉꧐-꧙꧰-꧹꩐-꩙꯰-꯹０-９𐒠-𐒩𐴰-𐴹𑁦-𑁯𑃰-𑃹𑄶-𑄿𑇐-𑇙𑋰-𑋹𑑐-𑑙𑓐-𑓙𑙐-𑙙𑛀-𑛉𑜰-𑜹𑣠-𑣩𑥐-𑥙𑱐-𑱙𑵐-𑵙𑶠-𑶩𑽐-𑽙𖩠-𖩩𖫀-𖫉𖭐-𖭙𝟎-𝟿𞅀-𞅉𞋰-𞋹𞓰-𞓹𞥐-𞥙🯰-🯹]*)", false),
+            ("!", false),
+            ("%", false),
+            ("\\&", false),
+            (",", false),
+            ("\\.", false),
+            ("\\^", false),
+            ("(?:\\#[Ee][Xx][Pp][Aa][Nn][Dd])", false),
+            ("(?:\\#[Ff][Ii][Ll][Tt][Ee][Rr])", false),
+            ("(?:\\#[Ssſ][Uu][Bb][Ssſ][Ee][Ll][Ee][Cc][Tt])", false),
+            ("(?:[Ww]/)", false),
+            ("(?:[Ww][Oo]/)", false),
+            ("(?:[\\+\\-]?[0-9]*\\.[0-9]+((?:[Ee][\\+\\-]?[0-9]+))?)", false),
+            ("(?:[\\+\\-]?[0-9]+)", false),
+            ("(?:!=)", false),
+            ("\\(", false),
+            ("\\)", false),
+            (":", false),
+            ("(?::@)", false),
+            ("(?::@\\~)", false),
+            ("(?::\\~)", false),
+            ("<", false),
+            ("(?:<=)", false),
+            ("(?:<>)", false),
+            ("=", false),
+            ("(?:==>)", false),
+            (">", false),
+            ("(?:>=)", false),
+            ("\\[", false),
+            ("\\]", false),
+            ("\\{", false),
+            ("\\}", false),
+            (r"\s+", true),
         ];
         __lalrpop_util::lexer::MatcherBuilder::new(__strs.iter().copied()).unwrap()
     }
@@ -19967,60 +19974,74 @@ mod __intern_token {
 pub(crate) use self::__lalrpop_util::lexer::Token;
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action0<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action0<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, Box<Expr<'input>>, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action1<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action1<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, IndexLink, usize),
-) -> IndexLink {
+) -> IndexLink
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action2<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action2<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, HashMap<String, Vec<String>>, usize),
-) -> HashMap<String, Vec<String>> {
+) -> HashMap<String, Vec<String>>
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action3<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action3<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, Box<Expr<'input>>, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action4<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action4<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -20028,16 +20049,13 @@ fn __action4<'input>(
     input: &'input str,
     (_, v, _): (usize, alloc::vec::Vec<Box<Expr<'input>>>, usize),
     (_, r, _): (usize, Box<Expr<'input>>, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     {
-        let mut final_children: Vec<Expr> = v.into_iter().map(|b| *b).collect();
+        let mut final_children:Vec<Expr> = v.into_iter().map(|b| *b).collect();
         match *r {
-            Expr::OrList(mut children) => {
-                final_children.append(&mut children);
-            }
-            other => {
-                final_children.push(other);
-            }
+            Expr::OrList(mut children) => { final_children.append(&mut children); }
+            other => { final_children.push(other); }
         }
 
         Box::new(Expr::OrList(final_children))
@@ -20045,47 +20063,58 @@ fn __action4<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action5<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action5<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, Box<Expr<'input>>, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action6<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action6<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> Opcode {
+) -> Opcode
+{
     Opcode::Or
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action7<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action7<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> Opcode {
+) -> Opcode
+{
     Opcode::Or
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action8<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action8<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -20093,16 +20122,13 @@ fn __action8<'input>(
     input: &'input str,
     (_, v, _): (usize, alloc::vec::Vec<Box<Expr<'input>>>, usize),
     (_, r, _): (usize, Box<Expr<'input>>, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     {
-        let mut final_children: Vec<Expr> = v.into_iter().map(|b| *b).collect();
+        let mut final_children:Vec<Expr> = v.into_iter().map(|b| *b).collect();
         match *r {
-            Expr::AndList(mut children) => {
-                final_children.append(&mut children);
-            }
-            other => {
-                final_children.push(other);
-            }
+            Expr::AndList(mut children) => { final_children.append(&mut children); }
+            other => { final_children.push(other); }
         }
 
         Box::new(Expr::AndList(final_children))
@@ -20110,47 +20136,58 @@ fn __action8<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action9<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action9<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, Box<Expr<'input>>, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action10<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action10<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> Opcode {
+) -> Opcode
+{
     Opcode::And
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action11<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action11<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> Opcode {
+) -> Opcode
+{
     Opcode::And
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action12<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action12<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -20158,16 +20195,13 @@ fn __action12<'input>(
     input: &'input str,
     (_, v, _): (usize, alloc::vec::Vec<Box<Expr<'input>>>, usize),
     (_, r, _): (usize, Box<Expr<'input>>, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     {
-        let mut final_children: Vec<Expr> = v.into_iter().map(|b| *b).collect();
+        let mut final_children:Vec<Expr> = v.into_iter().map(|b| *b).collect();
         match *r {
-            Expr::WithList(mut children) => {
-                final_children.append(&mut children);
-            }
-            other => {
-                final_children.push(other);
-            }
+            Expr::WithList(mut children) => { final_children.append(&mut children); }
+            other => { final_children.push(other); }
         }
 
         Box::new(Expr::WithList(final_children))
@@ -20175,47 +20209,58 @@ fn __action12<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action13<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action13<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, Box<Expr<'input>>, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action14<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action14<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> Opcode {
+) -> Opcode
+{
     Opcode::With
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action15<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action15<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> Opcode {
+) -> Opcode
+{
     Opcode::With
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action16<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action16<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -20223,11 +20268,12 @@ fn __action16<'input>(
     input: &'input str,
     (_, mut parts, _): (usize, alloc::vec::Vec<ProximityPart>, usize),
     (_, words, _): (usize, Vec<ProximityTerm>, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     {
         parts.push(ProximityPart {
             words,
-            distance: None,
+            distance: None
         });
 
         let field_name = fieldname_stack.last().unwrap();
@@ -20235,30 +20281,31 @@ fn __action16<'input>(
 
         used_fields.insert(field_name);
 
-        Box::new(Expr::from_opcode(
-            field_name,
-            *operator,
-            Term::ProximityChain(parts),
-        ))
+        Box::new(Expr::from_opcode(field_name, *operator, Term::ProximityChain(parts)))
     }
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action17<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action17<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, Box<Expr<'input>>, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action18<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action18<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -20267,73 +20314,88 @@ fn __action18<'input>(
     (_, words, _): (usize, Vec<ProximityTerm>, usize),
     (_, in_order, _): (usize, bool, usize),
     (_, distance, _): (usize, &'input str, usize),
-) -> ProximityPart {
+) -> ProximityPart
+{
     {
         ProximityPart {
             words,
             distance: Some(ProximityDistance {
                 distance: u32::from_str(distance).unwrap(),
-                in_order,
-            }),
+                in_order
+                })
         }
     }
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action19<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action19<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, Box<Expr<'input>>, usize),
-) -> Vec<ProximityTerm> {
+) -> Vec<ProximityTerm>
+{
     __0.extract_prox_terms(source_index)
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action20<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action20<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, ProximityTerm, usize),
-) -> Vec<ProximityTerm> {
+) -> Vec<ProximityTerm>
+{
     vec![__0]
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action21<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action21<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> bool {
+) -> bool
+{
     false
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action22<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action22<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> bool {
+) -> bool
+{
     true
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action23<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action23<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -20341,78 +20403,96 @@ fn __action23<'input>(
     input: &'input str,
     (_, _, _): (usize, Opcode, usize),
     (_, t, _): (usize, Box<Expr<'input>>, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     Box::new(Expr::Not(t))
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action24<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action24<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, Expr<'input>, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     Box::new(__0)
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action25<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action25<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, Expr<'input>, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     Box::new(__0)
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action26<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action26<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, Box<Expr<'input>>, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action27<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action27<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> Opcode {
+) -> Opcode
+{
     Opcode::Not
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action28<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action28<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> Opcode {
+) -> Opcode
+{
     Opcode::Not
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action29<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action29<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -20421,7 +20501,8 @@ fn __action29<'input>(
     (_, __0, _): (usize, &'input str, usize),
     (_, __1, _): (usize, ComparisonOpcode, usize),
     (_, __2, _): (usize, Term<'input>, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     {
         fieldname_stack.pop();
         operator_stack.pop();
@@ -20430,8 +20511,10 @@ fn __action29<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action30<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action30<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -20443,7 +20526,8 @@ fn __action30<'input>(
     (_, _, _): (usize, &'input str, usize),
     (_, end, _): (usize, (&'input str, bool), usize),
     (_, b, _): (usize, core::option::Option<f32>, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     {
         fieldname_stack.pop();
         operator_stack.pop();
@@ -20453,15 +20537,18 @@ fn __action30<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action31<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action31<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, Term<'input>, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     {
         let field_name = fieldname_stack.last().unwrap();
         let operator = operator_stack.last().unwrap();
@@ -20474,8 +20561,10 @@ fn __action31<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action32<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action32<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -20486,7 +20575,8 @@ fn __action32<'input>(
     (_, _, _): (usize, &'input str, usize),
     (_, __0, _): (usize, Box<Expr<'input>>, usize),
     (_, _, _): (usize, &'input str, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     {
         fieldname_stack.pop();
         operator_stack.pop();
@@ -20495,8 +20585,10 @@ fn __action32<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action33<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action33<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -20505,41 +20597,32 @@ fn __action33<'input>(
     (_, _, _): (usize, &'input str, usize),
     (_, __0, _): (usize, String, usize),
     (_, _, _): (usize, &'input str, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     Box::new(Expr::Json(__0))
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action34<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action34<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, Box<Expr<'input>>, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action35<'input>(
-    source_index: Option<&PgRelation>,
-    used_fields: &mut HashSet<&'input str>,
-    fieldname_stack: &mut Vec<&'input str>,
-    operator_stack: &mut Vec<ComparisonOpcode>,
-    input: &'input str,
-    (_, _, _): (usize, &'input str, usize),
-    (_, __0, _): (usize, Box<Expr<'input>>, usize),
-    (_, _, _): (usize, &'input str, usize),
-) -> Box<Expr<'input>> {
-    __0
-}
-
-#[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action36<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action35<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -20548,20 +20631,42 @@ fn __action36<'input>(
     (_, _, _): (usize, &'input str, usize),
     (_, __0, _): (usize, Box<Expr<'input>>, usize),
     (_, _, _): (usize, &'input str, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action37<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action36<
+    'input,
+>(
+    source_index: Option<&PgRelation>,
+    used_fields: &mut HashSet<&'input str>,
+    fieldname_stack: &mut Vec<&'input str>,
+    operator_stack: &mut Vec<ComparisonOpcode>,
+    input: &'input str,
+    (_, _, _): (usize, &'input str, usize),
+    (_, __0, _): (usize, Box<Expr<'input>>, usize),
+    (_, _, _): (usize, &'input str, usize),
+) -> Box<Expr<'input>>
+{
+    __0
+}
+
+#[allow(unused_variables)]
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action37<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> &'input str {
+) -> &'input str
+{
     {
         let mut fieldname = __0;
 
@@ -20577,15 +20682,18 @@ fn __action37<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action38<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action38<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> &'input str {
+) -> &'input str
+{
     {
         fieldname_stack.push(__0);
         used_fields.insert(__0);
@@ -20594,17 +20702,20 @@ fn __action38<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action39<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action39<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> &'input str {
+) -> &'input str
+{
     {
-        let fieldname = &__0[1..__0.len() - 1];
+        let fieldname = &__0[1..__0.len()-1];
         fieldname_stack.push(fieldname);
         used_fields.insert(fieldname);
         fieldname
@@ -20612,54 +20723,66 @@ fn __action39<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action40<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action40<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> &'input str {
+) -> &'input str
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action41<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action41<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> &'input str {
+) -> &'input str
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action42<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action42<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> &'input str {
+) -> &'input str
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action43<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action43<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, ComparisonOpcode, usize),
-) -> ComparisonOpcode {
+) -> ComparisonOpcode
+{
     {
         operator_stack.push(__0);
         __0
@@ -20667,177 +20790,218 @@ fn __action43<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action44<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action44<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> ComparisonOpcode {
+) -> ComparisonOpcode
+{
     ComparisonOpcode::Contains
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action45<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action45<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> ComparisonOpcode {
+) -> ComparisonOpcode
+{
     ComparisonOpcode::Eq
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action46<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action46<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> ComparisonOpcode {
+) -> ComparisonOpcode
+{
     ComparisonOpcode::Gt
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action47<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action47<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> ComparisonOpcode {
+) -> ComparisonOpcode
+{
     ComparisonOpcode::Lt
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action48<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action48<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> ComparisonOpcode {
+) -> ComparisonOpcode
+{
     ComparisonOpcode::Gte
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action49<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action49<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> ComparisonOpcode {
+) -> ComparisonOpcode
+{
     ComparisonOpcode::Lte
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action50<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action50<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> ComparisonOpcode {
+) -> ComparisonOpcode
+{
     ComparisonOpcode::Ne
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action51<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action51<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> ComparisonOpcode {
+) -> ComparisonOpcode
+{
     ComparisonOpcode::DoesNotContain
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action52<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action52<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> ComparisonOpcode {
+) -> ComparisonOpcode
+{
     ComparisonOpcode::Regex
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action53<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action53<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> ComparisonOpcode {
+) -> ComparisonOpcode
+{
     ComparisonOpcode::MoreLikeThis
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action54<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action54<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> ComparisonOpcode {
+) -> ComparisonOpcode
+{
     ComparisonOpcode::FuzzyLikeThis
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action55<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action55<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> ComparisonOpcode {
+) -> ComparisonOpcode
+{
     ComparisonOpcode::Matches
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action56<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action56<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, Term<'input>, usize),
-) -> Term<'input> {
+) -> Term<'input>
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action57<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action57<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -20847,7 +21011,8 @@ fn __action57<'input>(
     (_, v, _): (usize, alloc::vec::Vec<Term<'input>>, usize),
     (_, _, _): (usize, &'input str, usize),
     (_, b, _): (usize, core::option::Option<f32>, usize),
-) -> Term<'input> {
+) -> Term<'input>
+{
     {
         if v.is_empty() {
             Term::MatchNone
@@ -20858,8 +21023,10 @@ fn __action57<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action58<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action58<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -20867,7 +21034,8 @@ fn __action58<'input>(
     input: &'input str,
     (_, a, _): (usize, &'input str, usize),
     (_, b, _): (usize, core::option::Option<f32>, usize),
-) -> Term<'input> {
+) -> Term<'input>
+{
     {
         if a.trim().is_empty() {
             Term::MatchNone
@@ -20878,36 +21046,44 @@ fn __action58<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action59<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action59<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> &'input str {
+) -> &'input str
+{
     {
-        &__0[2..__0.len() - 2]
+        &__0[2..__0.len()-2]
     }
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action60<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action60<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> Term<'input> {
+) -> Term<'input>
+{
     Term::Null
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action61<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action61<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -20915,18 +21091,23 @@ fn __action61<'input>(
     input: &'input str,
     (_, s, _): (usize, (&'input str, bool), usize),
     (_, b, _): (usize, core::option::Option<f32>, usize),
-) -> Term<'input> {
+) -> Term<'input>
+{
     {
         match Term::maybe_make_wildcard_or_regex(operator_stack.last(), s.0, b) {
-            Term::String(t, b) if s.1 == true => Term::Phrase(t, b),
-            other => other,
+            Term::String(t, b) if s.1 == true => {
+                Term::Phrase(t, b)
+            },
+            other => other
         }
     }
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action62<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action62<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -20935,13 +21116,16 @@ fn __action62<'input>(
     (_, s, _): (usize, (&'input str, bool), usize),
     (_, f, _): (usize, u8, usize),
     (_, b, _): (usize, core::option::Option<f32>, usize),
-) -> Term<'input> {
+) -> Term<'input>
+{
     Term::Fuzzy(s.0, f, b)
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action63<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action63<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -20949,13 +21133,16 @@ fn __action63<'input>(
     input: &'input str,
     (_, s, _): (usize, (&'input str, bool), usize),
     (_, b, _): (usize, core::option::Option<f32>, usize),
-) -> ProximityTerm {
+) -> ProximityTerm
+{
     ProximityTerm::make_proximity_term(operator_stack.last(), s.0, b)
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action64<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action64<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -20964,13 +21151,16 @@ fn __action64<'input>(
     (_, s, _): (usize, (&'input str, bool), usize),
     (_, f, _): (usize, u8, usize),
     (_, b, _): (usize, core::option::Option<f32>, usize),
-) -> ProximityTerm {
+) -> ProximityTerm
+{
     ProximityTerm::Fuzzy(s.0.into(), f, b)
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action65<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action65<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -20978,13 +21168,16 @@ fn __action65<'input>(
     input: &'input str,
     (_, _, _): (usize, &'input str, usize),
     (_, __0, _): (usize, &'input str, usize),
-) -> f32 {
+) -> f32
+{
     f32::from_str(__0).unwrap()
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action66<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action66<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -20992,20 +21185,24 @@ fn __action66<'input>(
     input: &'input str,
     (_, _, _): (usize, &'input str, usize),
     (_, __0, _): (usize, &'input str, usize),
-) -> f32 {
+) -> f32
+{
     f32::from_str(__0).unwrap()
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action67<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action67<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> u8 {
+) -> u8
+{
     {
         let fuzz = &__0[1..];
         if fuzz.is_empty() {
@@ -21017,145 +21214,175 @@ fn __action67<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action68<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action68<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> (&'input str, bool) {
+) -> (&'input str, bool)
+{
     (__0, false)
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action69<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action69<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> (&'input str, bool) {
+) -> (&'input str, bool)
+{
     (__0, false)
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action70<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action70<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> (&'input str, bool) {
+) -> (&'input str, bool)
+{
     ("true", false)
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action71<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action71<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> (&'input str, bool) {
+) -> (&'input str, bool)
+{
     ("false", false)
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action72<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action72<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> (&'input str, bool) {
+) -> (&'input str, bool)
+{
     (__0, false)
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action73<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action73<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> (&'input str, bool) {
+) -> (&'input str, bool)
+{
     (__0, false)
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action74<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action74<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> (&'input str, bool) {
+) -> (&'input str, bool)
+{
     (__0, false)
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action75<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action75<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> (&'input str, bool) {
+) -> (&'input str, bool)
+{
     {
         let s = __0;
-        let s = &s[1..s.len() - 1];
+        let s = &s[1..s.len()-1];
         (s, true)
     }
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action76<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action76<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> (&'input str, bool) {
+) -> (&'input str, bool)
+{
     {
         let s = __0;
-        let s = &s[1..s.len() - 1];
+        let s = &s[1..s.len()-1];
         (s, true)
     }
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action77<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action77<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> QualifiedIndex {
+) -> QualifiedIndex
+{
     {
         let name = __0;
         let name = if name.starts_with('`') && name.ends_with('`') {
             // if it's a QUOTED_IDENTIFIER we need to strip off the leading and trailing backticks
-            &name[1..name.len() - 1]
+            &name[1..name.len()-1]
         } else {
             // intended to use as-is
             name
@@ -21168,14 +21395,11 @@ fn __action77<'input>(
         if schema == Some("this") && table == Some("index") && index.is_none() {
             // for backwards compatibility, if the user simply writes <this.index>, we'll
             // force the schema to "public"
-            index = table; // "index"
-            table = schema; // "this"
+            index = table;      // "index"
+            table = schema;     // "this"
             schema = Some("public");
         } else if schema.is_none() || table.is_none() || index.is_none() {
-            panic!(
-                "qualified index ({}) must be schema qualified.  ie, schema.table.index",
-                __0
-            );
+            panic!("qualified index ({}) must be schema qualified.  ie, schema.table.index", __0);
         } else if parts.next().is_some() {
             panic!("index link schema.table.index is too long: {}", __0);
         }
@@ -21189,8 +21413,10 @@ fn __action77<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action78<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action78<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21202,18 +21428,16 @@ fn __action78<'input>(
     (_, qualified_index, _): (usize, QualifiedIndex, usize),
     (_, _, _): (usize, &'input str, usize),
     (_, right_field, _): (usize, &'input str, usize),
-) -> IndexLink {
-    IndexLink {
-        name: None,
-        left_field: Some(left_field.to_string()),
-        qualified_index,
-        right_field: Some(right_field.to_string()),
-    }
+) -> IndexLink
+{
+    IndexLink { name: None, left_field: Some(left_field.to_string()), qualified_index, right_field: Some(right_field.to_string()) }
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action79<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action79<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21229,18 +21453,16 @@ fn __action79<'input>(
     (_, _, _): (usize, &'input str, usize),
     (_, right_field, _): (usize, &'input str, usize),
     (_, _, _): (usize, &'input str, usize),
-) -> IndexLink {
-    IndexLink {
-        name: Some(name.to_string()),
-        left_field: Some(left_field.to_string()),
-        qualified_index,
-        right_field: Some(right_field.to_string()),
-    }
+) -> IndexLink
+{
+    IndexLink { name: Some(name.to_string()), left_field: Some(left_field.to_string()), qualified_index, right_field: Some(right_field.to_string()) }
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action80<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action80<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21251,13 +21473,16 @@ fn __action80<'input>(
     (_, link, _): (usize, IndexLink, usize),
     (_, _, _): (usize, &'input str, usize),
     (_, q, _): (usize, Box<Expr<'input>>, usize),
-) -> Expr<'input> {
+) -> Expr<'input>
+{
     Expr::Subselect(link, q)
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action81<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action81<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21271,13 +21496,16 @@ fn __action81<'input>(
     (_, e, _): (usize, Box<Expr<'input>>, usize),
     (_, f, _): (usize, core::option::Option<Box<Expr<'input>>>, usize),
     (_, _, _): (usize, &'input str, usize),
-) -> Expr<'input> {
+) -> Expr<'input>
+{
     Expr::Expand(link, e, f)
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action82<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action82<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21287,13 +21515,16 @@ fn __action82<'input>(
     (_, _, _): (usize, &'input str, usize),
     (_, e, _): (usize, Box<Expr<'input>>, usize),
     (_, _, _): (usize, &'input str, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     e
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action83<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action83<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21303,7 +21534,8 @@ fn __action83<'input>(
     (_, v, _): (usize, alloc::vec::Vec<String>, usize),
     (_, e, _): (usize, core::option::Option<String>, usize),
     (_, _, _): (usize, &'input str, usize),
-) -> String {
+) -> String
+{
     {
         let props = match e {
             None => v,
@@ -21317,9 +21549,7 @@ fn __action83<'input>(
         let mut json = String::new();
         json.push('{');
         for (i, p) in props.iter().enumerate() {
-            if i > 0 {
-                json.push(',')
-            }
+            if i > 0 { json.push(',') }
             json.push_str(p);
         }
         json.push('}');
@@ -21328,8 +21558,10 @@ fn __action83<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action84<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action84<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21338,52 +21570,64 @@ fn __action84<'input>(
     (_, k, _): (usize, &'input str, usize),
     (_, _, _): (usize, &'input str, usize),
     (_, v, _): (usize, String, usize),
-) -> String {
+) -> String
+{
     format!("{}:{}", k, v)
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action85<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action85<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, String, usize),
-) -> String {
+) -> String
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action86<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action86<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, String, usize),
-) -> String {
+) -> String
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action87<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action87<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> String {
+) -> String
+{
     __0.to_string()
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action88<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action88<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21393,7 +21637,8 @@ fn __action88<'input>(
     (_, v, _): (usize, alloc::vec::Vec<String>, usize),
     (_, e, _): (usize, core::option::Option<String>, usize),
     (_, _, _): (usize, &'input str, usize),
-) -> String {
+) -> String
+{
     {
         let v = match e {
             None => v,
@@ -21407,9 +21652,7 @@ fn __action88<'input>(
         let mut array = String::new();
         array.push('[');
         for (i, v) in v.iter().enumerate() {
-            if i > 0 {
-                array.push(',');
-            }
+            if i > 0 { array.push(','); }
             array.push_str(&v);
         }
         array.push(']');
@@ -21418,86 +21661,106 @@ fn __action88<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action89<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action89<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> &'input str {
+) -> &'input str
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action90<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action90<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> &'input str {
+) -> &'input str
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action91<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action91<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> &'input str {
+) -> &'input str
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action92<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action92<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> &'input str {
+) -> &'input str
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action93<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action93<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> &'input str {
+) -> &'input str
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action94<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action94<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> &'input str {
+) -> &'input str
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action95<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action95<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21505,7 +21768,8 @@ fn __action95<'input>(
     input: &'input str,
     (_, mut field_lists, _): (usize, alloc::vec::Vec<(String, Vec<String>)>, usize),
     (_, e, _): (usize, (String, Vec<String>), usize),
-) -> HashMap<String, Vec<String>> {
+) -> HashMap<String, Vec<String>>
+{
     {
         field_lists.push(e);
         let mut map = HashMap::new();
@@ -21520,8 +21784,10 @@ fn __action95<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action96<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action96<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21532,15 +21798,18 @@ fn __action96<'input>(
     (_, _, _): (usize, &'input str, usize),
     (_, list, _): (usize, Vec<String>, usize),
     (_, _, _): (usize, &'input str, usize),
-) -> (String, Vec<String>) {
+) -> (String, Vec<String>)
+{
     {
         (name.into(), list)
     }
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action97<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action97<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21548,7 +21817,8 @@ fn __action97<'input>(
     input: &'input str,
     (_, mut v, _): (usize, alloc::vec::Vec<&'input str>, usize),
     (_, e, _): (usize, &'input str, usize),
-) -> Vec<String> {
+) -> Vec<String>
+{
     {
         v.push(e);
         v.into_iter().map(|e| e.into()).collect()
@@ -21556,8 +21826,10 @@ fn __action97<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action98<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action98<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21565,26 +21837,32 @@ fn __action98<'input>(
     input: &'input str,
     __lookbehind: &usize,
     __lookahead: &usize,
-) -> alloc::vec::Vec<&'input str> {
+) -> alloc::vec::Vec<&'input str>
+{
     alloc::vec![]
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action99<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action99<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, v, _): (usize, alloc::vec::Vec<&'input str>, usize),
-) -> alloc::vec::Vec<&'input str> {
+) -> alloc::vec::Vec<&'input str>
+{
     v
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action100<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action100<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21592,13 +21870,16 @@ fn __action100<'input>(
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
     (_, _, _): (usize, &'input str, usize),
-) -> &'input str {
+) -> &'input str
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action101<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action101<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21606,26 +21887,32 @@ fn __action101<'input>(
     input: &'input str,
     __lookbehind: &usize,
     __lookahead: &usize,
-) -> alloc::vec::Vec<(String, Vec<String>)> {
+) -> alloc::vec::Vec<(String, Vec<String>)>
+{
     alloc::vec![]
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action102<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action102<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, v, _): (usize, alloc::vec::Vec<(String, Vec<String>)>, usize),
-) -> alloc::vec::Vec<(String, Vec<String>)> {
+) -> alloc::vec::Vec<(String, Vec<String>)>
+{
     v
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action103<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action103<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21633,26 +21920,32 @@ fn __action103<'input>(
     input: &'input str,
     (_, __0, _): (usize, (String, Vec<String>), usize),
     (_, _, _): (usize, &'input str, usize),
-) -> (String, Vec<String>) {
+) -> (String, Vec<String>)
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action104<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action104<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, String, usize),
-) -> core::option::Option<String> {
+) -> core::option::Option<String>
+{
     Some(__0)
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action105<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action105<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21660,13 +21953,16 @@ fn __action105<'input>(
     input: &'input str,
     __lookbehind: &usize,
     __lookahead: &usize,
-) -> core::option::Option<String> {
+) -> core::option::Option<String>
+{
     None
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action106<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action106<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21674,26 +21970,32 @@ fn __action106<'input>(
     input: &'input str,
     __lookbehind: &usize,
     __lookahead: &usize,
-) -> alloc::vec::Vec<String> {
+) -> alloc::vec::Vec<String>
+{
     alloc::vec![]
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action107<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action107<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, v, _): (usize, alloc::vec::Vec<String>, usize),
-) -> alloc::vec::Vec<String> {
+) -> alloc::vec::Vec<String>
+{
     v
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action108<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action108<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21701,26 +22003,32 @@ fn __action108<'input>(
     input: &'input str,
     (_, __0, _): (usize, String, usize),
     (_, _, _): (usize, &'input str, usize),
-) -> String {
+) -> String
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action109<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action109<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, String, usize),
-) -> core::option::Option<String> {
+) -> core::option::Option<String>
+{
     Some(__0)
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action110<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action110<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21728,13 +22036,16 @@ fn __action110<'input>(
     input: &'input str,
     __lookbehind: &usize,
     __lookahead: &usize,
-) -> core::option::Option<String> {
+) -> core::option::Option<String>
+{
     None
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action111<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action111<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21742,26 +22053,32 @@ fn __action111<'input>(
     input: &'input str,
     __lookbehind: &usize,
     __lookahead: &usize,
-) -> alloc::vec::Vec<String> {
+) -> alloc::vec::Vec<String>
+{
     alloc::vec![]
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action112<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action112<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, v, _): (usize, alloc::vec::Vec<String>, usize),
-) -> alloc::vec::Vec<String> {
+) -> alloc::vec::Vec<String>
+{
     v
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action113<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action113<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21769,26 +22086,32 @@ fn __action113<'input>(
     input: &'input str,
     (_, __0, _): (usize, String, usize),
     (_, _, _): (usize, &'input str, usize),
-) -> String {
+) -> String
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action114<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action114<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, Box<Expr<'input>>, usize),
-) -> core::option::Option<Box<Expr<'input>>> {
+) -> core::option::Option<Box<Expr<'input>>>
+{
     Some(__0)
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action115<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action115<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21796,13 +22119,16 @@ fn __action115<'input>(
     input: &'input str,
     __lookbehind: &usize,
     __lookahead: &usize,
-) -> core::option::Option<Box<Expr<'input>>> {
+) -> core::option::Option<Box<Expr<'input>>>
+{
     None
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action116<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action116<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21810,26 +22136,32 @@ fn __action116<'input>(
     input: &'input str,
     __lookbehind: &usize,
     __lookahead: &usize,
-) -> alloc::vec::Vec<Term<'input>> {
+) -> alloc::vec::Vec<Term<'input>>
+{
     alloc::vec![]
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action117<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action117<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, v, _): (usize, alloc::vec::Vec<Term<'input>>, usize),
-) -> alloc::vec::Vec<Term<'input>> {
+) -> alloc::vec::Vec<Term<'input>>
+{
     v
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action118<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action118<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21837,26 +22169,32 @@ fn __action118<'input>(
     input: &'input str,
     (_, __0, _): (usize, Term<'input>, usize),
     (_, _, _): (usize, core::option::Option<&'input str>, usize),
-) -> Term<'input> {
+) -> Term<'input>
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action119<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action119<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> core::option::Option<&'input str> {
+) -> core::option::Option<&'input str>
+{
     Some(__0)
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action120<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action120<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21864,26 +22202,32 @@ fn __action120<'input>(
     input: &'input str,
     __lookbehind: &usize,
     __lookahead: &usize,
-) -> core::option::Option<&'input str> {
+) -> core::option::Option<&'input str>
+{
     None
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action121<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action121<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, f32, usize),
-) -> core::option::Option<f32> {
+) -> core::option::Option<f32>
+{
     Some(__0)
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action122<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action122<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21891,26 +22235,32 @@ fn __action122<'input>(
     input: &'input str,
     __lookbehind: &usize,
     __lookahead: &usize,
-) -> core::option::Option<f32> {
+) -> core::option::Option<f32>
+{
     None
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action123<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action123<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, ProximityPart, usize),
-) -> alloc::vec::Vec<ProximityPart> {
+) -> alloc::vec::Vec<ProximityPart>
+{
     alloc::vec![__0]
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action124<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action124<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21918,30 +22268,32 @@ fn __action124<'input>(
     input: &'input str,
     (_, v, _): (usize, alloc::vec::Vec<ProximityPart>, usize),
     (_, e, _): (usize, ProximityPart, usize),
-) -> alloc::vec::Vec<ProximityPart> {
-    {
-        let mut v = v;
-        v.push(e);
-        v
-    }
+) -> alloc::vec::Vec<ProximityPart>
+{
+    { let mut v = v; v.push(e); v }
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action125<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action125<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, Box<Expr<'input>>, usize),
-) -> alloc::vec::Vec<Box<Expr<'input>>> {
+) -> alloc::vec::Vec<Box<Expr<'input>>>
+{
     alloc::vec![__0]
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action126<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action126<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21949,17 +22301,16 @@ fn __action126<'input>(
     input: &'input str,
     (_, v, _): (usize, alloc::vec::Vec<Box<Expr<'input>>>, usize),
     (_, e, _): (usize, Box<Expr<'input>>, usize),
-) -> alloc::vec::Vec<Box<Expr<'input>>> {
-    {
-        let mut v = v;
-        v.push(e);
-        v
-    }
+) -> alloc::vec::Vec<Box<Expr<'input>>>
+{
+    { let mut v = v; v.push(e); v }
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action127<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action127<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21967,26 +22318,32 @@ fn __action127<'input>(
     input: &'input str,
     (_, __0, _): (usize, Box<Expr<'input>>, usize),
     (_, _, _): (usize, alloc::vec::Vec<Opcode>, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action128<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action128<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, Opcode, usize),
-) -> alloc::vec::Vec<Opcode> {
+) -> alloc::vec::Vec<Opcode>
+{
     alloc::vec![__0]
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action129<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action129<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -21994,30 +22351,32 @@ fn __action129<'input>(
     input: &'input str,
     (_, v, _): (usize, alloc::vec::Vec<Opcode>, usize),
     (_, e, _): (usize, Opcode, usize),
-) -> alloc::vec::Vec<Opcode> {
-    {
-        let mut v = v;
-        v.push(e);
-        v
-    }
+) -> alloc::vec::Vec<Opcode>
+{
+    { let mut v = v; v.push(e); v }
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action130<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action130<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, Box<Expr<'input>>, usize),
-) -> alloc::vec::Vec<Box<Expr<'input>>> {
+) -> alloc::vec::Vec<Box<Expr<'input>>>
+{
     alloc::vec![__0]
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action131<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action131<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22025,17 +22384,16 @@ fn __action131<'input>(
     input: &'input str,
     (_, v, _): (usize, alloc::vec::Vec<Box<Expr<'input>>>, usize),
     (_, e, _): (usize, Box<Expr<'input>>, usize),
-) -> alloc::vec::Vec<Box<Expr<'input>>> {
-    {
-        let mut v = v;
-        v.push(e);
-        v
-    }
+) -> alloc::vec::Vec<Box<Expr<'input>>>
+{
+    { let mut v = v; v.push(e); v }
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action132<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action132<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22043,13 +22401,16 @@ fn __action132<'input>(
     input: &'input str,
     (_, __0, _): (usize, Box<Expr<'input>>, usize),
     (_, _, _): (usize, alloc::vec::Vec<Opcode>, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action133<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action133<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22057,39 +22418,48 @@ fn __action133<'input>(
     input: &'input str,
     __lookbehind: &usize,
     __lookahead: &usize,
-) -> alloc::vec::Vec<Opcode> {
+) -> alloc::vec::Vec<Opcode>
+{
     alloc::vec![]
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action134<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action134<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, v, _): (usize, alloc::vec::Vec<Opcode>, usize),
-) -> alloc::vec::Vec<Opcode> {
+) -> alloc::vec::Vec<Opcode>
+{
     v
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action135<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action135<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, Box<Expr<'input>>, usize),
-) -> alloc::vec::Vec<Box<Expr<'input>>> {
+) -> alloc::vec::Vec<Box<Expr<'input>>>
+{
     alloc::vec![__0]
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action136<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action136<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22097,17 +22467,16 @@ fn __action136<'input>(
     input: &'input str,
     (_, v, _): (usize, alloc::vec::Vec<Box<Expr<'input>>>, usize),
     (_, e, _): (usize, Box<Expr<'input>>, usize),
-) -> alloc::vec::Vec<Box<Expr<'input>>> {
-    {
-        let mut v = v;
-        v.push(e);
-        v
-    }
+) -> alloc::vec::Vec<Box<Expr<'input>>>
+{
+    { let mut v = v; v.push(e); v }
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action137<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action137<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22115,26 +22484,32 @@ fn __action137<'input>(
     input: &'input str,
     (_, __0, _): (usize, Box<Expr<'input>>, usize),
     (_, _, _): (usize, alloc::vec::Vec<Opcode>, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     __0
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action138<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action138<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, Opcode, usize),
-) -> alloc::vec::Vec<Opcode> {
+) -> alloc::vec::Vec<Opcode>
+{
     alloc::vec![__0]
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action139<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action139<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22142,30 +22517,32 @@ fn __action139<'input>(
     input: &'input str,
     (_, v, _): (usize, alloc::vec::Vec<Opcode>, usize),
     (_, e, _): (usize, Opcode, usize),
-) -> alloc::vec::Vec<Opcode> {
-    {
-        let mut v = v;
-        v.push(e);
-        v
-    }
+) -> alloc::vec::Vec<Opcode>
+{
+    { let mut v = v; v.push(e); v }
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action140<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action140<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, Opcode, usize),
-) -> alloc::vec::Vec<Opcode> {
+) -> alloc::vec::Vec<Opcode>
+{
     alloc::vec![__0]
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action141<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action141<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22173,30 +22550,32 @@ fn __action141<'input>(
     input: &'input str,
     (_, v, _): (usize, alloc::vec::Vec<Opcode>, usize),
     (_, e, _): (usize, Opcode, usize),
-) -> alloc::vec::Vec<Opcode> {
-    {
-        let mut v = v;
-        v.push(e);
-        v
-    }
+) -> alloc::vec::Vec<Opcode>
+{
+    { let mut v = v; v.push(e); v }
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action142<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action142<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, Term<'input>, usize),
-) -> alloc::vec::Vec<Term<'input>> {
+) -> alloc::vec::Vec<Term<'input>>
+{
     alloc::vec![__0]
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action143<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action143<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22204,30 +22583,32 @@ fn __action143<'input>(
     input: &'input str,
     (_, v, _): (usize, alloc::vec::Vec<Term<'input>>, usize),
     (_, e, _): (usize, Term<'input>, usize),
-) -> alloc::vec::Vec<Term<'input>> {
-    {
-        let mut v = v;
-        v.push(e);
-        v
-    }
+) -> alloc::vec::Vec<Term<'input>>
+{
+    { let mut v = v; v.push(e); v }
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action144<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action144<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, String, usize),
-) -> alloc::vec::Vec<String> {
+) -> alloc::vec::Vec<String>
+{
     alloc::vec![__0]
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action145<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action145<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22235,30 +22616,32 @@ fn __action145<'input>(
     input: &'input str,
     (_, v, _): (usize, alloc::vec::Vec<String>, usize),
     (_, e, _): (usize, String, usize),
-) -> alloc::vec::Vec<String> {
-    {
-        let mut v = v;
-        v.push(e);
-        v
-    }
+) -> alloc::vec::Vec<String>
+{
+    { let mut v = v; v.push(e); v }
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action146<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action146<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, String, usize),
-) -> alloc::vec::Vec<String> {
+) -> alloc::vec::Vec<String>
+{
     alloc::vec![__0]
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action147<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action147<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22266,30 +22649,32 @@ fn __action147<'input>(
     input: &'input str,
     (_, v, _): (usize, alloc::vec::Vec<String>, usize),
     (_, e, _): (usize, String, usize),
-) -> alloc::vec::Vec<String> {
-    {
-        let mut v = v;
-        v.push(e);
-        v
-    }
+) -> alloc::vec::Vec<String>
+{
+    { let mut v = v; v.push(e); v }
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action148<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action148<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, (String, Vec<String>), usize),
-) -> alloc::vec::Vec<(String, Vec<String>)> {
+) -> alloc::vec::Vec<(String, Vec<String>)>
+{
     alloc::vec![__0]
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action149<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action149<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22297,30 +22682,32 @@ fn __action149<'input>(
     input: &'input str,
     (_, v, _): (usize, alloc::vec::Vec<(String, Vec<String>)>, usize),
     (_, e, _): (usize, (String, Vec<String>), usize),
-) -> alloc::vec::Vec<(String, Vec<String>)> {
-    {
-        let mut v = v;
-        v.push(e);
-        v
-    }
+) -> alloc::vec::Vec<(String, Vec<String>)>
+{
+    { let mut v = v; v.push(e); v }
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action150<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action150<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     (_, __0, _): (usize, &'input str, usize),
-) -> alloc::vec::Vec<&'input str> {
+) -> alloc::vec::Vec<&'input str>
+{
     alloc::vec![__0]
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action151<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes, clippy::just_underscores_and_digits)]
+fn __action151<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22328,17 +22715,17 @@ fn __action151<'input>(
     input: &'input str,
     (_, v, _): (usize, alloc::vec::Vec<&'input str>, usize),
     (_, e, _): (usize, &'input str, usize),
-) -> alloc::vec::Vec<&'input str> {
-    {
-        let mut v = v;
-        v.push(e);
-        v
-    }
+) -> alloc::vec::Vec<&'input str>
+{
+    { let mut v = v; v.push(e); v }
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action152<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action152<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22346,7 +22733,8 @@ fn __action152<'input>(
     input: &'input str,
     __0: (usize, Box<Expr<'input>>, usize),
     __1: (usize, alloc::vec::Vec<Opcode>, usize),
-) -> alloc::vec::Vec<Box<Expr<'input>>> {
+) -> alloc::vec::Vec<Box<Expr<'input>>>
+{
     let __start0 = __0.0;
     let __end0 = __1.2;
     let __temp0 = __action137(
@@ -22370,8 +22758,11 @@ fn __action152<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action153<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action153<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22380,7 +22771,8 @@ fn __action153<'input>(
     __0: (usize, alloc::vec::Vec<Box<Expr<'input>>>, usize),
     __1: (usize, Box<Expr<'input>>, usize),
     __2: (usize, alloc::vec::Vec<Opcode>, usize),
-) -> alloc::vec::Vec<Box<Expr<'input>>> {
+) -> alloc::vec::Vec<Box<Expr<'input>>>
+{
     let __start0 = __1.0;
     let __end0 = __2.2;
     let __temp0 = __action137(
@@ -22405,8 +22797,11 @@ fn __action153<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action154<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action154<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22414,7 +22809,8 @@ fn __action154<'input>(
     input: &'input str,
     __0: (usize, &'input str, usize),
     __1: (usize, &'input str, usize),
-) -> alloc::vec::Vec<&'input str> {
+) -> alloc::vec::Vec<&'input str>
+{
     let __start0 = __0.0;
     let __end0 = __1.2;
     let __temp0 = __action100(
@@ -22438,8 +22834,11 @@ fn __action154<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action155<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action155<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22448,7 +22847,8 @@ fn __action155<'input>(
     __0: (usize, alloc::vec::Vec<&'input str>, usize),
     __1: (usize, &'input str, usize),
     __2: (usize, &'input str, usize),
-) -> alloc::vec::Vec<&'input str> {
+) -> alloc::vec::Vec<&'input str>
+{
     let __start0 = __1.0;
     let __end0 = __2.2;
     let __temp0 = __action100(
@@ -22473,15 +22873,19 @@ fn __action155<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action156<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action156<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     __0: (usize, &'input str, usize),
-) -> Vec<String> {
+) -> Vec<String>
+{
     let __start0 = __0.0;
     let __end0 = __0.0;
     let __temp0 = __action98(
@@ -22506,8 +22910,11 @@ fn __action156<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action157<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action157<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22515,7 +22922,8 @@ fn __action157<'input>(
     input: &'input str,
     __0: (usize, alloc::vec::Vec<&'input str>, usize),
     __1: (usize, &'input str, usize),
-) -> Vec<String> {
+) -> Vec<String>
+{
     let __start0 = __0.0;
     let __end0 = __0.2;
     let __temp0 = __action99(
@@ -22539,8 +22947,11 @@ fn __action157<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action158<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action158<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22548,7 +22959,8 @@ fn __action158<'input>(
     input: &'input str,
     __0: (usize, String, usize),
     __1: (usize, &'input str, usize),
-) -> alloc::vec::Vec<String> {
+) -> alloc::vec::Vec<String>
+{
     let __start0 = __0.0;
     let __end0 = __1.2;
     let __temp0 = __action113(
@@ -22572,8 +22984,11 @@ fn __action158<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action159<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action159<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22582,7 +22997,8 @@ fn __action159<'input>(
     __0: (usize, alloc::vec::Vec<String>, usize),
     __1: (usize, String, usize),
     __2: (usize, &'input str, usize),
-) -> alloc::vec::Vec<String> {
+) -> alloc::vec::Vec<String>
+{
     let __start0 = __1.0;
     let __end0 = __2.2;
     let __temp0 = __action113(
@@ -22607,8 +23023,11 @@ fn __action159<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action160<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action160<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22617,7 +23036,8 @@ fn __action160<'input>(
     __0: (usize, &'input str, usize),
     __1: (usize, core::option::Option<String>, usize),
     __2: (usize, &'input str, usize),
-) -> String {
+) -> String
+{
     let __start0 = __0.2;
     let __end0 = __1.0;
     let __temp0 = __action111(
@@ -22644,8 +23064,11 @@ fn __action160<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action161<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action161<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22655,7 +23078,8 @@ fn __action161<'input>(
     __1: (usize, alloc::vec::Vec<String>, usize),
     __2: (usize, core::option::Option<String>, usize),
     __3: (usize, &'input str, usize),
-) -> String {
+) -> String
+{
     let __start0 = __1.0;
     let __end0 = __1.2;
     let __temp0 = __action112(
@@ -22681,8 +23105,11 @@ fn __action161<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action162<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action162<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22690,7 +23117,8 @@ fn __action162<'input>(
     input: &'input str,
     __0: (usize, String, usize),
     __1: (usize, &'input str, usize),
-) -> alloc::vec::Vec<String> {
+) -> alloc::vec::Vec<String>
+{
     let __start0 = __0.0;
     let __end0 = __1.2;
     let __temp0 = __action108(
@@ -22714,8 +23142,11 @@ fn __action162<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action163<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action163<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22724,7 +23155,8 @@ fn __action163<'input>(
     __0: (usize, alloc::vec::Vec<String>, usize),
     __1: (usize, String, usize),
     __2: (usize, &'input str, usize),
-) -> alloc::vec::Vec<String> {
+) -> alloc::vec::Vec<String>
+{
     let __start0 = __1.0;
     let __end0 = __2.2;
     let __temp0 = __action108(
@@ -22749,8 +23181,11 @@ fn __action163<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action164<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action164<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22759,7 +23194,8 @@ fn __action164<'input>(
     __0: (usize, &'input str, usize),
     __1: (usize, core::option::Option<String>, usize),
     __2: (usize, &'input str, usize),
-) -> String {
+) -> String
+{
     let __start0 = __0.2;
     let __end0 = __1.0;
     let __temp0 = __action106(
@@ -22786,8 +23222,11 @@ fn __action164<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action165<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action165<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22797,7 +23236,8 @@ fn __action165<'input>(
     __1: (usize, alloc::vec::Vec<String>, usize),
     __2: (usize, core::option::Option<String>, usize),
     __3: (usize, &'input str, usize),
-) -> String {
+) -> String
+{
     let __start0 = __1.0;
     let __end0 = __1.2;
     let __temp0 = __action107(
@@ -22823,8 +23263,11 @@ fn __action165<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action166<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action166<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22832,7 +23275,8 @@ fn __action166<'input>(
     input: &'input str,
     __0: (usize, (String, Vec<String>), usize),
     __1: (usize, &'input str, usize),
-) -> alloc::vec::Vec<(String, Vec<String>)> {
+) -> alloc::vec::Vec<(String, Vec<String>)>
+{
     let __start0 = __0.0;
     let __end0 = __1.2;
     let __temp0 = __action103(
@@ -22856,8 +23300,11 @@ fn __action166<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action167<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action167<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22866,7 +23313,8 @@ fn __action167<'input>(
     __0: (usize, alloc::vec::Vec<(String, Vec<String>)>, usize),
     __1: (usize, (String, Vec<String>), usize),
     __2: (usize, &'input str, usize),
-) -> alloc::vec::Vec<(String, Vec<String>)> {
+) -> alloc::vec::Vec<(String, Vec<String>)>
+{
     let __start0 = __1.0;
     let __end0 = __2.2;
     let __temp0 = __action103(
@@ -22891,15 +23339,19 @@ fn __action167<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action168<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action168<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     __0: (usize, (String, Vec<String>), usize),
-) -> HashMap<String, Vec<String>> {
+) -> HashMap<String, Vec<String>>
+{
     let __start0 = __0.0;
     let __end0 = __0.0;
     let __temp0 = __action101(
@@ -22924,8 +23376,11 @@ fn __action168<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action169<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action169<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22933,7 +23388,8 @@ fn __action169<'input>(
     input: &'input str,
     __0: (usize, alloc::vec::Vec<(String, Vec<String>)>, usize),
     __1: (usize, (String, Vec<String>), usize),
-) -> HashMap<String, Vec<String>> {
+) -> HashMap<String, Vec<String>>
+{
     let __start0 = __0.0;
     let __end0 = __0.2;
     let __temp0 = __action102(
@@ -22957,8 +23413,11 @@ fn __action169<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action170<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action170<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -22966,7 +23425,8 @@ fn __action170<'input>(
     input: &'input str,
     __0: (usize, Box<Expr<'input>>, usize),
     __1: (usize, alloc::vec::Vec<Opcode>, usize),
-) -> alloc::vec::Vec<Box<Expr<'input>>> {
+) -> alloc::vec::Vec<Box<Expr<'input>>>
+{
     let __start0 = __0.0;
     let __end0 = __1.2;
     let __temp0 = __action127(
@@ -22990,8 +23450,11 @@ fn __action170<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action171<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action171<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -23000,7 +23463,8 @@ fn __action171<'input>(
     __0: (usize, alloc::vec::Vec<Box<Expr<'input>>>, usize),
     __1: (usize, Box<Expr<'input>>, usize),
     __2: (usize, alloc::vec::Vec<Opcode>, usize),
-) -> alloc::vec::Vec<Box<Expr<'input>>> {
+) -> alloc::vec::Vec<Box<Expr<'input>>>
+{
     let __start0 = __1.0;
     let __end0 = __2.2;
     let __temp0 = __action127(
@@ -23025,8 +23489,11 @@ fn __action171<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action172<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action172<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -23034,7 +23501,8 @@ fn __action172<'input>(
     input: &'input str,
     __0: (usize, Term<'input>, usize),
     __1: (usize, &'input str, usize),
-) -> Term<'input> {
+) -> Term<'input>
+{
     let __start0 = __1.0;
     let __end0 = __1.2;
     let __temp0 = __action119(
@@ -23058,15 +23526,19 @@ fn __action172<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action173<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action173<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     __0: (usize, Term<'input>, usize),
-) -> Term<'input> {
+) -> Term<'input>
+{
     let __start0 = __0.2;
     let __end0 = __0.2;
     let __temp0 = __action120(
@@ -23091,8 +23563,11 @@ fn __action173<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action174<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action174<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -23100,7 +23575,8 @@ fn __action174<'input>(
     input: &'input str,
     __0: (usize, Term<'input>, usize),
     __1: (usize, &'input str, usize),
-) -> alloc::vec::Vec<Term<'input>> {
+) -> alloc::vec::Vec<Term<'input>>
+{
     let __start0 = __0.0;
     let __end0 = __1.2;
     let __temp0 = __action172(
@@ -23124,15 +23600,19 @@ fn __action174<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action175<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action175<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     __0: (usize, Term<'input>, usize),
-) -> alloc::vec::Vec<Term<'input>> {
+) -> alloc::vec::Vec<Term<'input>>
+{
     let __start0 = __0.0;
     let __end0 = __0.2;
     let __temp0 = __action173(
@@ -23155,8 +23635,11 @@ fn __action175<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action176<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action176<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -23165,7 +23648,8 @@ fn __action176<'input>(
     __0: (usize, alloc::vec::Vec<Term<'input>>, usize),
     __1: (usize, Term<'input>, usize),
     __2: (usize, &'input str, usize),
-) -> alloc::vec::Vec<Term<'input>> {
+) -> alloc::vec::Vec<Term<'input>>
+{
     let __start0 = __1.0;
     let __end0 = __2.2;
     let __temp0 = __action172(
@@ -23190,8 +23674,11 @@ fn __action176<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action177<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action177<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -23199,7 +23686,8 @@ fn __action177<'input>(
     input: &'input str,
     __0: (usize, alloc::vec::Vec<Term<'input>>, usize),
     __1: (usize, Term<'input>, usize),
-) -> alloc::vec::Vec<Term<'input>> {
+) -> alloc::vec::Vec<Term<'input>>
+{
     let __start0 = __1.0;
     let __end0 = __1.2;
     let __temp0 = __action173(
@@ -23223,8 +23711,11 @@ fn __action177<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action178<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action178<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -23233,7 +23724,8 @@ fn __action178<'input>(
     __0: (usize, &'input str, usize),
     __1: (usize, &'input str, usize),
     __2: (usize, core::option::Option<f32>, usize),
-) -> Term<'input> {
+) -> Term<'input>
+{
     let __start0 = __0.2;
     let __end0 = __1.0;
     let __temp0 = __action116(
@@ -23260,8 +23752,11 @@ fn __action178<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action179<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action179<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -23271,7 +23766,8 @@ fn __action179<'input>(
     __1: (usize, alloc::vec::Vec<Term<'input>>, usize),
     __2: (usize, &'input str, usize),
     __3: (usize, core::option::Option<f32>, usize),
-) -> Term<'input> {
+) -> Term<'input>
+{
     let __start0 = __1.0;
     let __end0 = __1.2;
     let __temp0 = __action117(
@@ -23297,15 +23793,19 @@ fn __action179<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action180<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action180<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     __0: (usize, Box<Expr<'input>>, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     let __start0 = __0.2;
     let __end0 = __0.2;
     let __temp0 = __action133(
@@ -23330,8 +23830,11 @@ fn __action180<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action181<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action181<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -23339,7 +23842,8 @@ fn __action181<'input>(
     input: &'input str,
     __0: (usize, Box<Expr<'input>>, usize),
     __1: (usize, alloc::vec::Vec<Opcode>, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     let __start0 = __1.0;
     let __end0 = __1.2;
     let __temp0 = __action134(
@@ -23363,15 +23867,19 @@ fn __action181<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action182<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action182<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     __0: (usize, Box<Expr<'input>>, usize),
-) -> alloc::vec::Vec<Box<Expr<'input>>> {
+) -> alloc::vec::Vec<Box<Expr<'input>>>
+{
     let __start0 = __0.0;
     let __end0 = __0.2;
     let __temp0 = __action180(
@@ -23394,8 +23902,11 @@ fn __action182<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action183<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action183<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -23403,7 +23914,8 @@ fn __action183<'input>(
     input: &'input str,
     __0: (usize, Box<Expr<'input>>, usize),
     __1: (usize, alloc::vec::Vec<Opcode>, usize),
-) -> alloc::vec::Vec<Box<Expr<'input>>> {
+) -> alloc::vec::Vec<Box<Expr<'input>>>
+{
     let __start0 = __0.0;
     let __end0 = __1.2;
     let __temp0 = __action181(
@@ -23427,8 +23939,11 @@ fn __action183<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action184<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action184<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -23436,7 +23951,8 @@ fn __action184<'input>(
     input: &'input str,
     __0: (usize, alloc::vec::Vec<Box<Expr<'input>>>, usize),
     __1: (usize, Box<Expr<'input>>, usize),
-) -> alloc::vec::Vec<Box<Expr<'input>>> {
+) -> alloc::vec::Vec<Box<Expr<'input>>>
+{
     let __start0 = __1.0;
     let __end0 = __1.2;
     let __temp0 = __action180(
@@ -23460,8 +23976,11 @@ fn __action184<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action185<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action185<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -23470,7 +23989,8 @@ fn __action185<'input>(
     __0: (usize, alloc::vec::Vec<Box<Expr<'input>>>, usize),
     __1: (usize, Box<Expr<'input>>, usize),
     __2: (usize, alloc::vec::Vec<Opcode>, usize),
-) -> alloc::vec::Vec<Box<Expr<'input>>> {
+) -> alloc::vec::Vec<Box<Expr<'input>>>
+{
     let __start0 = __1.0;
     let __end0 = __2.2;
     let __temp0 = __action181(
@@ -23495,8 +24015,11 @@ fn __action185<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action186<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action186<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -23508,7 +24031,8 @@ fn __action186<'input>(
     __3: (usize, &'input str, usize),
     __4: (usize, (&'input str, bool), usize),
     __5: (usize, f32, usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     let __start0 = __5.0;
     let __end0 = __5.2;
     let __temp0 = __action121(
@@ -23536,8 +24060,11 @@ fn __action186<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action187<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action187<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -23548,7 +24075,8 @@ fn __action187<'input>(
     __2: (usize, (&'input str, bool), usize),
     __3: (usize, &'input str, usize),
     __4: (usize, (&'input str, bool), usize),
-) -> Box<Expr<'input>> {
+) -> Box<Expr<'input>>
+{
     let __start0 = __4.2;
     let __end0 = __4.2;
     let __temp0 = __action122(
@@ -23577,8 +24105,11 @@ fn __action187<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action188<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action188<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -23586,7 +24117,8 @@ fn __action188<'input>(
     input: &'input str,
     __0: (usize, (&'input str, bool), usize),
     __1: (usize, f32, usize),
-) -> ProximityTerm {
+) -> ProximityTerm
+{
     let __start0 = __1.0;
     let __end0 = __1.2;
     let __temp0 = __action121(
@@ -23610,15 +24142,19 @@ fn __action188<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action189<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action189<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     __0: (usize, (&'input str, bool), usize),
-) -> ProximityTerm {
+) -> ProximityTerm
+{
     let __start0 = __0.2;
     let __end0 = __0.2;
     let __temp0 = __action122(
@@ -23643,8 +24179,11 @@ fn __action189<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action190<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action190<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -23653,7 +24192,8 @@ fn __action190<'input>(
     __0: (usize, (&'input str, bool), usize),
     __1: (usize, u8, usize),
     __2: (usize, f32, usize),
-) -> ProximityTerm {
+) -> ProximityTerm
+{
     let __start0 = __2.0;
     let __end0 = __2.2;
     let __temp0 = __action121(
@@ -23678,8 +24218,11 @@ fn __action190<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action191<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action191<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -23687,7 +24230,8 @@ fn __action191<'input>(
     input: &'input str,
     __0: (usize, (&'input str, bool), usize),
     __1: (usize, u8, usize),
-) -> ProximityTerm {
+) -> ProximityTerm
+{
     let __start0 = __1.2;
     let __end0 = __1.2;
     let __temp0 = __action122(
@@ -23713,8 +24257,11 @@ fn __action191<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action192<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action192<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -23722,7 +24269,8 @@ fn __action192<'input>(
     input: &'input str,
     __0: (usize, (&'input str, bool), usize),
     __1: (usize, f32, usize),
-) -> Term<'input> {
+) -> Term<'input>
+{
     let __start0 = __1.0;
     let __end0 = __1.2;
     let __temp0 = __action121(
@@ -23746,15 +24294,19 @@ fn __action192<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action193<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action193<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     __0: (usize, (&'input str, bool), usize),
-) -> Term<'input> {
+) -> Term<'input>
+{
     let __start0 = __0.2;
     let __end0 = __0.2;
     let __temp0 = __action122(
@@ -23779,8 +24331,11 @@ fn __action193<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action194<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action194<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -23789,7 +24344,8 @@ fn __action194<'input>(
     __0: (usize, (&'input str, bool), usize),
     __1: (usize, u8, usize),
     __2: (usize, f32, usize),
-) -> Term<'input> {
+) -> Term<'input>
+{
     let __start0 = __2.0;
     let __end0 = __2.2;
     let __temp0 = __action121(
@@ -23814,8 +24370,11 @@ fn __action194<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action195<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action195<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -23823,7 +24382,8 @@ fn __action195<'input>(
     input: &'input str,
     __0: (usize, (&'input str, bool), usize),
     __1: (usize, u8, usize),
-) -> Term<'input> {
+) -> Term<'input>
+{
     let __start0 = __1.2;
     let __end0 = __1.2;
     let __temp0 = __action122(
@@ -23849,8 +24409,11 @@ fn __action195<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action196<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action196<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -23859,7 +24422,8 @@ fn __action196<'input>(
     __0: (usize, &'input str, usize),
     __1: (usize, &'input str, usize),
     __2: (usize, f32, usize),
-) -> Term<'input> {
+) -> Term<'input>
+{
     let __start0 = __2.0;
     let __end0 = __2.2;
     let __temp0 = __action121(
@@ -23884,8 +24448,11 @@ fn __action196<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action197<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action197<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -23893,7 +24460,8 @@ fn __action197<'input>(
     input: &'input str,
     __0: (usize, &'input str, usize),
     __1: (usize, &'input str, usize),
-) -> Term<'input> {
+) -> Term<'input>
+{
     let __start0 = __1.2;
     let __end0 = __1.2;
     let __temp0 = __action122(
@@ -23919,8 +24487,11 @@ fn __action197<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action198<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action198<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -23930,7 +24501,8 @@ fn __action198<'input>(
     __1: (usize, alloc::vec::Vec<Term<'input>>, usize),
     __2: (usize, &'input str, usize),
     __3: (usize, f32, usize),
-) -> Term<'input> {
+) -> Term<'input>
+{
     let __start0 = __3.0;
     let __end0 = __3.2;
     let __temp0 = __action121(
@@ -23956,8 +24528,11 @@ fn __action198<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action199<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action199<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -23966,7 +24541,8 @@ fn __action199<'input>(
     __0: (usize, &'input str, usize),
     __1: (usize, alloc::vec::Vec<Term<'input>>, usize),
     __2: (usize, &'input str, usize),
-) -> Term<'input> {
+) -> Term<'input>
+{
     let __start0 = __2.2;
     let __end0 = __2.2;
     let __temp0 = __action122(
@@ -23993,8 +24569,11 @@ fn __action199<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action200<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action200<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -24002,7 +24581,8 @@ fn __action200<'input>(
     input: &'input str,
     __0: (usize, &'input str, usize),
     __1: (usize, f32, usize),
-) -> Term<'input> {
+) -> Term<'input>
+{
     let __start0 = __1.0;
     let __end0 = __1.2;
     let __temp0 = __action121(
@@ -24026,15 +24606,19 @@ fn __action200<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action201<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action201<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
     operator_stack: &mut Vec<ComparisonOpcode>,
     input: &'input str,
     __0: (usize, &'input str, usize),
-) -> Term<'input> {
+) -> Term<'input>
+{
     let __start0 = __0.2;
     let __end0 = __0.2;
     let __temp0 = __action122(
@@ -24059,8 +24643,11 @@ fn __action201<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action202<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action202<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -24074,7 +24661,8 @@ fn __action202<'input>(
     __5: (usize, Box<Expr<'input>>, usize),
     __6: (usize, Box<Expr<'input>>, usize),
     __7: (usize, &'input str, usize),
-) -> Expr<'input> {
+) -> Expr<'input>
+{
     let __start0 = __6.0;
     let __end0 = __6.2;
     let __temp0 = __action114(
@@ -24104,8 +24692,11 @@ fn __action202<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action203<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action203<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -24118,7 +24709,8 @@ fn __action203<'input>(
     __4: (usize, &'input str, usize),
     __5: (usize, Box<Expr<'input>>, usize),
     __6: (usize, &'input str, usize),
-) -> Expr<'input> {
+) -> Expr<'input>
+{
     let __start0 = __5.2;
     let __end0 = __6.0;
     let __temp0 = __action115(
@@ -24149,8 +24741,11 @@ fn __action203<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action204<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action204<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -24159,7 +24754,8 @@ fn __action204<'input>(
     __0: (usize, &'input str, usize),
     __1: (usize, String, usize),
     __2: (usize, &'input str, usize),
-) -> String {
+) -> String
+{
     let __start0 = __1.0;
     let __end0 = __1.2;
     let __temp0 = __action109(
@@ -24184,8 +24780,11 @@ fn __action204<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action205<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action205<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -24193,7 +24792,8 @@ fn __action205<'input>(
     input: &'input str,
     __0: (usize, &'input str, usize),
     __1: (usize, &'input str, usize),
-) -> String {
+) -> String
+{
     let __start0 = __0.2;
     let __end0 = __1.0;
     let __temp0 = __action110(
@@ -24219,8 +24819,11 @@ fn __action205<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action206<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action206<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -24230,7 +24833,8 @@ fn __action206<'input>(
     __1: (usize, alloc::vec::Vec<String>, usize),
     __2: (usize, String, usize),
     __3: (usize, &'input str, usize),
-) -> String {
+) -> String
+{
     let __start0 = __2.0;
     let __end0 = __2.2;
     let __temp0 = __action109(
@@ -24256,8 +24860,11 @@ fn __action206<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action207<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action207<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -24266,7 +24873,8 @@ fn __action207<'input>(
     __0: (usize, &'input str, usize),
     __1: (usize, alloc::vec::Vec<String>, usize),
     __2: (usize, &'input str, usize),
-) -> String {
+) -> String
+{
     let __start0 = __1.2;
     let __end0 = __2.0;
     let __temp0 = __action110(
@@ -24293,8 +24901,11 @@ fn __action207<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action208<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action208<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -24303,7 +24914,8 @@ fn __action208<'input>(
     __0: (usize, &'input str, usize),
     __1: (usize, String, usize),
     __2: (usize, &'input str, usize),
-) -> String {
+) -> String
+{
     let __start0 = __1.0;
     let __end0 = __1.2;
     let __temp0 = __action104(
@@ -24328,8 +24940,11 @@ fn __action208<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action209<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action209<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -24337,7 +24952,8 @@ fn __action209<'input>(
     input: &'input str,
     __0: (usize, &'input str, usize),
     __1: (usize, &'input str, usize),
-) -> String {
+) -> String
+{
     let __start0 = __0.2;
     let __end0 = __1.0;
     let __temp0 = __action105(
@@ -24363,8 +24979,11 @@ fn __action209<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action210<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action210<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -24374,7 +24993,8 @@ fn __action210<'input>(
     __1: (usize, alloc::vec::Vec<String>, usize),
     __2: (usize, String, usize),
     __3: (usize, &'input str, usize),
-) -> String {
+) -> String
+{
     let __start0 = __2.0;
     let __end0 = __2.2;
     let __temp0 = __action104(
@@ -24400,8 +25020,11 @@ fn __action210<'input>(
 }
 
 #[allow(unused_variables)]
-#[allow(clippy::too_many_arguments)]
-fn __action211<'input>(
+#[allow(clippy::too_many_arguments, clippy::needless_lifetimes,
+    clippy::just_underscores_and_digits)]
+fn __action211<
+    'input,
+>(
     source_index: Option<&PgRelation>,
     used_fields: &mut HashSet<&'input str>,
     fieldname_stack: &mut Vec<&'input str>,
@@ -24410,7 +25033,8 @@ fn __action211<'input>(
     __0: (usize, &'input str, usize),
     __1: (usize, alloc::vec::Vec<String>, usize),
     __2: (usize, &'input str, usize),
-) -> String {
+) -> String
+{
     let __start0 = __1.2;
     let __end0 = __2.0;
     let __temp0 = __action105(
@@ -24435,34 +25059,22 @@ fn __action211<'input>(
         __2,
     )
 }
-#[allow(clippy::type_complexity)]
+#[allow(clippy::type_complexity, dead_code)]
 
-pub trait __ToTriple<'input> {
-    fn to_triple(
-        value: Self,
-    ) -> Result<
-        (usize, Token<'input>, usize),
-        __lalrpop_util::ParseError<usize, Token<'input>, &'static str>,
-    >;
+pub  trait __ToTriple<'input, >
+{
+    fn to_triple(value: Self) -> Result<(usize,Token<'input>,usize), __lalrpop_util::ParseError<usize, Token<'input>, &'static str>>;
 }
 
-impl<'input> __ToTriple<'input> for (usize, Token<'input>, usize) {
-    fn to_triple(
-        value: Self,
-    ) -> Result<
-        (usize, Token<'input>, usize),
-        __lalrpop_util::ParseError<usize, Token<'input>, &'static str>,
-    > {
+impl<'input, > __ToTriple<'input, > for (usize, Token<'input>, usize)
+{
+    fn to_triple(value: Self) -> Result<(usize,Token<'input>,usize), __lalrpop_util::ParseError<usize, Token<'input>, &'static str>> {
         Ok(value)
     }
 }
-impl<'input> __ToTriple<'input> for Result<(usize, Token<'input>, usize), &'static str> {
-    fn to_triple(
-        value: Self,
-    ) -> Result<
-        (usize, Token<'input>, usize),
-        __lalrpop_util::ParseError<usize, Token<'input>, &'static str>,
-    > {
+impl<'input, > __ToTriple<'input, > for Result<(usize, Token<'input>, usize), &'static str>
+{
+    fn to_triple(value: Self) -> Result<(usize,Token<'input>,usize), __lalrpop_util::ParseError<usize, Token<'input>, &'static str>> {
         match value {
             Ok(v) => Ok(v),
             Err(error) => Err(__lalrpop_util::ParseError::User { error }),
