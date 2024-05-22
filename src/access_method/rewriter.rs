@@ -494,6 +494,7 @@ unsafe fn walk_node(node: NodePtr, context: &mut WalkContext) {
         if is_a(node, pg_sys::NodeTag_T_Memoize) {
             let mut memoize = PgBox::from_pg(node as *mut pg_sys::Memoize);
             walk_plan(&mut memoize.plan, context);
+            walk_node(memoize.param_exprs as NodePtr, context);
             did_it |= true;
         }
 
