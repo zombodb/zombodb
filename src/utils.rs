@@ -209,7 +209,7 @@ pub fn is_view(relation: &PgRelation) -> bool {
 }
 
 pub fn lookup_zdb_extension_oid() -> pg_sys::Oid {
-    match Spi::get_one::<pg_sys::Oid>("SELECT oid FROM pg_extension WHERE extname = 'zombodb';")
+    match Spi::get_one::<pg_sys::Oid>("(SELECT oid FROM pg_extension WHERE extname = 'zombodb' UNION ALL SELECT 0) ORDER BY 1 DESC;")
         .expect("SPI failed")
     {
         Some(oid) => oid,
