@@ -21,29 +21,23 @@ fn anyelement_cmpfunc(
         None => return false,
     };
 
-    let tid = if element.oid() == pg_sys::TIDOID {
-        // use the ItemPointerData passed into us as the first argument
-        Some(item_pointer_to_u64(
-            unsafe { pg_sys::ItemPointerData::from_datum(element.datum(), false) }.unwrap(),
-        ))
-    } else {
-        panic!(
-            "The '==>' operator could not find a \"USING zombodb\" index that matches the left-hand-side of the expression"
-        );
-    };
+    // SAFETY:  Right here, we require that the actual Datum behind `element` be an [`ItemPointerData`]
+    //  and it will be so long as ZomboDB's rewriter has run.  The only way that wouldn't happen is
+    //  if "zombodb.so" wasn't loaded by the time we got here, and is literally impossible since this
+    //  function is in "zombodb.so"
+    let tid = item_pointer_to_u64(
+        unsafe { pg_sys::ItemPointerData::from_datum(element.datum(), false) }.unwrap(),
+    );
 
-    match tid {
-        Some(tid) => unsafe {
-            let mut lookup_by_query = pg_func_extra(fcinfo, || {
-                FxHashMap::<(pg_sys::Oid, Option<String>), FxHashSet<u64>>::default()
-            });
+    unsafe {
+        let mut lookup_by_query = pg_func_extra(fcinfo, || {
+            FxHashMap::<(pg_sys::Oid, Option<String>), FxHashSet<u64>>::default()
+        });
 
-            lookup_by_query
-                .entry((index_oid, query.query_string()))
-                .or_insert_with(|| do_seqscan(query, index_oid))
-                .contains(&tid)
-        },
-        None => false,
+        lookup_by_query
+            .entry((index_oid, query.query_string()))
+            .or_insert_with(|| do_seqscan(query, index_oid))
+            .contains(&tid)
     }
 }
 
