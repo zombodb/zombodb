@@ -1,0 +1,22 @@
+select id, zdb.anyelement_cmpfunc(ctid, 'id:[1,4]'::zdbquery)
+from so_posts
+where so_posts ==> 'id:[1,2,3,4]'
+order by id;
+ id | anyelement_cmpfunc 
+----+--------------------
+  1 | t
+  3 | f
+  4 | t
+(3 rows)
+
+select id, zdb.anyelement_cmpfunc(so_posts, 'id:[1,4]'::zdbquery)
+from so_posts
+where so_posts ==> 'id:[1,2,3,4]'
+order by id;
+ id | anyelement_cmpfunc 
+----+--------------------
+  1 | f
+  3 | f
+  4 | f
+(3 rows)
+
