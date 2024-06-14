@@ -1,0 +1,266 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js zombo">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Source installation</title>
+
+
+        <!-- Custom HTML head -->
+<link href="https://fonts.googleapis.com/css?family=Josefin+Slab|Open+Sans|Raleway" rel="stylesheet">
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+        <link rel="stylesheet" href="../zombo-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../zombo.css">
+        <link rel="stylesheet" href="../zombo-highlight.css">
+
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "../";
+            var default_theme = "zombo";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('zombo')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../index.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="../getting-started.html"><strong aria-hidden="true">2.</strong> Getting started tutorial</a></li><li class="chapter-item expanded affix "><li class="part-title">Usage</li><li class="chapter-item expanded "><a href="../usage/zql-queries.html"><strong aria-hidden="true">3.</strong> ZQL queries</a></li><li class="chapter-item expanded "><a href="../usage/elasticsearch-dsl-queries.html"><strong aria-hidden="true">4.</strong> ElasticSearch QueryDSL queries</a></li><li class="chapter-item expanded "><a href="../usage/using-sql-functions.html"><strong aria-hidden="true">5.</strong> Using SQL functions</a></li><li class="chapter-item expanded "><a href="../usage/scoring.html"><strong aria-hidden="true">6.</strong> Scoring</a></li><li class="chapter-item expanded "><a href="../usage/highlighting.html"><strong aria-hidden="true">7.</strong> Highlighting</a></li><li class="chapter-item expanded "><a href="../usage/cross-index-joins.html"><strong aria-hidden="true">8.</strong> Cross-index joins</a></li><li class="chapter-item expanded "><a href="../usage/aggregations.html"><strong aria-hidden="true">9.</strong> Aggregations</a></li><li class="chapter-item expanded "><a href="../usage/aggregate-builder-api.html"><strong aria-hidden="true">10.</strong> Aggregate Builder API</a></li><li class="chapter-item expanded "><a href="../usage/_cat-api_.html"><strong aria-hidden="true">11.</strong> ElasticSearch _cat API</a></li><li class="chapter-item expanded "><a href="../usage/postgis-support.html"><strong aria-hidden="true">12.</strong> PostGIS Support</a></li><li class="chapter-item expanded affix "><li class="part-title">Administration</li><li class="chapter-item expanded "><a href="../administration/binary-installation.html"><strong aria-hidden="true">13.</strong> Binary installation</a></li><li class="chapter-item expanded "><a href="../administration/source-installation.html" class="active"><strong aria-hidden="true">14.</strong> Source installation</a></li><li class="chapter-item expanded "><a href="../administration/configuration.html"><strong aria-hidden="true">15.</strong> Configuration</a></li><li class="chapter-item expanded "><a href="../administration/index-management.html"><strong aria-hidden="true">16.</strong> Index Management</a></li><li class="chapter-item expanded "><a href="../usage/creating-a-zombodb-index.html"><strong aria-hidden="true">17.</strong> Creating a ZomboDB Index in Postgres</a></li><li class="chapter-item expanded affix "><li class="part-title">Internals</li><li class="chapter-item expanded "><a href="../internals/important-things-to-know.html"><strong aria-hidden="true">18.</strong> Architecture</a></li><li class="chapter-item expanded "><a href="../internals/type-mapping.html"><strong aria-hidden="true">19.</strong> Type Mapping</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="zombo">Zombo (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Cool</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title"></h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="zombodb-source-installation-instructions"><a class="header" href="#zombodb-source-installation-instructions">ZomboDB Source Installation Instructions</a></h1>
+<blockquote>
+<p>Note: If you’re a <a href="https://github.com/sponsors/eeeebbbbrrrr">sponsor</a>, you might want to also read the <a href="/administration/binary-installation.html">binary installation</a> documentation.</p>
+</blockquote>
+<h2 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h2>
+<ul>
+<li>
+<p>Postgres 10.x, 11.x, 12.x, or 13.x installed. If you have installed it from a package manager, ensure that you have also included the relevant “<code>-server</code>“ package.</p>
+</li>
+<li>
+<p>A toolchain capable of building Postgres:</p>
+<p>For Ubuntu, this is enough:</p>
+<pre><code>apt install bison flex zlib1g zlib1g-dev \
+    pkg-config make libssl-dev libreadline-dev
+</code></pre>
+</li>
+<li>
+<p>The Rust toolchain</p>
+</li>
+<li>
+<p><code>cargo install cargo-pgx</code></p>
+</li>
+<li>
+<p>A 64bit Intel Architecture</p>
+</li>
+</ul>
+<h2 id="building-from-sources"><a class="header" href="#building-from-sources">Building from sources</a></h2>
+<p>First off, and you’ll only need to do this once, you need to initialize <code>cargo-pgx</code>, and
+you’ll want to tell it the path to the version of Postgres on your computer.</p>
+<p>If that version of Postgres is pg12, and assuming its <code>pg_config</code> tool is on your <code>$PATH</code>, 
+this will likely work:</p>
+<pre><code class="language-shell script">$ cargo pgx init --pg12=`which pg_config`
+</code></pre>
+<p>Next, clone this repo, change into the checkout directory and simply run:</p>
+<pre><code class="language-shell script">$ cargo pgx install --release
+</code></pre>
+<p>This will compile ZomboDB <strong>and</strong> install it into the Postgres installation described by <code>pg_config</code>.  The user that
+runs the above command will need write permissions to the Postgres <code>$PG_INSTALL_PATH/lib/postgresql/</code> and <code>$PG_INSTALL_PATH/share/postgresql/extension/</code> directories.</p>
+<h2 id="updating-zombodb-to-a-new-version"><a class="header" href="#updating-zombodb-to-a-new-version">Updating ZomboDB to a new version</a></h2>
+<p>Updating ZomboDB from sources will simply require a <code>git pull</code>, another <code>make clean install</code> and running  <code>ALTER EXTENSION zombodb UPDATE;</code> in all databases that use the ZomboDB extension.</p>
+<h2 id="building-binary-artifacts-with-docker"><a class="header" href="#building-binary-artifacts-with-docker">Building binary artifacts with Docker</a></h2>
+<p>If you have a proper Docker installation you can simply run:</p>
+<pre><code class="language-shell script">$ cd docker-build-system
+$ cargo run &lt;branch-name&gt; [&lt;docker-image-name&gt; &lt;pg major version&gt;]
+</code></pre>
+<p>Likely for the <code>&lt;branch-name&gt;</code> argument you’ll want to specify <code>master</code>, unless perhaps you’re working on a custom branch.</p>
+<p>If you’re only targeting one Linux distro and Postgres version, you’ll want to specify all three arguments.</p>
+<p>This process will take a long time (potentially hours depending on your download speeds), but it will build ZomboDB for all supported Linux distro and Postgres version permutations.</p>
+<p>You can set an environment variable named <code>CPUS</code> to limit the number of CPUs the build process will use, but the default is however many your computer has.</p>
+<p>The final binary artifacts will be placed in the <code>./target/zdb-build/artifacts/</code> directory.</p>
+<p>No logs are created, but in the event of Docker/compilation errors, the entire output of the
+thing that failed is printed to stdout.</p>
+<p>Once binary artifacts are build, follow the instructions in <a href="/administration/binary-installation.html">binary installation</a> to install the proper artifact for your environment.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../administration/binary-installation.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next" href="../administration/configuration.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../administration/binary-installation.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next" href="../administration/configuration.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script type="text/javascript">
+            var socket = new WebSocket("ws://localhost:3000/__livereload");
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../searcher.js" type="text/javascript" charset="utf-8"></script>
+
+        <script src="../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </body>
+</html>
