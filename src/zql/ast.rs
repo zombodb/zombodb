@@ -20,6 +20,7 @@ use crate::zql::transformations::index_links::assign_links;
 use crate::zql::transformations::merge_index_links::merge_adjacent_links;
 use crate::zql::transformations::nested_groups::group_nested;
 use crate::zql::transformations::prox_rewriter::rewrite_proximity_chains;
+use crate::zql::transformations::pullup::pullup_and;
 use crate::zql::{INDEX_LINK_PARSER, ZDB_QUERY_PARSER};
 
 #[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
@@ -568,6 +569,7 @@ impl<'input> Expr<'input> {
             &root_index
         };
 
+        pullup_and(&mut expr);
         assign_links(original_index, &root_index, &mut expr, index_links);
         expand_index_links(&mut expr, &root_index, &mut relationship_manager);
         merge_adjacent_links(&mut expr);

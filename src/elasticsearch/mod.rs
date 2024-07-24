@@ -40,6 +40,7 @@ use crate::elasticsearch::search::ElasticsearchSearchRequest;
 use crate::elasticsearch::suggest_term::ElasticsearchSuggestTermRequest;
 use crate::elasticsearch::update_settings::ElasticsearchUpdateSettingsRequest;
 use crate::executor_manager::get_executor_manager;
+use crate::gucs::ZDB_LOG_LEVEL;
 use crate::utils::is_nested_field;
 use crate::zdbquery::ZDBPreparedQuery;
 pub use bulk::*;
@@ -457,8 +458,21 @@ impl Elasticsearch {
         F: FnOnce(&mut (dyn std::io::Read + Send)) -> std::result::Result<R, ElasticsearchError>,
     {
         let response = if post_data.is_some() {
-            request.send_json(post_data.unwrap())
+            let post_data = post_data.unwrap();
+
+            if ZDB_LOG_LEVEL.get().log_level() == PgLogLevel::DEBUG1 {
+                pgrx::debug1!(
+                    "{}\n{}",
+                    request.url(),
+                    serde_json::to_string_pretty(&post_data).unwrap()
+                );
+            }
+
+            request.send_json(post_data)
         } else {
+            if ZDB_LOG_LEVEL.get().log_level() == PgLogLevel::DEBUG1 {
+                pgrx::debug1!("{}", request.url());
+            }
             request.call()
         };
 
