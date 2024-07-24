@@ -1,0 +1,271 @@
+CREATE TABLE issue901_main
+(
+    pk_m_id   SERIAL8 NOT NULL PRIMARY KEY,
+    m_name    text    NOT NULL,
+    m_date    timestamp,
+    m_fk_to_v bigint[]
+);
+CREATE TABLE issue901_var
+(
+    pk_v_id SERIAL8 NOT NULL PRIMARY KEY,
+    v_state varchar
+);
+CREATE OR REPLACE VIEW issue901_view AS
+SELECT issue901_main.*,
+       (SELECT array_agg(v.v_state)
+        FROM issue901_var v
+        WHERE v.pk_v_id = ANY (issue901_main.m_fk_to_v)) AS v_data,
+       issue901_main.*::issue901_main                    AS zdb
+FROM issue901_main;
+CREATE INDEX idx901_var ON issue901_var USING zombodb ((issue901_var.*)) WITH (replicas='1', shards='5');
+CREATE INDEX idx901_main ON issue901_main USING zombodb ((issue901_main.*)) WITH (options='v_data:(m_fk_to_v=<public.issue901_var.idx901_var>pk_v_id)', replicas='1', shards='5');
+INSERT INTO issue901_main (m_name, m_date, m_fk_to_v)
+values ('Jupiter', '2001-01-01', ARRAY [4]);
+INSERT INTO issue901_main (m_name, m_date, m_fk_to_v)
+values ('Saturn', '2020-05-05', ARRAY [3]);
+INSERT INTO issue901_main (m_name, m_date, m_fk_to_v)
+values ('Neptune', '2033-12-31', ARRAY [2]);
+INSERT INTO issue901_main (m_name, m_date, m_fk_to_v)
+values ('Sirius', '1994-07-04', ARRAY [1,2]);
+INSERT INTO issue901_var (v_state)
+values ('happy');
+INSERT INTO issue901_var (v_state)
+values ('sad');
+INSERT INTO issue901_var (v_state)
+values ('not happy');
+INSERT INTO issue901_var (v_state)
+values ('heavy');
+select *
+from issue901_view;
+ pk_m_id | m_name  |          m_date          | m_fk_to_v |    v_data     |                      zdb                      
+---------+---------+--------------------------+-----------+---------------+-----------------------------------------------
+       1 | Jupiter | Mon Jan 01 00:00:00 2001 | {4}       | {heavy}       | (1,Jupiter,"Mon Jan 01 00:00:00 2001",{4})
+       2 | Saturn  | Tue May 05 00:00:00 2020 | {3}       | {"not happy"} | (2,Saturn,"Tue May 05 00:00:00 2020",{3})
+       3 | Neptune | Sat Dec 31 00:00:00 2033 | {2}       | {sad}         | (3,Neptune,"Sat Dec 31 00:00:00 2033",{2})
+       4 | Sirius  | Mon Jul 04 00:00:00 1994 | {1,2}     | {happy,sad}   | (4,Sirius,"Mon Jul 04 00:00:00 1994","{1,2}")
+(4 rows)
+
+SELECT m_name, m_date, v_data FROM issue901_view where zdb ==> '(v_state:"*" AND m_date > "2000-01-01") AND m_name = "s*"';
+ m_name |          m_date          |    v_data     
+--------+--------------------------+---------------
+ Saturn | Tue May 05 00:00:00 2020 | {"not happy"}
+(1 row)
+
+-- this should NOT include an extra term of "sad"
+SELECT term, count
+FROM zdb.tally('issue901_view'::regclass, 'v_data.v_state', 'FALSE', '^.*',
+               '(v_state:"*" AND m_date > "2000-01-01") AND m_name = "s*"'::zdbquery, 2147483647, 'term'::termsorderby);
+   term    | count 
+-----------+-------
+ not happy |     1
+(1 row)
+
+-- sql version of above
+select v_state, count(*)
+from issue901_var, issue901_main
+where pk_v_id = ANY(m_fk_to_v)
+  and (v_state is not null
+  and m_date > '2000-01-01')
+  and m_name ilike 's%'
+group by 1;
+  v_state  | count 
+-----------+-------
+ not happy |     1
+(1 row)
+
+-- without parens in the query, it works!
+SELECT term, count
+FROM zdb.tally('issue901_view'::regclass, 'v_data.v_state', 'FALSE', '^.*',
+               'v_state:"*" AND m_date > "2000-01-01" AND m_name = "s*"'::zdbquery, 2147483647, 'term'::termsorderby);
+   term    | count 
+-----------+-------
+ not happy |     1
+(1 row)
+
+--
+-- validate the `pullup_and` function does its job
+select ast from zdb.debug_query('issue901_view', 'field:(a (other:(b other2:(c1 other3:(c2 c2_1 c2_2) c3)) foo:(d bar:e f)))');
+                                     ast                                     
+-----------------------------------------------------------------------------
+ AndList(                                                                   +
+     [                                                                      +
+         Contains(                                                          +
+             QualifiedField {                                               +
+                 index: Some(                                               +
+                     IndexLink(NONE=<public.issue901_main.idx901_main>NONE),+
+                 ),                                                         +
+                 field: "field",                                            +
+             },                                                             +
+             String(                                                        +
+                 "a",                                                       +
+                 None,                                                      +
+             ),                                                             +
+         ),                                                                 +
+         Contains(                                                          +
+             QualifiedField {                                               +
+                 index: Some(                                               +
+                     IndexLink(NONE=<public.issue901_main.idx901_main>NONE),+
+                 ),                                                         +
+                 field: "other",                                            +
+             },                                                             +
+             String(                                                        +
+                 "b",                                                       +
+                 None,                                                      +
+             ),                                                             +
+         ),                                                                 +
+         Contains(                                                          +
+             QualifiedField {                                               +
+                 index: Some(                                               +
+                     IndexLink(NONE=<public.issue901_main.idx901_main>NONE),+
+                 ),                                                         +
+                 field: "other2",                                           +
+             },                                                             +
+             String(                                                        +
+                 "c1",                                                      +
+                 None,                                                      +
+             ),                                                             +
+         ),                                                                 +
+         Contains(                                                          +
+             QualifiedField {                                               +
+                 index: Some(                                               +
+                     IndexLink(NONE=<public.issue901_main.idx901_main>NONE),+
+                 ),                                                         +
+                 field: "other3",                                           +
+             },                                                             +
+             String(                                                        +
+                 "c2",                                                      +
+                 None,                                                      +
+             ),                                                             +
+         ),                                                                 +
+         Contains(                                                          +
+             QualifiedField {                                               +
+                 index: Some(                                               +
+                     IndexLink(NONE=<public.issue901_main.idx901_main>NONE),+
+                 ),                                                         +
+                 field: "other3",                                           +
+             },                                                             +
+             String(                                                        +
+                 "c2_1",                                                    +
+                 None,                                                      +
+             ),                                                             +
+         ),                                                                 +
+         Contains(                                                          +
+             QualifiedField {                                               +
+                 index: Some(                                               +
+                     IndexLink(NONE=<public.issue901_main.idx901_main>NONE),+
+                 ),                                                         +
+                 field: "other3",                                           +
+             },                                                             +
+             String(                                                        +
+                 "c2_2",                                                    +
+                 None,                                                      +
+             ),                                                             +
+         ),                                                                 +
+         Contains(                                                          +
+             QualifiedField {                                               +
+                 index: Some(                                               +
+                     IndexLink(NONE=<public.issue901_main.idx901_main>NONE),+
+                 ),                                                         +
+                 field: "other2",                                           +
+             },                                                             +
+             String(                                                        +
+                 "c3",                                                      +
+                 None,                                                      +
+             ),                                                             +
+         ),                                                                 +
+         Contains(                                                          +
+             QualifiedField {                                               +
+                 index: Some(                                               +
+                     IndexLink(NONE=<public.issue901_main.idx901_main>NONE),+
+                 ),                                                         +
+                 field: "foo",                                              +
+             },                                                             +
+             String(                                                        +
+                 "d",                                                       +
+                 None,                                                      +
+             ),                                                             +
+         ),                                                                 +
+         Contains(                                                          +
+             QualifiedField {                                               +
+                 index: Some(                                               +
+                     IndexLink(NONE=<public.issue901_main.idx901_main>NONE),+
+                 ),                                                         +
+                 field: "bar",                                              +
+             },                                                             +
+             String(                                                        +
+                 "e",                                                       +
+                 None,                                                      +
+             ),                                                             +
+         ),                                                                 +
+         Contains(                                                          +
+             QualifiedField {                                               +
+                 index: Some(                                               +
+                     IndexLink(NONE=<public.issue901_main.idx901_main>NONE),+
+                 ),                                                         +
+                 field: "foo",                                              +
+             },                                                             +
+             String(                                                        +
+                 "f",                                                       +
+                 None,                                                      +
+             ),                                                             +
+         ),                                                                 +
+     ],                                                                     +
+ )
+(1 row)
+
+--
+-- these are all correct
+--
+SELECT m_name, m_date, v_data
+FROM issue901_view
+where zdb ==> '(v_state:"*" AND m_date > "1980-01-01") AND m_name = "s*"';
+ m_name |          m_date          |    v_data     
+--------+--------------------------+---------------
+ Saturn | Tue May 05 00:00:00 2020 | {"not happy"}
+ Sirius | Mon Jul 04 00:00:00 1994 | {happy,sad}
+(2 rows)
+
+SELECT term, count
+FROM zdb.tally('issue901_view'::regclass, 'v_data.v_state', 'FALSE', '^.*',
+               '(v_state:"*" AND m_date > "1980-01-01") AND m_name = "s*"'::zdbquery, 2147483647, 'term'::termsorderby);
+   term    | count 
+-----------+-------
+ happy     |     1
+ not happy |     1
+ sad       |     1
+(3 rows)
+
+SELECT m_name, m_date, v_data
+FROM issue901_view
+where zdb ==> 'v_state:"*" AND m_date > "2000-01-01" AND m_name = "s*"';
+ m_name |          m_date          |    v_data     
+--------+--------------------------+---------------
+ Saturn | Tue May 05 00:00:00 2020 | {"not happy"}
+(1 row)
+
+SELECT term, count
+FROM zdb.tally('issue901_view'::regclass, 'v_data.v_state', 'FALSE', '^.*',
+               'v_state:"*" AND m_date > "2000-01-01" AND m_name = "s*"'::zdbquery, 2147483647, 'term'::termsorderby);
+   term    | count 
+-----------+-------
+ not happy |     1
+(1 row)
+
+SELECT m_name, m_date, v_data
+FROM issue901_view
+where zdb ==> 'm_name = "s*" AND (v_state:"*" AND m_date > "2000-01-01")';
+ m_name |          m_date          |    v_data     
+--------+--------------------------+---------------
+ Saturn | Tue May 05 00:00:00 2020 | {"not happy"}
+(1 row)
+
+SELECT term, count
+FROM zdb.tally('issue901_view'::regclass, 'v_data.v_state', 'FALSE', '^.*',
+               'm_name = "s*" AND (v_state:"*" AND m_date > "2000-01-01")'::zdbquery, 2147483647, 'term'::termsorderby);
+   term    | count 
+-----------+-------
+ not happy |     1
+(1 row)
+
+DROP TABLE issue901_main CASCADE;
+DROP TABLE issue901_var CASCADE;
