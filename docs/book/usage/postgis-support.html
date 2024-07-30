@@ -1,0 +1,312 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js zombo">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>PostGIS Support</title>
+
+
+        <!-- Custom HTML head -->
+<link href="https://fonts.googleapis.com/css?family=Josefin+Slab|Open+Sans|Raleway" rel="stylesheet">
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+        <link rel="stylesheet" href="../zombo-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../zombo.css">
+        <link rel="stylesheet" href="../zombo-highlight.css">
+
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "../";
+            var default_theme = "zombo";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('zombo')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../index.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="../getting-started.html"><strong aria-hidden="true">2.</strong> Getting started tutorial</a></li><li class="chapter-item expanded affix "><li class="part-title">Usage</li><li class="chapter-item expanded "><a href="../usage/zql-queries.html"><strong aria-hidden="true">3.</strong> ZQL queries</a></li><li class="chapter-item expanded "><a href="../usage/elasticsearch-dsl-queries.html"><strong aria-hidden="true">4.</strong> ElasticSearch QueryDSL queries</a></li><li class="chapter-item expanded "><a href="../usage/using-sql-functions.html"><strong aria-hidden="true">5.</strong> Using SQL functions</a></li><li class="chapter-item expanded "><a href="../usage/scoring.html"><strong aria-hidden="true">6.</strong> Scoring</a></li><li class="chapter-item expanded "><a href="../usage/highlighting.html"><strong aria-hidden="true">7.</strong> Highlighting</a></li><li class="chapter-item expanded "><a href="../usage/cross-index-joins.html"><strong aria-hidden="true">8.</strong> Cross-index joins</a></li><li class="chapter-item expanded "><a href="../usage/aggregations.html"><strong aria-hidden="true">9.</strong> Aggregations</a></li><li class="chapter-item expanded "><a href="../usage/aggregate-builder-api.html"><strong aria-hidden="true">10.</strong> Aggregate Builder API</a></li><li class="chapter-item expanded "><a href="../usage/_cat-api_.html"><strong aria-hidden="true">11.</strong> ElasticSearch _cat API</a></li><li class="chapter-item expanded "><a href="../usage/postgis-support.html" class="active"><strong aria-hidden="true">12.</strong> PostGIS Support</a></li><li class="chapter-item expanded affix "><li class="part-title">Administration</li><li class="chapter-item expanded "><a href="../administration/binary-installation.html"><strong aria-hidden="true">13.</strong> Binary installation</a></li><li class="chapter-item expanded "><a href="../administration/source-installation.html"><strong aria-hidden="true">14.</strong> Source installation</a></li><li class="chapter-item expanded "><a href="../administration/configuration.html"><strong aria-hidden="true">15.</strong> Configuration</a></li><li class="chapter-item expanded "><a href="../administration/index-management.html"><strong aria-hidden="true">16.</strong> Index Management</a></li><li class="chapter-item expanded "><a href="../usage/creating-a-zombodb-index.html"><strong aria-hidden="true">17.</strong> Creating a ZomboDB Index in Postgres</a></li><li class="chapter-item expanded affix "><li class="part-title">Internals</li><li class="chapter-item expanded "><a href="../internals/important-things-to-know.html"><strong aria-hidden="true">18.</strong> Architecture</a></li><li class="chapter-item expanded "><a href="../internals/type-mapping.html"><strong aria-hidden="true">19.</strong> Type Mapping</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="zombo">Zombo (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Cool</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title"></h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="postgis-support-in-zombodb"><a class="header" href="#postgis-support-in-zombodb">PostGIS Support in ZomboDB</a></h1>
+<p>As of version <strong>10-1.0.5</strong> of ZomboDB, the <code>postgis</code> datatypes of <code>geometry</code> and <code>geography</code> are supported.</p>
+<h5 id="postgis-requirement"><a class="header" href="#postgis-requirement">PostGIS Requirement</a></h5>
+<p>PostGIS must already be installed prior to enabling PostGIS support in ZomboDB, but can also be installed after ZomboDB as noted below.</p>
+<h5 id="installation-of-postgis-prior-to-zombodb"><a class="header" href="#installation-of-postgis-prior-to-zombodb">Installation of PostGIS prior to ZomboDB</a></h5>
+<p>If the <code>postgis</code> extension is already enabled when you install the ZomboDB plugin using <code>CREATE EXTENSION zombodb</code>, then PostGIS support will automatically be enabled in ZomboDB. </p>
+<h5 id="installation-of-postgis-after-zombodb"><a class="header" href="#installation-of-postgis-after-zombodb">Installation of PostGIS after ZomboDB</a></h5>
+<p>If the PostGIS plugin is installed after ZomboDB, you will need to run <code>SELECT zdb.enable_postgis_support()</code> to enable support for <code>postgis</code> in ZomboDB. If ZomboDB was able to detect the PostGIS extension, the above will return <code>true</code>.  Otherwise it’ll return <code>false</code>.</p>
+<h2 id="supported-coordinate-reference-systems"><a class="header" href="#supported-coordinate-reference-systems">Supported Coordinate Reference Systems</a></h2>
+<p>While PostGIS supports a plethora of coordinate systems, the current release of ElasticSearch(<strong>6.6.1</strong>) only supports <a href="https://epsg.io/4326">WGS84</a>. To bridge the CRS gap between the two products, ZomboDB creates casts from <code>postgis</code>‘s <code>geography</code> and <code>geometry</code> types to <code>json</code> using <code>ST_AsGeoJSON()</code> and uses <code>ST_Transform()</code> to convert coordinates from their source CRS to <a href="https://epsg.io/4326">WGS84</a> for storage in the ElasticSearch index.</p>
+<h2 id="examples-and-sample-data"><a class="header" href="#examples-and-sample-data">Examples and Sample Data</a></h2>
+<p>There are two sample sets. </p>
+<p><a href="https://github.com/zombodb/zombodb/files/2948109/sample_data_2278.zip">Sample dataset 1</a> is loaded in the <a href="https://epsg.io/2278">NAD83 / Texas South Central (ftUS)</a> CRS. </p>
+<p><a href="https://github.com/zombodb/zombodb/files/3027737/sample_data_4326.zip">Sample dataset 2</a> is loaded in the <a href="https://epsg.io/4326">WGS84 - World Geodetic System 1984</a> CRS. </p>
+<p>Both are a PG Dump from PostgreSQL 10.6 and PostGIS 2.4.</p>
+<p>With this dataset loaded and PostGIS installed, make sure ZomboDB is installed with PostGIS support on as indicated above and create a ZomboDB index on the table by running:</p>
+<pre><code class="language-sql">CREATE INDEX sample_data_2278_zombodb
+          ON sample_data_2278
+       USING zombodb ((sample_data_2278.*))
+        WITH (alias=sample_data_2278);
+</code></pre>
+<p>and</p>
+<pre><code class="language-sql">CREATE INDEX sample_data_4326_zombodb
+          ON sample_data_4326
+       USING zombodb ((sample_data_4326.*))
+        WITH (alias=sample_data_4326);
+</code></pre>
+<h2 id="querying-the-sample-data"><a class="header" href="#querying-the-sample-data">Querying the Sample Data</a></h2>
+<p>The most common ways of searching across spatialized data would be searching through points using polygons and bounding boxes whether they be drawn by the user or calculated from the extent of a map on the screen. To do this we will use the Geo Polygon and Bounding Box queries as shown below.</p>
+<h4 id="geo-polygon-query"><a class="header" href="#geo-polygon-query">Geo Polygon Query</a></h4>
+<p>The function used for this type of query is <code>dsl.geo_polygon</code>. It accepts arguments of <code>field</code> as a text value such as <code>point_to_query</code> and a VARIADIC of type <code>point</code>. A <code>point</code> is a string containing a comma separated <code>'lon, lat'</code> values. The query below would return all records whose geo_point field of PostGIS type <code>POINT</code> fell within the bounds of the polygon coordinates enumerated after it. As this is variadic and a polygon, it must contain at least three points and its ending latitude and longitude must be the same as its starting latitude and longitude.</p>
+<pre><code class="language-sql">SELECT * 
+FROM sample_data_4326
+WHERE sample_data_4326 ==&gt; 
+      dsl.geo_polygon('geo_point', 
+      '-95.3757924220804,29.7530206054157', 
+      '-95.3761162225586,29.753216394294', 
+      '-95.3763406015772,29.7529338505327', 
+      '-95.3766643966309,29.7531296379236', 
+      '-95.3762156463589,29.7536947317361', 
+      '-95.3758918431387,29.7534989430962', 
+      '-95.3755680421945,29.7533031536912', 
+      '-95.3757026673686,29.7531336250561', 
+      '-95.3757924220804,29.7530206054157');
+</code></pre>
+<h4 id="bounding-box-query"><a class="header" href="#bounding-box-query">Bounding Box Query</a></h4>
+<p>The function used for this type of query is <code>dsl.geo_bounding_box</code>. It accepts arguments of <code>field</code> as a text value such as <code>point_to_query</code> and a string <code>box</code>. The <code>box</code> string is comprised of 4 comma separated values representing <code>'min lon, min lat, max lon, max lat'</code>. The query below would return all records whose geo_point field of PostGIS type <code>POINT</code> fell within the bounds of the box defined by the four corrdinates.</p>
+<pre><code class="language-sql">SELECT *
+FROM sample_data_4326
+WHERE sample_data_4326 ==&gt;
+      dsl.geo_bounding_box('geo_point',
+        '-95.3757924220804,29.7530206054157,-94.3757924220804,30.7530206054157');
+</code></pre>
+<h4 id="geoshape-queries"><a class="header" href="#geoshape-queries">GeoShape Queries</a></h4>
+<p>Searching for points as noted above is a fairly straight-forward endeavor as you are merely searching for points inside a shape. To search for shapes such as polygons, linestrings in relation to shapes given by queries, ElasticSearch uses its GeoShape query. GeoShape queries support 4 spatial relation operators:</p>
+<ul>
+<li>INTERSECTS - (default) Return all documents whose geo_shape field intersects the query geometry.</li>
+<li>DISJOINT - Return all documents whose geo_shape field has nothing in common with the query geometry.</li>
+<li>WITHIN - Return all documents whose geo_shape field is within the query geometry.</li>
+<li>CONTAINS - Return all documents whose geo_shape field contains the query geometry.</li>
+</ul>
+<p>In addition to the spatial relation operator, you will also supply a shape.</p>
+<p>The two queries below show an envelope which is essentially a bounding box. However, our query will search for the column geom which is a POLYGON inside of our indexed table.</p>
+<p>The first query will find all geom polygons that intersect with the envelope.</p>
+<pre><code class="language-sql">SELECT *
+FROM sample_data_4326
+WHERE sample_data_4326 ==&gt;
+      dsl.geo_shape('geom', '{&quot;type&quot;:&quot;envelope&quot;,&quot;coordinates&quot;:[[-95.3757924220804,29.7530206054157],[-95.3761162225586,29.753216394294]]}','INTERSECTS');
+</code></pre>
+<p>The second query will find all geom polygons that have no relation to the envelope int hat they are not intersecting, contained or within the envelope defined.</p>
+<pre><code class="language-sql">SELECT *
+FROM sample_data_4326
+WHERE sample_data_4326 ==&gt;
+      dsl.geo_shape('geom', '{&quot;type&quot;:&quot;envelope&quot;,&quot;coordinates&quot;:[[-95.3757924220804,29.7530206054157],[-95.3761162225586,29.753216394294]]}','DISJOINT');
+</code></pre>
+<h4 id="geoshape-with-st_asgeojson"><a class="header" href="#geoshape-with-st_asgeojson">GeoShape with ST_AsGeoJSON()</a></h4>
+<p>You can combine ZomboDB query params with PostGIS functions. For example, from the <code>sample_data_4326</code> I can take the following GeoJSON value:</p>
+<pre><code class="language-json">{&quot;type&quot;:&quot;MultiPolygon&quot;,&quot;coordinates&quot;:[[[[-95.3757924220804,29.7530206054157],[-95.3761162225586,29.753216394294],[-95.3763406015772,29.7529338505327],[-95.3766643966309,29.7531296379236],[-95.3762156463589,29.7536947317361],[-95.3758918431387,29.7534989430962],[-95.3755680421945,29.7533031536912],[-95.3757026673686,29.7531336250561],[-95.3757924220804,29.7530206054157]]]]}
+</code></pre>
+<p>With this value, I can create a query like the two in the <strong>GeoShape Queries</strong> section looking for geom points that intersect with this shape. However, this value was derived from the following query:</p>
+<pre><code class="language-sql">SELECT st_asgeojson((SELECT geom FROM postgis.sample_data_4326 WHERE &quot;HCAD_NUM&quot; = '1292500000054'))::json;
+</code></pre>
+<p>I can run the same query using ST_AsGeoJSON() and shorten the query considerably like so:</p>
+<pre><code class="language-sql">SELECT postgis.hcad_real_acct.*
+FROM sample_data_4326
+LEFT JOIN hcad_real_acct ON sample_data_4326.&quot;HCAD_NUM&quot; = realescout.hcad_real_acct.account
+WHERE sample_data_4326 ==&gt;
+      dsl.geo_shape('geom', st_asgeojson((SELECT geom FROM realescout.sample_data_4326 WHERE &quot;HCAD_NUM&quot; = '1292500000054'))::json,'INTERSECTS');
+</code></pre>
+<p>Above, we select the <code>geom</code> field encompassing it in the <code>ST_AsGeoJSON()</code> function and cast it as JSON to pass to the <code>dsl.geo_shape</code> query. This is nice for when you have predefined shapes in the database. For example, if I had an additional table called <code>zip_codes</code> with the geometry for all of the zip codes in the dataset stored there, I could do aggregation or selections of items in that zip code based on the shape.</p>
+<h2 id="notes"><a class="header" href="#notes">Notes</a></h2>
+<ul>
+<li>All queries using ZDB’s spatialized index data need to be in CRS <code>WGS84 - EPSG:4326</code></li>
+<li>During indexing, ZomboDB automatically converts <code>geography</code> and <code>geometry</code> to <code>json</code> (using <code>ST_AsGeoJSON</code>) and automatically uses <code>ST_Transform()</code> to transform them to CRS <code>4326</code></li>
+<li>Queries using ZDB’s <code>dsl.geo_shape()</code> function need to be in CRS <code>4326</code></li>
+<li>The <code>CONTAINS</code> shape relationship has been removed from Elasticsearch 6.6</li>
+<li>Postgres’ <code>point</code> type is automatically mapped to the Elasticsearch <code>geo_point</code> type and can be queried with <code>dsl.geo_bounding_box()</code> and <code>dsl.geo_polygon()</code> queries</li>
+<li>Columns defined as <code>geometry(Point, x)</code> or <code>geography(Point, x)</code> are automatically mapped to the Elasticsearch <code>geo_point</code> type and can be queried with <code>dsl.geo_bounding_box()</code> and <code>dsl.geo_polygon()</code> queries</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../usage/_cat-api_.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next" href="../administration/binary-installation.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../usage/_cat-api_.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next" href="../administration/binary-installation.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script type="text/javascript">
+            var socket = new WebSocket("ws://localhost:3000/__livereload");
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../searcher.js" type="text/javascript" charset="utf-8"></script>
+
+        <script src="../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </body>
+</html>
