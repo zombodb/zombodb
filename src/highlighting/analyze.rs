@@ -12,20 +12,22 @@ pub struct AnalyzedToken<'a> {
 }
 
 fn tokenize<'a>(input: &'a str) -> Box<dyn Iterator<Item = AnalyzedToken<'a>> + 'a> {
-    Box::new(Utf16WordIndices::new(input).enumerate().map(
-        |(position, (byte_range, token))| {
-            let token = token.cow_to_lowercase();
-            let start = byte_range.start;
-            let end = byte_range.end;
-            AnalyzedToken {
-                token,
-                position,
-                start,
-                end,
-                type_: "<ALPHANUM>",
-            }
-        },
-    ))
+    Box::new(
+        Utf16WordIndices::new(input)
+            .enumerate()
+            .map(|(position, (byte_range, token))| {
+                let token = token.cow_to_lowercase();
+                let start = byte_range.start;
+                let end = byte_range.end;
+                AnalyzedToken {
+                    token,
+                    position,
+                    start,
+                    end,
+                    type_: "<ALPHANUM>",
+                }
+            }),
+    )
 }
 
 pub fn standard(input: &str) -> Standard {

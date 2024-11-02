@@ -45,7 +45,11 @@ fn stats(
         .execute()
         .expect("failed to execute aggregate search");
 
-    TableIterator::new(
-        vec![(result.count, result.min, result.max, result.avg, result.sum)],
-    )
+    TableIterator::new(vec![(
+        result.count,
+        result.min,
+        result.max,
+        result.avg,
+        result.sum,
+    )])
 }

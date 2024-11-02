@@ -264,9 +264,7 @@ unsafe extern "C" fn build_callback_internal(
 unsafe fn row_to_json(row: pg_sys::Datum, bulk: &BulkContext) -> JsonBuilder {
     let mut builder = JsonBuilder::new(bulk.attributes.len());
 
-    for (attr, datum) in decon_row(bulk, row)
-        .flatten()
-    {
+    for (attr, datum) in decon_row(bulk, row).flatten() {
         (attr.conversion_func)(&mut builder, attr.attname.clone(), datum, attr.typoid);
     }
 

@@ -44,10 +44,7 @@ impl QueryHighlighter {
                         *is_date,
                         index_analyzer,
                     ) {
-                        highlighters
-                            .entry(fieldname)
-                            .or_default()
-                            .push(highlighter);
+                        highlighters.entry(fieldname).or_default().push(highlighter);
                     }
                 }
             });
@@ -592,7 +589,9 @@ fn make_used_fields(
 
             let zdboptions = ZDBIndexOptions::from_relation(index);
             zdboptions
-                .field_lists().values().flat_map(|v| v.iter())
+                .field_lists()
+                .values()
+                .flat_map(|v| v.iter())
                 .for_each(|fieldname| {
                     used_fields.insert(fieldname.field_name());
                 });
@@ -631,8 +630,8 @@ fn highlight_document_internal<'a>(
     ),
 > {
     let mut highlighters = HashMap::new();
-    let iter =
-        QueryHighlighter::highlight(&index, document, used_fields, query, &mut highlighters).map(
+    let iter = QueryHighlighter::highlight(&index, document, used_fields, query, &mut highlighters)
+        .map(
             |(
                 field_name,
                 array_index,

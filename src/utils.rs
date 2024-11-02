@@ -12,7 +12,10 @@ pub fn count_non_shadow_zdb_indices(
 ) -> usize {
     let mut cnt = 0;
     for index in heap_relation.indices(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
-        if index.oid() != current_index.oid() && is_zdb_index(&index) && !ZDBIndexOptions::is_shadow_index_fast(&index) {
+        if index.oid() != current_index.oid()
+            && is_zdb_index(&index)
+            && !ZDBIndexOptions::is_shadow_index_fast(&index)
+        {
             cnt += 1;
         }
     }
@@ -62,9 +65,7 @@ fn get_heap_relation_from_var(
             view_def.rtable,
         ))
     };
-    unsafe {
-        PgRelation::with_lock(rte.relid, pg_sys::AccessShareLock as pg_sys::LOCKMODE)
-    }
+    unsafe { PgRelation::with_lock(rte.relid, pg_sys::AccessShareLock as pg_sys::LOCKMODE) }
 }
 
 pub fn find_zdb_index(
@@ -147,9 +148,9 @@ fn find_zdb_shadow_index(table: &PgRelation, funcid: pg_sys::Oid) -> PgRelation 
     unsafe {
         for index in table.indices(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
             if is_zdb_index(&index) && ZDBIndexOptions::is_shadow_index_fast(&index) {
-                let exprs = PgList::<pg_sys::Expr>::from_pg(
-                    pg_sys::RelationGetIndexExpressions(index.as_ptr()),
-                );
+                let exprs = PgList::<pg_sys::Expr>::from_pg(pg_sys::RelationGetIndexExpressions(
+                    index.as_ptr(),
+                ));
 
                 if let Some(expr) = exprs.get_ptr(0) {
                     if is_a(expr as *mut pg_sys::Node, pg_sys::NodeTag::T_FuncExpr) {
