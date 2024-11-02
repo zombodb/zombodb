@@ -128,7 +128,7 @@ impl JsonString for JsonStringWrapper {
             // replace \r\n's to ensure it's all on one line.  It's otherwise supposed to be valid JSON
             // so we shouldn't be mistakenly replacing any \r\n's in actual values -- those should already
             // be properly escaped
-            target.extend_from_slice(self.0 .0.replace('\r', " ").replace('\n', " ").as_bytes());
+            target.extend_from_slice(self.0 .0.replace(['\r', '\n'], " ").as_bytes());
         } else {
             target.extend_from_slice(self.0 .0.as_bytes())
         }

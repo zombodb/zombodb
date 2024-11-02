@@ -163,7 +163,7 @@ mod tests {
 
     #[pg_test]
     fn test_term_str() {
-        let boost = 42.0 as f32;
+        let boost = 42.0_f32;
         let zdbquery =
             Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', 'test value','42.0');")
                 .expect("SPI failed")
@@ -376,7 +376,7 @@ mod tests {
                 .expect("SPI failed")
                 .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
-        let value = 214740083647 as i64;
+        let value = 214740083647_i64;
 
         assert_eq!(
             dsl,
@@ -395,7 +395,7 @@ mod tests {
                 .expect("SPI failed")
                 .expect("SPI datum was NULL");
         let dsl = zdbquery.into_value();
-        let value = -214740083647 as i64;
+        let value = -214740083647_i64;
 
         assert_eq!(
             dsl,
@@ -409,7 +409,7 @@ mod tests {
 
     #[pg_test]
     fn test_term_i64_with_default_boost() {
-        let value = 9223372036854775000 as i64;
+        let value = 9223372036854775000_i64;
         let zdbquery =
             Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', 9223372036854775000);")
                 .expect("SPI failed")
@@ -682,7 +682,7 @@ mod tests {
             dsl,
             json! {
                 {
-                    "term": {"fieldname": { "value": "2020-01-01" , "boost": 42.0 as f32 }}
+                    "term": {"fieldname": { "value": "2020-01-01" , "boost": 42.0_f32 }}
                 }
             }
         );
@@ -719,7 +719,7 @@ mod tests {
             dsl,
             json! {
                 {
-                    "term": {"fieldname": { "value": "12:59:35" , "boost": 42.0 as f32 }}
+                    "term": {"fieldname": { "value": "12:59:35" , "boost": 42.0_f32 }}
                 }
             }
         );
@@ -738,7 +738,7 @@ mod tests {
             dsl,
             json! {
                 {
-                    "term": {"fieldname": { "value": "12:59:35.567" , "boost": 42.0 as f32 }}
+                    "term": {"fieldname": { "value": "12:59:35.567" , "boost": 42.0_f32 }}
                 }
             }
         );
@@ -776,7 +776,7 @@ mod tests {
             dsl,
             json! {
                 {
-                    "term": {"fieldname": { "value": "12:59:35" , "boost": 42.0 as f32 }}
+                    "term": {"fieldname": { "value": "12:59:35" , "boost": 42.0_f32 }}
                 }
             }
         );
@@ -795,7 +795,7 @@ mod tests {
             dsl,
             json! {
                 {
-                    "term": {"fieldname": { "value": "12:59:35.567" , "boost": 42.0 as f32 }}
+                    "term": {"fieldname": { "value": "12:59:35.567" , "boost": 42.0_f32 }}
                 }
             }
         );
@@ -833,7 +833,7 @@ mod tests {
             dsl,
             json! {
                 {
-                    "term": {"fieldname": { "value": "2013-04-10T12:59:35-00" , "boost": 42.0 as f32 }}
+                    "term": {"fieldname": { "value": "2013-04-10T12:59:35-00" , "boost": 42.0_f32 }}
                 }
             }
         );
@@ -852,7 +852,7 @@ mod tests {
             dsl,
             json! {
                 {
-                    "term": {"fieldname": { "value": "2019-09-15T12:59:35.567-00" , "boost": 42.0 as f32 }}
+                    "term": {"fieldname": { "value": "2019-09-15T12:59:35.567-00" , "boost": 42.0_f32 }}
                 }
             }
         );
@@ -890,7 +890,7 @@ mod tests {
             dsl,
             json! {
                 {
-                    "term": {"fieldname": { "value": "2013-04-10T12:59:35-00" , "boost": 42.0 as f32 }}
+                    "term": {"fieldname": { "value": "2013-04-10T12:59:35-00" , "boost": 42.0_f32 }}
                 }
             }
         );
@@ -908,7 +908,7 @@ mod tests {
             dsl,
             json! {
                 {
-                    "term": {"fieldname": { "value": "2019-09-15T12:59:35.567-00" , "boost": 42.0 as f32 }}
+                    "term": {"fieldname": { "value": "2019-09-15T12:59:35.567-00" , "boost": 42.0_f32 }}
                 }
             }
         );

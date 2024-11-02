@@ -19,18 +19,18 @@ pub fn find_fields(expr: &mut Expr, root_index: &IndexLink, indexes: &Vec<IndexL
             .for_each(|e| find_fields(e, root_index, indexes)),
         Expr::Linked(_, _) => unreachable!("No Expr::Linked node should exist yet"),
         Expr::Json(_) => {}
-        Expr::Contains(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
-        Expr::Eq(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
-        Expr::Gt(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
-        Expr::Lt(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
-        Expr::Gte(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
-        Expr::Lte(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
-        Expr::Ne(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
-        Expr::DoesNotContain(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
-        Expr::Regex(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
-        Expr::MoreLikeThis(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
-        Expr::FuzzyLikeThis(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
-        Expr::Matches(f, _) => f.index = find_link_for_field(&f, root_index, indexes),
+        Expr::Contains(f, _) => f.index = find_link_for_field(f, root_index, indexes),
+        Expr::Eq(f, _) => f.index = find_link_for_field(f, root_index, indexes),
+        Expr::Gt(f, _) => f.index = find_link_for_field(f, root_index, indexes),
+        Expr::Lt(f, _) => f.index = find_link_for_field(f, root_index, indexes),
+        Expr::Gte(f, _) => f.index = find_link_for_field(f, root_index, indexes),
+        Expr::Lte(f, _) => f.index = find_link_for_field(f, root_index, indexes),
+        Expr::Ne(f, _) => f.index = find_link_for_field(f, root_index, indexes),
+        Expr::DoesNotContain(f, _) => f.index = find_link_for_field(f, root_index, indexes),
+        Expr::Regex(f, _) => f.index = find_link_for_field(f, root_index, indexes),
+        Expr::MoreLikeThis(f, _) => f.index = find_link_for_field(f, root_index, indexes),
+        Expr::FuzzyLikeThis(f, _) => f.index = find_link_for_field(f, root_index, indexes),
+        Expr::Matches(f, _) => f.index = find_link_for_field(f, root_index, indexes),
     }
 }
 
@@ -44,7 +44,7 @@ pub fn find_link_for_field(
         return field_name.index.clone();
     }
 
-    for mut index in Some(root_index).into_iter().chain(indexes.into_iter()) {
+    for mut index in Some(root_index).into_iter().chain(indexes.iter()) {
         if index.is_this_index() {
             // 'this.index', typically from an #expand or #subselect, means the original index
             index = root_index;

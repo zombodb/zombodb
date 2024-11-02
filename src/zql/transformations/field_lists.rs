@@ -25,63 +25,63 @@ pub fn expand_field_lists(e: &mut Expr, lists: &HashMap<String, Vec<QualifiedFie
         Expr::Json(_) => {}
 
         Expr::Contains(f, t) => {
-            if let Some(expr) = make_or_list(f, t, &lists, |f, t| Expr::Contains(f, t)) {
+            if let Some(expr) = make_or_list(f, t, lists, |f, t| Expr::Contains(f, t)) {
                 *e = expr;
             }
         }
         Expr::Eq(f, t) => {
-            if let Some(expr) = make_or_list(f, t, &lists, |f, t| Expr::Eq(f, t)) {
+            if let Some(expr) = make_or_list(f, t, lists, |f, t| Expr::Eq(f, t)) {
                 *e = expr;
             }
         }
         Expr::Gt(f, t) => {
-            if let Some(expr) = make_or_list(f, t, &lists, |f, t| Expr::Gt(f, t)) {
+            if let Some(expr) = make_or_list(f, t, lists, |f, t| Expr::Gt(f, t)) {
                 *e = expr;
             }
         }
 
         Expr::Lt(f, t) => {
-            if let Some(expr) = make_or_list(f, t, &lists, |f, t| Expr::Lt(f, t)) {
+            if let Some(expr) = make_or_list(f, t, lists, |f, t| Expr::Lt(f, t)) {
                 *e = expr;
             }
         }
         Expr::Gte(f, t) => {
-            if let Some(expr) = make_or_list(f, t, &lists, |f, t| Expr::Gte(f, t)) {
+            if let Some(expr) = make_or_list(f, t, lists, |f, t| Expr::Gte(f, t)) {
                 *e = expr;
             }
         }
         Expr::Lte(f, t) => {
-            if let Some(expr) = make_or_list(f, t, &lists, |f, t| Expr::Lte(f, t)) {
+            if let Some(expr) = make_or_list(f, t, lists, |f, t| Expr::Lte(f, t)) {
                 *e = expr;
             }
         }
         Expr::Ne(f, t) => {
-            if let Some(expr) = make_or_list(f, t, &lists, |f, t| Expr::Ne(f, t)) {
+            if let Some(expr) = make_or_list(f, t, lists, |f, t| Expr::Ne(f, t)) {
                 *e = expr;
             }
         }
         Expr::DoesNotContain(f, t) => {
-            if let Some(expr) = make_or_list(f, t, &lists, |f, t| Expr::DoesNotContain(f, t)) {
+            if let Some(expr) = make_or_list(f, t, lists, |f, t| Expr::DoesNotContain(f, t)) {
                 *e = expr;
             }
         }
         Expr::Regex(f, t) => {
-            if let Some(expr) = make_or_list(f, t, &lists, |f, t| Expr::Regex(f, t)) {
+            if let Some(expr) = make_or_list(f, t, lists, |f, t| Expr::Regex(f, t)) {
                 *e = expr;
             }
         }
         Expr::MoreLikeThis(f, t) => {
-            if let Some(expr) = make_or_list(f, t, &lists, |f, t| Expr::MoreLikeThis(f, t)) {
+            if let Some(expr) = make_or_list(f, t, lists, |f, t| Expr::MoreLikeThis(f, t)) {
                 *e = expr;
             }
         }
         Expr::FuzzyLikeThis(f, t) => {
-            if let Some(expr) = make_or_list(f, t, &lists, |f, t| Expr::FuzzyLikeThis(f, t)) {
+            if let Some(expr) = make_or_list(f, t, lists, |f, t| Expr::FuzzyLikeThis(f, t)) {
                 *e = expr;
             }
         }
         Expr::Matches(f, t) => {
-            if let Some(expr) = make_or_list(f, t, &lists, |f, t| Expr::Matches(f, t)) {
+            if let Some(expr) = make_or_list(f, t, lists, |f, t| Expr::Matches(f, t)) {
                 *e = expr;
             }
         }

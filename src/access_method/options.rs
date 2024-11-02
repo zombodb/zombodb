@@ -163,10 +163,8 @@ impl ZDBIndexOptionsInternal {
                 // go find the url for this shadow index
                 // it's the url of the non-shadow zdb index
                 let (index, _) =
-                    find_zdb_index(unsafe { &PgRelation::open(my_oid) }).expect(&format!(
-                        "failed to lookup non-shadow index for oid={}",
-                        my_oid.as_u32()
-                    ));
+                    find_zdb_index(unsafe { &PgRelation::open(my_oid) }).unwrap_or_else(|_| panic!("failed to lookup non-shadow index for oid={}",
+                        my_oid.as_u32()));
                 let options = ZDBIndexOptions::from_relation(&index);
                 options.url()
             } else {
@@ -298,7 +296,7 @@ pub struct ZDBIndexOptions {
 #[allow(dead_code)]
 impl ZDBIndexOptions {
     pub fn is_shadow_index_fast(relation: &PgRelation) -> bool {
-        ZDBIndexOptionsInternal::from_relation(&relation).shadow_index
+        ZDBIndexOptionsInternal::from_relation(relation).shadow_index
     }
 
     pub fn from_relation(relation: &PgRelation) -> ZDBIndexOptions {
@@ -311,7 +309,7 @@ impl ZDBIndexOptions {
         options: Option<Vec<String>>,
     ) -> ZDBIndexOptions {
         let heap_relation = relation.heap_relation().expect("not an index");
-        let internal = ZDBIndexOptionsInternal::from_relation(&relation);
+        let internal = ZDBIndexOptionsInternal::from_relation(relation);
         let alias = internal.alias(&heap_relation, relation);
         let uuid = internal.uuid(&heap_relation, relation);
         let options = options.map_or_else(|| internal.links(), |v| Some(v));
@@ -622,10 +620,7 @@ fn field_mapping(index_relation: PgRelation, field: &str) -> Option<JsonB> {
         )
         .unwrap();
 
-        match as_map.remove(field) {
-            Some(field_mapping) => Some(JsonB(field_mapping)),
-            None => None,
-        }
+        as_map.remove(field).map(JsonB)
     }
 
     let root_index = IndexLink::from_relation(&index_relation);
@@ -639,7 +634,7 @@ fn field_mapping(index_relation: PgRelation, field: &str) -> Option<JsonB> {
         &index_links,
     );
 
-    link.map_or(None, |link| {
+    link.and_then(|link| {
         if link.name == Some(field.to_string()) {
             // the link is named the same as the desired field, so the result is the entire ES mapping
             // for the linked *index*
@@ -731,11 +726,9 @@ extern "C" fn validate_options(value: *const std::os::raw::c_char) {
                     &mut operator_stack,
                     option,
                 )
-                .expect(&format!("failed to parse index option: /{}/", option))
+                .unwrap_or_else(|_| panic!("failed to parse index option: /{}/", option))
         });
     }
-
-    return;
 }
 
 #[pg_guard]
@@ -916,10 +909,10 @@ unsafe fn build_relopts(
     validate: bool,
     tab: [pg_sys::relopt_parse_elt; NUM_REL_OPTS],
 ) -> *mut pg_sys::bytea {
-    let rdopts;
+    
 
     /* Parse the user-given reloptions */
-    rdopts = pg_sys::build_reloptions(
+    let rdopts = pg_sys::build_reloptions(
         reloptions,
         validate,
         RELOPT_KIND_ZDB,
@@ -1346,7 +1339,7 @@ mod tests {
         assert_eq!(options.bulk_concurrency(), num_cpus::get() as i32);
         assert_eq!(options.batch_size(), 8 * 1024 * 1024);
         assert_eq!(options.optimize_after(), DEFAULT_OPTIMIZE_AFTER);
-        assert_eq!(options.llapi(), false);
+        assert!(!options.llapi());
         assert_eq!(options.translog_durability(), "async");
         assert_eq!(options.links(), &None);
         Ok(())
@@ -1391,7 +1384,7 @@ mod tests {
         assert_eq!(options.bulk_concurrency(), *DEFAULT_BULK_CONCURRENCY);
         assert_eq!(options.batch_size(), DEFAULT_BATCH_SIZE);
         assert_eq!(options.optimize_after(), DEFAULT_OPTIMIZE_AFTER);
-        assert_eq!(options.llapi(), false);
+        assert!(!options.llapi());
         assert_eq!(options.translog_durability(), "request");
         Ok(())
     }
@@ -1485,7 +1478,7 @@ mod tests {
 
         assert_eq!(1, links.len());
         let link_definition = links.first().unwrap();
-        let link = IndexLink::parse(&link_definition);
+        let link = IndexLink::parse(link_definition);
         assert_eq!(link, IndexLink::parse("id=<schema.table.index>other_id"));
         assert_eq!(link.qualified_index.schema, Some("schema".into()));
         Ok(())

@@ -231,10 +231,7 @@ impl JsonBuilder {
             JsonBuilderValue::timestamp_array(
                 value
                     .into_iter()
-                    .map(|ts| match ts {
-                        Some(ts) => Some(ts.into()),
-                        None => None,
-                    })
+                    .map(|ts| ts.map(|ts| ts.into()))
                     .collect(),
             ),
         ));

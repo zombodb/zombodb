@@ -76,7 +76,7 @@ impl From<TimeWithTimeZone> for ZDBTimeWithTimeZone {
                 let hour = tz.timezone_hour();
                 let neg = hour < 0;
                 let hour = hour.abs();
-                format!("{}", if neg { "-" } else { "" })
+                (if neg { "-" } else { "" }).to_string()
                     + &format!("{:02}", hour)
                     + &format!("{:02}", tz.timezone_minute())
             }

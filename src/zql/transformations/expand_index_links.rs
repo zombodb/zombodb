@@ -9,8 +9,8 @@ pub fn expand_index_links(
     expand_index_links0(expr, relationship_manager, &mut vec![root_index.clone()]);
 }
 
-fn expand_index_links0<'a>(
-    expr: &'a mut Expr,
+fn expand_index_links0(
+    expr: &mut Expr,
     relationship_manager: &mut RelationshipManager,
     target_stack: &mut Vec<IndexLink>,
 ) {

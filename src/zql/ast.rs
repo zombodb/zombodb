@@ -24,19 +24,12 @@ use crate::zql::transformations::pullup::pullup_and;
 use crate::zql::{INDEX_LINK_PARSER, ZDB_QUERY_PARSER};
 
 #[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct ProximityDistance {
     pub distance: u32,
     pub in_order: bool,
 }
 
-impl Default for ProximityDistance {
-    fn default() -> Self {
-        ProximityDistance {
-            distance: 0,
-            in_order: false,
-        }
-    }
-}
 
 #[pgrx::pg_schema]
 pub mod pg_catalog {
@@ -231,7 +224,7 @@ impl<'input> Term<'input> {
     }
 
     pub fn is_prefix_wildcard(s: &str) -> bool {
-        s.chars().last() == Some('*')
+        s.ends_with('*')
             && s.chars().filter(|c| *c == '*').count() == 1
             && s.chars().filter(|c| *c == '?').count() == 0
     }
@@ -271,18 +264,18 @@ impl ProximityTerm {
         // them in span_near clauses.  But ProximityTerm holds onto the boost anyways for potential
         // future proofing
         match self {
-            ProximityTerm::String(s, _b) => Term::String(&s, None),
-            ProximityTerm::Phrase(s, _b) => Term::Phrase(&s, None),
-            ProximityTerm::Prefix(s, _b) => Term::Prefix(&s, None),
+            ProximityTerm::String(s, _b) => Term::String(s, None),
+            ProximityTerm::Phrase(s, _b) => Term::Phrase(s, None),
+            ProximityTerm::Prefix(s, _b) => Term::Prefix(s, None),
             ProximityTerm::Wildcard(w, _b) => {
                 if w == "*" {
                     Term::MatchAll
                 } else {
-                    Term::Wildcard(&w, None)
+                    Term::Wildcard(w, None)
                 }
             }
-            ProximityTerm::Fuzzy(f, d, _b) => Term::Fuzzy(&f, *d, None),
-            ProximityTerm::Regex(r, _b) => Term::Regex(&r, None),
+            ProximityTerm::Fuzzy(f, d, _b) => Term::Fuzzy(f, *d, None),
+            ProximityTerm::Regex(r, _b) => Term::Regex(r, None),
             ProximityTerm::ProximityChain(p) => Term::ProximityChain(p.clone()),
         }
     }
@@ -316,7 +309,7 @@ impl ProximityTerm {
             Some(index) => {
                 let index = index
                     .open_index()
-                    .expect(&format!("failed to open index for {}", field));
+                    .unwrap_or_else(|_| panic!("failed to open index for {}", field));
                 let analyzer = crate::utils::get_search_analyzer(&index, &field.field);
                 crate::elasticsearch::Elasticsearch::new(&index)
                     .analyze_text(&analyzer, &replaced_input)
@@ -358,7 +351,7 @@ impl ProximityTerm {
             groups.entry(token.end_offset).or_default().push(token);
         }
 
-        if groups.len() == 0 {
+        if groups.is_empty() {
             // input did not analyze into any tokens, so we convert it to lowercase and
             // make it into the type of ProximityTerm it might be (string, wildcard, regex, fuzzy)
             let lowercase_input = input.to_lowercase();
@@ -367,7 +360,7 @@ impl ProximityTerm {
         } else if groups.len() == 1 {
             // input analyzed into 1 token, so we make it into the type of ProximityTerm it
             // might be (string, wildcard, regex, fuzzy)
-            let token = groups.values().into_iter().next().unwrap().get(0).unwrap();
+            let token = groups.values().next().unwrap().first().unwrap();
             let token = ProximityTerm::replace_substitutions(token);
             let mut term = Term::maybe_make_wildcard_or_regex(None, &token, b);
 
@@ -380,9 +373,7 @@ impl ProximityTerm {
             ProximityTerm::from_term(&term)
         } else {
             // next, build ProximityParts for each group
-            let proximity_parts: Vec<ProximityPart> = groups
-                .into_iter()
-                .map(|(_, tokens)| {
+            let proximity_parts: Vec<ProximityPart> = groups.into_values().map(|tokens| {
                     let mut terms = Vec::new();
 
                     for token in tokens {
@@ -422,7 +413,7 @@ impl ProximityTerm {
 
                     let unwrapped = next.unwrap();
                     if unwrapped.words.len() == 1 {
-                        if let ProximityTerm::Wildcard(s, _) = unwrapped.words.get(0).unwrap() {
+                        if let ProximityTerm::Wildcard(s, _) = unwrapped.words.first().unwrap() {
                             if s == "*" {
                                 part.distance.as_mut().unwrap().distance += 1;
                                 // just consume the next token as we want to skip it entirely
@@ -449,8 +440,8 @@ impl ProximityTerm {
         let token = token.token.replace("ZDBSTAR", "*");
         let token = token.replace("ZDBQUESTION", "?");
         let token = token.replace("zdbstar", "*");
-        let token = token.replace("zdbquestion", "?");
-        token
+        
+        token.replace("zdbquestion", "?")
     }
 }
 
@@ -495,7 +486,7 @@ impl<'input> Expr<'input> {
         target_link: &Option<IndexLink>,
         mut field_lists: HashMap<String, Vec<QualifiedField>>,
     ) -> Result<Expr<'input>, ParserError<'input>> {
-        let input = input.clone();
+        let input = input;
         let mut operator_stack = vec![ComparisonOpcode::Contains];
         let mut fieldname_stack = vec![default_fieldname];
 
@@ -520,7 +511,7 @@ impl<'input> Expr<'input> {
                         (
                             link,
                             link.open_index()
-                                .expect(&format!("failed to open index for {:?}", link)),
+                                .unwrap_or_else(|_| panic!("failed to open index for {:?}", link)),
                         )
                     }))
                 {
@@ -553,7 +544,7 @@ impl<'input> Expr<'input> {
                 left_field = parts.next().unwrap();
             }
             let left_link =
-                find_link_for_field(&link.qualify_left_field(), &root_index, &index_links)
+                find_link_for_field(&link.qualify_left_field(), &root_index, index_links)
                     .expect("unable to find link for field");
             relationship_manager.add_relationship(
                 &left_link,
@@ -570,8 +561,8 @@ impl<'input> Expr<'input> {
         };
 
         pullup_and(&mut expr);
-        assign_links(original_index, &root_index, &mut expr, index_links);
-        expand_index_links(&mut expr, &root_index, &mut relationship_manager);
+        assign_links(original_index, root_index, &mut expr, index_links);
+        expand_index_links(&mut expr, root_index, &mut relationship_manager);
         merge_adjacent_links(&mut expr);
         rewrite_proximity_chains(&mut expr);
         Ok(expr)
@@ -752,7 +743,7 @@ impl QualifiedIndex {
     pub fn table_name(&self) -> String {
         let mut relation_name = String::new();
         if let Some(schema) = &self.schema {
-            relation_name.push_str(&schema);
+            relation_name.push_str(schema);
             relation_name.push('.');
         }
         relation_name.push_str(&self.table);
@@ -762,7 +753,7 @@ impl QualifiedIndex {
     pub fn index_name(&self) -> String {
         let mut relation_name = String::new();
         if let Some(schema) = &self.schema {
-            relation_name.push_str(&schema);
+            relation_name.push_str(schema);
             relation_name.push('.');
         }
         relation_name.push_str(&self.index);
@@ -830,7 +821,7 @@ impl IndexLink {
     pub fn from_zdb(index: &PgRelation) -> Vec<Self> {
         let mut index_links = Vec::new();
 
-        if let Some(links) = ZDBIndexOptions::from_relation(&index).links() {
+        if let Some(links) = ZDBIndexOptions::from_relation(index).links() {
             for link in links {
                 let mut used_fields = HashSet::new();
                 let mut fieldname_stack = Vec::new();
@@ -838,7 +829,7 @@ impl IndexLink {
                 let link = INDEX_LINK_PARSER.with(|parser| {
                     parser
                         .parse(
-                            Some(&index),
+                            Some(index),
                             &mut used_fields,
                             &mut fieldname_stack,
                             &mut operator_stack,
@@ -913,7 +904,7 @@ impl QualifiedField {
             }
         }
 
-        return self.field.clone();
+        self.field.clone()
     }
 }
 
@@ -962,7 +953,7 @@ impl Display for IndexLink {
             left_field, self.qualified_index, right_field
         )?;
 
-        if let Some(_) = &self.name {
+        if self.name.is_some() {
             write!(fmt, ")")?;
         }
 
@@ -1050,7 +1041,7 @@ impl<'input> Display for Term<'input> {
                     let next = iter.peek();
 
                     if part.words.len() == 1 {
-                        let word = part.words.get(0).unwrap();
+                        let word = part.words.first().unwrap();
                         match next {
                             Some(_) => write!(fmt, "{}{} ", word, part.distance.as_ref().unwrap())?,
                             None => write!(fmt, "{}", word)?,
@@ -1064,11 +1055,8 @@ impl<'input> Display for Term<'input> {
                             write!(fmt, "{}", word)?;
                         }
                         write!(fmt, ")")?;
-                        match next {
-                            Some(_) => {
-                                write!(fmt, "{} ", part.distance.as_ref().unwrap())?;
-                            }
-                            None => {}
+                        if next.is_some() {
+                            write!(fmt, "{} ", part.distance.as_ref().unwrap())?;
                         }
                     }
                 }

@@ -27,6 +27,7 @@ pub struct BulkContext {
     pub tupdesc: PgTupleDesc<'static>,
 }
 
+#[derive(Default)]
 pub struct QueryState {
     scores: HashMap<(pg_sys::Oid, (pg_sys::BlockNumber, pg_sys::OffsetNumber)), f64>,
     highlights: HashMap<
@@ -36,15 +37,6 @@ pub struct QueryState {
     zdb_index_lookup: HashMap<pg_sys::Oid, pg_sys::Oid>,
 }
 
-impl Default for QueryState {
-    fn default() -> Self {
-        QueryState {
-            scores: HashMap::new(),
-            highlights: HashMap::new(),
-            zdb_index_lookup: Default::default(),
-        }
-    }
-}
 
 impl QueryState {
     #[inline]

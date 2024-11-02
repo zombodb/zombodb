@@ -67,5 +67,5 @@ pub fn top_hits(
         u64_to_item_pointer(id, &mut tid);
         result_hits.push((tid, hits._score, Json(hits._source)))
     }
-    TableIterator::new(result_hits.into_iter())
+    TableIterator::new(result_hits)
 }

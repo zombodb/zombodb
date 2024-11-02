@@ -243,7 +243,7 @@ unsafe extern "C" fn build_callback_internal(
     let mut old_context = state.memcxt.set_as_current();
 
     let values = std::slice::from_raw_parts(values, 1);
-    let builder = row_to_json(values[0], &state.bulk);
+    let builder = row_to_json(values[0], state.bulk);
 
     let cmin = pg_sys::FirstCommandId;
     let cmax = cmin;
@@ -265,8 +265,7 @@ unsafe fn row_to_json(row: pg_sys::Datum, bulk: &BulkContext) -> JsonBuilder {
     let mut builder = JsonBuilder::new(bulk.attributes.len());
 
     for (attr, datum) in decon_row(bulk, row)
-        .filter(|item| item.is_some())
-        .map(|item| item.unwrap())
+        .flatten()
     {
         (attr.conversion_func)(&mut builder, attr.attname.clone(), datum, attr.typoid);
     }
@@ -275,10 +274,10 @@ unsafe fn row_to_json(row: pg_sys::Datum, bulk: &BulkContext) -> JsonBuilder {
 }
 
 #[inline]
-unsafe fn decon_row<'a>(
-    bulk: &'a BulkContext,
+unsafe fn decon_row(
+    bulk: &BulkContext,
     row: pg_sys::Datum,
-) -> impl std::iter::Iterator<Item = Option<(&'a CategorizedAttribute, pg_sys::Datum)>> + 'a {
+) -> impl std::iter::Iterator<Item = Option<(&'_ CategorizedAttribute, pg_sys::Datum)>> + '_ {
     let td =
         pg_sys::pg_detoast_datum(row.cast_mut_ptr::<pg_sys::varlena>()) as pg_sys::HeapTupleHeader;
     let mut tmptup = pg_sys::HeapTupleData {
@@ -288,7 +287,7 @@ unsafe fn decon_row<'a>(
         t_data: td,
     };
 
-    let mut datums = vec![pg_sys::Datum::from(0 as usize); bulk.natts];
+    let mut datums = vec![pg_sys::Datum::from(0_usize); bulk.natts];
     let mut nulls = vec![false; bulk.natts];
 
     pg_sys::heap_deform_tuple(
@@ -299,8 +298,8 @@ unsafe fn decon_row<'a>(
     );
 
     let mut drop_cnt = 0;
-    (0..bulk.natts).into_iter().map(move |idx| {
-        let is_dropped = *bulk.dropped.get(idx).unwrap() == true;
+    (0..bulk.natts).map(move |idx| {
+        let is_dropped = *bulk.dropped.get(idx).unwrap();
 
         if is_dropped {
             drop_cnt += 1;
@@ -308,7 +307,7 @@ unsafe fn decon_row<'a>(
         } else if nulls[idx] {
             None
         } else {
-            Some((&bulk.attributes[idx - drop_cnt], *&datums[idx]))
+            Some((&bulk.attributes[idx - drop_cnt], datums[idx]))
         }
     })
 }

@@ -12,7 +12,7 @@ pub struct AnalyzedToken<'a> {
 }
 
 fn tokenize<'a>(input: &'a str) -> Box<dyn Iterator<Item = AnalyzedToken<'a>> + 'a> {
-    Box::new(Utf16WordIndices::new(input).into_iter().enumerate().map(
+    Box::new(Utf16WordIndices::new(input).enumerate().map(
         |(position, (byte_range, token))| {
             let token = token.cow_to_lowercase();
             let start = byte_range.start;

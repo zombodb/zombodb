@@ -74,7 +74,6 @@ fn extended_stats(
             result.std_deviation,
             result.std_deviation_bounds.upper,
             result.std_deviation_bounds.lower,
-        )]
-        .into_iter(),
+        )],
     )
 }

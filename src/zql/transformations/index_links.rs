@@ -3,10 +3,10 @@ use crate::zql::transformations::field_finder::find_link_for_field;
 use indexmap::IndexMap;
 use std::collections::HashSet;
 
-pub fn assign_links<'a>(
+pub fn assign_links(
     original_index: &IndexLink,
     root_index: &IndexLink,
-    expr: &mut Expr<'a>,
+    expr: &mut Expr<'_>,
     indexes: &Vec<IndexLink>,
 ) {
     match determine_link(original_index, root_index, expr, indexes) {

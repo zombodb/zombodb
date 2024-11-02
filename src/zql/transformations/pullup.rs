@@ -42,5 +42,5 @@ fn pullup_and0(expr: &mut Expr) -> bool {
         _ => {}
     }
 
-    return changed;
+    changed
 }

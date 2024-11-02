@@ -240,8 +240,8 @@ impl ElasticsearchBulkRequest {
         // hold onto this, we'll use it during self.insert()
         self.handler.prior_update = Some(BulkRequestCommand::Update {
             ctid: item_pointer_to_u64(ctid),
-            cmax: cmax,
-            xmax: xmax,
+            cmax,
+            xmax,
         });
 
         Ok(())
@@ -735,7 +735,7 @@ impl Handler {
         mut command: BulkRequestCommand,
         is_deferred: bool,
     ) -> Result<(), crossbeam::channel::SendError<BulkRequestCommand>> {
-        if is_deferred == false && self.current_xid.is_none() {
+        if !is_deferred && self.current_xid.is_none() {
             match &command {
                 BulkRequestCommand::Insert { .. } | BulkRequestCommand::Update { .. } => {
                     let current_xid = unsafe { pg_sys::GetCurrentTransactionId() };

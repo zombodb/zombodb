@@ -83,14 +83,10 @@ pub fn rewrite_opexrs(plan: *mut pg_sys::PlannedStmt) {
                                         funcexpr.funcresulttype = pg_sys::TIDOID;
                                         let args = PgList::from_pg(funcexpr.args);
                                         let first_arg = args.get_ptr(0).unwrap();
-                                        if is_a(first_arg, pg_sys::NodeTag::T_Var) {
-                                            if pg_sys::get_func_rettype(funcexpr.funcid)
-                                                == pg_sys::ANYELEMENTOID
-                                            {
-                                                let mut var =
-                                                    PgBox::<pg_sys::Var>::from_pg(first_arg.cast());
-                                                var.vartype = pg_sys::TIDOID;
-                                            }
+                                        if is_a(first_arg, pg_sys::NodeTag::T_Var) && pg_sys::get_func_rettype(funcexpr.funcid) == pg_sys::ANYELEMENTOID {
+                                            let mut var =
+                                                PgBox::<pg_sys::Var>::from_pg(first_arg.cast());
+                                            var.vartype = pg_sys::TIDOID;
                                         }
                                     }
                                 }

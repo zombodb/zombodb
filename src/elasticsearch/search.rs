@@ -26,21 +26,13 @@ pub struct HitsTotal {
 }
 
 #[derive(Deserialize, Debug)]
+#[derive(Default)]
 pub struct Fields {
     pub zdb_ctid: Option<[u64; 1]>,
     pub zdb_xmin: Option<[u64; 1]>,
     pub zdb_xmax: Option<[u64; 1]>,
 }
 
-impl Default for Fields {
-    fn default() -> Self {
-        Fields {
-            zdb_ctid: None,
-            zdb_xmin: None,
-            zdb_xmax: None,
-        }
-    }
-}
 
 #[derive(Debug, Deserialize)]
 pub struct InnerHit {
@@ -281,7 +273,7 @@ impl ElasticsearchSearchRequest {
         // in the future, maybe we can look at some table dead tuple stats and decide
         // to apply the clause if the table has a high percentage of them
         let query_dsl = if limit.is_some() {
-            apply_visibility_clause(&elasticsearch, query, false)
+            apply_visibility_clause(elasticsearch, query, false)
         } else {
             query.take_query_dsl()
         };
@@ -291,9 +283,9 @@ impl ElasticsearchSearchRequest {
             && offset.is_none()
             && highlight.is_none()
             && min_score.is_none()
-            && have_extra_fields == false
-            && track_scores == false
-            && have_user_sort == false;
+            && !have_extra_fields
+            && !track_scores
+            && !have_user_sort;
 
         let body = Body {
             track_scores,
@@ -628,14 +620,7 @@ impl Iterator for SearchResponseIntoIter {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.fast_terms.as_mut() {
-            Some(fast_terms) => fast_terms.next().map_or(None, |ctid| {
-                // use byteorder::*;
-                // let slice = &mut ctid.as_ref();
-                // let blockno = slice.read_u32::<LittleEndian>().unwrap() as u64;
-                // let offno = slice.read_u16::<LittleEndian>().unwrap() as u64;
-                // let ctid = (blockno << 32) | offno;
-                Some((0.0, ctid, None, None))
-            }),
+            Some(fast_terms) => fast_terms.next().map(|ctid| (0.0, ctid, None, None)),
             None => {
                 if let Some(limit) = self.limit {
                     if self.cnt >= limit {

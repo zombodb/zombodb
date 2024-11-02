@@ -201,9 +201,9 @@ impl<'a> DocumentHighlighter<'a> {
                     field,
                     value,
                     array_index,
-                    &field_type,
+                    field_type,
                     is_date,
-                    &index_analyzer,
+                    index_analyzer,
                 );
 
                 let mut highlighters = HashMap::new();
@@ -313,7 +313,7 @@ impl<'a> DocumentHighlighter<'a> {
                 let results: Box<dyn Iterator<Item = (Cow<str>, TokenEntry)>> =
                     match (analyzer, field_type) {
                         (None, None) => Box::new(
-                            crate::highlighting::analyze::standard(&s)
+                            crate::highlighting::analyze::standard(s)
                                 .map(|x| map_analyzed_token(array_index, x)),
                         ),
 
@@ -323,12 +323,12 @@ impl<'a> DocumentHighlighter<'a> {
                                 || analyzer == "fulltext" =>
                         {
                             Box::new(
-                                crate::highlighting::analyze::standard(&s)
+                                crate::highlighting::analyze::standard(s)
                                     .map(|x| map_analyzed_token(array_index, x)),
                             )
                         }
                         (Some(analyzer), _) if analyzer == "fulltext_with_shingles" => Box::new(
-                            crate::highlighting::analyze::fulltext_with_shingles(&s)
+                            crate::highlighting::analyze::fulltext_with_shingles(s)
                                 .map(|x| map_analyzed_token(array_index, x)),
                         ),
                         (_, Some(field_type)) if field_type == "keyword" => {
@@ -348,7 +348,7 @@ impl<'a> DocumentHighlighter<'a> {
                         _ => {
                             let es = Elasticsearch::new(index);
                             Box::new(
-                                es.analyze_with_field(field, &s)
+                                es.analyze_with_field(field, s)
                                     .execute()
                                     .expect("failed to analyze text for highlighting")
                                     .tokens
@@ -492,10 +492,7 @@ impl<'a> DocumentHighlighter<'a> {
     pub fn highlight_token(&'a self, token: &str) -> Option<HighlightMatches<'a>> {
         let token = Cow::Owned(token.to_lowercase());
         let token_entries_vec = self.lookup.get_key_value(&token);
-        match token_entries_vec {
-            Some((token, vec)) => Some(vec.into_iter().map(|e| (token, e)).collect()),
-            None => None,
-        }
+        token_entries_vec.map(|(token, vec)| vec.iter().map(|e| (token, e)).collect())
     }
 
     pub fn highlight_token_scan<F: Fn(&str, &str) -> bool>(
@@ -538,7 +535,7 @@ impl<'a> DocumentHighlighter<'a> {
                 new_regex.push(char);
             }
         }
-        new_regex.push_str("$");
+        new_regex.push('$');
         self.highlight_regex(new_regex.deref())
     }
 
@@ -569,7 +566,7 @@ impl<'a> DocumentHighlighter<'a> {
         }
         let prefix_string = &fuzzy_key[0..prefix as usize];
         for (token, token_entries) in self.lookup.iter() {
-            if token.starts_with(prefix_string.deref()) {
+            if token.starts_with(prefix_string) {
                 if fuzzy_key.len() < fuzzy_low {
                     if levenshtein(token, &fuzzy_key) as i32 == 0 {
                         for token_entry in token_entries {
@@ -582,11 +579,9 @@ impl<'a> DocumentHighlighter<'a> {
                             result.push((token, token_entry));
                         }
                     }
-                } else {
-                    if levenshtein(token, &fuzzy_key) as i32 <= 2 {
-                        for token_entry in token_entries {
-                            result.push((token, token_entry));
-                        }
+                } else if levenshtein(token, &fuzzy_key) as i32 <= 2 {
+                    for token_entry in token_entries {
+                        result.push((token, token_entry));
                     }
                 }
             };
@@ -632,15 +627,15 @@ impl<'a> DocumentHighlighter<'a> {
         &'a self,
         phrase: &Vec<ProximityPart>,
     ) -> Option<HighlightMatches<'a>> {
-        if phrase.len() == 0 {
+        if phrase.is_empty() {
             return None;
         }
 
-        let first_part = phrase.get(0).unwrap();
+        let first_part = phrase.first().unwrap();
         let mut final_matches = Vec::new();
 
         let phrase2 = phrase
-            .into_iter()
+            .iter()
             .map(|p| {
                 (
                     p,
@@ -718,7 +713,7 @@ impl<'a> DocumentHighlighter<'a> {
         array_index: u32,
     ) -> Option<HighlightMatches<'a>> {
         let words = words
-            .into_iter()
+            .iter()
             .filter_map(|t| {
                 self.highlight_term(t)
                     .map(|highlights| (highlights, matches!(t, Term::ProximityChain(_))))
@@ -770,11 +765,11 @@ impl<'a> DocumentHighlighter<'a> {
             }
         }
 
-        return if matches.is_empty() {
+        if matches.is_empty() {
             None
         } else {
             Some(matches)
-        };
+        }
     }
 }
 
@@ -804,7 +799,7 @@ fn highlight_term(
             .iter()
             .map(|e| {
                 (
-                    field_name.clone().to_owned(),
+                    field_name.to_owned(),
                     String::from(e.0.clone()),
                     String::from(e.1.type_.clone()),
                     e.1.position as i32,
@@ -844,7 +839,7 @@ fn highlight_phrase(
             .iter()
             .map(|e| {
                 (
-                    field_name.clone().to_owned(),
+                    field_name.to_owned(),
                     String::from(e.0.clone()),
                     String::from(e.1.type_.clone()),
                     e.1.position as i32,
@@ -884,7 +879,7 @@ fn highlight_wildcard(
             .iter()
             .map(|e| {
                 (
-                    field_name.clone().to_owned(),
+                    field_name.to_owned(),
                     String::from(e.0.clone()),
                     String::from(e.1.type_.clone()),
                     e.1.position as i32,
@@ -924,7 +919,7 @@ fn highlight_regex(
             .iter()
             .map(|e| {
                 (
-                    field_name.clone().to_owned(),
+                    field_name.to_owned(),
                     String::from(e.0.clone()),
                     String::from(e.1.type_.clone()),
                     e.1.position as i32,
@@ -968,7 +963,7 @@ fn highlight_fuzzy(
             .iter()
             .map(|e| {
                 (
-                    field_name.clone().to_owned(),
+                    field_name.to_owned(),
                     String::from(e.0.clone()),
                     String::from(e.1.type_.clone()),
                     e.1.position as i32,
@@ -1014,7 +1009,7 @@ fn highlight_proximity(
             .iter()
             .map(|e| {
                 (
-                    field_name.clone().to_owned(),
+                    field_name.to_owned(),
                     String::from(e.0.clone()),
                     String::from(e.1.type_.clone()),
                     e.1.position as i32,
@@ -1061,7 +1056,7 @@ mod tests {
 
         let matches = dh
             .look_for_match(
-                &vec![Term::String("test".into(), None)],
+                &vec![Term::String("test", None)],
                 1,
                 true,
                 vec![0],
@@ -1084,7 +1079,7 @@ mod tests {
         let dh = DocumentHighlighter::new(&index, "test_field", &value);
 
         let matches = dh
-            .look_for_match(&vec![Term::String("is".into(), None)], 0, true, vec![1], 0)
+            .look_for_match(&vec![Term::String("is", None)], 0, true, vec![1], 0)
             .expect("no matches found");
         let mut expected = Vec::new();
         let value = (
@@ -1114,7 +1109,7 @@ mod tests {
 
         let matches = dh
             .look_for_match(
-                &vec![Term::String("this".into(), None)],
+                &vec![Term::String("this", None)],
                 0,
                 false,
                 vec![2],
@@ -1150,7 +1145,7 @@ mod tests {
 
         let matches = dh
             .look_for_match(
-                &vec![Term::String("is".into(), None)],
+                &vec![Term::String("is", None)],
                 0,
                 false,
                 vec![1, 6],
@@ -1197,7 +1192,7 @@ mod tests {
 
         let matches = dh
             .look_for_match(
-                &vec![Term::String("this".into(), None)],
+                &vec![Term::String("this", None)],
                 0,
                 false,
                 vec![2, 7],
@@ -1244,7 +1239,7 @@ mod tests {
 
         let matches = dh
             .look_for_match(
-                &vec![Term::String("test".into(), None)],
+                &vec![Term::String("test", None)],
                 3,
                 true,
                 vec![1, 6],
@@ -1293,7 +1288,7 @@ mod tests {
 
         let matches = dh
             .look_for_match(
-                &vec![Term::String("this".into(), None)],
+                &vec![Term::String("this", None)],
                 3,
                 false,
                 vec![3, 9],
@@ -2804,6 +2799,6 @@ mod tests {
         network and customer demand for intermediation and content services; political developments in foreign countries; receipt of re gulatory
         approvals and satisfaction of customary closing conditions to the sale of Portland General; and conditions of the capital markets and equity
         markets during the periods covered by the forward-looking statements.";
-        return String::from(blurb);
+        String::from(blurb)
     }
 }

@@ -136,7 +136,7 @@ pub fn categorize_tupdesc(
     let mut categorized_attributes = Vec::with_capacity(tupdesc.len());
     let type_conversion_cache = lookup_type_conversions();
     let user_mappings = if mapping.is_some() {
-        Some(lookup_mappings(&heap_relation))
+        Some(lookup_mappings(heap_relation))
     } else {
         None
     };
@@ -690,7 +690,7 @@ fn lookup_type_mapping(typoid: PgOid) -> Option<(Option<serde_json::Value>, Opti
                 None,
                 Some(vec![(
                     PgOid::BuiltIn(PgBuiltInOids::REGPROCOID),
-                    typoid.clone().into_datum(),
+                    typoid.into_datum(),
                 )]),
             )?
             .first();
@@ -764,7 +764,7 @@ mod tests {
 
         assert_eq!(
             &mapping_json,
-            &serde_json::to_value(&json!({
+            &serde_json::to_value(json!({
               "id": {
                 "type": "long"
               },

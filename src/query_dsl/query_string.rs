@@ -170,7 +170,7 @@ mod tests {
                         "analyze_wildcard": false,
                         "analyzer": "analyzer",
                         "auto_generate_synonyms_phrase_query": true,
-                        "boost": 4.5 as f32,
+                        "boost": 4.5_f32,
                         "default_operator": "and",
                         "enable_position_increments": false,
                         "fields": ["doe", "ray", "meh"],

@@ -92,5 +92,5 @@ fn significant_terms_two_level(
         }
     }
 
-    TableIterator::new(response.into_iter())
+    TableIterator::new(response)
 }

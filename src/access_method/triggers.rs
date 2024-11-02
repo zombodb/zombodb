@@ -1,8 +1,8 @@
 use crate::executor_manager::get_executor_manager;
-use pgrx::callconv::{BoxRet, FcInfo, RetAbi};
+use pgrx::callconv::{BoxRet, FcInfo};
 use pgrx::datum::Datum;
 use pgrx::itemptr::{item_pointer_get_both, item_pointer_set_all};
-use pgrx::pg_sys::{AsPgCStr, FunctionCallInfo, MaxOffsetNumber};
+use pgrx::pg_sys::{AsPgCStr, MaxOffsetNumber};
 use pgrx::pgrx_sql_entity_graph::metadata::{
     ArgumentError, Returns, ReturnsError, SqlMapping, SqlTranslatable,
 };
@@ -134,13 +134,13 @@ fn zdb_delete_trigger(fcinfo: pg_sys::FunctionCallInfo) -> TriggerDatum {
 #[inline]
 unsafe fn maybe_find_hot_root(
     trigdata: &PgBox<pg_sys::TriggerData>,
-    mut tid: &mut pg_sys::ItemPointerData,
+    tid: &mut pg_sys::ItemPointerData,
 ) {
     if pg_sys::HeapTupleHeaderIsHeapOnly((*trigdata.tg_trigtuple).t_data) {
         let mut buf = 0 as pg_sys::Buffer;
         #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14"))]
         let found_tuple = pg_sys::heap_fetch(
-            (*trigdata).tg_relation,
+            trigdata.tg_relation,
             pg_sys::GetTransactionSnapshot(),
             trigdata.tg_trigtuple,
             &mut buf,
@@ -168,20 +168,20 @@ unsafe fn maybe_find_hot_root(
 
             let (blockno, offno) = item_pointer_get_both((*trigdata.tg_trigtuple).t_self);
             let root_offno = root_offsets[(offno - 1) as usize];
-            *tid = tid.clone();
-            item_pointer_set_all(&mut tid, blockno, root_offno);
+            *tid = *tid;
+            item_pointer_set_all(tid, blockno, root_offno);
         }
     }
 }
 
 pub fn create_triggers(index_relation: &PgRelation) {
     if !trigger_exists(index_relation, "zdb_update_trigger") {
-        let trigger_oid = create_update_trigger(&index_relation);
+        let trigger_oid = create_update_trigger(index_relation);
         create_trigger_dependency(index_relation.oid(), trigger_oid);
     }
 
     if !trigger_exists(index_relation, "zdb_delete_trigger") {
-        let trigger_oid = create_delete_trigger(&index_relation);
+        let trigger_oid = create_delete_trigger(index_relation);
         create_trigger_dependency(index_relation.oid(), trigger_oid);
     }
 }

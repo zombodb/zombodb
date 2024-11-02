@@ -12,10 +12,8 @@ pub fn count_non_shadow_zdb_indices(
 ) -> usize {
     let mut cnt = 0;
     for index in heap_relation.indices(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
-        if index.oid() != current_index.oid() && is_zdb_index(&index) {
-            if !ZDBIndexOptions::is_shadow_index_fast(&index) {
-                cnt += 1;
-            }
+        if index.oid() != current_index.oid() && is_zdb_index(&index) && !ZDBIndexOptions::is_shadow_index_fast(&index) {
+            cnt += 1;
         }
     }
 
@@ -64,9 +62,9 @@ fn get_heap_relation_from_var(
             view_def.rtable,
         ))
     };
-    return unsafe {
+    unsafe {
         PgRelation::with_lock(rte.relid, pg_sys::AccessShareLock as pg_sys::LOCKMODE)
-    };
+    }
 }
 
 pub fn find_zdb_index(
@@ -148,18 +146,16 @@ pub fn find_zdb_index(
 fn find_zdb_shadow_index(table: &PgRelation, funcid: pg_sys::Oid) -> PgRelation {
     unsafe {
         for index in table.indices(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
-            if is_zdb_index(&index) {
-                if ZDBIndexOptions::is_shadow_index_fast(&index) {
-                    let exprs = PgList::<pg_sys::Expr>::from_pg(
-                        pg_sys::RelationGetIndexExpressions(index.as_ptr()),
-                    );
+            if is_zdb_index(&index) && ZDBIndexOptions::is_shadow_index_fast(&index) {
+                let exprs = PgList::<pg_sys::Expr>::from_pg(
+                    pg_sys::RelationGetIndexExpressions(index.as_ptr()),
+                );
 
-                    if let Some(expr) = exprs.get_ptr(0) {
-                        if is_a(expr as *mut pg_sys::Node, pg_sys::NodeTag::T_FuncExpr) {
-                            let func_expr = PgBox::from_pg(expr as *mut pg_sys::FuncExpr);
-                            if func_expr.funcid == funcid {
-                                return index;
-                            }
+                if let Some(expr) = exprs.get_ptr(0) {
+                    if is_a(expr as *mut pg_sys::Node, pg_sys::NodeTag::T_FuncExpr) {
+                        let func_expr = PgBox::from_pg(expr as *mut pg_sys::FuncExpr);
+                        if func_expr.funcid == funcid {
+                            return index;
                         }
                     }
                 }
@@ -517,7 +513,7 @@ pub fn type_is_domain(typoid: pg_sys::Oid) -> Option<(pg_sys::Oid, String)> {
 #[inline(always)]
 pub fn read_vlong<T: Read>(input: &mut T) -> std::io::Result<u64> {
     let mut b = input.read_u8()? as u64;
-    let mut i = (b & 0x7F) as u64;
+    let mut i = b & 0x7F;
     if (b & 0x80) == 0 {
         return Ok(i);
     }
@@ -565,6 +561,6 @@ pub fn read_vlong<T: Read>(input: &mut T) -> std::io::Result<u64> {
     if b != 0 && b != 1 {
         panic!("Invalid VLong");
     }
-    i |= (b as u64) << 63;
-    return Ok(i);
+    i |= b << 63;
+    Ok(i)
 }

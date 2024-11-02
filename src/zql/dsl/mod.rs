@@ -51,9 +51,8 @@ fn debug_query(
             )
             .replace(" :\"", ":\""),
             used_fields.into_iter().map(|v| v.into()).collect(),
-            format!("{}", tree),
-        )]
-        .into_iter(),
+            tree.to_string(),
+        )],
     )
 }
 
@@ -80,7 +79,7 @@ pub fn expr_to_dsl(
         }
         Expr::OrList(v) => {
             if v.len() == 1 {
-                expr_to_dsl(root, index_links, v.get(0).unwrap())
+                expr_to_dsl(root, index_links, v.first().unwrap())
             } else {
                 let dsl: Vec<serde_json::Value> = v
                     .iter()
@@ -108,7 +107,7 @@ pub fn expr_to_dsl(
         Expr::Lt(f, t) => term_to_dsl(f, t, ComparisonOpcode::Lt),
         Expr::Lte(f, t) => term_to_dsl(f, t, ComparisonOpcode::Lte),
 
-        Expr::Json(json) => serde_json::from_str(&json).expect("failed to parse json expression"),
+        Expr::Json(json) => serde_json::from_str(json).expect("failed to parse json expression"),
 
         Expr::Nested(p, e) => {
             let dsl = expr_to_dsl(root, index_links, e.as_ref());
@@ -272,12 +271,10 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
                 } else {
                     json! { { "match": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
                 }
+            } else if is_span {
+                return json! { { "span_term": { field.field_name(): { "value": s, "boost": b.unwrap_or(1.0) } } } };
             } else {
-                if is_span {
-                    return json! { { "span_term": { field.field_name(): { "value": s, "boost": b.unwrap_or(1.0) } } } };
-                } else {
-                    json! { { "match": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
-                }
+                json! { { "match": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
             }
         }
         Term::PhraseWithWildcard(s, b) => {
@@ -300,13 +297,11 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
                     ProximityTerm::ProximityChain(v) => proximity_chain(field, &v),
                     other => eq(field, &other.to_term(), true),
                 }
+            } else if s.contains('\\') {
+                let s = unescape(s);
+                json! { { "match_phrase": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
             } else {
-                if s.contains('\\') {
-                    let s = unescape(s);
-                    json! { { "match_phrase": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
-                } else {
-                    json! { { "match_phrase": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
-                }
+                json! { { "match_phrase": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
             }
         }
         Term::Prefix(s, b) => {
@@ -331,13 +326,11 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
                 } else {
                     json! { { "prefix": { field.field_name(): { "value": s[..s.len()-1], "case_insensitive": true, "rewrite": "constant_score", "boost": b.unwrap_or(1.0) } } } }
                 }
+            } else if s.contains('\\') {
+                let s = unescape(s);
+                json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0), "max_expansions": 2147483647 } } } }
             } else {
-                if s.contains('\\') {
-                    let s = unescape(s);
-                    json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0), "max_expansions": 2147483647 } } } }
-                } else {
-                    json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0), "max_expansions": 2147483647 } } } }
-                }
+                json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0), "max_expansions": 2147483647 } } } }
             }
         }
         Term::Wildcard(w, b) => {
@@ -402,7 +395,7 @@ fn proximity_chain(field: &QualifiedField, parts: &Vec<ProximityPart>) -> serde_
     for part in parts {
         if part.words.len() == 1 {
             clauses.push((
-                eq(field, &part.words.get(0).unwrap().to_term(), true),
+                eq(field, &part.words.first().unwrap().to_term(), true),
                 part.distance,
             ));
         } else {
@@ -435,7 +428,7 @@ fn proximity_chain(field: &QualifiedField, parts: &Vec<ProximityPart>) -> serde_
     });
 
     let mut prev_distance = next_distance;
-    while let Some((clause, distance)) = clauses.next() {
+    for (clause, distance) in clauses {
         let d = prev_distance.unwrap();
         span_near = Some(json! {
             { "span_near": { "clauses": [ span_near.unwrap(), clause ], "slop": d.distance, "in_order": d.in_order } }

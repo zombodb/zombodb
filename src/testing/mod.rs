@@ -14,16 +14,13 @@ lazy_static! {
 
 pub(crate) fn initialize_tests(options: Vec<&str>) {
     for option in options {
-        match option {
-            "#[initialize(es = true)]" => {
-                let mut state = INIT_LOCK.lock().expect("initialization lock poisoned");
-                if !state.es_started {
-                    eprintln!("starting Elasticsearch...");
-                    start_es();
-                    state.es_started = true;
-                }
+        if option == "#[initialize(es = true)]" {
+            let mut state = INIT_LOCK.lock().expect("initialization lock poisoned");
+            if !state.es_started {
+                eprintln!("starting Elasticsearch...");
+                start_es();
+                state.es_started = true;
             }
-            _ => {}
         }
     }
 }

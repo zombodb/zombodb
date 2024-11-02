@@ -23,8 +23,8 @@ pub fn group_nested(index: &Option<&PgRelation>, expr: &mut Expr) {
             let mut groups = HashMap::<String, Vec<Expr>>::new();
 
             // group sub-expressions in the WITH clause by their nested path
-            while !v.is_empty() {
-                let e = v.pop().unwrap();
+            while let Some(e) = v.pop() {
+                
                 let nested_path = e.get_nested_path().expect("Expression is not nested");
                 let nested_path = nested_path.split('.').next().unwrap();
                 groups.entry(nested_path.into()).or_default().push(e);

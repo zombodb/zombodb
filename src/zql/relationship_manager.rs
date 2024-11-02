@@ -31,7 +31,7 @@ impl From<NamedIndex> for NamedIndexParts {
         let mut index_parts = input.index.split(':');
         let (index, field_name) = (
             index_parts.next().unwrap().to_string(),
-            index_parts.next().map_or(None, |v| Some(v.to_string())),
+            index_parts.next().map(|v| v.to_string()),
         );
         NamedIndexParts {
             name,
@@ -68,10 +68,7 @@ impl Edge {
     }
 
     fn reset(&mut self) {
-        match self.target.try_borrow_mut() {
-            Ok(mut target) => target.reset(),
-            Err(_) => {}
-        }
+        if let Ok(mut target) = self.target.try_borrow_mut() { target.reset() }
         // if self.target.borrow().previous.is_some() {
         //     self.target.borrow_mut().reset()
         // }
@@ -359,7 +356,8 @@ mod tests {
     use crate::zql::relationship_manager::RelationshipManager;
 
     fn case_profile() -> IndexLink {
-        let case_profile = IndexLink {
+        
+        IndexLink {
             name: None,
             left_field: Some("cp_id".into()),
             qualified_index: QualifiedIndex {
@@ -368,12 +366,12 @@ mod tests {
                 index: "idxcase_profile".into(),
             },
             right_field: Some("cp_id".into()),
-        };
-        case_profile
+        }
     }
 
     fn docs() -> IndexLink {
-        let docs = IndexLink {
+        
+        IndexLink {
             name: None,
             left_field: Some("docs_id".into()),
             qualified_index: QualifiedIndex {
@@ -382,12 +380,12 @@ mod tests {
                 index: "idxdocs".into(),
             },
             right_field: Some("docs_id".into()),
-        };
-        docs
+        }
     }
 
     fn main_vol() -> IndexLink {
-        let main_vol = IndexLink {
+        
+        IndexLink {
             name: None,
             left_field: Some("vol_id".into()),
             qualified_index: QualifiedIndex {
@@ -396,12 +394,12 @@ mod tests {
                 index: "idxmain_vol".into(),
             },
             right_field: Some("vol_id".into()),
-        };
-        main_vol
+        }
     }
 
     fn main_other() -> IndexLink {
-        let main_other = IndexLink {
+        
+        IndexLink {
             name: None,
             left_field: Some("other_id".into()),
             qualified_index: QualifiedIndex {
@@ -410,12 +408,12 @@ mod tests {
                 index: "idxmain_other".into(),
             },
             right_field: Some("ft_id".into()),
-        };
-        main_other
+        }
     }
 
     fn main_ft() -> IndexLink {
-        let main_ft = IndexLink {
+        
+        IndexLink {
             name: None,
             left_field: Some("ft_id".into()),
             qualified_index: QualifiedIndex {
@@ -424,12 +422,12 @@ mod tests {
                 index: "idxmain_ft".into(),
             },
             right_field: Some("ft_id".into()),
-        };
-        main_ft
+        }
     }
 
     fn main() -> IndexLink {
-        let main = IndexLink {
+        
+        IndexLink {
             name: None,
             left_field: Some("id".into()),
             qualified_index: QualifiedIndex {
@@ -438,8 +436,7 @@ mod tests {
                 index: "idxmain".into(),
             },
             right_field: Some("id".into()),
-        };
-        main
+        }
     }
 
     fn setup() -> RelationshipManager {

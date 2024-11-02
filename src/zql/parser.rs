@@ -21172,7 +21172,7 @@ fn __action61<'input>(
 ) -> Term<'input> {
     {
         match Term::maybe_make_wildcard_or_regex(operator_stack.last(), s.0, b) {
-            Term::String(t, b) if s.1 == true => Term::Phrase(t, b),
+            Term::String(t, b) if s.1 => Term::Phrase(t, b),
             other => other,
         }
     }
@@ -21772,7 +21772,7 @@ fn __action88<'input>(
             if i > 0 {
                 array.push(',');
             }
-            array.push_str(&v);
+            array.push_str(v);
         }
         array.push(']');
         array
@@ -21903,7 +21903,7 @@ fn __action95<'input>(
             if map.contains_key(&field.0) {
                 panic!("duplicate named field lists: {}", field.0);
             }
-            map.insert(field.0.into(), field.1);
+            map.insert(field.0, field.1);
         }
         map
     }

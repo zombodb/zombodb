@@ -165,7 +165,7 @@ mod tests {
 
     #[pg_test]
     fn test_regexp_without_default() {
-        let boost = 2.0 as f32;
+        let boost = 2.0_f32;
         let zdbquery = Spi::get_one::<ZDBQuery>(
             "SELECT dsl.regexp(
                 'regexp_field',

@@ -35,10 +35,7 @@ mod dsl {
         nested_filter: default!(Option<ZDBQuery>, NULL),
         mode: default!(Option<SortMode>, NULL),
     ) -> SortDescriptor {
-        let nested_filter = match nested_filter {
-            Some(query) => Some(query.query_dsl()),
-            None => None,
-        };
+        let nested_filter = nested_filter.map(|query| query.query_dsl());
         SortDescriptor {
             field: field.to_string(),
             options: SortDescriptorOptions {

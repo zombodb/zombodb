@@ -128,9 +128,9 @@ mod tests {
 
     #[pg_test]
     fn test_ignore_visibility() -> spi::Result<()> {
-        assert_eq!(ZDB_IGNORE_VISIBILITY.get(), false);
+        assert!(!ZDB_IGNORE_VISIBILITY.get());
         Spi::run("SET zdb.ignore_visibility TO true")?;
-        assert_eq!(ZDB_IGNORE_VISIBILITY.get(), true);
+        assert!(ZDB_IGNORE_VISIBILITY.get());
         Ok(())
     }
 
