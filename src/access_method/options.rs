@@ -667,6 +667,10 @@ fn field_mapping(index_relation: PgRelation, field: &str) -> Option<JsonB> {
     })
 }
 
+#[cfg(feature = "pg12")]
+static mut RELOPT_KIND_ZDB: pg_sys::relopt_kind::Type = 0;
+
+#[cfg(not(feature = "pg12"))]
 static mut RELOPT_KIND_ZDB: pg_sys::relopt_kind::Type = pg_sys::relopt_kind::RELOPT_KIND_LOCAL;
 
 #[pg_guard]
