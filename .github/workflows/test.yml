@@ -51,7 +51,7 @@ jobs:
       - name: cargo update
         run: cargo update
 
-      - name: Extract pgrx Version
+      - name: determine pgrx version
         id: pgx
         run: echo version=$(cargo tree --depth 1 -i pgrx | head -n 1 | cut -f2 -dv) >> $GITHUB_OUTPUT
 
