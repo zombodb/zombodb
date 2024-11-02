@@ -1,9 +1,105 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::json::builder::JsonBuilder;
 use crate::utils::{find_zdb_index, lookup_zdb_index_tupdesc, type_is_domain};
-use pgrx::*;
+use pgrx::datum::{TryFromDatumError, UnboxDatum};
+use pgrx::pg_sys::{Datum, Oid};
+use pgrx::prelude::*;
+use pgrx::{Json, JsonB, PgMemoryContexts, PgRelation, PgTupleDesc};
 use serde_json::*;
 use std::collections::HashMap;
+
+#[derive(Debug)]
+#[repr(transparent)]
+pub struct JsonStringWrapper(pub pgrx::datum::JsonString);
+
+impl FromDatum for JsonStringWrapper {
+    const GET_TYPOID: bool = false;
+
+    unsafe fn from_datum(datum: Datum, is_null: bool) -> Option<Self> {
+        pgrx::datum::JsonString::from_datum(datum, is_null).map(|js| JsonStringWrapper(js))
+    }
+
+    unsafe fn from_polymorphic_datum(datum: Datum, is_null: bool, typoid: Oid) -> Option<Self> {
+        pgrx::datum::JsonString::from_polymorphic_datum(datum, is_null, typoid)
+            .map(|js| JsonStringWrapper(js))
+    }
+
+    unsafe fn from_datum_in_memory_context(
+        memory_context: PgMemoryContexts,
+        datum: Datum,
+        is_null: bool,
+        typoid: Oid,
+    ) -> Option<Self> {
+        pgrx::datum::JsonString::from_datum_in_memory_context(
+            memory_context,
+            datum,
+            is_null,
+            typoid,
+        )
+        .map(|js| JsonStringWrapper(js))
+    }
+
+    unsafe fn try_from_datum(
+        datum: Datum,
+        is_null: bool,
+        type_oid: Oid,
+    ) -> std::result::Result<Option<Self>, TryFromDatumError>
+    where
+        Self: IntoDatum,
+    {
+        pgrx::datum::JsonString::try_from_datum(datum, is_null, type_oid)
+            .map(|js| js.map(|js| JsonStringWrapper(js)))
+    }
+
+    unsafe fn try_from_datum_in_memory_context(
+        memory_context: PgMemoryContexts,
+        datum: Datum,
+        is_null: bool,
+        type_oid: Oid,
+    ) -> std::result::Result<Option<Self>, TryFromDatumError>
+    where
+        Self: IntoDatum,
+    {
+        pgrx::datum::JsonString::try_from_datum_in_memory_context(
+            memory_context,
+            datum,
+            is_null,
+            type_oid,
+        )
+        .map(|js| js.map(|js| JsonStringWrapper(js)))
+    }
+}
+
+impl IntoDatum for JsonStringWrapper {
+    fn into_datum(self) -> Option<Datum> {
+        self.0.into_datum()
+    }
+
+    fn type_oid() -> Oid {
+        pgrx::datum::JsonString::type_oid()
+    }
+
+    fn composite_type_oid(&self) -> Option<Oid> {
+        self.0.composite_type_oid()
+    }
+
+    fn is_compatible_with(other: Oid) -> bool {
+        pgrx::datum::JsonString::is_compatible_with(other)
+    }
+}
+
+unsafe impl UnboxDatum for JsonStringWrapper {
+    type As<'src> = JsonStringWrapper
+    where
+        Self: 'src;
+
+    unsafe fn unbox<'src>(datum: pgrx::datum::Datum<'src>) -> Self::As<'src>
+    where
+        Self: 'src,
+    {
+        JsonStringWrapper::from_datum(datum.sans_lifetime(), false).unwrap()
+    }
+}
 
 #[pg_extern]
 fn reapply_mapping(index_relation: PgRelation) -> bool {
@@ -161,17 +257,19 @@ pub fn categorize_tupdesc(
                         PgBuiltInOids::OIDOID | PgBuiltInOids::XIDOID => {
                             if is_array {
                                 Box::new(|builder, name, datum, _oid| {
-                                    builder.add_u32_array(
+                                    builder.add_oid_array(
                                         name,
-                                        unsafe { Vec::<Option<u32>>::from_datum(datum, false) }
-                                            .unwrap(),
+                                        unsafe {
+                                            Vec::<Option<pg_sys::Oid>>::from_datum(datum, false)
+                                        }
+                                        .unwrap(),
                                     )
                                 })
                             } else {
                                 Box::new(|builder, name, datum, _oid| {
-                                    builder.add_u32(
+                                    builder.add_oid(
                                         name,
-                                        unsafe { u32::from_datum(datum, false) }.unwrap(),
+                                        unsafe { pg_sys::Oid::from_datum(datum, false) }.unwrap(),
                                     )
                                 })
                             }
@@ -323,7 +421,7 @@ pub fn categorize_tupdesc(
                                     builder.add_json_string_array(
                                         name,
                                         unsafe {
-                                            Vec::<Option<pgrx::JsonString>>::from_datum(
+                                            Vec::<Option<JsonStringWrapper>>::from_datum(
                                                 datum, false,
                                             )
                                         }
@@ -334,7 +432,7 @@ pub fn categorize_tupdesc(
                                 Box::new(|builder, name, datum, _oid| {
                                     builder.add_json_string(
                                         name,
-                                        unsafe { pgrx::JsonString::from_datum(datum, false) }
+                                        unsafe { JsonStringWrapper::from_datum(datum, false) }
                                             .unwrap(),
                                     )
                                 })
@@ -416,7 +514,7 @@ pub fn categorize_tupdesc(
                                         json!( {"type": "text", "analyzer": name })
                                     } else {
                                         panic!(
-                                            "Unsupported base domain type for {}: {}",
+                                            "Unsupported base domain type for {}: {:?}",
                                             name, basetypeoid
                                         );
                                     }

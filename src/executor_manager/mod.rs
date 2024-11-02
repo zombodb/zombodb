@@ -2,6 +2,7 @@ use crate::access_method::options::ZDBIndexOptions;
 use crate::elasticsearch::{Elasticsearch, ElasticsearchBulkRequest};
 use crate::mapping::{categorize_tupdesc, CategorizedAttribute};
 use crate::utils::{find_zdb_index, lookup_all_zdb_index_oids, lookup_zdb_index_tupdesc};
+use pgrx::itemptr::{item_pointer_get_both, u64_to_item_pointer_parts};
 use pgrx::pg_sys::Oid;
 use pgrx::*;
 use std::collections::{HashMap, HashSet};
@@ -138,7 +139,7 @@ impl QueryState {
             .expect("no arguments provided to zdb.score()");
 
         unsafe {
-            if is_a(first_arg, pg_sys::NodeTag_T_Var) {
+            if is_a(first_arg, pg_sys::NodeTag::T_Var) {
                 // lookup the table from which the 'ctid' value comes, so we can get its oid
                 let rtable = query_desc
                     .as_ref()
@@ -175,7 +176,7 @@ impl QueryState {
                     }
                     Err(_) => None,
                 }
-            } else if is_a(first_arg, pg_sys::NodeTag_T_FuncExpr) {
+            } else if is_a(first_arg, pg_sys::NodeTag::T_FuncExpr) {
                 let func_expr = PgBox::from_pg(first_arg as *mut pg_sys::FuncExpr);
                 match lookup_all_zdb_index_oids() {
                     Some(oids) => {
@@ -190,7 +191,7 @@ impl QueryState {
                             );
 
                             if let Some(expr) = exprs.get_ptr(0) {
-                                if is_a(expr as *mut pg_sys::Node, pg_sys::NodeTag_T_FuncExpr) {
+                                if is_a(expr as *mut pg_sys::Node, pg_sys::NodeTag::T_FuncExpr) {
                                     let func_expr = PgBox::from_pg(expr as *mut pg_sys::FuncExpr);
                                     if func_expr.funcid == funcoid {
                                         return Some(index.oid());

@@ -154,7 +154,7 @@ pub unsafe extern "C" fn aminsert(
     _isnull: *mut bool,
     heap_tid: pg_sys::ItemPointer,
     _heap_relation: pg_sys::Relation,
-    _check_unique: pg_sys::IndexUniqueCheck,
+    _check_unique: pg_sys::IndexUniqueCheck::Type,
     _index_info: *mut pg_sys::IndexInfo,
 ) -> bool {
     aminsert_internal(index_relation, values, heap_tid)
@@ -168,7 +168,7 @@ pub unsafe extern "C" fn aminsert(
     _isnull: *mut bool,
     heap_tid: pg_sys::ItemPointer,
     _heap_relation: pg_sys::Relation,
-    _check_unique: pg_sys::IndexUniqueCheck,
+    _check_unique: pg_sys::IndexUniqueCheck::Type,
     _index_unchanged: bool,
     _index_info: *mut pg_sys::IndexInfo,
 ) -> bool {

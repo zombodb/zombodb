@@ -34,7 +34,7 @@ pub fn get_heap_relation_for_func_expr(
     }
 
     let a1 = args.get_ptr(0).unwrap();
-    if unsafe { is_a(a1, pg_sys::NodeTag_T_Var) } {
+    if unsafe { is_a(a1, pg_sys::NodeTag::T_Var) } {
         let var = unsafe { PgBox::from_pg(a1 as *mut pg_sys::Var) };
         return get_heap_relation_from_var(relation, view_def, &var);
     }
@@ -102,14 +102,14 @@ pub fn find_zdb_index(
 
                 let resname = std::ffi::CStr::from_ptr(te.resname);
                 if resname.eq(std::ffi::CStr::from_bytes_with_nul_unchecked(ZDB_RESNAME)) {
-                    if is_a(te.expr as *mut pg_sys::Node, pg_sys::NodeTag_T_Var) {
+                    if is_a(te.expr as *mut pg_sys::Node, pg_sys::NodeTag::T_Var) {
                         let var = PgBox::from_pg(te.expr as *mut pg_sys::Var);
 
                         // the 'zdb' column is not a functional expression, so it just points to the table
                         // from which it is derived
                         let heap = get_heap_relation_from_var(Some(any_relation), &view_def, &var);
                         return find_zdb_index(&heap);
-                    } else if is_a(te.expr as *mut pg_sys::Node, pg_sys::NodeTag_T_FuncExpr) {
+                    } else if is_a(te.expr as *mut pg_sys::Node, pg_sys::NodeTag::T_FuncExpr) {
                         let func_expr = PgBox::from_pg(te.expr as *mut pg_sys::FuncExpr);
                         let heap = get_heap_relation_for_func_expr(
                             Some(any_relation),
@@ -155,7 +155,7 @@ fn find_zdb_shadow_index(table: &PgRelation, funcid: pg_sys::Oid) -> PgRelation 
                     );
 
                     if let Some(expr) = exprs.get_ptr(0) {
-                        if is_a(expr as *mut pg_sys::Node, pg_sys::NodeTag_T_FuncExpr) {
+                        if is_a(expr as *mut pg_sys::Node, pg_sys::NodeTag::T_FuncExpr) {
                             let func_expr = PgBox::from_pg(expr as *mut pg_sys::FuncExpr);
                             if func_expr.funcid == funcid {
                                 return index;

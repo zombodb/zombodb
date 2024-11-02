@@ -4,7 +4,8 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::missing_safety_doc)]
 #![allow(clippy::redundant_closure)]
-use pgrx::*;
+use pgrx::itemptr::u64_to_item_pointer;
+use pgrx::prelude::*;
 
 mod access_method;
 mod cat;
@@ -22,17 +23,39 @@ mod walker;
 mod zdbquery;
 pub mod zql;
 
-pg_module_magic!();
+::pgrx::pg_module_magic!();
 
 extension_sql_file!("../sql/_bootstrap.sql", bootstrap);
 extension_sql_file!("../sql/_mappings.sql", name = "mappings");
 extension_sql_file!(
     "../sql/_support-views.sql",
     name = "support_views",
-    requires = [query_dsl::bool::dsl, "cat_api"],
+    requires = [
+        query_dsl::bool::dsl,
+        "cat_api",
+        zombodb::elasticsearch::request
+    ],
 );
-extension_sql_file!("../sql/_join-support.sql", name = "join_support");
-extension_sql_file!("../sql/_cat-api.sql", name = "cat_api");
+extension_sql_file!(
+    "../sql/_join-support.sql",
+    name = "join_support",
+    requires = [
+        ZDBQuery,
+        zombodb::query_dsl::bool::dsl::bool,
+        zombodb::query_dsl::bool::dsl::filter,
+        zombodb::query_dsl::terms_array::dsl::terms_array,
+        zombodb::elasticsearch::aggregates::top_hits::top_hits,
+    ]
+);
+extension_sql_file!(
+    "../sql/_cat-api.sql",
+    name = "cat_api",
+    requires = [
+        zombodb::cat::cat_request,
+        zombodb::access_method::options::index_name,
+        zombodb::access_method::options::index_url,
+    ]
+);
 extension_sql_file!(
     "../sql/_type-conversions.sql",
     name = "type_conversions",
@@ -40,7 +63,7 @@ extension_sql_file!(
         "mappings",
         "cat_api",
         query_dsl::geo::point_to_json,
-        query_dsl::geo::point_array_to_json
+        query_dsl::geo::point_array_to_json,
     ]
 );
 extension_sql_file!("../sql/_finalize.sql", finalize);

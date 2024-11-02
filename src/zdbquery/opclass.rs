@@ -3,7 +3,9 @@ use crate::executor_manager::get_executor_manager;
 use crate::gucs::ZDB_DEFAULT_ROW_ESTIMATE;
 use crate::utils::get_heap_relation_for_func_expr;
 use crate::zdbquery::ZDBQuery;
-use pgrx::*;
+use pgrx::itemptr::item_pointer_to_u64;
+use pgrx::prelude::*;
+use pgrx::{is_a, pg_func_extra, AnyElement, Internal, PgList, PgRelation};
 use rustc_hash::{FxHashMap, FxHashSet};
 
 #[pg_extern(immutable, parallel_safe)]
@@ -113,7 +115,7 @@ fn restrict(
     let right = right.unwrap();
     let mut heap_relation = None;
 
-    if unsafe { is_a(left, pg_sys::NodeTag_T_FuncExpr) } {
+    if unsafe { is_a(left, pg_sys::NodeTag::T_FuncExpr) } {
         unsafe {
             let func = PgBox::<pg_sys::FuncExpr>::from_pg(left as *mut pg_sys::FuncExpr);
             let planner_info = planner_info.get::<pg_sys::PlannerInfo>().unwrap();
@@ -122,7 +124,7 @@ fn restrict(
 
             heap_relation = Some(heap);
         }
-    } else if unsafe { is_a(left, pg_sys::NodeTag_T_Var) } {
+    } else if unsafe { is_a(left, pg_sys::NodeTag::T_Var) } {
         let mut ldata = pg_sys::VariableStatData::default();
 
         unsafe {
@@ -150,7 +152,7 @@ fn restrict(
     }
 
     if let Some(heap_relation) = heap_relation {
-        if unsafe { is_a(right, pg_sys::NodeTag_T_Const) } {
+        if unsafe { is_a(right, pg_sys::NodeTag::T_Const) } {
             let rconst = unsafe { PgBox::from_pg(right as *mut pg_sys::Const) };
 
             unsafe {
@@ -205,5 +207,6 @@ CREATE OPERATOR CLASS anyelement_zdb_ops DEFAULT FOR TYPE anyelement USING zombo
     STORAGE anyelement;
 
 "#,
-    name = "zdb_ops_anyelement_operator"
+    name = "zdb_ops_anyelement_operator",
+    requires = [ZDBQuery, restrict, anyelement_cmpfunc]
 );

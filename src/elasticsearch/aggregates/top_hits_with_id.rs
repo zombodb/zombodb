@@ -8,7 +8,7 @@ use serde_json::*;
 #[pg_extern(immutable, parallel_safe)]
 fn top_hits_with_id(
     index: PgRelation,
-    fields: Array<&str>,
+    fields: Vec<String>,
     query: ZDBQuery,
     size_limit: i64,
 ) -> TableIterator<'static, (name!(id, String), name!(score, f64), name!(source, Json))> {

@@ -32,7 +32,7 @@ mod pg_catalog {
 mod dsl {
     use crate::query_dsl::matches::pg_catalog::*;
     use crate::zdbquery::ZDBQuery;
-    use pgrx::*;
+    use pgrx::prelude::*;
     use serde::*;
     use serde_json::*;
 
@@ -68,7 +68,7 @@ mod dsl {
     #[derive(Serialize)]
     struct MultiMatched<'a> {
         query: &'a str,
-        fields: Array<'a, &'a str>,
+        fields: Vec<Option<String>>,
         #[serde(skip_serializing_if = "Option::is_none")]
         boost: Option<f32>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -127,15 +127,15 @@ mod dsl {
     }
 
     #[pg_extern(immutable, parallel_safe, name = "match")]
-    fn match_wrapper(
+    fn match_wrapper<'a>(
         field: &str,
         query: &str,
         boost: default!(Option<f32>, NULL),
-        analyzer: default!(Option<&str>, NULL),
+        analyzer: default!(Option<&'a str>, NULL),
         minimum_should_match: default!(Option<i32>, NULL),
         lenient: default!(Option<bool>, NULL),
         fuzziness: default!(Option<i32>, NULL),
-        fuzzy_rewrite: default!(Option<&str>, NULL),
+        fuzzy_rewrite: default!(Option<&'a str>, NULL),
         fuzzy_transpositions: default!(Option<bool>, NULL),
         prefix_length: default!(Option<i32>, NULL),
         cutoff_frequency: default!(Option<f32>, NULL),
@@ -187,7 +187,7 @@ mod dsl {
     ) -> ZDBQuery {
         let multimatch = MultiMatched {
             query,
-            fields,
+            fields: fields.iter().map(|s| s.map(|s| s.to_string())).collect(),
             boost,
             analyzer,
             minimum_should_match,
@@ -210,12 +210,12 @@ mod dsl {
     }
 
     #[pg_extern(immutable, parallel_safe)]
-    fn match_phrase(
+    fn match_phrase<'a>(
         field: &str,
         query: &str,
         boost: default!(Option<f32>, NULL),
         slop: default!(Option<i32>, NULL),
-        analyzer: default!(Option<&str>, NULL),
+        analyzer: default!(Option<&'a str>, NULL),
         zero_terms_query: default!(Option<ZeroTermsQuery>, NULL),
     ) -> ZDBQuery {
         let match_phrase = MatchPhrase {
@@ -235,24 +235,24 @@ mod dsl {
     }
 
     #[pg_extern(immutable, parallel_safe)]
-    fn phrase(
+    fn phrase<'a>(
         field: &str,
         query: &str,
         boost: default!(Option<f32>, NULL),
         slop: default!(Option<i32>, NULL),
-        analyzer: default!(Option<&str>, NULL),
+        analyzer: default!(Option<&'a str>, NULL),
         zero_terms_query: default!(Option<ZeroTermsQuery>, NULL),
     ) -> ZDBQuery {
         match_phrase(field, query, boost, slop, analyzer, zero_terms_query)
     }
 
     #[pg_extern(immutable, parallel_safe)]
-    fn match_phrase_prefix(
+    fn match_phrase_prefix<'a>(
         field: &str,
         query: &str,
         boost: default!(Option<f32>, NULL),
         slop: default!(Option<i32>, NULL),
-        analyzer: default!(Option<&str>, NULL),
+        analyzer: default!(Option<&'a str>, NULL),
         maxexpansion: default!(Option<i32>, NULL),
         zero_terms_query: default!(Option<ZeroTermsQuery>, NULL),
     ) -> ZDBQuery {

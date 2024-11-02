@@ -2,7 +2,7 @@ use crate::access_method::options::ZDBIndexOptions;
 use crate::highlighting::document_highlighter::*;
 use crate::utils::{find_zdb_index, get_highlight_analysis_info, has_date_subfield};
 use crate::zql::ast::{Expr, IndexLink, QualifiedField, Term};
-use pgrx::once_cell::sync::Lazy;
+use once_cell::sync::Lazy;
 use pgrx::prelude::*;
 use pgrx::{JsonB, PgRelation, *};
 use std::borrow::Cow;

@@ -43,9 +43,9 @@ struct Custom<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     normalizer: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    filter: Option<Array<'a, &'a str>>,
+    filter: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    char_filter: Option<Array<'a, &'a str>>,
+    char_filter: Option<Vec<String>>,
 }
 
 impl ElasticsearchAnalyzerRequest {
@@ -97,8 +97,8 @@ impl ElasticsearchAnalyzerRequest {
         text: Option<&'a str>,
         tokenizer: Option<&'a str>,
         normalizer: Option<&'a str>,
-        filter: Option<Array<'a, &'a str>>,
-        char_filter: Option<Array<'a, &'a str>>,
+        filter: Option<Vec<String>>,
+        char_filter: Option<Vec<String>>,
     ) -> ElasticsearchAnalyzerRequest {
         let custom = Custom {
             field,
@@ -163,8 +163,8 @@ fn analyze_custom<'a>(
     text: default!(Option<&'a str>, NULL),
     tokenizer: default!(Option<&'a str>, NULL),
     normalizer: default!(Option<&'a str>, NULL),
-    filter: default!(Option<Array<'a, &'a str>>, NULL),
-    char_filter: default!(Option<Array<'a, &'a str>>, NULL),
+    filter: default!(Option<Vec<String>>, NULL),
+    char_filter: default!(Option<Vec<String>>, NULL),
 ) -> TableIterator<
     'static,
     (

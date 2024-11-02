@@ -35,7 +35,15 @@ CREATE CAST (jsonb AS zdbquery) WITH FUNCTION zdbquery_from_jsonb(jsonb) AS IMPL
 CREATE CAST (zdbquery AS json) WITH FUNCTION zdbquery_to_json(zdbquery) AS IMPLICIT;
 CREATE CAST (zdbquery AS jsonb) WITH FUNCTION zdbquery_to_jsonb(zdbquery) AS IMPLICIT;
 "#,
-    name = "zdb_query_casts"
+    name = "zdb_query_casts",
+    requires = [
+        ZDBQuery,
+        zdbquery_from_text,
+        zdbquery_from_json,
+        zdbquery_from_jsonb,
+        zdbquery_to_json,
+        zdbquery_to_jsonb
+    ]
 );
 
 #[cfg(any(test, feature = "pg_test"))]

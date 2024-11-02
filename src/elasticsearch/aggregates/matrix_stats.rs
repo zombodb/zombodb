@@ -8,7 +8,7 @@ use serde_json::*;
 #[pg_extern(immutable, parallel_safe)]
 fn matrix_stats(
     index: PgRelation,
-    fields: Array<&str>,
+    fields: Vec<String>,
     query: ZDBQuery,
 ) -> TableIterator<
     'static,

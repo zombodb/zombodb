@@ -1,4 +1,3 @@
-use pgrx::*;
 use serde_json::{json, Value};
 
 mod cast;
@@ -11,6 +10,8 @@ use crate::zql::ast::{Expr, IndexLink, QualifiedField};
 use crate::zql::dsl::expr_to_dsl;
 use crate::zql::transformations::field_finder::find_link_for_field;
 pub use pg_catalog::*;
+use pgrx::prelude::*;
+use pgrx::{Json, PgRelation, StringInfo};
 use serde::*;
 use std::collections::{HashMap, HashSet};
 

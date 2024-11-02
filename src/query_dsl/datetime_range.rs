@@ -19,7 +19,7 @@ mod dsl {
     };
     use crate::query_dsl::datetime_range::pg_catalog::*;
     use crate::zdbquery::ZDBQuery;
-    use pgrx::*;
+    use pgrx::prelude::*;
     use serde::*;
     use serde_json::*;
 

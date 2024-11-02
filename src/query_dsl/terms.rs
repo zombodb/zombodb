@@ -6,11 +6,12 @@
 #[pgrx::pg_schema]
 mod dsl {
     use crate::zdbquery::ZDBQuery;
+    use pgrx::datum::UnboxDatum;
     use pgrx::*;
     use serde_json::*;
 
     #[pg_extern(name = "terms", immutable, parallel_safe)]
-    pub(super) fn terms_str(field: &str, values: VariadicArray<&str>) -> ZDBQuery {
+    pub(super) fn terms_str(field: &str, values: VariadicArray<String>) -> ZDBQuery {
         make_terms_dsl(field, values)
     }
 
@@ -45,10 +46,13 @@ mod dsl {
     }
 
     #[inline]
-    fn make_terms_dsl<T: serde::Serialize + FromDatum>(
+    fn make_terms_dsl<T: serde::Serialize + FromDatum + UnboxDatum>(
         field: &str,
         values: VariadicArray<T>,
-    ) -> ZDBQuery {
+    ) -> ZDBQuery
+    where
+        for<'arr> <T as UnboxDatum>::As<'arr>: serde::Serialize,
+    {
         ZDBQuery::new_with_query_dsl(json! {
             {
                 "terms": {

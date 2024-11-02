@@ -42,7 +42,7 @@ pub struct DocumentHighlighter<'a> {
 }
 
 #[rustfmt::skip]
-fn make_date(s: &str) -> Option<pgrx::TimestampWithTimeZone> {
+fn make_date(s: &str) -> Option<TimestampWithTimeZone> {
     unsafe {
         let date_str = s.as_pg_cstr();
         let date: Option<TimestampWithTimeZone> = PgTryBuilder::new(|| {

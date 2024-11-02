@@ -39,7 +39,7 @@ mod dsl {
         #[serde(skip_serializing_if = "Option::is_none")]
         enable_position_increments: Option<bool>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        fields: Option<Array<'a, &'a str>>,
+        fields: Option<Vec<String>>,
         #[serde(skip_serializing_if = "Option::is_none")]
         fuzziness: Option<i32>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -75,7 +75,7 @@ mod dsl {
         boost: default!(Option<f32>, NULL),
         default_operator: default!(Option<QueryStringDefaultOperator>, NULL),
         enable_position_increments: default!(Option<bool>, NULL),
-        fields: default!(Option<Array<'a, &'a str>>, NULL),
+        fields: default!(Option<Vec<String>>, NULL),
         fuzziness: default!(Option<i32>, NULL),
         fuzzy_max_expansions: default!(Option<i64>, NULL),
         fuzzy_transpositions: default!(Option<bool>, NULL),

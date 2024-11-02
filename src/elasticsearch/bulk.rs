@@ -5,6 +5,7 @@ use crate::gucs::ZDB_LOG_LEVEL;
 use crate::json::builder::JsonBuilder;
 use crossbeam::channel::{RecvTimeoutError, SendTimeoutError};
 use dashmap::DashSet;
+use pgrx::itemptr::item_pointer_to_u64;
 use pgrx::pg_sys::elog::interrupt_pending;
 use pgrx::*;
 use rustc_hash::FxHasher;

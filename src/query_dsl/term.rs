@@ -7,7 +7,7 @@
 mod dsl {
     use crate::misc::timestamp_support::ZDBTimestamp;
     use crate::zdbquery::ZDBQuery;
-    use pgrx::*;
+    use pgrx::prelude::*;
     use serde::*;
     use serde_json::*;
 

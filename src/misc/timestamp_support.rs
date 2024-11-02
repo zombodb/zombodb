@@ -1,4 +1,4 @@
-use pgrx::{Date, Time, TimeWithTimeZone, Timestamp, TimestampWithTimeZone, ToIsoString};
+use pgrx::datum::{Date, Time, TimeWithTimeZone, Timestamp, TimestampWithTimeZone, ToIsoString};
 use serde::{Serialize, Serializer};
 
 #[derive(Debug)]

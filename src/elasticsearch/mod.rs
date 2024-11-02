@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-pub(crate) mod aggregates;
+pub mod aggregates;
 mod aliases;
 pub(crate) mod analyze;
 mod bulk;
@@ -214,8 +214,8 @@ impl Elasticsearch {
         text: Option<default!(&'a str, NULL)>,
         tokenizer: Option<default!(&'a str, NULL)>,
         normalizer: Option<default!(&'a str, NULL)>,
-        filter: Option<default!(Array<'a, &'a str>, NULL)>,
-        char_filter: Option<default!(Array<'a, &'a str>, NULL)>,
+        filter: Option<default!(Vec<String>, NULL)>,
+        char_filter: Option<default!(Vec<String>, NULL)>,
     ) -> ElasticsearchAnalyzerRequest {
         ElasticsearchAnalyzerRequest::new_custom(
             self,
@@ -564,7 +564,7 @@ impl Elasticsearch {
 }
 
 #[pg_extern(volatile, parallel_safe)]
-fn request(
+pub fn request(
     index: PgRelation,
     endpoint: &str,
     method: default!(ArbitraryRequestType, "'GET'"),

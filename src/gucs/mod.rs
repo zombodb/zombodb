@@ -1,4 +1,6 @@
-use pgrx::*;
+use pgrx::prelude::*;
+use pgrx::{GucContext, GucFlags, GucRegistry, GucSetting};
+use std::ffi::CStr;
 
 #[derive(PostgresGucEnum, Clone, Copy, PartialEq, Debug)]
 pub enum ZDBLogLevel {
@@ -36,12 +38,14 @@ impl ZDBLogLevel {
     }
 }
 
-pub static ZDB_IGNORE_VISIBILITY: GucSetting<bool> = GucSetting::new(false);
-pub static ZDB_DEFAULT_ROW_ESTIMATE: GucSetting<i32> = GucSetting::new(2500);
-pub static ZDB_DEFAULT_REPLICAS: GucSetting<i32> = GucSetting::new(0);
-pub static ZDB_DEFAULT_ELASTICSEARCH_URL: GucSetting<Option<&'static str>> = GucSetting::new(None);
-pub static ZDB_LOG_LEVEL: GucSetting<ZDBLogLevel> = GucSetting::new(ZDBLogLevel::Debug);
-pub static ZDB_ACCELERATOR: GucSetting<bool> = GucSetting::new(false);
+pub static ZDB_IGNORE_VISIBILITY: GucSetting<bool> = GucSetting::<bool>::new(false);
+pub static ZDB_DEFAULT_ROW_ESTIMATE: GucSetting<i32> = GucSetting::<i32>::new(2500);
+pub static ZDB_DEFAULT_REPLICAS: GucSetting<i32> = GucSetting::<i32>::new(0);
+pub static ZDB_DEFAULT_ELASTICSEARCH_URL: GucSetting<Option<&'static CStr>> =
+    GucSetting::<Option<&'static CStr>>::new(None);
+pub static ZDB_LOG_LEVEL: GucSetting<ZDBLogLevel> =
+    GucSetting::<ZDBLogLevel>::new(ZDBLogLevel::Debug);
+pub static ZDB_ACCELERATOR: GucSetting<bool> = GucSetting::<bool>::new(false);
 
 pub fn init() {
     GucRegistry::define_bool_guc("zdb.ignore_visibility",
@@ -105,7 +109,7 @@ mod tests {
         assert!(ZDB_DEFAULT_ELASTICSEARCH_URL.get().is_some());
         assert_eq!(
             ZDB_DEFAULT_ELASTICSEARCH_URL.get().unwrap(),
-            "http://localhost:19200/"
+            c"http://localhost:19200/"
         );
     }
 
