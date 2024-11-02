@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-pub(crate) mod aggregates;
+pub mod aggregates;
 mod aliases;
 pub(crate) mod analyze;
 mod bulk;
@@ -214,8 +214,8 @@ impl Elasticsearch {
         text: Option<default!(&'a str, NULL)>,
         tokenizer: Option<default!(&'a str, NULL)>,
         normalizer: Option<default!(&'a str, NULL)>,
-        filter: Option<default!(Array<'a, &'a str>, NULL)>,
-        char_filter: Option<default!(Array<'a, &'a str>, NULL)>,
+        filter: Option<default!(Vec<String>, NULL)>,
+        char_filter: Option<default!(Vec<String>, NULL)>,
     ) -> ElasticsearchAnalyzerRequest {
         ElasticsearchAnalyzerRequest::new_custom(
             self,
@@ -293,7 +293,7 @@ impl Elasticsearch {
     ) -> ElasticsearchAggregateSearchRequest<T> {
         if let Value::Object(agg) = agg_request {
             let mut agg_map = HashMap::new();
-            agg_map.extend(agg.into_iter());
+            agg_map.extend(agg);
             self.aggregate_set(field_name, need_filter, query, agg_map)
         } else {
             panic!("arbitrary aggreate not in correct format")
@@ -339,7 +339,7 @@ impl Elasticsearch {
                 let mut path = field.rsplitn(2, '.').collect::<Vec<&str>>();
                 let path = path.pop().unwrap();
 
-                if is_nested_field(&index, &path).unwrap_or(false) {
+                if is_nested_field(&index, path).unwrap_or(false) {
                     // is nested, so we also need to generate a filter query for it
                     if need_filter {
                         let mut value = query.query_dsl().clone();
@@ -564,7 +564,7 @@ impl Elasticsearch {
 }
 
 #[pg_extern(volatile, parallel_safe)]
-fn request(
+pub fn request(
     index: PgRelation,
     endpoint: &str,
     method: default!(ArbitraryRequestType, "'GET'"),
@@ -572,7 +572,7 @@ fn request(
     null_on_error: default!(Option<bool>, false),
 ) -> Option<String> {
     let es = Elasticsearch::new(&index);
-    match es.arbitrary_request(method, endpoint, post_data.map_or(None, |v| Some(v.0))) {
+    match es.arbitrary_request(method, endpoint, post_data.map(|v| v.0)) {
         Ok(response) => Some(response),
         Err(_) if null_on_error.unwrap_or(false) => None,
         Err(e) => panic!("{:?}", e),

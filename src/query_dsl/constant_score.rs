@@ -50,7 +50,7 @@ mod tests {
 
     #[pg_test]
     fn test_constant_score() {
-        let boost = 1.2 as f32;
+        let boost = 1.2_f32;
         let zdbquery = constant_score(boost, ZDBQuery::new_with_query_string("test"));
 
         assert_eq!(
@@ -68,7 +68,7 @@ mod tests {
 
     #[pg_test]
     fn test_boosting() {
-        let boost = 0.5 as f32;
+        let boost = 0.5_f32;
         let zdbquery = boosting(
             ZDBQuery::new_with_query_string("test_pos"),
             ZDBQuery::new_with_query_string("test_neg"),
@@ -91,8 +91,8 @@ mod tests {
 
     #[pg_test]
     fn test_dis_max() {
-        let boost = 2.5 as f32;
-        let tie = 5.5 as f32;
+        let boost = 2.5_f32;
+        let tie = 5.5_f32;
         let zdbquery = Spi::get_one::<ZDBQuery>(
             "SELECT dsl.dis_max(
             ARRAY[

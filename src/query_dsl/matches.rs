@@ -32,7 +32,7 @@ mod pg_catalog {
 mod dsl {
     use crate::query_dsl::matches::pg_catalog::*;
     use crate::zdbquery::ZDBQuery;
-    use pgrx::*;
+    use pgrx::prelude::*;
     use serde::*;
     use serde_json::*;
 
@@ -68,7 +68,7 @@ mod dsl {
     #[derive(Serialize)]
     struct MultiMatched<'a> {
         query: &'a str,
-        fields: Array<'a, &'a str>,
+        fields: Vec<Option<String>>,
         #[serde(skip_serializing_if = "Option::is_none")]
         boost: Option<f32>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -127,15 +127,15 @@ mod dsl {
     }
 
     #[pg_extern(immutable, parallel_safe, name = "match")]
-    fn match_wrapper(
+    fn match_wrapper<'a>(
         field: &str,
         query: &str,
         boost: default!(Option<f32>, NULL),
-        analyzer: default!(Option<&str>, NULL),
+        analyzer: default!(Option<&'a str>, NULL),
         minimum_should_match: default!(Option<i32>, NULL),
         lenient: default!(Option<bool>, NULL),
         fuzziness: default!(Option<i32>, NULL),
-        fuzzy_rewrite: default!(Option<&str>, NULL),
+        fuzzy_rewrite: default!(Option<&'a str>, NULL),
         fuzzy_transpositions: default!(Option<bool>, NULL),
         prefix_length: default!(Option<i32>, NULL),
         cutoff_frequency: default!(Option<f32>, NULL),
@@ -187,7 +187,7 @@ mod dsl {
     ) -> ZDBQuery {
         let multimatch = MultiMatched {
             query,
-            fields,
+            fields: fields.iter().map(|s| s.map(|s| s.to_string())).collect(),
             boost,
             analyzer,
             minimum_should_match,
@@ -283,8 +283,8 @@ mod tests {
 
     #[pg_test]
     fn test_match_without_defaults() {
-        let boost = 2.0 as f32;
-        let cutoff = 3.9 as f32;
+        let boost = 2.0_f32;
+        let cutoff = 3.9_f32;
         let zdbquery = Spi::get_one::<ZDBQuery>(
             "SELECT dsl.match(
                 'match_field',
@@ -390,8 +390,8 @@ mod tests {
 
     #[pg_test]
     fn test_multi_match_without_defaults() {
-        let boost = 2.0 as f32;
-        let cutoff = 3.9 as f32;
+        let boost = 2.0_f32;
+        let cutoff = 3.9_f32;
         let zdbquery = Spi::get_one::<ZDBQuery>(
             "SELECT dsl.multi_match(
                     ARRAY [
@@ -473,7 +473,7 @@ mod tests {
 
     #[pg_test]
     fn test_match_phrase_prefix_without_defaults() {
-        let boost = 2.0 as f32;
+        let boost = 2.0_f32;
         let zdbquery = Spi::get_one::<ZDBQuery>(
             "SELECT dsl.match_phrase_prefix(
                 'match_phrase_prefix_field',
@@ -536,7 +536,7 @@ mod tests {
 
     #[pg_test]
     fn test_match_phrase_without_defaults() {
-        let boost = 2.0 as f32;
+        let boost = 2.0_f32;
         let zdbquery = Spi::get_one::<ZDBQuery>(
             "SELECT dsl.match_phrase(
                 'match_phrase_field',
@@ -597,7 +597,7 @@ mod tests {
 
     #[pg_test]
     fn test_phrase_without_defaults() {
-        let boost = 2.0 as f32;
+        let boost = 2.0_f32;
         let zdbquery = Spi::get_one::<ZDBQuery>(
             "SELECT dsl.phrase(
                 'phrase_field',

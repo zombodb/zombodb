@@ -7,12 +7,9 @@ fn score(ctid: Option<pg_sys::ItemPointerData>, fcinfo: pg_sys::FunctionCallInfo
     match ctid {
         Some(ctid) => {
             let score = match get_executor_manager().peek_query_state() {
-                Some((query_desc, query_state)) => {
-                    match query_state.lookup_index_for_first_field(*query_desc, fcinfo) {
-                        Some(index_oid) => Some(query_state.get_score(index_oid, ctid)),
-                        None => None,
-                    }
-                }
+                Some((query_desc, query_state)) => query_state
+                    .lookup_index_for_first_field(*query_desc, fcinfo)
+                    .map(|index_oid| query_state.get_score(index_oid, ctid)),
                 None => None,
             };
 

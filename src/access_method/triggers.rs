@@ -1,12 +1,36 @@
 use crate::executor_manager::get_executor_manager;
+use pgrx::callconv::{BoxRet, FcInfo};
+use pgrx::datum::Datum;
+use pgrx::itemptr::{item_pointer_get_both, item_pointer_set_all};
 use pgrx::pg_sys::{AsPgCStr, MaxOffsetNumber};
+use pgrx::pgrx_sql_entity_graph::metadata::{
+    ArgumentError, Returns, ReturnsError, SqlMapping, SqlTranslatable,
+};
 use pgrx::*;
 use std::ffi::CStr;
+
+pub struct TriggerDatum(pub pg_sys::Datum);
+
+unsafe impl BoxRet for TriggerDatum {
+    unsafe fn box_into<'fcx>(self, fcinfo: &mut FcInfo<'fcx>) -> Datum<'fcx> {
+        fcinfo.return_raw_datum(self.0)
+    }
+}
+
+unsafe impl SqlTranslatable for TriggerDatum {
+    fn argument_sql() -> Result<SqlMapping, ArgumentError> {
+        Ok(SqlMapping::As("trigger".into()))
+    }
+
+    fn return_sql() -> Result<Returns, ReturnsError> {
+        Ok(Returns::One(SqlMapping::As("trigger".into())))
+    }
+}
 
 #[pg_extern(sql = "
         CREATE OR REPLACE FUNCTION zdb.zdb_update_trigger() RETURNS trigger LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_update_trigger_wrapper';
     ")]
-fn zdb_update_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
+fn zdb_update_trigger(fcinfo: pg_sys::FunctionCallInfo) -> TriggerDatum {
     let trigdata: PgBox<pg_sys::TriggerData> = unsafe {
         PgBox::from_pg(fcinfo.as_ref().expect("fcinfo is NULL").context as *mut pg_sys::TriggerData)
     };
@@ -35,7 +59,7 @@ fn zdb_update_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
             .to_str()
             .unwrap();
         let index_relid = str::parse::<u32>(index_relid_str).expect("malformed oid");
-        let index_relid = pg_sys::Oid::from_u32_unchecked(index_relid);
+        let index_relid = pg_sys::Oid::from(index_relid);
         let mut tid = (*trigdata.tg_trigtuple).t_self;
 
         maybe_find_hot_root(&trigdata, &mut tid);
@@ -51,14 +75,14 @@ fn zdb_update_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
                 .expect("failed to queue index update command");
         }
 
-        trigdata.tg_newtuple.into()
+        TriggerDatum(trigdata.tg_newtuple.into())
     }
 }
 
 #[pg_extern(sql = "
     CREATE OR REPLACE FUNCTION zdb.zdb_delete_trigger() RETURNS trigger LANGUAGE c AS 'MODULE_PATHNAME', 'zdb_delete_trigger_wrapper';
     ")]
-fn zdb_delete_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
+fn zdb_delete_trigger(fcinfo: pg_sys::FunctionCallInfo) -> TriggerDatum {
     let trigdata: PgBox<pg_sys::TriggerData> = unsafe {
         PgBox::from_pg(fcinfo.as_ref().expect("fcinfo is NULL").context as *mut pg_sys::TriggerData)
     };
@@ -103,20 +127,20 @@ fn zdb_delete_trigger(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
                 .expect("failed to queue index delete command");
         }
 
-        trigdata.tg_trigtuple.into()
+        TriggerDatum(trigdata.tg_trigtuple.into())
     }
 }
 
 #[inline]
 unsafe fn maybe_find_hot_root(
     trigdata: &PgBox<pg_sys::TriggerData>,
-    mut tid: &mut pg_sys::ItemPointerData,
+    tid: &mut pg_sys::ItemPointerData,
 ) {
     if pg_sys::HeapTupleHeaderIsHeapOnly((*trigdata.tg_trigtuple).t_data) {
         let mut buf = 0 as pg_sys::Buffer;
         #[cfg(any(feature = "pg12", feature = "pg13", feature = "pg14"))]
         let found_tuple = pg_sys::heap_fetch(
-            (*trigdata).tg_relation,
+            trigdata.tg_relation,
             pg_sys::GetTransactionSnapshot(),
             trigdata.tg_trigtuple,
             &mut buf,
@@ -144,20 +168,20 @@ unsafe fn maybe_find_hot_root(
 
             let (blockno, offno) = item_pointer_get_both((*trigdata.tg_trigtuple).t_self);
             let root_offno = root_offsets[(offno - 1) as usize];
-            *tid = tid.clone();
-            item_pointer_set_all(&mut tid, blockno, root_offno);
+            *tid = *tid;
+            item_pointer_set_all(tid, blockno, root_offno);
         }
     }
 }
 
 pub fn create_triggers(index_relation: &PgRelation) {
     if !trigger_exists(index_relation, "zdb_update_trigger") {
-        let trigger_oid = create_update_trigger(&index_relation);
+        let trigger_oid = create_update_trigger(index_relation);
         create_trigger_dependency(index_relation.oid(), trigger_oid);
     }
 
     if !trigger_exists(index_relation, "zdb_delete_trigger") {
-        let trigger_oid = create_delete_trigger(&index_relation);
+        let trigger_oid = create_delete_trigger(index_relation);
         create_trigger_dependency(index_relation.oid(), trigger_oid);
     }
 }
@@ -223,7 +247,7 @@ fn create_trigger(
     }
 
     let mut tgstmt =
-        unsafe { PgBox::<pg_sys::CreateTrigStmt>::alloc_node(pg_sys::NodeTag_T_CreateTrigStmt) };
+        unsafe { PgBox::<pg_sys::CreateTrigStmt>::alloc_node(pg_sys::NodeTag::T_CreateTrigStmt) };
     tgstmt.trigname = unsafe { PgMemoryContexts::CurrentMemoryContext.pstrdup(trigger_name) };
     tgstmt.relation = relrv;
     tgstmt.funcname = funcname.into_pg();
@@ -286,7 +310,7 @@ fn create_trigger_dependency(index_rel_oid: pg_sys::Oid, trigger_oid: pg_sys::Oi
         pg_sys::recordDependencyOn(
             &trigger_address,
             &index_address,
-            pg_sys::DependencyType_DEPENDENCY_INTERNAL,
+            pg_sys::DependencyType::DEPENDENCY_INTERNAL,
         )
     }
 }

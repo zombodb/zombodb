@@ -30,7 +30,7 @@ fn terms_agg(
             aggregate_name: {
                 "terms": {
                     "field": field,
-                    "shard_size": std::i32::MAX,
+                    "shard_size": i32::MAX,
                     "size": size_limit,
                     "order": order
                 },

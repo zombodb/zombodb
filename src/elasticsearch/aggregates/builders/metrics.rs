@@ -318,7 +318,7 @@ fn extended_stats_agg_missing_float(aggregate_name: &str, field: &str, missing: 
 }
 
 #[pg_extern(immutable, parallel_safe, name = "matrix_stats_agg")]
-fn matrix_stats_agg(aggregate_name: &str, field: Vec<&str>) -> JsonB {
+fn matrix_stats_agg(aggregate_name: &str, field: Vec<String>) -> JsonB {
     JsonB(json! {
         {
             aggregate_name: {
@@ -332,7 +332,7 @@ fn matrix_stats_agg(aggregate_name: &str, field: Vec<&str>) -> JsonB {
 #[pg_extern(immutable, parallel_safe, name = "matrix_stats_agg")]
 fn matrix_stats_agg_missing_i64(
     aggregate_name: &str,
-    field: Vec<&str>,
+    field: Vec<String>,
     missing_field: &str,
     missing_value: i64,
 ) -> JsonB {
@@ -806,7 +806,7 @@ fn top_metric_agg(aggregate_name: &str, metric_field: &str, sort_type_lat_long: 
 }
 
 #[pg_extern(immutable, parallel_safe, name = "t_test_agg")]
-fn t_test_fields_agg(aggregate_name: &str, fields: Vec<&str>, t_type: TTestType) -> JsonB {
+fn t_test_fields_agg(aggregate_name: &str, fields: Vec<String>, t_type: TTestType) -> JsonB {
     if fields.len() > 2 || fields.len() < 2 {
         PANIC!("Wrong amount of fields given, please list only 2")
     }
@@ -828,7 +828,7 @@ fn t_test_fields_agg(aggregate_name: &str, fields: Vec<&str>, t_type: TTestType)
 #[pg_extern(immutable, parallel_safe, name = "t_test_agg")]
 fn t_test_fields_queries_agg(
     aggregate_name: &str,
-    fields: Vec<&str>,
+    fields: Vec<String>,
     queries: Vec<ZDBQuery>,
     t_type: TTestType,
 ) -> JsonB {
@@ -1189,7 +1189,7 @@ mod tests {
     fn matrix_stats_agg_tests() {
         let output_json = json!(matrix_stats_agg(
             "aggregateName",
-            vec!["field_one", "field_two"]
+            vec!["field_one".into(), "field_two".into()]
         ));
         let correct = json! {
             {
@@ -1206,7 +1206,7 @@ mod tests {
     fn matrix_stats_agg_tests_missing_i64() {
         let output_json = json!(matrix_stats_agg_missing_i64(
             "aggregateName",
-            vec!["field_one", "field_two"],
+            vec!["field_one".into(), "field_two".into()],
             "field_one",
             10
         ));

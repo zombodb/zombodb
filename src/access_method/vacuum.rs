@@ -63,7 +63,7 @@ pub extern "C" fn ambulkdelete(
     let by_xmin = delete_by_xmin(
         &index_relation,
         &elasticsearch,
-        &es_index_name,
+        es_index_name,
         oldest_xmin,
         &mut bulk,
     );
@@ -76,7 +76,7 @@ pub extern "C" fn ambulkdelete(
     let by_xmax = delete_by_xmax(
         &index_relation,
         &elasticsearch,
-        &es_index_name,
+        es_index_name,
         oldest_xmin,
         &mut bulk,
     );
@@ -89,7 +89,7 @@ pub extern "C" fn ambulkdelete(
     let vacuumed = vacuum_xmax(
         &index_relation,
         &elasticsearch,
-        &es_index_name,
+        es_index_name,
         oldest_xmin,
         &mut bulk,
     );
@@ -230,7 +230,7 @@ fn vacuum_xmax(
     let mut cnt = 0;
     let vacuum_xmax_docs = elasticsearch
         .open_search(
-            vac_by_aborted_xmax(&es_index_name, xid_to_64bit(oldest_xmin) as i64)
+            vac_by_aborted_xmax(es_index_name, xid_to_64bit(oldest_xmin) as i64)
                 .prepare(index, None)
                 .0,
         )
@@ -268,7 +268,7 @@ fn delete_by_xmax(
     let mut cnt = 0;
     let delete_by_xmax_docs = elasticsearch
         .open_search(
-            vac_by_xmax(&es_index_name, xid_to_64bit(oldest_xmin) as i64)
+            vac_by_xmax(es_index_name, xid_to_64bit(oldest_xmin) as i64)
                 .prepare(index, None)
                 .0,
         )
@@ -306,7 +306,7 @@ fn delete_by_xmin(
     let mut cnt = 0;
     let delete_by_xmin_docs = elasticsearch
         .open_search(
-            vac_by_xmin(&es_index_name, xid_to_64bit(oldest_xmin) as i64)
+            vac_by_xmin(es_index_name, xid_to_64bit(oldest_xmin) as i64)
                 .prepare(index, None)
                 .0,
         )

@@ -200,7 +200,7 @@ mod tests {
 
     #[pg_test]
     fn test_span_term_with_boost() {
-        let term_boost = 2.9 as f32;
+        let term_boost = 2.9_f32;
         let zdbquery = span_term("term_field", "term_value", Some(term_boost));
         let dsl = zdbquery.into_value();
 
@@ -221,7 +221,7 @@ mod tests {
 
     #[pg_test]
     fn test_span_containing() {
-        let little_boost = 2.9 as f32;
+        let little_boost = 2.9_f32;
         let zdbquery = span_containing(
             span_term("little_field", "little_value", Some(little_boost)),
             span_term("big_field", "big_value", None),
@@ -398,7 +398,7 @@ mod tests {
 
     #[pg_test]
     fn test_span_within() {
-        let little_boost = 2.9 as f32;
+        let little_boost = 2.9_f32;
         let zdbquery = span_within(
             span_term("little_field", "little_value", Some(little_boost)),
             span_term("big_field", "big_value", None),
@@ -516,7 +516,7 @@ mod tests {
 
     #[pg_test]
     fn test_span_not_with_default() {
-        let term_boost = 2.9 as f32;
+        let term_boost = 2.9_f32;
         let zdbquery = span_not(
             span_term("included_field", "included_value", Some(term_boost)),
             span_term("excluded_field", "excluded_value", None),

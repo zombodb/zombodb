@@ -111,7 +111,7 @@ mod tests {
 
     #[pg_test]
     fn test_range_str_without_defaults() {
-        let boost = 2.9 as f32;
+        let boost = 2.9_f32;
         let zdbquery = range_str(
             "field",
             Some("lt_value"),
@@ -160,7 +160,7 @@ mod tests {
 
     #[pg_test]
     fn test_range_number_without_defaults() {
-        let boost = 2.9 as f32;
+        let boost = 2.9_f32;
         let zdbquery = range_numeric("field", Some(56), Some(67), Some(78), Some(89), Some(boost));
         let dsl = zdbquery.into_value();
 

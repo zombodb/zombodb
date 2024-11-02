@@ -174,4 +174,5 @@ $$;
 
 "#,
     name = "adj_matrix",
+    requires = [ZDBQuery]
 );

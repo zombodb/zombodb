@@ -1,5 +1,6 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::zdbquery::ZDBQuery;
+use pgrx::itemptr::u64_to_item_pointer;
 use pgrx::*;
 
 pub mod timestamp_support;

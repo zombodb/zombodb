@@ -19,7 +19,7 @@ mod dsl {
     };
     use crate::query_dsl::datetime_range::pg_catalog::*;
     use crate::zdbquery::ZDBQuery;
-    use pgrx::*;
+    use pgrx::prelude::*;
     use serde::*;
     use serde_json::*;
 
@@ -192,7 +192,7 @@ mod tests {
                             "gt": "2002-06-10",
                             "lte": "2003-07-11",
                             "gte": "2004-08-12",
-                            "boost": 42 as f32,
+                            "boost": 42_f32,
                             "relation": "contains"
                         }
                     }
@@ -228,7 +228,7 @@ mod tests {
                             "gt": "21:43:54",
                             "lte": "10:34:24",
                             "gte": "09:45:30",
-                            "boost": 5.0 as f32,
+                            "boost": 5.0_f32,
                             "relation": "contains"
                         }
                     }
@@ -264,7 +264,7 @@ mod tests {
                             "gt": "21:43:54-0700",
                             "lte": "10:34:24-0700",
                             "gte": "09:45:30-0700",
-                            "boost": 5.0 as f32,
+                            "boost": 5.0_f32,
                             "relation": "contains"
                         }
                     }
@@ -300,7 +300,7 @@ mod tests {
                             "gt": "2006-04-05T21:43:54-00",
                             "lte": "2009-07-08T10:34:24-00",
                             "gte": "2012-10-11T09:45:30-00",
-                            "boost": 5.0 as f32,
+                            "boost": 5.0_f32,
                             "relation": "contains"
                         }
                     }
@@ -336,7 +336,7 @@ mod tests {
                             "gt": "2006-04-06T04:43:54+00:00",
                             "lte": "2009-07-08T17:34:24+00:00",
                             "gte": "2012-10-11T16:45:30+00:00",
-                            "boost": 5.0 as f32,
+                            "boost": 5.0_f32,
                             "relation": "contains"
                         }
                     }

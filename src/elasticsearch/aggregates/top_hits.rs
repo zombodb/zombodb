@@ -1,14 +1,15 @@
 use crate::elasticsearch::Elasticsearch;
 use crate::zdbquery::ZDBQuery;
+use pgrx::itemptr::u64_to_item_pointer;
 use pgrx::prelude::*;
 use pgrx::*;
 use serde::*;
 use serde_json::*;
 
 #[pg_extern(immutable, parallel_safe)]
-fn top_hits(
+pub fn top_hits(
     index: PgRelation,
-    fields: Array<&str>,
+    fields: Vec<String>,
     query: ZDBQuery,
     size_limit: i64,
 ) -> TableIterator<
@@ -66,5 +67,5 @@ fn top_hits(
         u64_to_item_pointer(id, &mut tid);
         result_hits.push((tid, hits._score, Json(hits._source)))
     }
-    TableIterator::new(result_hits.into_iter())
+    TableIterator::new(result_hits)
 }

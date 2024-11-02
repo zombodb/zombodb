@@ -6,7 +6,12 @@ use crate::zql::transformations::field_finder::find_link_for_field;
 use crate::zql::{parse_field_lists, INDEX_LINK_PARSER};
 use lazy_static::*;
 use memoffset::*;
+use pgrx::callconv::{BoxRet, FcInfo};
+use pgrx::datum::Datum;
 use pgrx::pg_sys::AsPgCStr;
+use pgrx::pgrx_sql_entity_graph::metadata::{
+    ArgumentError, Returns, ReturnsError, SqlMapping, SqlTranslatable,
+};
 use pgrx::prelude::*;
 use pgrx::*;
 use std::collections::{HashMap, HashSet};
@@ -149,15 +154,21 @@ impl ZDBIndexOptionsInternal {
             // the url option on the index could also be the string 'default', so
             // in either case above, lets use the setting from postgresql.conf
             if ZDB_DEFAULT_ELASTICSEARCH_URL.get().is_some() {
-                ZDB_DEFAULT_ELASTICSEARCH_URL.get().unwrap()
+                ZDB_DEFAULT_ELASTICSEARCH_URL
+                    .get()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string()
             } else if self.shadow_index {
                 // go find the url for this shadow index
                 // it's the url of the non-shadow zdb index
-                let (index, _) =
-                    find_zdb_index(unsafe { &PgRelation::open(my_oid) }).expect(&format!(
-                        "failed to lookup non-shadow index for oid={}",
-                        my_oid.as_u32()
-                    ));
+                let (index, _) = find_zdb_index(unsafe { &PgRelation::open(my_oid) })
+                    .unwrap_or_else(|_| {
+                        panic!(
+                            "failed to lookup non-shadow index for oid={}",
+                            my_oid.as_u32()
+                        )
+                    });
                 let options = ZDBIndexOptions::from_relation(&index);
                 options.url()
             } else {
@@ -289,7 +300,7 @@ pub struct ZDBIndexOptions {
 #[allow(dead_code)]
 impl ZDBIndexOptions {
     pub fn is_shadow_index_fast(relation: &PgRelation) -> bool {
-        ZDBIndexOptionsInternal::from_relation(&relation).shadow_index
+        ZDBIndexOptionsInternal::from_relation(relation).shadow_index
     }
 
     pub fn from_relation(relation: &PgRelation) -> ZDBIndexOptions {
@@ -302,7 +313,7 @@ impl ZDBIndexOptions {
         options: Option<Vec<String>>,
     ) -> ZDBIndexOptions {
         let heap_relation = relation.heap_relation().expect("not an index");
-        let internal = ZDBIndexOptionsInternal::from_relation(&relation);
+        let internal = ZDBIndexOptionsInternal::from_relation(relation);
         let alias = internal.alias(&heap_relation, relation);
         let uuid = internal.uuid(&heap_relation, relation);
         let options = options.map_or_else(|| internal.links(), |v| Some(v));
@@ -447,6 +458,24 @@ impl ZDBIndexOptions {
     }
 }
 
+pub struct ShadowDatum(pg_sys::Datum);
+
+unsafe impl BoxRet for ShadowDatum {
+    unsafe fn box_into<'fcx>(self, fcinfo: &mut FcInfo<'fcx>) -> Datum<'fcx> {
+        fcinfo.return_raw_datum(self.0)
+    }
+}
+
+unsafe impl SqlTranslatable for ShadowDatum {
+    fn argument_sql() -> Result<SqlMapping, ArgumentError> {
+        Ok(SqlMapping::As("<SHADOW_DATUM>".into()))
+    }
+
+    fn return_sql() -> Result<Returns, ReturnsError> {
+        Ok(Returns::One(SqlMapping::As("<SHADOW_DATUM>".into())))
+    }
+}
+
 #[pg_extern(
     immutable,
     parallel_safe,
@@ -457,14 +486,32 @@ impl ZDBIndexOptions {
         -- exported so that shadow indexes can reference it using whatever argument type they want
     "#
 )]
-fn shadow(fcinfo: pg_sys::FunctionCallInfo) -> pg_sys::Datum {
-    unsafe { pg_getarg_datum_raw(fcinfo, 0) }
+fn shadow(fcinfo: pg_sys::FunctionCallInfo) -> ShadowDatum {
+    unsafe { ShadowDatum(pg_getarg_datum_raw(fcinfo, 0)) }
+}
+
+pub struct ReturnedRegclass(PgRelation);
+
+unsafe impl BoxRet for ReturnedRegclass {
+    unsafe fn box_into<'fcx>(self, fcinfo: &mut FcInfo<'fcx>) -> Datum<'fcx> {
+        fcinfo.return_raw_datum(self.0.into_datum().unwrap())
+    }
+}
+
+unsafe impl SqlTranslatable for ReturnedRegclass {
+    fn argument_sql() -> Result<SqlMapping, ArgumentError> {
+        Ok(SqlMapping::As("regclass".into()))
+    }
+
+    fn return_sql() -> Result<Returns, ReturnsError> {
+        Ok(Returns::One(SqlMapping::As("regclass".into())))
+    }
 }
 
 #[pg_extern(volatile, parallel_safe)]
-fn determine_index(relation: PgRelation) -> Option<PgRelation> {
+fn determine_index(relation: PgRelation) -> Option<ReturnedRegclass> {
     match find_zdb_index(&relation) {
-        Ok((relation, _)) => Some(relation),
+        Ok((relation, _)) => Some(ReturnedRegclass(relation)),
 
         // we don't want to raise an error if we couldn't find the index for the relation
         Err(_) => None,
@@ -577,10 +624,7 @@ fn field_mapping(index_relation: PgRelation, field: &str) -> Option<JsonB> {
         )
         .unwrap();
 
-        match as_map.remove(field) {
-            Some(field_mapping) => Some(JsonB(field_mapping)),
-            None => None,
-        }
+        as_map.remove(field).map(JsonB)
     }
 
     let root_index = IndexLink::from_relation(&index_relation);
@@ -594,7 +638,7 @@ fn field_mapping(index_relation: PgRelation, field: &str) -> Option<JsonB> {
         &index_links,
     );
 
-    link.map_or(None, |link| {
+    link.and_then(|link| {
         if link.name == Some(field.to_string()) {
             // the link is named the same as the desired field, so the result is the entire ES mapping
             // for the linked *index*
@@ -623,7 +667,11 @@ fn field_mapping(index_relation: PgRelation, field: &str) -> Option<JsonB> {
     })
 }
 
-static mut RELOPT_KIND_ZDB: pg_sys::relopt_kind = 0;
+#[cfg(feature = "pg12")]
+static mut RELOPT_KIND_ZDB: pg_sys::relopt_kind::Type = 0;
+
+#[cfg(not(feature = "pg12"))]
+static mut RELOPT_KIND_ZDB: pg_sys::relopt_kind::Type = pg_sys::relopt_kind::RELOPT_KIND_LOCAL;
 
 #[pg_guard]
 extern "C" fn validate_url(url: *const std::os::raw::c_char) {
@@ -686,11 +734,9 @@ extern "C" fn validate_options(value: *const std::os::raw::c_char) {
                     &mut operator_stack,
                     option,
                 )
-                .expect(&format!("failed to parse index option: /{}/", option))
+                .unwrap_or_else(|_| panic!("failed to parse index option: /{}/", option))
         });
     }
-
-    return;
 }
 
 #[pg_guard]
@@ -732,132 +778,132 @@ pub unsafe extern "C" fn amoptions(
     let tab: [pg_sys::relopt_parse_elt; NUM_REL_OPTS] = [
         pg_sys::relopt_parse_elt {
             optname: "url".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, url_offset) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "type_name".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, type_name_offset) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "refresh_interval".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, refresh_interval_offset) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "shards".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_INT,
             offset: offset_of!(ZDBIndexOptionsInternal, shards) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "replicas".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_INT,
             offset: offset_of!(ZDBIndexOptionsInternal, replicas) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "bulk_concurrency".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_INT,
             offset: offset_of!(ZDBIndexOptionsInternal, bulk_concurrency) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "batch_size".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_INT,
             offset: offset_of!(ZDBIndexOptionsInternal, batch_size) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "compression_level".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_INT,
             offset: offset_of!(ZDBIndexOptionsInternal, compression_level) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "max_result_window".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_INT,
             offset: offset_of!(ZDBIndexOptionsInternal, max_result_window) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "nested_fields_limit".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_INT,
             offset: offset_of!(ZDBIndexOptionsInternal, nested_fields_limit) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "nested_objects_limit".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_INT,
             offset: offset_of!(ZDBIndexOptionsInternal, nested_objects_limit) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "total_fields_limit".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_INT,
             offset: offset_of!(ZDBIndexOptionsInternal, total_fields_limit) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "max_terms_count".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_INT,
             offset: offset_of!(ZDBIndexOptionsInternal, max_terms_count) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "max_analyze_token_count".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_INT,
             offset: offset_of!(ZDBIndexOptionsInternal, max_analyze_token_count) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "alias".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, alias_offset) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "optimize_after".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_INT,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_INT,
             offset: offset_of!(ZDBIndexOptionsInternal, optimize_after) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "llapi".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_BOOL,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_BOOL,
             offset: offset_of!(ZDBIndexOptionsInternal, llapi) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "uuid".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, uuid_offset) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "translog_durability".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, translog_durability_offset) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "options".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, options_offset) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "field_lists".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, field_lists_offset) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "shadow".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, shadow_index) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "nested_object_date_detection".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_BOOL,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_BOOL,
             offset: offset_of!(ZDBIndexOptionsInternal, nested_object_date_detection) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "nested_object_numeric_detection".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_BOOL,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_BOOL,
             offset: offset_of!(ZDBIndexOptionsInternal, nested_object_numeric_detection) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "nested_object_text_mapping".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_STRING,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_STRING,
             offset: offset_of!(ZDBIndexOptionsInternal, nested_object_text_mapping_offset) as i32,
         },
         pg_sys::relopt_parse_elt {
             optname: "include_source".as_pg_cstr(),
-            opttype: pg_sys::relopt_type_RELOPT_TYPE_BOOL,
+            opttype: pg_sys::relopt_type::RELOPT_TYPE_BOOL,
             offset: offset_of!(ZDBIndexOptionsInternal, include_source) as i32,
         },
     ];
@@ -871,10 +917,8 @@ unsafe fn build_relopts(
     validate: bool,
     tab: [pg_sys::relopt_parse_elt; NUM_REL_OPTS],
 ) -> *mut pg_sys::bytea {
-    let rdopts;
-
     /* Parse the user-given reloptions */
-    rdopts = pg_sys::build_reloptions(
+    let rdopts = pg_sys::build_reloptions(
         reloptions,
         validate,
         RELOPT_KIND_ZDB,
@@ -997,7 +1041,7 @@ pub unsafe fn init() {
         "The size in bytes of batch calls to the _bulk API".as_pg_cstr(),
         DEFAULT_BATCH_SIZE,
         1,
-        (std::i32::MAX / 2) - 1,
+        (i32::MAX / 2) - 1,
         #[cfg(any(feature = "pg13", feature = "pg14", feature = "pg15"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
@@ -1022,7 +1066,7 @@ pub unsafe fn init() {
             .as_pg_cstr(),
         DEFAULT_MAX_RESULT_WINDOW,
         1,
-        std::i32::MAX,
+        i32::MAX,
         #[cfg(any(feature = "pg13", feature = "pg14", feature = "pg15"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
@@ -1034,7 +1078,7 @@ pub unsafe fn init() {
         "The maximum number of distinct nested mappings in an index.  Default is 1000".as_pg_cstr(),
         DEFAULT_NESTED_FIELDS_LIMIT,
         1,
-        std::i32::MAX,
+        i32::MAX,
         #[cfg(any(feature = "pg13", feature = "pg14", feature = "pg15"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
@@ -1046,7 +1090,7 @@ pub unsafe fn init() {
         "The maximum number of nested JSON objects that a single document can contain across all nested types.  Default is 1000".as_pg_cstr(),
         DEFAULT_NESTED_OBJECTS_LIMIT,
         1,
-        std::i32::MAX,
+        i32::MAX,
         #[cfg(any(feature = "pg13", feature = "pg14", feature = "pg15"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
@@ -1058,7 +1102,7 @@ pub unsafe fn init() {
         "The maximum number of fields in an index. Field and object mappings, as well as field aliases count towards this limit. The default value is 1000.".as_pg_cstr(),
         DEFAULT_TOTAL_FIELDS_LIMIT,
         1,
-        std::i32::MAX,
+        i32::MAX,
         #[cfg(any(feature = "pg13", feature = "pg14", feature = "pg15"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
@@ -1071,7 +1115,7 @@ pub unsafe fn init() {
             .as_pg_cstr(),
         DEFAULT_MAX_TERMS_COUNT,
         1,
-        std::i32::MAX,
+        i32::MAX,
         #[cfg(any(feature = "pg13", feature = "pg14", feature = "pg15"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
@@ -1084,7 +1128,7 @@ pub unsafe fn init() {
             .as_pg_cstr(),
         DEFAULT_MAX_ANALYZE_TOKEN_COUNT,
         1,
-        std::i32::MAX,
+        i32::MAX,
         #[cfg(any(feature = "pg13", feature = "pg14", feature = "pg15"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
@@ -1129,7 +1173,7 @@ pub unsafe fn init() {
         "After how many deleted docs should ZDB _optimize the ES index during VACUUM?".as_pg_cstr(),
         DEFAULT_OPTIMIZE_AFTER,
         0,
-        std::i32::MAX,
+        i32::MAX,
         #[cfg(any(feature = "pg13", feature = "pg14", feature = "pg15"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
@@ -1301,7 +1345,7 @@ mod tests {
         assert_eq!(options.bulk_concurrency(), num_cpus::get() as i32);
         assert_eq!(options.batch_size(), 8 * 1024 * 1024);
         assert_eq!(options.optimize_after(), DEFAULT_OPTIMIZE_AFTER);
-        assert_eq!(options.llapi(), false);
+        assert!(!options.llapi());
         assert_eq!(options.translog_durability(), "async");
         assert_eq!(options.links(), &None);
         Ok(())
@@ -1346,7 +1390,7 @@ mod tests {
         assert_eq!(options.bulk_concurrency(), *DEFAULT_BULK_CONCURRENCY);
         assert_eq!(options.batch_size(), DEFAULT_BATCH_SIZE);
         assert_eq!(options.optimize_after(), DEFAULT_OPTIMIZE_AFTER);
-        assert_eq!(options.llapi(), false);
+        assert!(!options.llapi());
         assert_eq!(options.translog_durability(), "request");
         Ok(())
     }
@@ -1440,7 +1484,7 @@ mod tests {
 
         assert_eq!(1, links.len());
         let link_definition = links.first().unwrap();
-        let link = IndexLink::parse(&link_definition);
+        let link = IndexLink::parse(link_definition);
         assert_eq!(link, IndexLink::parse("id=<schema.table.index>other_id"));
         assert_eq!(link.qualified_index.schema, Some("schema".into()));
         Ok(())

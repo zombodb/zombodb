@@ -415,7 +415,7 @@ fn find_dockerfiles() -> Result<Vec<(String, PathBuf)>, std::io::Error> {
     Ok(files)
 }
 
-fn parse_dockerfile_arg_names(dockerfile: &Vec<(String, Option<String>)>) -> HashSet<String> {
+fn parse_dockerfile_arg_names(dockerfile: &[(String, Option<String>)]) -> HashSet<String> {
     let mut args = HashSet::new();
 
     for (k, v) in dockerfile {

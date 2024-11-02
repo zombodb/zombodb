@@ -113,7 +113,7 @@ fn suggest_terms(
     TableIterator::new(
         results
             .iter()
-            .map(|terms| {
+            .flat_map(|terms| {
                 terms.options.iter().map(move |opts| {
                     (
                         terms.text.clone(),
@@ -125,8 +125,6 @@ fn suggest_terms(
                     )
                 })
             })
-            .flatten()
-            .collect::<Vec<_>>()
-            .into_iter(),
+            .collect::<Vec<_>>(),
     )
 }

@@ -44,7 +44,7 @@ impl PgHooks for ZDBHooks {
             PgBox<pg_sys::PlannedStmt>,
             &CStr,
             Option<bool>,
-            pg_sys::ProcessUtilityContext,
+            pg_sys::ProcessUtilityContext::Type,
             PgBox<pg_sys::ParamListInfoData>,
             PgBox<pg_sys::QueryEnvironment>,
             PgBox<pg_sys::DestReceiver>,
@@ -53,10 +53,14 @@ impl PgHooks for ZDBHooks {
     ) -> HookResult<()> {
         let utility_statement = unsafe { PgBox::from_pg(pstmt.utilityStmt) };
 
-        let is_alter =
-            unsafe { is_a(utility_statement.as_ptr(), pg_sys::NodeTag_T_AlterTableStmt) };
-        let is_rename = unsafe { is_a(utility_statement.as_ptr(), pg_sys::NodeTag_T_RenameStmt) };
-        let is_drop = unsafe { is_a(utility_statement.as_ptr(), pg_sys::NodeTag_T_DropStmt) };
+        let is_alter = unsafe {
+            is_a(
+                utility_statement.as_ptr(),
+                pg_sys::NodeTag::T_AlterTableStmt,
+            )
+        };
+        let is_rename = unsafe { is_a(utility_statement.as_ptr(), pg_sys::NodeTag::T_RenameStmt) };
+        let is_drop = unsafe { is_a(utility_statement.as_ptr(), pg_sys::NodeTag::T_DropStmt) };
 
         if is_alter {
             let alter = unsafe {
@@ -105,19 +109,19 @@ impl PgHooks for ZDBHooks {
                 unsafe { PgBox::from_pg(utility_statement.as_ptr() as *mut pg_sys::RenameStmt) };
 
             let prev_options = match rename.renameType {
-                pg_sys::ObjectType_OBJECT_SCHEMA => {
+                pg_sys::ObjectType::OBJECT_SCHEMA => {
                     let name = unsafe { std::ffi::CStr::from_ptr(rename.subname) };
                     Some(get_index_options_for_schema(
                         name.to_str().expect("invalid schema name"),
                     ))
                 }
-                pg_sys::ObjectType_OBJECT_TABLE
-                | pg_sys::ObjectType_OBJECT_MATVIEW
-                | pg_sys::ObjectType_OBJECT_INDEX => unsafe {
+                pg_sys::ObjectType::OBJECT_TABLE
+                | pg_sys::ObjectType::OBJECT_MATVIEW
+                | pg_sys::ObjectType::OBJECT_INDEX => unsafe {
                     let relid = pg_sys::RangeVarGetRelidExtended(
                         rename.relation,
                         pg_sys::AccessShareLock as pg_sys::LOCKMODE,
-                        pg_sys::RVROption_RVR_MISSING_OK,
+                        pg_sys::RVROption::RVR_MISSING_OK,
                         None,
                         std::ptr::null_mut(),
                     );
@@ -154,11 +158,11 @@ impl PgHooks for ZDBHooks {
                 unsafe { PgBox::from_pg(utility_statement.as_ptr() as *mut pg_sys::DropStmt) };
 
             match drop.removeType {
-                pg_sys::ObjectType_OBJECT_TABLE
-                | pg_sys::ObjectType_OBJECT_MATVIEW
-                | pg_sys::ObjectType_OBJECT_INDEX
-                | pg_sys::ObjectType_OBJECT_SCHEMA
-                | pg_sys::ObjectType_OBJECT_EXTENSION => {
+                pg_sys::ObjectType::OBJECT_TABLE
+                | pg_sys::ObjectType::OBJECT_MATVIEW
+                | pg_sys::ObjectType::OBJECT_INDEX
+                | pg_sys::ObjectType::OBJECT_SCHEMA
+                | pg_sys::ObjectType::OBJECT_EXTENSION => {
                     let objects = unsafe { PgList::<pg_sys::Node>::from_pg(drop.objects) };
                     for object in objects.iter_ptr() {
                         let mut rel = std::ptr::null_mut();
@@ -178,16 +182,19 @@ impl PgHooks for ZDBHooks {
                         }
 
                         match drop.removeType {
-                            pg_sys::ObjectType_OBJECT_TABLE | pg_sys::ObjectType_OBJECT_MATVIEW => {
+                            pg_sys::ObjectType::OBJECT_TABLE
+                            | pg_sys::ObjectType::OBJECT_MATVIEW => {
                                 let rel = unsafe { PgRelation::from_pg_owned(rel) };
                                 drop_table(&rel);
                             }
-                            pg_sys::ObjectType_OBJECT_INDEX => {
+                            pg_sys::ObjectType::OBJECT_INDEX => {
                                 let rel = unsafe { PgRelation::from_pg_owned(rel) };
                                 drop_index(&rel)
                             }
-                            pg_sys::ObjectType_OBJECT_SCHEMA => drop_schema(address.objectId),
-                            pg_sys::ObjectType_OBJECT_EXTENSION => drop_extension(address.objectId),
+                            pg_sys::ObjectType::OBJECT_SCHEMA => drop_schema(address.objectId),
+                            pg_sys::ObjectType::OBJECT_EXTENSION => {
+                                drop_extension(address.objectId)
+                            }
                             _ => {}
                         }
                     }

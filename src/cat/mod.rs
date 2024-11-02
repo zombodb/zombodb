@@ -3,7 +3,7 @@ use pgrx::*;
 use crate::elasticsearch::Elasticsearch;
 
 #[pg_extern(immutable, parallel_safe)]
-fn cat_request(index: PgRelation, endpoint: &str) -> JsonB {
+pub fn cat_request(index: PgRelation, endpoint: &str) -> JsonB {
     let es = Elasticsearch::new(&index);
 
     let result = serde_json::from_str::<serde_json::Value>(

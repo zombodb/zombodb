@@ -5,7 +5,7 @@ select dsl.geo_shape('field', null, 'INTERSECTS');
 (1 row)
 
 select dsl.geo_polygon('field', null);
-ERROR:  null points are not allowed
+ERROR:  assertion failed: array.is_within_bounds(*ptr)
 select dsl.geo_bounding_box('field', null);
  geo_bounding_box 
 ------------------

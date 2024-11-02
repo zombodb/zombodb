@@ -25,7 +25,7 @@ where
         query: ZDBPreparedQuery,
         agg_json: HashMap<String, serde_json::Value>,
     ) -> ElasticsearchAggregateSearchRequest<ReturnType> {
-        let query_dsl = apply_visibility_clause(&elasticsearch, query, false);
+        let query_dsl = apply_visibility_clause(elasticsearch, query, false);
         ElasticsearchAggregateSearchRequest::<ReturnType> {
             elasticsearch: elasticsearch.clone(),
             json_query: json! {

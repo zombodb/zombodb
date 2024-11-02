@@ -42,55 +42,52 @@ fn debug_query(
 
     let tree = format!("{:#?}", query);
 
-    TableIterator::new(
-        vec![(
-            sqlformat::format(
-                &format!("{}", query),
-                &sqlformat::QueryParams::default(),
-                sqlformat::FormatOptions::default(),
-            )
-            .replace(" :\"", ":\""),
-            used_fields.into_iter().map(|v| v.into()).collect(),
-            format!("{}", tree),
-        )]
-        .into_iter(),
-    )
+    TableIterator::new(vec![(
+        sqlformat::format(
+            &format!("{}", query),
+            &sqlformat::QueryParams::default(),
+            sqlformat::FormatOptions::default(),
+        )
+        .replace(" :\"", ":\""),
+        used_fields.into_iter().map(|v| v.into()).collect(),
+        tree.to_string(),
+    )])
 }
 
 pub fn expr_to_dsl(
-    root: &IndexLink,
-    index_links: &Vec<IndexLink>,
+    _root: &IndexLink,
+    _index_links: &[IndexLink],
     expr: &Expr,
 ) -> serde_json::Value {
     match expr {
         Expr::Null => unreachable!(),
 
-        Expr::Subselect(link, e) => expr_to_dsl(link, index_links, e),
+        Expr::Subselect(link, e) => expr_to_dsl(link, _index_links, e),
         Expr::Expand(link, e, _) => {
-            expr_to_dsl(link, index_links, &Expr::Linked(link.clone(), e.clone()))
+            expr_to_dsl(link, _index_links, &Expr::Linked(link.clone(), e.clone()))
         }
 
         // AND and WITH output the same query DSL, but we want to maintain their differences in the AST
         Expr::AndList(v) | Expr::WithList(v) => {
             let dsl: Vec<serde_json::Value> = v
                 .iter()
-                .map(|v| expr_to_dsl(root, index_links, v))
+                .map(|v| expr_to_dsl(_root, _index_links, v))
                 .collect();
             json! { { "bool": { "must": dsl } } }
         }
         Expr::OrList(v) => {
             if v.len() == 1 {
-                expr_to_dsl(root, index_links, v.get(0).unwrap())
+                expr_to_dsl(_root, _index_links, v.first().unwrap())
             } else {
                 let dsl: Vec<serde_json::Value> = v
                     .iter()
-                    .map(|v| expr_to_dsl(root, index_links, v))
+                    .map(|v| expr_to_dsl(_root, _index_links, v))
                     .collect();
                 json! { { "bool": { "should": dsl } } }
             }
         }
         Expr::Not(r) => {
-            let r = expr_to_dsl(root, index_links, r.as_ref());
+            let r = expr_to_dsl(_root, _index_links, r.as_ref());
             json! { { "bool": { "must_not": [r] } } }
         }
         Expr::Contains(f, t) | Expr::Eq(f, t) => term_to_dsl(f, t, ComparisonOpcode::Contains),
@@ -108,15 +105,15 @@ pub fn expr_to_dsl(
         Expr::Lt(f, t) => term_to_dsl(f, t, ComparisonOpcode::Lt),
         Expr::Lte(f, t) => term_to_dsl(f, t, ComparisonOpcode::Lte),
 
-        Expr::Json(json) => serde_json::from_str(&json).expect("failed to parse json expression"),
+        Expr::Json(json) => serde_json::from_str(json).expect("failed to parse json expression"),
 
         Expr::Nested(p, e) => {
-            let dsl = expr_to_dsl(root, index_links, e.as_ref());
+            let dsl = expr_to_dsl(_root, _index_links, e.as_ref());
             json! { { "nested": { "path": p, "query": dsl, "score_mode": "avg", "ignore_unmapped": false } } }
         }
 
         Expr::Linked(link, e) => {
-            let mut query_dsl = expr_to_dsl(root, index_links, e.as_ref());
+            let mut query_dsl = expr_to_dsl(_root, _index_links, e.as_ref());
             if link.left_field.is_none() {
                 query_dsl
             } else {
@@ -272,12 +269,10 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
                 } else {
                     json! { { "match": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
                 }
+            } else if is_span {
+                return json! { { "span_term": { field.field_name(): { "value": s, "boost": b.unwrap_or(1.0) } } } };
             } else {
-                if is_span {
-                    return json! { { "span_term": { field.field_name(): { "value": s, "boost": b.unwrap_or(1.0) } } } };
-                } else {
-                    json! { { "match": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
-                }
+                json! { { "match": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
             }
         }
         Term::PhraseWithWildcard(s, b) => {
@@ -300,13 +295,11 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
                     ProximityTerm::ProximityChain(v) => proximity_chain(field, &v),
                     other => eq(field, &other.to_term(), true),
                 }
+            } else if s.contains('\\') {
+                let s = unescape(s);
+                json! { { "match_phrase": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
             } else {
-                if s.contains('\\') {
-                    let s = unescape(s);
-                    json! { { "match_phrase": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
-                } else {
-                    json! { { "match_phrase": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
-                }
+                json! { { "match_phrase": { field.field_name(): { "query": s, "boost": b.unwrap_or(1.0) } } } }
             }
         }
         Term::Prefix(s, b) => {
@@ -331,13 +324,11 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
                 } else {
                     json! { { "prefix": { field.field_name(): { "value": s[..s.len()-1], "case_insensitive": true, "rewrite": "constant_score", "boost": b.unwrap_or(1.0) } } } }
                 }
+            } else if s.contains('\\') {
+                let s = unescape(s);
+                json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0), "max_expansions": 2147483647 } } } }
             } else {
-                if s.contains('\\') {
-                    let s = unescape(s);
-                    json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0), "max_expansions": 2147483647 } } } }
-                } else {
-                    json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0), "max_expansions": 2147483647 } } } }
-                }
+                json! { { "match_phrase_prefix": { field.field_name(): { "query": s[..s.len()-1], "boost": b.unwrap_or(1.0), "max_expansions": 2147483647 } } } }
             }
         }
         Term::Wildcard(w, b) => {
@@ -396,13 +387,13 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
     }
 }
 
-fn proximity_chain(field: &QualifiedField, parts: &Vec<ProximityPart>) -> serde_json::Value {
+fn proximity_chain(field: &QualifiedField, parts: &[ProximityPart]) -> serde_json::Value {
     let mut clauses = Vec::new();
 
     for part in parts {
         if part.words.len() == 1 {
             clauses.push((
-                eq(field, &part.words.get(0).unwrap().to_term(), true),
+                eq(field, &part.words.first().unwrap().to_term(), true),
                 part.distance,
             ));
         } else {
@@ -435,7 +426,7 @@ fn proximity_chain(field: &QualifiedField, parts: &Vec<ProximityPart>) -> serde_
     });
 
     let mut prev_distance = next_distance;
-    while let Some((clause, distance)) = clauses.next() {
+    for (clause, distance) in clauses {
         let d = prev_distance.unwrap();
         span_near = Some(json! {
             { "span_near": { "clauses": [ span_near.unwrap(), clause ], "slop": d.distance, "in_order": d.in_order } }
@@ -467,7 +458,7 @@ fn unescape(input: &str) -> String {
     let mut s = String::with_capacity(input.len());
     let mut prev_c = '\0';
     for c in input.chars() {
-        if (c == '\\' && prev_c == '\\') || c != '\\' {
+        if c != '\\' || prev_c == '\\' {
             s.push(c);
         }
 

@@ -76,7 +76,7 @@ fn terms_two_level(
             {
                 "terms": {
                     "field": field_first,
-                    "shard_size": std::i32::MAX,
+                    "shard_size": i32::MAX,
                     "size": size_limit,
                     "order": order
                 },
@@ -84,7 +84,7 @@ fn terms_two_level(
                     "sub_agg": {
                         "terms": {
                             "field": field_second,
-                            "shard_size": std::i32::MAX,
+                            "shard_size": i32::MAX,
                             "size": size_limit,
                             "order": order
                         }
@@ -112,5 +112,5 @@ fn terms_two_level(
         }
     }
 
-    TableIterator::new(response.into_iter())
+    TableIterator::new(response)
 }

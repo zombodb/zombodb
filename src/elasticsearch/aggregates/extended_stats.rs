@@ -62,19 +62,16 @@ fn extended_stats(
         .execute()
         .expect("failed to execute aggregate search");
 
-    TableIterator::new(
-        vec![(
-            result.count,
-            result.min,
-            result.max,
-            result.avg,
-            result.sum,
-            result.sum_of_squares,
-            result.variance,
-            result.std_deviation,
-            result.std_deviation_bounds.upper,
-            result.std_deviation_bounds.lower,
-        )]
-        .into_iter(),
-    )
+    TableIterator::new(vec![(
+        result.count,
+        result.min,
+        result.max,
+        result.avg,
+        result.sum,
+        result.sum_of_squares,
+        result.variance,
+        result.std_deviation,
+        result.std_deviation_bounds.upper,
+        result.std_deviation_bounds.lower,
+    )])
 }

@@ -112,17 +112,17 @@ unsafe extern "C" fn plan_walker(node: *mut pg_sys::Node, context_ptr: void_mut_
 
     let mut context = PgBox::<PlanWalker>::from_pg(context_ptr as *mut PlanWalker);
 
-    if is_a(node, pg_sys::NodeTag_T_TargetEntry) {
+    if is_a(node, pg_sys::NodeTag::T_TargetEntry) {
         context.in_te += 1;
         let rc = pg_sys::expression_tree_walker(node, Some(plan_walker), context_ptr);
         context.in_te -= 1;
         return rc;
-    } else if is_a(node, pg_sys::NodeTag_T_SortBy) {
+    } else if is_a(node, pg_sys::NodeTag::T_SortBy) {
         context.in_sort += 1;
         let rc = pg_sys::expression_tree_walker(node, Some(plan_walker), context_ptr);
         context.in_sort -= 1;
         return rc;
-    } else if is_a(node, pg_sys::NodeTag_T_FuncExpr) {
+    } else if is_a(node, pg_sys::NodeTag::T_FuncExpr) {
         let func_expr = PgBox::from_pg(node as *mut pg_sys::FuncExpr);
 
         if func_expr.funcid == context.zdb_score_oid {
@@ -141,10 +141,10 @@ unsafe extern "C" fn plan_walker(node: *mut pg_sys::Node, context_ptr: void_mut_
             //     panic!("zdb.highlight() can only be used as a target entry");
             // }
         }
-    } else if is_a(node, pg_sys::NodeTag_T_RangeTblEntry) {
+    } else if is_a(node, pg_sys::NodeTag::T_RangeTblEntry) {
         // allow range_table_walker to continue
         return false;
-    } else if is_a(node, pg_sys::NodeTag_T_Query) {
+    } else if is_a(node, pg_sys::NodeTag::T_Query) {
         return pg_sys::query_tree_walker(
             node as *mut pg_sys::Query,
             Some(plan_walker),
@@ -164,7 +164,7 @@ unsafe extern "C" fn rewrite_walker(node: *mut pg_sys::Node, context_ptr: void_m
 
     let context = PgBox::<PlanWalker>::from_pg(context_ptr as *mut PlanWalker);
 
-    if is_a(node, pg_sys::NodeTag_T_OpExpr) {
+    if is_a(node, pg_sys::NodeTag::T_OpExpr) {
         let opexpr = PgBox::from_pg(node as *mut pg_sys::OpExpr);
 
         if opexpr.opfuncid == context.zdb_anyelement_cmp_func_oid {
@@ -173,14 +173,14 @@ unsafe extern "C" fn rewrite_walker(node: *mut pg_sys::Node, context_ptr: void_m
             let first_arg = args_list.get_ptr(0);
 
             if let Some(first_arg) = first_arg {
-                if is_a(first_arg, pg_sys::NodeTag_T_Var)
-                    || is_a(first_arg, pg_sys::NodeTag_T_FuncExpr)
+                if is_a(first_arg, pg_sys::NodeTag::T_Var)
+                    || is_a(first_arg, pg_sys::NodeTag::T_FuncExpr)
                 {
                     if context.want_scores {
                         // wrap the right-hand-side of the ==> operator in zdb.want_score(...)
                         let second_arg = args_list.get_ptr(1).expect("no RHS to ==>");
                         let mut want_score_func =
-                            PgBox::<pg_sys::FuncExpr>::alloc_node(pg_sys::NodeTag_T_FuncExpr);
+                            PgBox::<pg_sys::FuncExpr>::alloc_node(pg_sys::NodeTag::T_FuncExpr);
                         let mut func_args = PgList::<pg_sys::Node>::new();
                         func_args.push(second_arg);
 
@@ -198,7 +198,7 @@ unsafe extern "C" fn rewrite_walker(node: *mut pg_sys::Node, context_ptr: void_m
                             // wrap the right-hand-side of the ==> operator in zdb.want_highlight
                             let second_arg = args_list.get_ptr(1).expect("no RHS to ==>");
                             let mut want_highlight_func =
-                                PgBox::<pg_sys::FuncExpr>::alloc_node(pg_sys::NodeTag_T_FuncExpr);
+                                PgBox::<pg_sys::FuncExpr>::alloc_node(pg_sys::NodeTag::T_FuncExpr);
                             let mut func_args = PgList::<pg_sys::Node>::new();
                             func_args.push(second_arg);
 
@@ -209,7 +209,7 @@ unsafe extern "C" fn rewrite_walker(node: *mut pg_sys::Node, context_ptr: void_m
 
                             func_args.push(if highlight_all_fields {
                                 let mut asteriskConstNode =
-                                    PgBox::<pg_sys::Const>::alloc_node(pg_sys::NodeTag_T_Const);
+                                    PgBox::<pg_sys::Const>::alloc_node(pg_sys::NodeTag::T_Const);
 
                                 asteriskConstNode.consttype = pg_sys::TEXTOID;
                                 asteriskConstNode.constlen = 1;
@@ -245,10 +245,10 @@ unsafe extern "C" fn rewrite_walker(node: *mut pg_sys::Node, context_ptr: void_m
                 }
             }
         }
-    } else if is_a(node, pg_sys::NodeTag_T_RangeTblEntry) {
+    } else if is_a(node, pg_sys::NodeTag::T_RangeTblEntry) {
         // allow range_table_walker to continue
         return false;
-    } else if is_a(node, pg_sys::NodeTag_T_Query) {
+    } else if is_a(node, pg_sys::NodeTag::T_Query) {
         return pg_sys::query_tree_walker(
             node as *mut pg_sys::Query,
             Some(rewrite_walker),

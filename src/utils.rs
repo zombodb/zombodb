@@ -12,10 +12,11 @@ pub fn count_non_shadow_zdb_indices(
 ) -> usize {
     let mut cnt = 0;
     for index in heap_relation.indices(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
-        if index.oid() != current_index.oid() && is_zdb_index(&index) {
-            if !ZDBIndexOptions::is_shadow_index_fast(&index) {
-                cnt += 1;
-            }
+        if index.oid() != current_index.oid()
+            && is_zdb_index(&index)
+            && !ZDBIndexOptions::is_shadow_index_fast(&index)
+        {
+            cnt += 1;
         }
     }
 
@@ -34,7 +35,7 @@ pub fn get_heap_relation_for_func_expr(
     }
 
     let a1 = args.get_ptr(0).unwrap();
-    if unsafe { is_a(a1, pg_sys::NodeTag_T_Var) } {
+    if unsafe { is_a(a1, pg_sys::NodeTag::T_Var) } {
         let var = unsafe { PgBox::from_pg(a1 as *mut pg_sys::Var) };
         return get_heap_relation_from_var(relation, view_def, &var);
     }
@@ -64,9 +65,7 @@ fn get_heap_relation_from_var(
             view_def.rtable,
         ))
     };
-    return unsafe {
-        PgRelation::with_lock(rte.relid, pg_sys::AccessShareLock as pg_sys::LOCKMODE)
-    };
+    unsafe { PgRelation::with_lock(rte.relid, pg_sys::AccessShareLock as pg_sys::LOCKMODE) }
 }
 
 pub fn find_zdb_index(
@@ -102,14 +101,14 @@ pub fn find_zdb_index(
 
                 let resname = std::ffi::CStr::from_ptr(te.resname);
                 if resname.eq(std::ffi::CStr::from_bytes_with_nul_unchecked(ZDB_RESNAME)) {
-                    if is_a(te.expr as *mut pg_sys::Node, pg_sys::NodeTag_T_Var) {
+                    if is_a(te.expr as *mut pg_sys::Node, pg_sys::NodeTag::T_Var) {
                         let var = PgBox::from_pg(te.expr as *mut pg_sys::Var);
 
                         // the 'zdb' column is not a functional expression, so it just points to the table
                         // from which it is derived
                         let heap = get_heap_relation_from_var(Some(any_relation), &view_def, &var);
                         return find_zdb_index(&heap);
-                    } else if is_a(te.expr as *mut pg_sys::Node, pg_sys::NodeTag_T_FuncExpr) {
+                    } else if is_a(te.expr as *mut pg_sys::Node, pg_sys::NodeTag::T_FuncExpr) {
                         let func_expr = PgBox::from_pg(te.expr as *mut pg_sys::FuncExpr);
                         let heap = get_heap_relation_for_func_expr(
                             Some(any_relation),
@@ -148,18 +147,16 @@ pub fn find_zdb_index(
 fn find_zdb_shadow_index(table: &PgRelation, funcid: pg_sys::Oid) -> PgRelation {
     unsafe {
         for index in table.indices(pg_sys::AccessShareLock as pg_sys::LOCKMODE) {
-            if is_zdb_index(&index) {
-                if ZDBIndexOptions::is_shadow_index_fast(&index) {
-                    let exprs = PgList::<pg_sys::Expr>::from_pg(
-                        pg_sys::RelationGetIndexExpressions(index.as_ptr()),
-                    );
+            if is_zdb_index(&index) && ZDBIndexOptions::is_shadow_index_fast(&index) {
+                let exprs = PgList::<pg_sys::Expr>::from_pg(pg_sys::RelationGetIndexExpressions(
+                    index.as_ptr(),
+                ));
 
-                    if let Some(expr) = exprs.get_ptr(0) {
-                        if is_a(expr as *mut pg_sys::Node, pg_sys::NodeTag_T_FuncExpr) {
-                            let func_expr = PgBox::from_pg(expr as *mut pg_sys::FuncExpr);
-                            if func_expr.funcid == funcid {
-                                return index;
-                            }
+                if let Some(expr) = exprs.get_ptr(0) {
+                    if is_a(expr as *mut pg_sys::Node, pg_sys::NodeTag::T_FuncExpr) {
+                        let func_expr = PgBox::from_pg(expr as *mut pg_sys::FuncExpr);
+                        if func_expr.funcid == funcid {
+                            return index;
                         }
                     }
                 }
@@ -517,7 +514,7 @@ pub fn type_is_domain(typoid: pg_sys::Oid) -> Option<(pg_sys::Oid, String)> {
 #[inline(always)]
 pub fn read_vlong<T: Read>(input: &mut T) -> std::io::Result<u64> {
     let mut b = input.read_u8()? as u64;
-    let mut i = (b & 0x7F) as u64;
+    let mut i = b & 0x7F;
     if (b & 0x80) == 0 {
         return Ok(i);
     }
@@ -565,6 +562,6 @@ pub fn read_vlong<T: Read>(input: &mut T) -> std::io::Result<u64> {
     if b != 0 && b != 1 {
         panic!("Invalid VLong");
     }
-    i |= (b as u64) << 63;
-    return Ok(i);
+    i |= b << 63;
+    Ok(i)
 }

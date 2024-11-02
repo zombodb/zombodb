@@ -7,10 +7,10 @@ mod dsl {
 
     #[derive(Serialize)]
     struct MoreLikeThisArray<'a> {
-        like: Array<'a, &'a str>,
-        stop_words: Array<'a, &'a str>,
+        like: Vec<String>,
+        stop_words: Vec<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        fields: Option<Array<'a, &'a str>>,
+        fields: Option<Vec<String>>,
         #[serde(skip_serializing_if = "Option::is_none")]
         boost: Option<f32>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -41,8 +41,8 @@ mod dsl {
     struct MoreLikeThis<'a> {
         like: &'a str,
         #[serde(skip_serializing_if = "Option::is_none")]
-        fields: Option<Array<'a, &'a str>>,
-        stop_words: Array<'a, &'a str>,
+        fields: Option<Vec<String>>,
+        stop_words: Vec<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
         boost: Option<f32>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -71,10 +71,10 @@ mod dsl {
 
     #[pg_extern(immutable, parallel_safe, name = "more_like_this")]
     fn more_like_this_with_array<'a>(
-        like: Array<'a, &'a str>,
+        like: Vec<String>,
         stop_words:
-            default!(Array<'a, &'a str>, "ARRAY['http', 'span', 'class', 'flashtext', 'let', 'its', 'may', 'well', 'got', 'too', 'them', 'really', 'new', 'set', 'please', 'how', 'our', 'from', 'sent', 'subject', 'sincerely', 'thank', 'thanks', 'just', 'get', 'going', 'were', 'much', 'can', 'also', 'she', 'her', 'him', 'his', 'has', 'been', 'ok', 'still', 'okay', 'does', 'did', 'about', 'yes', 'you', 'your', 'when', 'know', 'have', 'who', 'what', 'where', 'sir', 'page', 'a', 'an', 'and', 'are', 'as', 'at', 'be', 'but', 'by', 'for', 'if', 'in', 'into', 'is', 'it', 'no', 'not', 'of', 'on', 'or', 'such', 'that', 'the', 'their', 'than', 'then', 'there', 'these', 'they', 'this', 'to', 'was', 'will', 'with']"),
-        fields: default!(Option<Array<'a, &'a str>>, NULL),
+            default!(Vec<String>, "ARRAY['http', 'span', 'class', 'flashtext', 'let', 'its', 'may', 'well', 'got', 'too', 'them', 'really', 'new', 'set', 'please', 'how', 'our', 'from', 'sent', 'subject', 'sincerely', 'thank', 'thanks', 'just', 'get', 'going', 'were', 'much', 'can', 'also', 'she', 'her', 'him', 'his', 'has', 'been', 'ok', 'still', 'okay', 'does', 'did', 'about', 'yes', 'you', 'your', 'when', 'know', 'have', 'who', 'what', 'where', 'sir', 'page', 'a', 'an', 'and', 'are', 'as', 'at', 'be', 'but', 'by', 'for', 'if', 'in', 'into', 'is', 'it', 'no', 'not', 'of', 'on', 'or', 'such', 'that', 'the', 'their', 'than', 'then', 'there', 'these', 'they', 'this', 'to', 'was', 'will', 'with']"),
+        fields: default!(Option<Vec<String>>, NULL),
         boost: default!(Option<f32>, NULL),
         unlike: default!(Option<&'a str>, NULL),
         analyzer: default!(Option<&'a str>, NULL),
@@ -116,9 +116,9 @@ mod dsl {
     #[pg_extern(immutable, parallel_safe, name = "more_like_this")]
     fn more_like_this_without_array<'a>(
         like: &'a str,
-        fields: default!(Option<Array<'a, &'a str>>, NULL),
+        fields: default!(Option<Vec<String>>, NULL),
         stop_words:
-            default!(Array<'a, &'a str>, "ARRAY['http', 'span', 'class', 'flashtext', 'let', 'its', 'may', 'well', 'got', 'too', 'them', 'really', 'new', 'set', 'please', 'how', 'our', 'from', 'sent', 'subject', 'sincerely', 'thank', 'thanks', 'just', 'get', 'going', 'were', 'much', 'can', 'also', 'she', 'her', 'him', 'his', 'has', 'been', 'ok', 'still', 'okay', 'does', 'did', 'about', 'yes', 'you', 'your', 'when', 'know', 'have', 'who', 'what', 'where', 'sir', 'page', 'a', 'an', 'and', 'are', 'as', 'at', 'be', 'but', 'by', 'for', 'if', 'in', 'into', 'is', 'it', 'no', 'not', 'of', 'on', 'or', 'such', 'that', 'the', 'their', 'than', 'then', 'there', 'these', 'they', 'this', 'to', 'was', 'will', 'with']"),
+            default!(Vec<String>, "ARRAY['http', 'span', 'class', 'flashtext', 'let', 'its', 'may', 'well', 'got', 'too', 'them', 'really', 'new', 'set', 'please', 'how', 'our', 'from', 'sent', 'subject', 'sincerely', 'thank', 'thanks', 'just', 'get', 'going', 'were', 'much', 'can', 'also', 'she', 'her', 'him', 'his', 'has', 'been', 'ok', 'still', 'okay', 'does', 'did', 'about', 'yes', 'you', 'your', 'when', 'know', 'have', 'who', 'what', 'where', 'sir', 'page', 'a', 'an', 'and', 'are', 'as', 'at', 'be', 'but', 'by', 'for', 'if', 'in', 'into', 'is', 'it', 'no', 'not', 'of', 'on', 'or', 'such', 'that', 'the', 'their', 'than', 'then', 'there', 'these', 'they', 'this', 'to', 'was', 'will', 'with']"),
         boost: default!(Option<f32>, NULL),
         unlike: default!(Option<&'a str>, NULL),
         analyzer: default!(Option<&'a str>, NULL),
@@ -198,11 +198,11 @@ mod tests {
                         "like": "like_string",
                         "fields": ["fieldsone","fieldstwo","fieldsthree"],
                         "stop_words": ["stop","words"],
-                        "boost": 4.5 as f32,
+                        "boost": 4.5_f32,
                         "unlike": "unliked string",
                         "analyzer": "analyzer string",
                         "minimum_should_match": 42,
-                        "boost_terms": 6.7 as f32,
+                        "boost_terms": 6.7_f32,
                         "include": true,
                         "min_term_freq": 1,
                         "max_query_terms": 2,
@@ -273,11 +273,11 @@ mod tests {
                         "like": ["like_string uno", "string like dos", "like string three"],
                         "fields": ["fieldsone","fieldstwo","fieldsthree"],
                         "stop_words": ["stop","words"],
-                        "boost": 4.5 as f32,
+                        "boost": 4.5_f32,
                         "unlike": "unliked string",
                         "analyzer": "analyzer string",
                         "minimum_should_match": 42,
-                        "boost_terms": 6.7 as f32,
+                        "boost_terms": 6.7_f32,
                         "include": true,
                         "min_term_freq": 1,
                         "max_query_terms": 2,

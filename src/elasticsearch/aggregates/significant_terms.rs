@@ -47,7 +47,7 @@ fn significant_terms(
                 "significant_terms": {
                     "field": field,
                     "include": include,
-                    "shard_size": std::i32::MAX,
+                    "shard_size": i32::MAX,
                     "size": size_limit,
                     "min_doc_count": min_doc_count
                 }

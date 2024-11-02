@@ -2,7 +2,7 @@ use crate::access_method::options::ZDBIndexOptions;
 use crate::highlighting::document_highlighter::*;
 use crate::utils::{find_zdb_index, get_highlight_analysis_info, has_date_subfield};
 use crate::zql::ast::{Expr, IndexLink, QualifiedField, Term};
-use pgrx::once_cell::sync::Lazy;
+use once_cell::sync::Lazy;
 use pgrx::prelude::*;
 use pgrx::{JsonB, PgRelation, *};
 use std::borrow::Cow;
@@ -37,17 +37,14 @@ impl QueryHighlighter {
                 if let Some(value) = document.get(base_field) {
                     for ((fieldname, _), highlighter) in DocumentHighlighter::from_json(
                         index,
-                        &base_field,
+                        base_field,
                         value,
                         0,
-                        &field_type,
+                        field_type,
                         *is_date,
-                        &index_analyzer,
+                        index_analyzer,
                     ) {
-                        highlighters
-                            .entry(fieldname)
-                            .or_insert_with(Vec::new)
-                            .push(highlighter);
+                        highlighters.entry(fieldname).or_default().push(highlighter);
                     }
                 }
             });
@@ -144,8 +141,7 @@ impl QueryHighlighter {
                         array_indexes.extend(
                             matches
                                 .iter()
-                                .map(|matches| matches.1.iter())
-                                .flatten()
+                                .flat_map(|matches| matches.1.iter())
                                 .map(|e| e.1.array_index),
                         );
                     } else {
@@ -158,7 +154,7 @@ impl QueryHighlighter {
                                     }
                                 }
                             }
-                            return false;
+                            false
                         });
                     }
 
@@ -495,13 +491,12 @@ impl QueryHighlighter {
                 for t in s
                     .split(|c: char| c.is_whitespace() || ",\"'[]".contains(c))
                     .filter(|v| !v.is_empty())
-                    .into_iter()
                 {
                     term_vec.push(Term::String(t, None))
                 }
                 for t in term_vec {
                     if let Some(entries) = highlighter.highlight_term(&t) {
-                        cnt = entries.len() + cnt;
+                        cnt += entries.len();
                         QueryHighlighter::process_entries(expr, &field, entries, highlights);
                     }
                 }
@@ -543,7 +538,7 @@ fn highlight_document_jsonb(
 )> {
     let (expr, used_fields) = make_expr(&index, query_string);
     let used_fields = make_used_fields(&index, used_fields);
-    highlight_document_internal(index, &document.0, &expr, &used_fields, dedup_results)
+    highlight_document_internal(index, &document.0, &expr, used_fields, dedup_results)
 }
 
 #[pg_extern(immutable, parallel_safe, name = "highlight_document")]
@@ -564,7 +559,7 @@ fn highlight_document_json(
 )> {
     let (expr, used_fields) = make_expr(&index, query_string);
     let used_fields = make_used_fields(&index, used_fields);
-    highlight_document_internal(index, &document.0, &expr, &used_fields, dedup_results)
+    highlight_document_internal(index, &document.0, &expr, used_fields, dedup_results)
 }
 
 fn make_used_fields(
@@ -595,9 +590,8 @@ fn make_used_fields(
             let zdboptions = ZDBIndexOptions::from_relation(index);
             zdboptions
                 .field_lists()
-                .iter()
-                .map(|(_, v)| v.iter())
-                .flatten()
+                .values()
+                .flat_map(|v| v.iter())
                 .for_each(|fieldname| {
                     used_fields.insert(fieldname.field_name());
                 });
@@ -636,8 +630,8 @@ fn highlight_document_internal<'a>(
     ),
 > {
     let mut highlighters = HashMap::new();
-    let iter =
-        QueryHighlighter::highlight(&index, document, &used_fields, query, &mut highlighters).map(
+    let iter = QueryHighlighter::highlight(&index, document, used_fields, query, &mut highlighters)
+        .map(
             |(
                 field_name,
                 array_index,
@@ -719,7 +713,7 @@ fn highlight_document_internal<'a>(
 fn make_expr<'a>(index: &PgRelation, query_string: &'a str) -> (Expr<'a>, HashSet<String>) {
     // select * from zdb.highlight_document('idxbeer', '{"subject":"free beer", "authoremail":"Christi l nicolay"}', '!!subject:beer or subject:fr?? and authoremail:(christi, nicolay)') order by field_name, position;
     let mut used_fields = HashSet::new();
-    let (index, options) = find_zdb_index(&index).expect("unable to find ZomboDB index");
+    let (index, options) = find_zdb_index(index).expect("unable to find ZomboDB index");
     let links = IndexLink::from_options(&index, options);
     let expr = Expr::from_str(
         &index,
@@ -1068,7 +1062,7 @@ mod tests {
         let mut results = QueryHighlighter::highlight(
             &relation,
             &document,
-            &used_fields,
+            used_fields,
             &query,
             &mut highlighters,
         )
@@ -1082,7 +1076,7 @@ mod tests {
 
     fn make_query<'a>(relation: &PgRelation, input: &'a str) -> (Expr<'a>, HashSet<String>) {
         let mut used_fields = HashSet::new();
-        let query = Expr::from_str(relation, "zdb_all", input, &vec![], &None, &mut used_fields)
+        let query = Expr::from_str(relation, "zdb_all", input, &[], &None, &mut used_fields)
             .expect("failed to parse ZDB Query");
         let used_fields = used_fields.into_iter().map(|s| s.to_string()).collect();
         (query, used_fields)

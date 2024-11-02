@@ -56,7 +56,7 @@ fn terms(
         query,
         size_limit,
         Some(order_by),
-        Some(std::i32::MAX),
+        Some(i32::MAX),
         Some(false),
     )
 }
@@ -223,7 +223,7 @@ fn tally(
     let field_name = if is_date_subfield && (stem.is_none() || date_stem.is_some()) {
         format!("{}.date", field_name)
     } else if is_date_subfield && (field_name.ends_with(".date") && stem.is_some()) {
-        format!("{}", field_name.rsplitn(2, '.').skip(1).next().unwrap())
+        field_name.rsplit_once('.').unwrap().0.to_string()
     } else {
         field_name.into()
     };
@@ -275,10 +275,7 @@ fn tally(
                 | DateStem::day(offset)
                 | DateStem::houur(offset)
                 | DateStem::minute(offset)
-                | DateStem::second(offset) => match offset {
-                    Some(offset) => Some(offset.to_string()),
-                    None => None,
-                },
+                | DateStem::second(offset) => offset.as_ref().map(|offset| offset.to_string()),
             },
             None => None,
         },
@@ -357,8 +354,7 @@ fn tally(
                 }
             }))
             .map(|(key, doc_count)| (key, doc_count as i64))
-            .collect::<Vec<_>>()
-            .into_iter(),
+            .collect::<Vec<_>>(),
     )
 }
 

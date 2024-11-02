@@ -1,4 +1,3 @@
-use pgrx::*;
 use serde_json::{json, Value};
 
 mod cast;
@@ -11,6 +10,8 @@ use crate::zql::ast::{Expr, IndexLink, QualifiedField};
 use crate::zql::dsl::expr_to_dsl;
 use crate::zql::transformations::field_finder::find_link_for_field;
 pub use pg_catalog::*;
+use pgrx::prelude::*;
+use pgrx::{Json, PgRelation, StringInfo};
 use serde::*;
 use std::collections::{HashMap, HashSet};
 
@@ -116,6 +117,7 @@ mod pg_catalog {
 
     #[derive(Debug, Clone, Serialize, Deserialize, PostgresType)]
     #[inoutfuncs]
+    #[derive(Default)]
     pub struct ZDBQuery {
         #[serde(skip_serializing_if = "Option::is_none")]
         pub(super) limit: Option<u64>,
@@ -183,22 +185,6 @@ impl InOutFuncs for ZDBQuery {
     {
         serde_json::to_writer(buffer, &self.as_value())
             .expect("failed to write ZDBQuery to buffer");
-    }
-}
-
-impl Default for ZDBQuery {
-    fn default() -> Self {
-        ZDBQuery {
-            want_score: None,
-            row_estimate: None,
-            limit: None,
-            offset: None,
-            min_score: None,
-            sort_json: None,
-            query_dsl: None,
-            highlights: HashMap::new(),
-            link_options: None,
-        }
     }
 }
 
@@ -421,7 +407,7 @@ impl ZDBQuery {
         if self.only_query_dsl() {
             serde_json::to_value(&self.query_dsl).expect("failed to serialize to json")
         } else {
-            serde_json::to_value(&self).expect("failed to serialize to json")
+            serde_json::to_value(self).expect("failed to serialize to json")
         }
     }
 
@@ -434,20 +420,19 @@ impl ZDBQuery {
             Some(field_name) => {
                 let indexes = self
                     .link_options()
-                    .unwrap_or_else(|| IndexLink::from_zdb(&index));
+                    .unwrap_or_else(|| IndexLink::from_zdb(index));
                 let target_link = find_link_for_field(
                     &QualifiedField {
                         index: None,
-                        field: field_name.into(),
+                        field: field_name,
                     },
                     &IndexLink::from_relation(index),
                     &indexes,
                 );
                 let target_index = if let Some(target_link) = target_link.as_ref() {
-                    target_link.open_index().expect(&format!(
-                        "ZQLQuery::prepare: failed to open index `{}`",
-                        target_link
-                    ))
+                    target_link.open_index().unwrap_or_else(|_| {
+                        panic!("ZQLQuery::prepare: failed to open index `{}`", target_link)
+                    })
                 } else {
                     index.clone()
                 };
@@ -475,7 +460,7 @@ impl ZDBQuery {
     fn rewrite(
         &mut self,
         index: &PgRelation,
-        index_links: &Vec<IndexLink>,
+        index_links: &[IndexLink],
         target_link: Option<IndexLink>,
     ) {
         ZDBQuery::rewrite_zdb_query_clause(
@@ -484,14 +469,14 @@ impl ZDBQuery {
                 .expect("ZDBQuery does not contain query dsl"),
             index_links,
             index,
-            &IndexLink::from_relation(&index),
+            &IndexLink::from_relation(index),
             &target_link,
         )
     }
 
     fn rewrite_zdb_query_clause(
         clause: &mut ZDBQueryClause,
-        index_links: &Vec<IndexLink>,
+        index_links: &[IndexLink],
         index: &PgRelation,
         root_link: &IndexLink,
         target_link: &Option<IndexLink>,
@@ -505,7 +490,7 @@ impl ZDBQuery {
                 }
                 let mut used_fields = HashSet::new();
                 let expr = Expr::from_str(
-                    &index,
+                    index,
                     "zdb_all",
                     &zdb.query,
                     index_links,
@@ -513,7 +498,7 @@ impl ZDBQuery {
                     &mut used_fields,
                 )
                 .expect("failed to parse query");
-                let parsed = expr_to_dsl(&root_link, index_links, &expr);
+                let parsed = expr_to_dsl(root_link, index_links, &expr);
 
                 clause.zdb = None;
                 clause.opaque = Some(parsed);
@@ -781,9 +766,7 @@ impl ZDBPreparedQuery {
         path: &str,
         query: Option<&'a mut serde_json::Value>,
     ) -> Option<&'a mut serde_json::Value> {
-        if query.is_none() {
-            return None;
-        }
+        query.as_ref()?;
         let query = query.unwrap();
         let clause_string = serde_json::to_string(query).unwrap();
         if !clause_string.contains(&format!("\"{}.", path)) {

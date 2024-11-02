@@ -2,6 +2,7 @@ use crate::elasticsearch::search::SearchResponseIntoIter;
 use crate::elasticsearch::Elasticsearch;
 use crate::executor_manager::get_executor_manager;
 use crate::zdbquery::ZDBQuery;
+use pgrx::itemptr::{item_pointer_get_both, item_pointer_is_valid, u64_to_item_pointer};
 use pgrx::*;
 
 struct ZDBScanState {
@@ -73,7 +74,7 @@ pub extern "C" fn amrescan(
 #[pg_guard]
 pub extern "C" fn amgettuple(
     scan: pg_sys::IndexScanDesc,
-    _direction: pg_sys::ScanDirection,
+    _direction: pg_sys::ScanDirection::Type,
 ) -> bool {
     let mut scan: PgBox<pg_sys::IndexScanDescData> = unsafe { PgBox::from_pg(scan) };
     let state = unsafe { (scan.opaque as *mut ZDBScanState).as_mut() }.expect("no scandesc state");

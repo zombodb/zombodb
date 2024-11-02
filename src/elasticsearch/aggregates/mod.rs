@@ -20,5 +20,5 @@ mod significant_text;
 mod stats;
 pub(crate) mod terms;
 mod terms_two_level;
-mod top_hits;
+pub mod top_hits;
 mod top_hits_with_id;

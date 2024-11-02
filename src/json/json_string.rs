@@ -1,9 +1,9 @@
-use pgrx::{Json, JsonB};
-use serde_json::json;
-
+use crate::mapping::JsonStringWrapper;
 use crate::misc::timestamp_support::{
     ZDBDate, ZDBTime, ZDBTimeWithTimeZone, ZDBTimestamp, ZDBTimestampWithTimeZone,
 };
+use pgrx::{pg_sys, Json, JsonB};
+use serde_json::json;
 
 pub trait JsonString: Send + Sync {
     fn push_json(&self, target: &mut Vec<u8>);
@@ -121,16 +121,16 @@ impl JsonString for String {
     }
 }
 
-impl JsonString for pgrx::JsonString {
+impl JsonString for JsonStringWrapper {
     #[inline]
     fn push_json(&self, target: &mut Vec<u8>) {
-        if self.0.contains('\r') || self.0.contains('\n') {
+        if self.0 .0.contains('\r') || self.0 .0.contains('\n') {
             // replace \r\n's to ensure it's all on one line.  It's otherwise supposed to be valid JSON
             // so we shouldn't be mistakenly replacing any \r\n's in actual values -- those should already
             // be properly escaped
-            target.extend_from_slice(self.0.replace('\r', " ").replace('\n', " ").as_bytes());
+            target.extend_from_slice(self.0 .0.replace(['\r', '\n'], " ").as_bytes());
         } else {
-            target.extend_from_slice(self.0.as_bytes())
+            target.extend_from_slice(self.0 .0.as_bytes())
         }
     }
 }
@@ -152,6 +152,12 @@ where
             }
         }
         target.push(b']');
+    }
+}
+
+impl JsonString for pg_sys::Oid {
+    fn push_json(&self, target: &mut Vec<u8>) {
+        serde_json::to_writer(target, &self.as_u32()).ok();
     }
 }
 

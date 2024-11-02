@@ -1,8 +1,10 @@
 use crate::json::json_string::JsonString;
+use crate::mapping::JsonStringWrapper;
 use crate::misc::timestamp_support::{
     ZDBDate, ZDBTime, ZDBTimeWithTimeZone, ZDBTimestamp, ZDBTimestampWithTimeZone,
 };
-use pgrx::{Date, JsonB, Time, TimeWithTimeZone, Timestamp, TimestampWithTimeZone};
+use pgrx::prelude::*;
+use pgrx::JsonB;
 
 #[derive(Debug)]
 #[allow(non_camel_case_types)]
@@ -12,6 +14,7 @@ enum JsonBuilderValue {
     i32(i32),
     i64(i64),
     u32(u32),
+    oid(pg_sys::Oid),
     u64(u64),
     f32(f32),
     f64(f64),
@@ -21,7 +24,7 @@ enum JsonBuilderValue {
     timestamp_with_time_zone(ZDBTimestampWithTimeZone),
     date(ZDBDate),
     string(String),
-    json_string(pgrx::JsonString),
+    json_string(JsonStringWrapper),
     jsonb(JsonB),
     json_value(serde_json::Value),
 
@@ -29,7 +32,7 @@ enum JsonBuilderValue {
     i16_array(Vec<Option<i16>>),
     i32_array(Vec<Option<i32>>),
     i64_array(Vec<Option<i64>>),
-    u32_array(Vec<Option<u32>>),
+    oid_array(Vec<Option<pg_sys::Oid>>),
     f32_array(Vec<Option<f32>>),
     f64_array(Vec<Option<f64>>),
     time_array(Vec<Option<ZDBTime>>),
@@ -38,7 +41,7 @@ enum JsonBuilderValue {
     timestamp_with_time_zone_array(Vec<Option<ZDBTimestampWithTimeZone>>),
     date_array(Vec<Option<ZDBDate>>),
     string_array(Vec<Option<String>>),
-    json_string_array(Vec<Option<pgrx::JsonString>>),
+    json_string_array(Vec<Option<JsonStringWrapper>>),
     jsonb_array(Vec<Option<JsonB>>),
 }
 
@@ -77,6 +80,11 @@ impl JsonBuilder {
     #[inline]
     pub fn add_u32(&mut self, attname: String, value: u32) {
         self.values.push((attname, JsonBuilderValue::u32(value)));
+    }
+
+    #[inline]
+    pub fn add_oid(&mut self, attname: String, value: pg_sys::Oid) {
+        self.values.push((attname, JsonBuilderValue::oid(value)));
     }
 
     #[inline]
@@ -132,7 +140,7 @@ impl JsonBuilder {
     }
 
     #[inline]
-    pub fn add_json_string(&mut self, attname: String, value: pgrx::JsonString) {
+    pub fn add_json_string(&mut self, attname: String, value: JsonStringWrapper) {
         self.values
             .push((attname, JsonBuilderValue::json_string(value)));
     }
@@ -173,9 +181,9 @@ impl JsonBuilder {
     }
 
     #[inline]
-    pub fn add_u32_array(&mut self, attname: String, value: Vec<Option<u32>>) {
+    pub fn add_oid_array(&mut self, attname: String, value: Vec<Option<pg_sys::Oid>>) {
         self.values
-            .push((attname, JsonBuilderValue::u32_array(value)));
+            .push((attname, JsonBuilderValue::oid_array(value)));
     }
 
     #[inline]
@@ -213,13 +221,7 @@ impl JsonBuilder {
         self.values.push((
             attname,
             JsonBuilderValue::timestamp_array(
-                value
-                    .into_iter()
-                    .map(|ts| match ts {
-                        Some(ts) => Some(ts.into()),
-                        None => None,
-                    })
-                    .collect(),
+                value.into_iter().map(|ts| ts.map(|ts| ts.into())).collect(),
             ),
         ));
     }
@@ -255,7 +257,11 @@ impl JsonBuilder {
     }
 
     #[inline]
-    pub fn add_json_string_array(&mut self, attname: String, value: Vec<Option<pgrx::JsonString>>) {
+    pub fn add_json_string_array(
+        &mut self,
+        attname: String,
+        value: Vec<Option<JsonStringWrapper>>,
+    ) {
         self.values
             .push((attname, JsonBuilderValue::json_string_array(value)));
     }
@@ -283,6 +289,7 @@ impl JsonBuilder {
                 JsonBuilderValue::i32(v) => v.push_json(json),
                 JsonBuilderValue::i64(v) => v.push_json(json),
                 JsonBuilderValue::u32(v) => v.push_json(json),
+                JsonBuilderValue::oid(v) => v.push_json(json),
                 JsonBuilderValue::u64(v) => v.push_json(json),
                 JsonBuilderValue::f32(v) => v.push_json(json),
                 JsonBuilderValue::f64(v) => v.push_json(json),
@@ -299,7 +306,7 @@ impl JsonBuilder {
                 JsonBuilderValue::i16_array(v) => v.push_json(json),
                 JsonBuilderValue::i32_array(v) => v.push_json(json),
                 JsonBuilderValue::i64_array(v) => v.push_json(json),
-                JsonBuilderValue::u32_array(v) => v.push_json(json),
+                JsonBuilderValue::oid_array(v) => v.push_json(json),
                 JsonBuilderValue::f32_array(v) => v.push_json(json),
                 JsonBuilderValue::f64_array(v) => v.push_json(json),
                 JsonBuilderValue::time_array(v) => v.push_json(json),

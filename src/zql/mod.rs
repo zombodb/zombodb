@@ -6,6 +6,7 @@ use crate::zql::ast::QualifiedField;
 
 pub mod ast;
 pub mod dsl;
+#[allow(clippy::all)]
 pub mod parser;
 
 pub(crate) mod relationship_manager;
