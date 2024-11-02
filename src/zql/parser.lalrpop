@@ -4,7 +4,7 @@ use crate::zql::ast::*;
 use std::collections::HashMap;
 use pgrx::*;
 
-grammar(source_index: Option<&PgRelation>, used_fields: &mut HashSet<&'input str>, fieldname_stack: &mut [&'input str], operator_stack: &mut [ComparisonOpcode]);
+grammar(source_index: Option<&PgRelation>, used_fields: &mut HashSet<&'input str>, fieldname_stack: &mut Vec<&'input str>, operator_stack: &mut Vec<ComparisonOpcode>);
 
 match {
     // top precedence tokens
