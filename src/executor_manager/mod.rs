@@ -138,7 +138,29 @@ impl QueryState {
             .expect("no arguments provided to zdb.score()");
 
         unsafe {
-            if is_a(first_arg, pg_sys::NodeTag_T_Var) {
+            if is_a(first_arg, pg_sys::NodeTag_T_Param) {
+                let param = first_arg.cast::<pg_sys::Param>();
+
+                let typrelid = Spi::get_one::<pg_sys::Oid>(&format!(
+                    "SELECT typrelid FROM pg_type WHERE oid = {}",
+                    (*param).paramtype.as_u32()
+                ))
+                .expect("SPI lookup for typrelid failed")
+                .unwrap_or_default();
+
+                let relation =
+                    PgRelation::with_lock(typrelid, pg_sys::AccessShareLock as pg_sys::LOCKMODE);
+                match find_zdb_index(&relation) {
+                    Ok((index, _)) => {
+                        self.zdb_index_lookup.insert(typrelid, index.oid());
+                        Some(index.oid())
+                    }
+                    Err(e) => {
+                        pgrx::warning!("error finding zdb_index: {e}");
+                        None
+                    }
+                }
+            } else if is_a(first_arg, pg_sys::NodeTag_T_Var) {
                 // lookup the table from which the 'ctid' value comes, so we can get its oid
                 let rtable = query_desc
                     .as_ref()
@@ -173,7 +195,10 @@ impl QueryState {
                         self.zdb_index_lookup.insert(heap_oid, index.oid());
                         Some(index.oid())
                     }
-                    Err(_) => None,
+                    Err(e) => {
+                        pgrx::warning!("error finding zdb_index: {e}");
+                        None
+                    }
                 }
             } else if is_a(first_arg, pg_sys::NodeTag_T_FuncExpr) {
                 let func_expr = PgBox::from_pg(first_arg as *mut pg_sys::FuncExpr);
