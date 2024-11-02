@@ -89,7 +89,8 @@ impl IntoDatum for JsonStringWrapper {
 }
 
 unsafe impl UnboxDatum for JsonStringWrapper {
-    type As<'src> = JsonStringWrapper
+    type As<'src>
+        = JsonStringWrapper
     where
         Self: 'src;
 
