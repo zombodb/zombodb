@@ -1,6 +1,6 @@
 use crate::zql::ast::{Expr, IndexLink, QualifiedField};
 
-pub fn find_fields(expr: &mut Expr, root_index: &IndexLink, indexes: &Vec<IndexLink>) {
+pub fn find_fields(expr: &mut Expr, root_index: &IndexLink, indexes: &[IndexLink]) {
     match expr {
         Expr::Null => unreachable!(),
 
@@ -37,7 +37,7 @@ pub fn find_fields(expr: &mut Expr, root_index: &IndexLink, indexes: &Vec<IndexL
 pub fn find_link_for_field(
     field_name: &QualifiedField,
     root_index: &IndexLink,
-    indexes: &Vec<IndexLink>,
+    indexes: &[IndexLink],
 ) -> Option<IndexLink> {
     if field_name.index.is_some() {
         // we already know where the field lives

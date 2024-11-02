@@ -32,7 +32,6 @@ enum JsonBuilderValue {
     i16_array(Vec<Option<i16>>),
     i32_array(Vec<Option<i32>>),
     i64_array(Vec<Option<i64>>),
-    u32_array(Vec<Option<u32>>),
     oid_array(Vec<Option<pg_sys::Oid>>),
     f32_array(Vec<Option<f32>>),
     f64_array(Vec<Option<f64>>),
@@ -85,8 +84,7 @@ impl JsonBuilder {
 
     #[inline]
     pub fn add_oid(&mut self, attname: String, value: pg_sys::Oid) {
-        self.values
-            .push((attname, JsonBuilderValue::u32(value.as_u32())));
+        self.values.push((attname, JsonBuilderValue::oid(value)));
     }
 
     #[inline]
@@ -183,12 +181,6 @@ impl JsonBuilder {
     }
 
     #[inline]
-    pub fn add_u32_array(&mut self, attname: String, value: Vec<Option<u32>>) {
-        self.values
-            .push((attname, JsonBuilderValue::u32_array(value)));
-    }
-
-    #[inline]
     pub fn add_oid_array(&mut self, attname: String, value: Vec<Option<pg_sys::Oid>>) {
         self.values
             .push((attname, JsonBuilderValue::oid_array(value)));
@@ -229,10 +221,7 @@ impl JsonBuilder {
         self.values.push((
             attname,
             JsonBuilderValue::timestamp_array(
-                value
-                    .into_iter()
-                    .map(|ts| ts.map(|ts| ts.into()))
-                    .collect(),
+                value.into_iter().map(|ts| ts.map(|ts| ts.into())).collect(),
             ),
         ));
     }
@@ -317,7 +306,6 @@ impl JsonBuilder {
                 JsonBuilderValue::i16_array(v) => v.push_json(json),
                 JsonBuilderValue::i32_array(v) => v.push_json(json),
                 JsonBuilderValue::i64_array(v) => v.push_json(json),
-                JsonBuilderValue::u32_array(v) => v.push_json(json),
                 JsonBuilderValue::oid_array(v) => v.push_json(json),
                 JsonBuilderValue::f32_array(v) => v.push_json(json),
                 JsonBuilderValue::f64_array(v) => v.push_json(json),

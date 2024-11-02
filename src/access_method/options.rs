@@ -162,9 +162,13 @@ impl ZDBIndexOptionsInternal {
             } else if self.shadow_index {
                 // go find the url for this shadow index
                 // it's the url of the non-shadow zdb index
-                let (index, _) =
-                    find_zdb_index(unsafe { &PgRelation::open(my_oid) }).unwrap_or_else(|_| panic!("failed to lookup non-shadow index for oid={}",
-                        my_oid.as_u32()));
+                let (index, _) = find_zdb_index(unsafe { &PgRelation::open(my_oid) })
+                    .unwrap_or_else(|_| {
+                        panic!(
+                            "failed to lookup non-shadow index for oid={}",
+                            my_oid.as_u32()
+                        )
+                    });
                 let options = ZDBIndexOptions::from_relation(&index);
                 options.url()
             } else {
@@ -909,8 +913,6 @@ unsafe fn build_relopts(
     validate: bool,
     tab: [pg_sys::relopt_parse_elt; NUM_REL_OPTS],
 ) -> *mut pg_sys::bytea {
-    
-
     /* Parse the user-given reloptions */
     let rdopts = pg_sys::build_reloptions(
         reloptions,
@@ -1035,7 +1037,7 @@ pub unsafe fn init() {
         "The size in bytes of batch calls to the _bulk API".as_pg_cstr(),
         DEFAULT_BATCH_SIZE,
         1,
-        (std::i32::MAX / 2) - 1,
+        (i32::MAX / 2) - 1,
         #[cfg(any(feature = "pg13", feature = "pg14", feature = "pg15"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
@@ -1060,7 +1062,7 @@ pub unsafe fn init() {
             .as_pg_cstr(),
         DEFAULT_MAX_RESULT_WINDOW,
         1,
-        std::i32::MAX,
+        i32::MAX,
         #[cfg(any(feature = "pg13", feature = "pg14", feature = "pg15"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
@@ -1072,7 +1074,7 @@ pub unsafe fn init() {
         "The maximum number of distinct nested mappings in an index.  Default is 1000".as_pg_cstr(),
         DEFAULT_NESTED_FIELDS_LIMIT,
         1,
-        std::i32::MAX,
+        i32::MAX,
         #[cfg(any(feature = "pg13", feature = "pg14", feature = "pg15"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
@@ -1084,7 +1086,7 @@ pub unsafe fn init() {
         "The maximum number of nested JSON objects that a single document can contain across all nested types.  Default is 1000".as_pg_cstr(),
         DEFAULT_NESTED_OBJECTS_LIMIT,
         1,
-        std::i32::MAX,
+        i32::MAX,
         #[cfg(any(feature = "pg13", feature = "pg14", feature = "pg15"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
@@ -1096,7 +1098,7 @@ pub unsafe fn init() {
         "The maximum number of fields in an index. Field and object mappings, as well as field aliases count towards this limit. The default value is 1000.".as_pg_cstr(),
         DEFAULT_TOTAL_FIELDS_LIMIT,
         1,
-        std::i32::MAX,
+        i32::MAX,
         #[cfg(any(feature = "pg13", feature = "pg14", feature = "pg15"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
@@ -1109,7 +1111,7 @@ pub unsafe fn init() {
             .as_pg_cstr(),
         DEFAULT_MAX_TERMS_COUNT,
         1,
-        std::i32::MAX,
+        i32::MAX,
         #[cfg(any(feature = "pg13", feature = "pg14", feature = "pg15"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
@@ -1122,7 +1124,7 @@ pub unsafe fn init() {
             .as_pg_cstr(),
         DEFAULT_MAX_ANALYZE_TOKEN_COUNT,
         1,
-        std::i32::MAX,
+        i32::MAX,
         #[cfg(any(feature = "pg13", feature = "pg14", feature = "pg15"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE
@@ -1167,7 +1169,7 @@ pub unsafe fn init() {
         "After how many deleted docs should ZDB _optimize the ES index during VACUUM?".as_pg_cstr(),
         DEFAULT_OPTIMIZE_AFTER,
         0,
-        std::i32::MAX,
+        i32::MAX,
         #[cfg(any(feature = "pg13", feature = "pg14", feature = "pg15"))]
         {
             pg_sys::AccessExclusiveLock as pg_sys::LOCKMODE

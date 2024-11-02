@@ -68,14 +68,16 @@ impl Edge {
     }
 
     fn reset(&mut self) {
-        if let Ok(mut target) = self.target.try_borrow_mut() { target.reset() }
+        if let Ok(mut target) = self.target.try_borrow_mut() {
+            target.reset()
+        }
         // if self.target.borrow().previous.is_some() {
         //     self.target.borrow_mut().reset()
         // }
     }
 }
 
-#[derive(Eq, Ord)]
+#[derive(Eq)]
 struct Vertex {
     name: NamedIndex,
     adjacencies: Vec<Edge>,
@@ -91,7 +93,13 @@ impl PartialEq for Vertex {
 
 impl PartialOrd for Vertex {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.min_distance.partial_cmp(&other.min_distance)
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Vertex {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.min_distance.cmp(&other.min_distance)
     }
 }
 
@@ -100,7 +108,7 @@ impl Vertex {
         Vertex {
             name,
             adjacencies: Vec::new(),
-            min_distance: std::usize::MAX,
+            min_distance: usize::MAX,
             previous: None,
         }
     }
@@ -126,7 +134,7 @@ impl Vertex {
     }
 
     fn reset(&mut self) {
-        self.min_distance = std::usize::MAX;
+        self.min_distance = usize::MAX;
         self.previous = None;
         for e in self.adjacencies.iter_mut() {
             e.reset();
@@ -356,7 +364,6 @@ mod tests {
     use crate::zql::relationship_manager::RelationshipManager;
 
     fn case_profile() -> IndexLink {
-        
         IndexLink {
             name: None,
             left_field: Some("cp_id".into()),
@@ -370,7 +377,6 @@ mod tests {
     }
 
     fn docs() -> IndexLink {
-        
         IndexLink {
             name: None,
             left_field: Some("docs_id".into()),
@@ -384,7 +390,6 @@ mod tests {
     }
 
     fn main_vol() -> IndexLink {
-        
         IndexLink {
             name: None,
             left_field: Some("vol_id".into()),
@@ -398,7 +403,6 @@ mod tests {
     }
 
     fn main_other() -> IndexLink {
-        
         IndexLink {
             name: None,
             left_field: Some("other_id".into()),
@@ -412,7 +416,6 @@ mod tests {
     }
 
     fn main_ft() -> IndexLink {
-        
         IndexLink {
             name: None,
             left_field: Some("ft_id".into()),
@@ -426,7 +429,6 @@ mod tests {
     }
 
     fn main() -> IndexLink {
-        
         IndexLink {
             name: None,
             left_field: Some("id".into()),

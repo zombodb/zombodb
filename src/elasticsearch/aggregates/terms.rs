@@ -56,7 +56,7 @@ fn terms(
         query,
         size_limit,
         Some(order_by),
-        Some(std::i32::MAX),
+        Some(i32::MAX),
         Some(false),
     )
 }

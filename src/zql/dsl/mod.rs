@@ -42,54 +42,52 @@ fn debug_query(
 
     let tree = format!("{:#?}", query);
 
-    TableIterator::new(
-        vec![(
-            sqlformat::format(
-                &format!("{}", query),
-                &sqlformat::QueryParams::default(),
-                sqlformat::FormatOptions::default(),
-            )
-            .replace(" :\"", ":\""),
-            used_fields.into_iter().map(|v| v.into()).collect(),
-            tree.to_string(),
-        )],
-    )
+    TableIterator::new(vec![(
+        sqlformat::format(
+            &format!("{}", query),
+            &sqlformat::QueryParams::default(),
+            sqlformat::FormatOptions::default(),
+        )
+        .replace(" :\"", ":\""),
+        used_fields.into_iter().map(|v| v.into()).collect(),
+        tree.to_string(),
+    )])
 }
 
 pub fn expr_to_dsl(
-    root: &IndexLink,
-    index_links: &Vec<IndexLink>,
+    _root: &IndexLink,
+    _index_links: &[IndexLink],
     expr: &Expr,
 ) -> serde_json::Value {
     match expr {
         Expr::Null => unreachable!(),
 
-        Expr::Subselect(link, e) => expr_to_dsl(link, index_links, e),
+        Expr::Subselect(link, e) => expr_to_dsl(link, _index_links, e),
         Expr::Expand(link, e, _) => {
-            expr_to_dsl(link, index_links, &Expr::Linked(link.clone(), e.clone()))
+            expr_to_dsl(link, _index_links, &Expr::Linked(link.clone(), e.clone()))
         }
 
         // AND and WITH output the same query DSL, but we want to maintain their differences in the AST
         Expr::AndList(v) | Expr::WithList(v) => {
             let dsl: Vec<serde_json::Value> = v
                 .iter()
-                .map(|v| expr_to_dsl(root, index_links, v))
+                .map(|v| expr_to_dsl(_root, _index_links, v))
                 .collect();
             json! { { "bool": { "must": dsl } } }
         }
         Expr::OrList(v) => {
             if v.len() == 1 {
-                expr_to_dsl(root, index_links, v.first().unwrap())
+                expr_to_dsl(_root, _index_links, v.first().unwrap())
             } else {
                 let dsl: Vec<serde_json::Value> = v
                     .iter()
-                    .map(|v| expr_to_dsl(root, index_links, v))
+                    .map(|v| expr_to_dsl(_root, _index_links, v))
                     .collect();
                 json! { { "bool": { "should": dsl } } }
             }
         }
         Expr::Not(r) => {
-            let r = expr_to_dsl(root, index_links, r.as_ref());
+            let r = expr_to_dsl(_root, _index_links, r.as_ref());
             json! { { "bool": { "must_not": [r] } } }
         }
         Expr::Contains(f, t) | Expr::Eq(f, t) => term_to_dsl(f, t, ComparisonOpcode::Contains),
@@ -110,12 +108,12 @@ pub fn expr_to_dsl(
         Expr::Json(json) => serde_json::from_str(json).expect("failed to parse json expression"),
 
         Expr::Nested(p, e) => {
-            let dsl = expr_to_dsl(root, index_links, e.as_ref());
+            let dsl = expr_to_dsl(_root, _index_links, e.as_ref());
             json! { { "nested": { "path": p, "query": dsl, "score_mode": "avg", "ignore_unmapped": false } } }
         }
 
         Expr::Linked(link, e) => {
-            let mut query_dsl = expr_to_dsl(root, index_links, e.as_ref());
+            let mut query_dsl = expr_to_dsl(_root, _index_links, e.as_ref());
             if link.left_field.is_none() {
                 query_dsl
             } else {
@@ -389,7 +387,7 @@ fn eq(field: &QualifiedField, term: &Term, is_span: bool) -> serde_json::Value {
     }
 }
 
-fn proximity_chain(field: &QualifiedField, parts: &Vec<ProximityPart>) -> serde_json::Value {
+fn proximity_chain(field: &QualifiedField, parts: &[ProximityPart]) -> serde_json::Value {
     let mut clauses = Vec::new();
 
     for part in parts {
@@ -460,7 +458,7 @@ fn unescape(input: &str) -> String {
     let mut s = String::with_capacity(input.len());
     let mut prev_c = '\0';
     for c in input.chars() {
-        if (c == '\\' && prev_c == '\\') || c != '\\' {
+        if c != '\\' || prev_c == '\\' {
             s.push(c);
         }
 

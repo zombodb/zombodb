@@ -25,14 +25,12 @@ pub struct HitsTotal {
     value: u64,
 }
 
-#[derive(Deserialize, Debug)]
-#[derive(Default)]
+#[derive(Deserialize, Debug, Default)]
 pub struct Fields {
     pub zdb_ctid: Option<[u64; 1]>,
     pub zdb_xmin: Option<[u64; 1]>,
     pub zdb_xmax: Option<[u64; 1]>,
 }
-
 
 #[derive(Debug, Deserialize)]
 pub struct InnerHit {
@@ -577,7 +575,7 @@ impl Scroller {
         None
     }
 
-    fn sort_hits(vec: &mut Vec<InnerHit>) {
+    fn sort_hits(vec: &mut [InnerHit]) {
         use rayon::prelude::*;
 
         vec.par_sort_unstable_by(|a, b| {

@@ -117,9 +117,9 @@ mod tests {
 
     #[pg_test]
     fn test_terms_i16() {
-        let min = std::i16::MIN;
+        let min = i16::MIN;
         let zero = 0_i16;
-        let max = std::i16::MAX;
+        let max = i16::MAX;
 
         let result = Spi::get_one::<ZDBQuery>(&format!(
             "SELECT dsl.terms('fieldname','{}'::smallint, {}, {});",
@@ -144,9 +144,9 @@ mod tests {
 
     #[pg_test]
     fn test_terms_i32() {
-        let min = std::i32::MIN;
+        let min = i32::MIN;
         let zero = 0_i32;
-        let max = std::i32::MAX;
+        let max = i32::MAX;
 
         let result = Spi::get_one::<ZDBQuery>(&format!(
             "SELECT dsl.terms('fieldname', '{}'::integer, {}, {});",
@@ -171,9 +171,9 @@ mod tests {
 
     #[pg_test]
     fn test_terms_i64() {
-        let min = std::i64::MIN;
+        let min = i64::MIN;
         let zero = 0_i64;
-        let max = std::i64::MAX;
+        let max = i64::MAX;
 
         let result = Spi::get_one::<ZDBQuery>(&format!(
             "SELECT dsl.terms('fieldname', '{}'::bigint, {}, {});",
@@ -199,10 +199,10 @@ mod tests {
     #[pg_test]
     fn test_terms_f32() {
         let ninf = std::f32::NEG_INFINITY;
-        let min = std::f32::MIN;
+        let min = f32::MIN;
         let zero = 0_f32;
-        let max = std::f32::MAX;
-        let inf = std::f32::INFINITY;
+        let max = f32::MAX;
+        let inf = f32::INFINITY;
 
         let result = Spi::get_one::<ZDBQuery>(&format!(
             "SELECT dsl.terms('fieldname', '{}'::real, {}, {}, {},'{}');",
@@ -228,10 +228,10 @@ mod tests {
     #[pg_test]
     fn test_terms_f64() {
         let ninf = std::f64::NEG_INFINITY;
-        let min = std::f64::MIN;
+        let min = f64::MIN;
         let zero = 0_f64;
-        let max = std::f64::MAX;
-        let inf = std::f64::INFINITY;
+        let max = f64::MAX;
+        let inf = f64::INFINITY;
 
         let result = Spi::get_one::<ZDBQuery>(&format!(
             "SELECT dsl.terms('fieldname', '{}'::double precision, {}, {},{},'{}');",

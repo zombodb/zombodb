@@ -623,10 +623,7 @@ impl<'a> DocumentHighlighter<'a> {
     //
     // query= than w/2 wine
     // query= than wo/2 (wine or beer or cheese or food) w/5 cowbell
-    pub fn highlight_proximity(
-        &'a self,
-        phrase: &Vec<ProximityPart>,
-    ) -> Option<HighlightMatches<'a>> {
+    pub fn highlight_proximity(&'a self, phrase: &[ProximityPart]) -> Option<HighlightMatches<'a>> {
         if phrase.is_empty() {
             return None;
         }
@@ -706,7 +703,7 @@ impl<'a> DocumentHighlighter<'a> {
     #[allow(dead_code)]
     fn look_for_match(
         &'a self,
-        words: &Vec<Term>,
+        words: &[Term],
         distance: u32,
         order: bool,
         starting_point: Vec<u32>,
@@ -724,7 +721,7 @@ impl<'a> DocumentHighlighter<'a> {
 
     fn look_for_match_ex(
         &'a self,
-        words: &Vec<(HighlightMatches<'a>, bool)>,
+        words: &[(HighlightMatches<'a>, bool)],
         distance: u32,
         order: bool,
         starting_point: Vec<u32>,
@@ -1055,13 +1052,7 @@ mod tests {
         let dh = DocumentHighlighter::new(&index, "test_field", &value);
 
         let matches = dh
-            .look_for_match(
-                &vec![Term::String("test", None)],
-                1,
-                true,
-                vec![0],
-                0,
-            )
+            .look_for_match(&[Term::String("test", None)], 1, true, vec![0], 0)
             .expect("no matches found");
         matches.is_empty();
     }
@@ -1079,7 +1070,7 @@ mod tests {
         let dh = DocumentHighlighter::new(&index, "test_field", &value);
 
         let matches = dh
-            .look_for_match(&vec![Term::String("is", None)], 0, true, vec![1], 0)
+            .look_for_match(&[Term::String("is", None)], 0, true, vec![1], 0)
             .expect("no matches found");
         let mut expected = Vec::new();
         let value = (
@@ -1108,13 +1099,7 @@ mod tests {
         let dh = DocumentHighlighter::new(&index, "test_field", &value);
 
         let matches = dh
-            .look_for_match(
-                &vec![Term::String("this", None)],
-                0,
-                false,
-                vec![2],
-                0,
-            )
+            .look_for_match(&[Term::String("this", None)], 0, false, vec![2], 0)
             .expect("no matches found");
         let mut expected = Vec::new();
         let value_one = (
@@ -1144,13 +1129,7 @@ mod tests {
         let dh = DocumentHighlighter::new(&index, "test_field", &value);
 
         let matches = dh
-            .look_for_match(
-                &vec![Term::String("is", None)],
-                0,
-                false,
-                vec![1, 6],
-                0,
-            )
+            .look_for_match(&[Term::String("is", None)], 0, false, vec![1, 6], 0)
             .expect("no matches found");
         let mut expected = Vec::new();
         let value_one = (
@@ -1191,13 +1170,7 @@ mod tests {
         let dh = DocumentHighlighter::new(&index, "test_field", &value);
 
         let matches = dh
-            .look_for_match(
-                &vec![Term::String("this", None)],
-                0,
-                false,
-                vec![2, 7],
-                0,
-            )
+            .look_for_match(&[Term::String("this", None)], 0, false, vec![2, 7], 0)
             .expect("no matches found");
         let mut expected = Vec::new();
         let value_one = (
@@ -1238,13 +1211,7 @@ mod tests {
         let dh = DocumentHighlighter::new(&index, "test_field", &value);
 
         let matches = dh
-            .look_for_match(
-                &vec![Term::String("test", None)],
-                3,
-                true,
-                vec![1, 6],
-                0,
-            )
+            .look_for_match(&[Term::String("test", None)], 3, true, vec![1, 6], 0)
             .expect("no matches found");
         let mut expected = Vec::new();
         let value_one = (
@@ -1287,13 +1254,7 @@ mod tests {
         let dh = DocumentHighlighter::new(&index, "test_field", &value);
 
         let matches = dh
-            .look_for_match(
-                &vec![Term::String("this", None)],
-                3,
-                false,
-                vec![3, 9],
-                0,
-            )
+            .look_for_match(&[Term::String("this", None)], 3, false, vec![3, 9], 0)
             .expect("no matches found");
         let mut expected = Vec::new();
         let value_one = (
@@ -2157,7 +2118,7 @@ mod tests {
             }
         })
         .expect("failed to parse json");
-        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title,search_string, array_one, array_two);
+        let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None)?;
 
@@ -2363,14 +2324,14 @@ mod tests {
                 "distance": { "distance": 2, "in_order": true }
             }
         })
-        .expect("failed to parse json");
+            .expect("failed to parse json");
         let array_two = serde_json::to_string(&json! {
             {
                 "words": [{"String":["test", null]}, {"String":["is", null]}, {"String": ["to", null]}],
                 "distance": { "distance": 5, "in_order": true }
             }
         })
-        .expect("failed to parse json");
+            .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None)?;
@@ -2411,14 +2372,14 @@ mod tests {
                 "distance": { "distance": 2, "in_order": false }
             }
         })
-        .expect("failed to parse json");
+            .expect("failed to parse json");
         let array_two = serde_json::to_string(&json! {
             {
                 "words": [{"String":["test", null]}, {"String":["is", null]}, {"String": ["to", null]}],
                 "distance": { "distance": 5, "in_order": true }
             }
         })
-        .expect("failed to parse json");
+            .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
             let table = client.select(&select, None, None)?;
@@ -2463,21 +2424,21 @@ mod tests {
                 "distance": { "distance": 2, "in_order": true }
             }
         })
-        .expect("failed to parse json");
+            .expect("failed to parse json");
         let array_two = serde_json::to_string(&json! {
             {
                 "words": [{"String":["is", null]}, {"String":["have", null]}, {"String": ["to", null]}],
                 "distance": { "distance": 0, "in_order": true }
             }
         })
-        .expect("failed to parse json");
+            .expect("failed to parse json");
         let array_three = serde_json::to_string(&json! {
             {
                 "words": [{"String":["a", null]}, {"String":["test", null]}, {"String": ["also", null]}],
                 "distance": { "distance": 5, "in_order": true }
             }
         })
-        .expect("failed to parse json");
+            .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three);
         Spi::connect(|client| {
             let table = client.select(&select, None, None)?;
@@ -2524,21 +2485,21 @@ mod tests {
                 "distance": { "distance": 0, "in_order": false }
             }
         })
-        .expect("failed to parse json");
+            .expect("failed to parse json");
         let array_two = serde_json::to_string(&json! {
             {
                 "words": [{"String":["is", null]}, {"String":["have", null]}, {"String": ["another", null]}],
                 "distance": { "distance": 0, "in_order": false }
             }
         })
-        .expect("failed to parse json");
+            .expect("failed to parse json");
         let array_three = serde_json::to_string(&json! {
             {
                 "words": [{"String":["a", null]}, {"String":["test", null]}, {"String": ["added", null]}],
                 "distance": { "distance": 5, "in_order": true }
             }
         })
-        .expect("failed to parse json");
+            .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three);
         Spi::connect(|client| {
             let table = client.select(&select, None, None)?;
@@ -2586,7 +2547,7 @@ mod tests {
                 "distance": { "distance": 15, "in_order": false }
             }
         })
-        .expect("failed to parse json");
+            .expect("failed to parse json");
         let array_three = serde_json::to_string(&json! {
             {
                 "words": [{"String":["dunno", null]}],

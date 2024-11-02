@@ -1,7 +1,7 @@
 use crate::zql::ast::{Expr, IndexLink, QualifiedField};
 use crate::zql::transformations::field_finder::find_link_for_field;
 
-pub(crate) fn expand(expr: &mut Expr, root_index: &IndexLink, indexes: &Vec<IndexLink>) {
+pub(crate) fn expand(expr: &mut Expr, root_index: &IndexLink, indexes: &[IndexLink]) {
     match expr {
         Expr::Null => {}
         Expr::Subselect(_, e) => expand(e, root_index, indexes),

@@ -7,11 +7,11 @@ pub fn assign_links(
     original_index: &IndexLink,
     root_index: &IndexLink,
     expr: &mut Expr<'_>,
-    indexes: &Vec<IndexLink>,
+    indexes: &[IndexLink],
 ) {
     match determine_link(original_index, root_index, expr, indexes) {
         // everything belongs to the same link (that isn't the root_index), and whatever that is we wrapped it in an Expr::Linked
-        Some(target_link) if &target_link.qualified_index != &root_index.qualified_index => {
+        Some(target_link) if target_link.qualified_index != root_index.qualified_index => {
             let dummy = Expr::Null;
             let swapped = std::mem::replace(expr, dummy);
             *expr = Expr::Linked(target_link, Box::new(swapped));
@@ -26,7 +26,7 @@ fn determine_link(
     original_index: &IndexLink,
     root_index: &IndexLink,
     expr: &mut Expr,
-    indexes: &Vec<IndexLink>,
+    indexes: &[IndexLink],
 ) -> Option<IndexLink> {
     match expr {
         Expr::Null => unreachable!(),
@@ -158,7 +158,7 @@ fn group_links<F: Fn(Vec<Expr>) -> Expr>(
     original_index: &IndexLink,
     root_index: &IndexLink,
     v: &mut Vec<Expr>,
-    indexes: &Vec<IndexLink>,
+    indexes: &[IndexLink],
     f: F,
 ) -> Option<IndexLink> {
     // group the elements of 'v' together by whatever link we determine each to belong
@@ -186,9 +186,7 @@ fn group_links<F: Fn(Vec<Expr>) -> Expr>(
 
             match target_link {
                 // the link is not the root_index, so we must wrap it in an Expr::Linked
-                Some(target_link)
-                    if &target_link.qualified_index != &root_index.qualified_index =>
-                {
+                Some(target_link) if target_link.qualified_index != root_index.qualified_index => {
                     if let Expr::Not(not_expr) = expr_list {
                         v.push(Expr::Not(Box::new(Expr::Linked(target_link, not_expr))))
                     } else {

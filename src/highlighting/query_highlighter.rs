@@ -1077,7 +1077,7 @@ mod tests {
 
     fn make_query<'a>(relation: &PgRelation, input: &'a str) -> (Expr<'a>, HashSet<String>) {
         let mut used_fields = HashSet::new();
-        let query = Expr::from_str(relation, "zdb_all", input, &vec![], &None, &mut used_fields)
+        let query = Expr::from_str(relation, "zdb_all", input, &[], &None, &mut used_fields)
             .expect("failed to parse ZDB Query");
         let used_fields = used_fields.into_iter().map(|s| s.to_string()).collect();
         (query, used_fields)

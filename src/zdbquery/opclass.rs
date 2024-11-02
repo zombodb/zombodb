@@ -165,7 +165,7 @@ fn restrict(
 
                     let estimate = zdbquery
                         .row_estimate()
-                        .min(zdbquery.limit().unwrap_or(std::i64::MAX as u64) as i64);
+                        .min(zdbquery.limit().unwrap_or(i64::MAX as u64) as i64);
 
                     if estimate >= 1 {
                         // use the estimate assigned to the query

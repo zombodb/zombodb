@@ -58,7 +58,7 @@ pub fn init() {
                                 "The default row estimate ZDB should use",
         "ZomboDB needs to provide Postgres with an estimate of the number of rows Elasticsearch will return for any given query. 2500 is a sensible default estimate that generally convinces Postgres to use an IndexScan plan. Setting this to -1 will cause ZomboDB to execute an Elasticsearch _count request for every query to return the exact number.",
         &ZDB_DEFAULT_ROW_ESTIMATE,
-        -1, std::i32::MAX, GucContext::Userset, GucFlags::default());
+        -1, i32::MAX, GucContext::Userset, GucFlags::default());
 
     GucRegistry::define_int_guc(
         "zdb.default_replicas",

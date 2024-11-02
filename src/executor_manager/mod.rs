@@ -37,7 +37,6 @@ pub struct QueryState {
     zdb_index_lookup: HashMap<pg_sys::Oid, pg_sys::Oid>,
 }
 
-
 impl QueryState {
     #[inline]
     pub fn add_score(&mut self, heap_oid: pg_sys::Oid, ctid64: u64, score: f64) {

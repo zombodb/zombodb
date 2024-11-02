@@ -400,8 +400,8 @@ fn find_dockerfiles() -> Result<Vec<(String, PathBuf)>, std::io::Error> {
         let f = f?;
         if f.file_type()?.is_dir()
             && f.file_name()
-                .to_string_lossy()
-                .starts_with("zombodb-build-")
+            .to_string_lossy()
+            .starts_with("zombodb-build-")
         {
             let mut path = f.path();
             path.push("Dockerfile");
@@ -415,22 +415,22 @@ fn find_dockerfiles() -> Result<Vec<(String, PathBuf)>, std::io::Error> {
     Ok(files)
 }
 
-fn parse_dockerfile_arg_names(dockerfile: &Vec<(String, Option<String>)>) -> HashSet<String> {
-    let mut args = HashSet::new();
+fn parse_dockerfile_arg_names(dockerfile: &[(String, Option<String])>) -> HashSet<String> {
+let mut args = HashSet::new();
 
-    for (k, v) in dockerfile {
-        if k == "ARG" {
-            let parts: Vec<&str> = v
-                .as_ref()
-                .expect("no value for ARG")
-                .splitn(2, '=')
-                .collect();
-            let mut parts = parts.into_iter();
-            args.insert(parts.next().expect("no ARG value").into());
-        }
-    }
+for (k, v) in dockerfile {
+if k == "ARG" {
+let parts: Vec < & str > = v
+.as_ref()
+.expect("no value for ARG")
+.splitn(2, '=')
+.collect();
+let mut parts = parts.into_iter();
+args.insert(parts.next().expect("no ARG value").into());
+}
+}
 
-    args
+args
 }
 
 fn parse_dockerfile(filename: &PathBuf) -> Result<Vec<(String, Option<String>)>, std::io::Error> {

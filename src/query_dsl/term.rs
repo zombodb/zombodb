@@ -595,7 +595,7 @@ mod tests {
 
     #[pg_test]
     fn test_term_f64_with_infinity() {
-        let value = std::f64::INFINITY;
+        let value = f64::INFINITY;
         let zdbquery =
             Spi::get_one::<ZDBQuery>("SELECT dsl.term('fieldname', 'infinity'::double precision);")
                 .expect("SPI failed")

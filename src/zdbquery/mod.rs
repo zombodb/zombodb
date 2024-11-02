@@ -118,7 +118,7 @@ mod pg_catalog {
     #[derive(Debug, Clone, Serialize, Deserialize, PostgresType)]
     #[inoutfuncs]
     #[derive(Default)]
-pub struct ZDBQuery {
+    pub struct ZDBQuery {
         #[serde(skip_serializing_if = "Option::is_none")]
         pub(super) limit: Option<u64>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -187,7 +187,6 @@ impl InOutFuncs for ZDBQuery {
             .expect("failed to write ZDBQuery to buffer");
     }
 }
-
 
 #[allow(dead_code)]
 impl ZDBQuery {
@@ -431,8 +430,9 @@ impl ZDBQuery {
                     &indexes,
                 );
                 let target_index = if let Some(target_link) = target_link.as_ref() {
-                    target_link.open_index().unwrap_or_else(|_| panic!("ZQLQuery::prepare: failed to open index `{}`",
-                        target_link))
+                    target_link.open_index().unwrap_or_else(|_| {
+                        panic!("ZQLQuery::prepare: failed to open index `{}`", target_link)
+                    })
                 } else {
                     index.clone()
                 };
@@ -460,7 +460,7 @@ impl ZDBQuery {
     fn rewrite(
         &mut self,
         index: &PgRelation,
-        index_links: &Vec<IndexLink>,
+        index_links: &[IndexLink],
         target_link: Option<IndexLink>,
     ) {
         ZDBQuery::rewrite_zdb_query_clause(
@@ -476,7 +476,7 @@ impl ZDBQuery {
 
     fn rewrite_zdb_query_clause(
         clause: &mut ZDBQueryClause,
-        index_links: &Vec<IndexLink>,
+        index_links: &[IndexLink],
         index: &PgRelation,
         root_link: &IndexLink,
         target_link: &Option<IndexLink>,

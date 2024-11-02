@@ -23,13 +23,11 @@ use crate::zql::transformations::prox_rewriter::rewrite_proximity_chains;
 use crate::zql::transformations::pullup::pullup_and;
 use crate::zql::{INDEX_LINK_PARSER, ZDB_QUERY_PARSER};
 
-#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct ProximityDistance {
     pub distance: u32,
     pub in_order: bool,
 }
-
 
 #[pgrx::pg_schema]
 pub mod pg_catalog {
@@ -280,7 +278,7 @@ impl ProximityTerm {
         }
     }
 
-    pub fn to_terms(terms: &Vec<ProximityTerm>) -> Vec<Term> {
+    pub fn to_terms(terms: &[ProximityTerm]) -> Vec<Term> {
         terms.iter().map(|v| v.to_term()).collect()
     }
 
@@ -373,7 +371,9 @@ impl ProximityTerm {
             ProximityTerm::from_term(&term)
         } else {
             // next, build ProximityParts for each group
-            let proximity_parts: Vec<ProximityPart> = groups.into_values().map(|tokens| {
+            let proximity_parts: Vec<ProximityPart> = groups
+                .into_values()
+                .map(|tokens| {
                     let mut terms = Vec::new();
 
                     for token in tokens {
@@ -440,7 +440,7 @@ impl ProximityTerm {
         let token = token.token.replace("ZDBSTAR", "*");
         let token = token.replace("ZDBQUESTION", "?");
         let token = token.replace("zdbstar", "*");
-        
+
         token.replace("zdbquestion", "?")
     }
 }
@@ -452,7 +452,7 @@ impl<'input> Expr<'input> {
         index: &PgRelation,
         default_fieldname: &'input str,
         input: &'input str,
-        index_links: &Vec<IndexLink>,
+        index_links: &[IndexLink],
         target_link: &Option<IndexLink>,
         used_fields: &mut HashSet<&'input str>,
     ) -> Result<Expr<'input>, ParserError<'input>> {
@@ -482,7 +482,7 @@ impl<'input> Expr<'input> {
         input: &'input str,
         used_fields: &mut HashSet<&'input str>,
         root_index: IndexLink,
-        index_links: &Vec<IndexLink>,
+        index_links: &[IndexLink],
         target_link: &Option<IndexLink>,
         mut field_lists: HashMap<String, Vec<QualifiedField>>,
     ) -> Result<Expr<'input>, ParserError<'input>> {
@@ -639,7 +639,7 @@ impl<'input> Expr<'input> {
         flat
     }
 
-    pub fn nested_path(exprs: &Vec<Expr<'input>>) -> Option<String> {
+    pub fn nested_path(exprs: &[Expr<'input>]) -> Option<String> {
         let mut path = None;
 
         for e in exprs {
@@ -898,7 +898,7 @@ impl QualifiedField {
     pub fn field_name(&self) -> String {
         if let Some(index) = self.index.as_ref() {
             if index.name == Some(self.base_field().to_string())
-                || &index.qualified_index.table == &self.base_field()
+                || index.qualified_index.table == self.base_field()
             {
                 return self.field.splitn(2, '.').last().unwrap().to_string();
             }

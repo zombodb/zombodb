@@ -56,7 +56,7 @@ fn expand_index_links0(
 fn do_expand(
     expr: &mut Expr,
     relationship_manager: &mut RelationshipManager,
-    target_stack: &mut Vec<IndexLink>,
+    target_stack: &mut [IndexLink],
     target_index: &IndexLink,
 ) {
     let current_index = target_stack.last().unwrap();
