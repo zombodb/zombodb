@@ -52,7 +52,7 @@ USER ${USER}
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
 ENV PATH="/home/${USER}/.cargo/bin:${PATH}"
 
-RUN cargo install cargo-pgrx
+RUN cargo install cargo-pgrx --version 0.13.0 --locked
 
 ARG PGVER
 RUN cargo pgrx init --pg${PGVER}=$(which pg_config)
