@@ -33,7 +33,6 @@ RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-k
 RUN apt-get update && apt-get install -y curl git
 RUN apt-get update && apt-get install -y clang llvm gcc make build-essential libz-dev zlib1g-dev strace libssl-dev pkg-config
 
-RUN apt-get update && apt-get install -y postgresql-12 postgresql-server-dev-12
 RUN apt-get update && apt-get install -y postgresql-13 postgresql-server-dev-13
 RUN apt-get update && apt-get install -y postgresql-14 postgresql-server-dev-14
 RUN apt-get update && apt-get install -y postgresql-15 postgresql-server-dev-15
@@ -48,7 +47,6 @@ ENV PATH="/home/${USER}/.cargo/bin:${PATH}"
 
 RUN cargo install cargo-pgrx --version 0.13.1 --locked
 RUN cargo pgrx init \
-	--pg12=/usr/lib/postgresql/12/bin/pg_config \
 	--pg13=/usr/lib/postgresql/13/bin/pg_config \
 	--pg14=/usr/lib/postgresql/14/bin/pg_config \
 	--pg15=/usr/lib/postgresql/15/bin/pg_config

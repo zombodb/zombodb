@@ -32,7 +32,7 @@ macro_rules! handle_result {
 
 }
 
-static PGVERS: &[u16; 4] = &[12, 13, 14, 15];
+static PGVERS: &[u16] = &[13, 14, 15];
 
 fn do_exit() {
     // best effort to kill the docker process
