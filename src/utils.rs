@@ -279,10 +279,7 @@ pub fn lookup_function(
 pub fn get_search_analyzer(index: &PgRelation, field: &str) -> String {
     Spi::get_one_with_args(
         "select zdb.get_search_analyzer($1, $2);",
-        vec![
-            (PgBuiltInOids::OIDOID.oid(), index.oid().into_datum()),
-            (PgBuiltInOids::TEXTOID.oid(), field.into_datum()),
-        ],
+        &[index.oid().into(), field.into()],
     )
     .expect("SPI failed")
     .expect("search analyzer was null")
@@ -292,10 +289,7 @@ pub fn get_search_analyzer(index: &PgRelation, field: &str) -> String {
 pub fn get_index_analyzer(index: &PgRelation, field: &str) -> String {
     Spi::get_one_with_args(
         "select zdb.get_index_analyzer($1, $2);",
-        vec![
-            (PgBuiltInOids::OIDOID.oid(), index.oid().into_datum()),
-            (PgBuiltInOids::TEXTOID.oid(), field.into_datum()),
-        ],
+        &[index.oid().into(), field.into()],
     )
     .expect("SPI failed")
     .expect("search analyzer was null")
@@ -307,10 +301,7 @@ pub fn get_highlight_analysis_info(
 ) -> (Option<String>, Option<String>, Option<String>) {
     Spi::get_three_with_args(
         "SELECT * FROM zdb.get_highlight_analysis_info($1, $2);",
-        vec![
-            (PgBuiltInOids::OIDOID.oid(), index.oid().into_datum()),
-            (PgBuiltInOids::TEXTOID.oid(), field.into_datum()),
-        ],
+        &[index.oid().into(), field.into()],
     )
     .expect("SPI failed")
 }
@@ -321,10 +312,7 @@ pub fn get_null_copy_to_fields(index: &PgRelation) -> Vec<String> {
         let mut results = client.select(
             "select * from zdb.get_null_copy_to_fields($1);",
             None,
-            Some(vec![(
-                PgBuiltInOids::OIDOID.oid(),
-                index.oid().into_datum(),
-            )]),
+            &[index.oid().into()],
         )?;
 
         while results.next().is_some() {
@@ -500,7 +488,7 @@ pub fn json_to_string(key: serde_json::Value) -> Option<String> {
 pub fn type_is_domain(typoid: pg_sys::Oid) -> Option<(pg_sys::Oid, String)> {
     let (is_domain, base_type, name) = Spi::get_three_with_args::<bool, pg_sys::Oid, String>(
         "SELECT typtype = 'd', typbasetype, typname::text FROM pg_type WHERE oid = $1",
-        vec![(PgBuiltInOids::OIDOID.oid(), typoid.into_datum())],
+        &[typoid.into()],
     )
     .expect("SPI failed");
 

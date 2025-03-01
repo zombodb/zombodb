@@ -1291,7 +1291,7 @@ mod tests {
             "select * from zdb.highlight_term('idxtest_highlighting_{}', 'test_field', 'it is a test and it is a good one', 'it') order by position;", title
         );
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -1315,7 +1315,7 @@ mod tests {
         start_table_and_index(title);
         let select: String = format!("select * from zdb.highlight_phrase('idxtest_highlighting_{}', 'test_field', 'it is a test and it is a good one', 'it is a') order by position;", title);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -1347,7 +1347,7 @@ mod tests {
         start_table_and_index(title);
         let select: String = format!("select * from zdb.highlight_phrase('idxtest_highlighting_{}', 'test_field', 'it is a test and it is a good one', 'it') order by position;", title);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -1371,7 +1371,7 @@ mod tests {
         start_table_and_index(title);
         let select: String = format!("select * from zdb.highlight_phrase('idxtest_highlighting_{}', 'test_field', 'it is a test and it is a good one', 'banana') order by position;", title);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -1390,7 +1390,7 @@ mod tests {
         start_table_and_index(title);
         let select = format!("select * from zdb.highlight_wildcard('idxtest_highlighting_{}', 'test_field', 'Mom landed a man on the moon', 'm*n') order by position;", title);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name  | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -1414,7 +1414,7 @@ mod tests {
         start_table_and_index(title);
         let select = format!("select * from zdb.highlight_wildcard('idxtest_highlighting_{}', 'test_field', 'Mom landed a man on the moon', 'm?n') order by position;", title);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name  | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -1434,7 +1434,7 @@ mod tests {
         start_table_and_index(title);
         let select = format!("select * from zdb.highlight_wildcard('idxtest_highlighting_{}', 'test_field', 'Mom landed a man on the moon', 'n*n') order by position;", title);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name  | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -1453,7 +1453,7 @@ mod tests {
         start_table_and_index(title);
         let select = format!("select * from zdb.highlight_regex('idxtest_highlighting_{}', 'test_field', 'Mom landed a man on the moon', '^m.*$') order by position;", title);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -1480,7 +1480,7 @@ mod tests {
         let regex_ex = Regex::new("^m.?$").unwrap();
         let select = format!("select * from zdb.highlight_regex('idxtest_highlighting_{}', 'test_field', 'Mom landed a man on the moon', '{}') order by position;", title, regex_ex.as_str());
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -1499,7 +1499,7 @@ mod tests {
         start_table_and_index(title);
         let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt c', 'cot', 1) order by position;", title);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name  | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -1527,7 +1527,7 @@ mod tests {
         start_table_and_index(title);
         let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt c', 'co', 1) order by position;", title);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name  | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -1547,7 +1547,7 @@ mod tests {
         start_table_and_index(title);
         let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt c cott cooler', 'colter', 2) order by position;", title);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term   |    type    | position | start_offset | end_offset
             // -----------+--------+------------+----------+--------------+------------
@@ -1575,7 +1575,7 @@ mod tests {
         start_table_and_index(title);
         let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cot', 4) order by position;", title);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -1597,7 +1597,7 @@ mod tests {
         start_table_and_index(title);
         let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cet', 4) order by position;", title);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -1617,7 +1617,7 @@ mod tests {
         start_table_and_index(title);
         let select = format!("select * from zdb.highlight_fuzzy('idxtest_highlighting_{}', 'test_field', 'coal colt cot cheese beer co beer colter cat bolt', 'cet', -4) order by position;", title);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -1651,7 +1651,7 @@ mod tests {
         .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','this is a test that is longer and has a second this near test a second time and a third this that is not' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, array_one, array_two);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -1701,7 +1701,7 @@ mod tests {
         .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // ------------+------+------------+----------+--------------+------------
@@ -1736,7 +1736,7 @@ mod tests {
         .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart]) order by position;", title, search_string, array_one);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -1785,7 +1785,7 @@ mod tests {
         .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -1833,7 +1833,7 @@ mod tests {
         .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -1873,7 +1873,7 @@ mod tests {
         .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -1929,7 +1929,7 @@ mod tests {
         .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three, array_four);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -1988,7 +1988,7 @@ mod tests {
         .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three, array_four);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -2040,7 +2040,7 @@ mod tests {
         .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+-----------
@@ -2079,7 +2079,7 @@ mod tests {
         .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -2120,7 +2120,7 @@ mod tests {
         .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -2161,7 +2161,7 @@ mod tests {
         .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -2202,7 +2202,7 @@ mod tests {
         .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -2243,7 +2243,7 @@ mod tests {
         .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -2288,7 +2288,7 @@ mod tests {
         .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -2334,7 +2334,7 @@ mod tests {
             .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -2382,7 +2382,7 @@ mod tests {
             .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------
@@ -2441,7 +2441,7 @@ mod tests {
             .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             //  field_name | term |    type    | position | start_offset | end_offset
             //  -----------+------+------------+----------+--------------+------------
@@ -2502,7 +2502,7 @@ mod tests {
             .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             //  field_name | term |    type    | position | start_offset | end_offset
             //  -----------+------+------------+----------+--------------+------------
@@ -2557,7 +2557,7 @@ mod tests {
         .expect("failed to parse json");
         let select = format!("select * from zdb.highlight_proximity('idxtest_highlighting_{}', 'test_field','{}' ,  ARRAY['{}'::proximitypart, '{}'::proximitypart, '{}'::proximitypart]) order by position;", title, search_string, array_one, array_two, array_three);
         Spi::connect(|client| {
-            let table = client.select(&select, None, None)?;
+            let table = client.select(&select, None, &[])?;
 
             // field_name | term |    type    | position | start_offset | end_offset
             // -----------+------+------------+----------+--------------+------------

@@ -39,7 +39,7 @@ pub fn drop_schema(schema_oid: pg_sys::Oid) {
                     where relnamespace = $1
                       and relam = (select oid from pg_am where amname = 'zombodb')",
             None,
-            Some(vec![(PgOid::from(pg_sys::OIDOID), schema_oid.into_datum())]),
+            &[schema_oid.into()],
         )?;
         drop_index_oids(table);
         Ok::<_, spi::Error>(())
@@ -54,7 +54,7 @@ pub fn drop_extension(extension_oid: pg_sys::Oid) {
                 "select oid from pg_class
                     where relam = (select oid from pg_am where amname = 'zombodb')",
                 None,
-                None,
+                &[],
             )?;
             drop_index_oids(table);
             Ok::<_, spi::Error>(())

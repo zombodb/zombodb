@@ -46,7 +46,7 @@ fn debug_query(
         sqlformat::format(
             &format!("{}", query),
             &sqlformat::QueryParams::default(),
-            sqlformat::FormatOptions::default(),
+            &sqlformat::FormatOptions::default(),
         )
         .replace(" :\"", ":\""),
         used_fields.into_iter().map(|v| v.into()).collect(),
