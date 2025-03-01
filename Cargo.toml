@@ -26,38 +26,38 @@ pg_test = []
 
 [dependencies]
 byteorder = "1.5.0"
-chrono = "0.4.38"
+chrono = "0.4.40"
 cow-utils = "0.1.3"
 crossbeam = "0.8.4"
-dashmap = "5.5.3"
+dashmap = "6.1.0"
 humantime = "2.1.0"
-indexmap = "2.6.0"
-lalrpop-util = { version = "0.20.2", features = ["lexer", "unicode"] }
+indexmap = "2.7.1"
+lalrpop-util = { version = "0.22.1", features = ["lexer", "unicode"] }
 lazy_static = "1.5.0"
 levenshtein = "1.0.5"
 memoffset = "0.9.1"
 num_cpus = "1.16.0"
-once_cell = "1.20.2"
-pgrx = "0.12.8"
+once_cell = "1.20.3"
+pgrx = "0.13.0"
 rayon = "1.10.0"
 regex = { version = "1.11.1", features = ["unicode-case"] }
-rustc-hash = "1.1.0"
-serde = { version = "1.0.214", features = ["derive"] }
-serde_json = { version = "1.0.132", features = ["preserve_order"] }
+rustc-hash = "2.1.1"
+serde = { version = "1.0.218", features = ["derive"] }
+serde_json = { version = "1.0.139", features = ["preserve_order"] }
 serde_cbor = "0.11.2"
-sqlformat = "0.2.6"
+sqlformat = "0.3.5"
 unicode-segmentation = "1.12.0"
-ureq = { version = "2.10.1", features = ["json"] }
-url = "2.5.2"
-native-tls = { version = "0.2.12", optional = true }
+ureq = { version = "=2.10.1", features = ["json"] }
+url = "2.5.4"
+native-tls = { version = "0.2.14", optional = true }
 
 [build-dependencies]
-lalrpop = { version = "0.20.2", features = ["lexer", "unicode"] }
-built = { version = "0.6.1", features = ["git2", "semver"] }
+lalrpop = { version = "0.22.1", features = ["lexer", "unicode"] }
+built = { version = "0.7.7", features = ["git2", "semver"] }
 
 [dev-dependencies]
-pgrx-tests = "0.12.8"
-libc = "0.2.161"
+pgrx-tests = "0.13.0"
+libc = "0.2.170"
 
 [profile.dev]
 panic = "unwind"

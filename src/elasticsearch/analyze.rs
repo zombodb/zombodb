@@ -232,7 +232,7 @@ mod tests {
             let table = client.select(
                 " SELECT * FROM zdb.analyze_text('idxtest_analyze_text', 'standard', 'this is a test');",
                 None,
-                None,
+                &[],
             )?;
 
             //    type        | token | position | start_offset | end_offset
@@ -263,7 +263,7 @@ mod tests {
             let table = client.select(
                 " SELECT * FROM zdb.analyze_with_field('idxtest_analyze_with_field', 'column', 'this is a test');",
                 None,
-                None,
+                &[],
             )?;
 
             //    type        | token | position | start_offset | end_offset
@@ -294,7 +294,7 @@ mod tests {
             let table = client.select(
                 " SELECT * FROM zdb.analyze_custom(index=>'idxtest_analyze_custom',text=> 'this is a test', tokenizer =>'standard');",
                 None,
-                None,
+                &[],
             )?;
 
             //    type        | token | position | start_offset | end_offset

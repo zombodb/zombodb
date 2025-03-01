@@ -763,7 +763,7 @@ mod tests {
         Spi::run("CREATE TABLE test_sort AS SELECT * FROM generate_series(1, 100);")?;
         Spi::run("CREATE INDEX idxtest_sort ON test_sort USING zombodb ((test_sort.*));")?;
         Spi::connect(|client| {
-            let mut table = client.select("SELECT * FROM test_sort WHERE test_sort ==> dsl.sort('generate_series', 'desc', dsl.match_all());", None, None)?.first();
+            let mut table = client.select("SELECT * FROM test_sort WHERE test_sort ==> dsl.sort('generate_series', 'desc', dsl.match_all());", None, &[])?.first();
 
             let mut previous = table.get_one::<i64>()?.unwrap();
             while table.next().is_some() {

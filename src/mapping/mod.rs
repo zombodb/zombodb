@@ -629,12 +629,7 @@ pub fn lookup_es_only_field_mappings(
     Spi::connect(|client| {
         let mut mappings = Vec::new();
         let mut table = client.select("SELECT field_name, definition FROM zdb.mappings WHERE table_name = $1 and es_only = true",
-                                      None,
-                                      Some(
-                                          vec![
-                                              (PgOid::BuiltIn(PgBuiltInOids::OIDOID), heap_relation.clone().into_datum())
-                                          ]
-                                      )
+                                      None,&[heap_relation.clone().into()]
         )?;
 
         while table.next().is_some() {
@@ -653,12 +648,7 @@ pub fn lookup_mappings(heap_relation: &PgRelation) -> HashMap<String, serde_json
     Spi::connect(|client| {
         let mut mappings = HashMap::new();
         let mut table = client.select("SELECT field_name, definition FROM zdb.mappings WHERE table_name = $1 and es_only = false",
-                                      None,
-                                      Some(
-                                          vec![
-                                              (PgOid::BuiltIn(PgBuiltInOids::OIDOID), heap_relation.clone().into_datum())
-                                          ]
-                                      )
+                                      None, &[heap_relation.clone().into()]
         )?;
         while table.next().is_some() {
             let data = table.get_two::<String, JsonB>()?;
@@ -688,10 +678,7 @@ fn lookup_type_mapping(typoid: PgOid) -> Option<(Option<serde_json::Value>, Opti
             .select(
                 "SELECT definition, funcid::oid FROM zdb.type_mappings WHERE type_name = $1;",
                 None,
-                Some(vec![(
-                    PgOid::BuiltIn(PgBuiltInOids::REGPROCOID),
-                    typoid.into_datum(),
-                )]),
+                &[typoid.into()],
             )?
             .first();
 
@@ -724,7 +711,7 @@ fn lookup_type_conversions() -> HashMap<pg_sys::Oid, pg_sys::Oid> {
         let mut table = client.select(
             "SELECT typeoid::oid, funcoid::oid FROM zdb.type_conversions",
             None,
-            None,
+            &[],
         )?;
         while table.next().is_some() {
             let (typeoid, funcoid) = table.get_two::<pg_sys::Oid, pg_sys::Oid>()?;

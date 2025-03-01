@@ -28,7 +28,7 @@ pub fn get_index_options_for_schema(name: &str) -> Vec<ZDBIndexOptions> {
         let mut options = Vec::new();
         let mut table = client.select("select oid from pg_class
                     where relnamespace = (select oid from pg_namespace where nspname = $1::text::name)
-                      and relam = (select oid from pg_am where amname = 'zombodb')", None, Some(vec![(PgBuiltInOids::TEXTOID.oid(), name.into_datum())]))?;
+                      and relam = (select oid from pg_am where amname = 'zombodb')", None, &[name.into()])?;
         while table.next().is_some() {
             let oid = table.get_one::<pg_sys::Oid>()?.expect("index oid is NULL");
             let index =
